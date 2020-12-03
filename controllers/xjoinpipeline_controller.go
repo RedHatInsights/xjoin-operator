@@ -41,7 +41,6 @@ func (r *XJoinPipelineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	_ = context.Background()
 	_ = r.Log.WithValues("xjoinpipeline", req.NamespacedName)
 
-	// your logic here
 
 	return ctrl.Result{}, nil
 }
