@@ -7,22 +7,26 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - xjoin.cloud.redhat.com
+  - ""
   resources:
-  - xjoinpipelines
+  - configmaps
+  - secrets
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
+- apiGroups:
+  - kafka.strimzi.io
+  resources:
+  - kafkaconnectors
+  - kafkaconnectors/finalizers
+  verbs:
+  - '*'
 - apiGroups:
   - xjoin.cloud.redhat.com
   resources:
+  - xjoinpipelines
+  - xjoinpipelines/finalizers
   - xjoinpipelines/status
   verbs:
-  - get
-  - patch
-  - update
+  - '*'

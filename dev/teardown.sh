@@ -7,4 +7,5 @@ oc delete project kafka &
 oc delete project elastic-system &
 
 wait
+pkill -f "oc port-forward"
 echo "Done"

@@ -11,7 +11,7 @@ spec:
   image: quay.io/cloudservices/xjoin-kafka-connect-strimzi:c06acd0
   version: 2.5.0
   replicas: 0
-  bootstrapServers: xjoin-kafka-cluster-bootstrap:9093
+  bootstrapServers: xjoin-kafka-cluster-kafka-bootstrap:9093
   tls:
     trustedCertificates:
       - secretName: xjoin-kafka-cluster-cluster-ca-cert

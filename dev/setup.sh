@@ -8,6 +8,8 @@ if [[ -z "$2" ]]; then
     exit 1
 fi
 
+cd dev
+
 PROJECT_NAME=xjoin-operator-project
 PULL_SECRET=$1
 SECRET_FILE_LOC=$2
@@ -20,6 +22,7 @@ oc get secret "$PULL_SECRET" -n $PROJECT_NAME || exit 1
 
 oc secrets link -n $PROJECT_NAME default "$PULL_SECRET" --for=pull
 
+#kafka
 oc create ns kafka
 oc apply -f cluster-operator/ -n kafka
 
@@ -27,17 +30,8 @@ oc apply -f 020-RoleBinding-strimzi-cluster-operator.yaml -n $PROJECT_NAME
 oc apply -f 032-RoleBinding-strimzi-cluster-operator-topic-operator-delegation.yaml -n $PROJECT_NAME
 oc apply -f 031-RoleBinding-strimzi-cluster-operator-entity-operator-delegation.yaml -n $PROJECT_NAME
 
-sleep 10
-
-oc project $PROJECT_NAME
-
 oc create -n $PROJECT_NAME -f kafka-cluster.yml
 oc wait kafka/xjoin-kafka-cluster --for=condition=Ready --timeout=300s -n $PROJECT_NAME
-
-oc apply -f inventory-db.secret.yml -n $PROJECT_NAME
-oc apply -f inventory-db.yaml -n $PROJECT_NAME
-oc wait deployment/inventory-db --for=condition=Available --timeout=300s -n $PROJECT_NAME
-
 oc apply -f kafka-connect.yaml -n $PROJECT_NAME
 
 sleep 1
@@ -47,6 +41,33 @@ oc secrets link xjoin-kafka-connect-strimzi-connect $PULL_SECRET --for=pull -n $
 oc scale --replicas=1 kafkaconnect xjoin-kafka-connect-strimzi
 oc wait kafkaconnect/xjoin-kafka-connect-strimzi --for=condition=Ready --timeout=300s -n $PROJECT_NAME
 
+sleep 10
+
+oc project $PROJECT_NAME
+
+#inventory
+oc apply -f inventory-db.secret.yml -n $PROJECT_NAME
+oc apply -f inventory-db.yaml -n $PROJECT_NAME
+oc wait deployment/inventory-db --for=condition=Available --timeout=300s -n $PROJECT_NAME
+
+oc apply -f inventory-mq.yml -n $PROJECT_NAME
+oc apply -f inventory-api.yml -n $PROJECT_NAME
+
+oc wait dc/inventory-mq-pmin --for=condition=Available --timeout=300s -n $PROJECT_NAME
+oc wait deployment/insights-inventory --for=condition=Available --timeout=300s -n $PROJECT_NAME
+
+pkill -f "oc port-forward svc/inventory-db"
+oc port-forward svc/inventory-db 5432:5432 -n xjoin-operator-project &
+sleep 3
+psql -U postgres -h inventory-db -p 5432 -d insights -c "ALTER ROLE insights REPLICATION LOGIN;"
+psql -U postgres -h inventory-db -p 5432 -d insights -c "CREATE PUBLICATION dbz_publication FOR TABLE hosts;"
+psql -U postgres -h inventory-db -p 5432 -d insights -c "ALTER SYSTEM SET wal_level = logical;"
+oc scale --replicas=0 deployment/inventory-db
+sleep 1
+oc scale --replicas=1 deployment/inventory-db
+oc wait deployment/inventory-db --for=condition=Available --timeout=300s -n $PROJECT_NAME
+
+#elasticsearch
 oc apply -f https://download.elastic.co/downloads/eck/1.3.0/all-in-one.yaml
 sleep 10
 
@@ -57,10 +78,18 @@ oc wait pods/xjoin-elasticsearch-es-default-0 --for=condition=Ready --timeout=30
 ES_PASSWORD=$(oc get secret xjoin-elasticsearch-es-elastic-user \
             -n xjoin-operator-project \
             -o go-template='{{.data.elastic | base64decode}}')
-curl -X POST -u "elastic:$ES_PASSWORD" -k "https://elasticsearch:9200/_security/user/xjoin" \
-     --data '{"password": "xjoin1337", "roles": ["superuser"]}' \
-     -H "Content-Type: application/json"
 
 if [[ $? -eq 1 ]]; then
   echo "Unable to get ES_PASSWORD"
 fi
+
+pkill -f "oc port-forward svc/xjoin-elasticsearch-es-http"
+oc port-forward svc/xjoin-elasticsearch-es-http 9200:9200 -n xjoin-operator-project &
+sleep 3
+
+curl -X POST -u "elastic:$ES_PASSWORD" -k "http://elasticsearch:9200/_security/user/xjoin" \
+     --data '{"password": "xjoin1337", "roles": ["superuser"]}' \
+     -H "Content-Type: application/json"
+
+./forward-ports.sh
+echo "Done."

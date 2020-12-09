@@ -1,0 +1,48 @@
+package utils
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"hash/fnv"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+func FetchXJoinPipeline(c client.Client, namespacedName types.NamespacedName) (*xjoin.XJoinPipeline, error) {
+	instance := &xjoin.XJoinPipeline{}
+	err := c.Get(context.TODO(), namespacedName, instance)
+	return instance, err
+}
+
+func FetchConfigMap(c client.Client, namespace string, name string) (*corev1.ConfigMap, error) {
+	config := &corev1.ConfigMap{}
+	err := c.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: namespace}, config)
+	return config, err
+}
+
+func ConfigMapHash(cm *corev1.ConfigMap, ignoredKeys ...string) string {
+	if cm == nil {
+		return "-1"
+	}
+
+	values := Omit(cm.Data, ignoredKeys...)
+
+	json, err := json.Marshal(values)
+
+	if err != nil {
+		return "-2"
+	}
+
+	algorithm := fnv.New32a()
+	algorithm.Write(json)
+	return fmt.Sprint(algorithm.Sum32())
+}
+
+func FetchSecret(c client.Client, namespace string, name string) (*corev1.Secret, error) {
+	secret := &corev1.Secret{}
+	err := c.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, secret)
+	return secret, err
+}

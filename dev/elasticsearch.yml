@@ -3,6 +3,14 @@ kind: Elasticsearch
 metadata:
   name: xjoin-elasticsearch
 spec:
+  http:
+    service:
+      metadata:
+        creationTimestamp: null
+      spec: {}
+    tls:
+      selfSignedCertificate:
+        disabled: true
   version: 7.1.0
   nodeSets:
     - name: default
