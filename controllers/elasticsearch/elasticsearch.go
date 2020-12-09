@@ -1,7 +1,9 @@
 package elasticsearch
 
 import (
+	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7"
@@ -17,25 +19,25 @@ type ElasticSearch struct {
 	client *elasticsearch.Client
 }
 
-func (es *ElasticSearch) Init() (err error) {
+func NewElasticSearch(url string, username string, password string) (*ElasticSearch, error) {
+	es := new(ElasticSearch)
 	cfg := elasticsearch.Config{
-		Addresses: []string{
-			"https://elasticsearch:9200",
-		},
-		Username: "xjoin",
-		Password: "xjoin1337",
+		Addresses: []string{url},
+		Username:  username,
+		Password:  password,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
 		},
 	}
-	es.client, err = elasticsearch.NewClient(cfg)
+	client, err := elasticsearch.NewClient(cfg)
+	es.client = client
 	if err != nil {
-		return err
+		return es, err
 	}
 
-	return nil
+	return es, nil
 }
 
 func (es *ElasticSearch) IndexExists(indexName string) (bool, error) {
@@ -51,8 +53,8 @@ func (es *ElasticSearch) IndexExists(indexName string) (bool, error) {
 	return true, nil
 }
 
-func (es *ElasticSearch) CreateIndex(indexName string) error {
-	res, err := es.client.Indices.Create(indexName)
+func (es *ElasticSearch) CreateIndex(pipelineVersion string) error {
+	res, err := es.client.Indices.Create(ESIndexName(pipelineVersion))
 	if err != nil {
 		return err
 	}
@@ -78,8 +80,44 @@ func (es *ElasticSearch) AddAliasToIndex(alias string, index string) error {
 	return parseResponse(res)
 }
 
+func (es *ElasticSearch) ListIndices() ([]string, error) {
+	req := esapi.CatIndicesRequest{
+		Format: "JSON",
+		Index:  []string{"xjoin.inventory.hosts.*"},
+		H:      []string{"index"},
+	}
+	res, err := req.Do(context.Background(), es.client)
+	if err != nil {
+		return nil, err
+	}
+
+	byteValue, _ := ioutil.ReadAll(res.Body)
+
+	var indicesJSON []map[string]string
+	err = json.Unmarshal(byteValue, &indicesJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	var indices []string
+	for _, index := range indicesJSON {
+		indices = append(indices, index["index"])
+	}
+
+	defer res.Body.Close()
+	return indices, nil
+}
+
+func ESIndexName(pipelineVersion string) string {
+	return "xjoin.inventory.hosts." + pipelineVersion
+}
+
 func parseResponse(res *esapi.Response) error {
-	io.Copy(ioutil.Discard, res.Body)
+	_, err := io.Copy(ioutil.Discard, res.Body)
+	if err != nil {
+		return err
+	}
+	//TODO: handle error here
 	defer res.Body.Close()
 
 	if res.IsError() {

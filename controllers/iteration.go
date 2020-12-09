@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
+	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,6 +33,8 @@ type ReconcileIteration struct {
 	config *config.XJoinConfiguration
 
 	HBIDBParams config.DBParams
+
+	ESClient *elasticsearch.ElasticSearch
 
 	GetRequeueInterval func(i *ReconcileIteration) (result int64)
 }

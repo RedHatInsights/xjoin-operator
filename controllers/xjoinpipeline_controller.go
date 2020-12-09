@@ -22,6 +22,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/connect"
+	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -79,6 +80,13 @@ func (r *XJoinPipelineReconciler) setup(reqLogger logr.Logger, request ctrl.Requ
 	if err = i.parseConfig(); err != nil {
 		return i, err
 	}
+
+	es, err := elasticsearch.NewElasticSearch(
+		i.config.ElasticSearchURL, i.config.ElasticSearchUsername, i.config.ElasticSearchPassword)
+	if err != nil {
+		return i, err
+	}
+	i.ESClient = es
 
 	if i.HBIDBParams, err = config.LoadSecret(i.Client, i.Instance.Namespace, "host-inventory-db"); err != nil {
 		return i, err
@@ -150,6 +158,12 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 		}
 		i.probeStartingInitialSync()
 
+		err := i.ESClient.CreateIndex(pipelineVersion)
+		if err != nil {
+			i.error(err, "Error creating ElasticSearch index")
+			return reconcile.Result{}, err
+		}
+
 		_, err = i.createDebeziumConnector(pipelineVersion)
 		if err != nil {
 			i.error(err, "Error creating debezium connector")
@@ -191,11 +205,13 @@ func (i *ReconcileIteration) removeFinalizer() error {
 func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	var (
 		connectorsToKeep []string
+		esIndicesToKeep  []string
 	)
 
 	if i.Instance.GetState() != xjoin.STATE_REMOVED && i.Instance.Status.PipelineVersion != "" {
 		connectorsToKeep = append(connectorsToKeep, xjoin.DebeziumConnectorName(i.Instance.Status.PipelineVersion))
 		connectorsToKeep = append(connectorsToKeep, xjoin.ESConnectorName(i.Instance.Status.PipelineVersion))
+		esIndicesToKeep = append(esIndicesToKeep, elasticsearch.ESIndexName(i.Instance.Status.PipelineVersion))
 	}
 
 	connectors, err := connect.GetConnectorsForOwner(i.Client, i.Instance.Namespace, i.Instance.GetUIDString())
@@ -206,6 +222,21 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 			if !utils.ContainsString(connectorsToKeep, connector.GetName()) {
 				i.Log.Info("Removing stale connector", "connector", connector.GetName())
 				if err = connect.DeleteConnector(i.Client, connector.GetName(), i.Instance.Namespace); err != nil {
+					errors = append(errors, err)
+				}
+			}
+		}
+	}
+
+	//delete stale ES indices
+	indices, err := i.ESClient.ListIndices()
+	if err != nil {
+		errors = append(errors, err)
+	} else {
+		for _, index := range indices {
+			if !utils.ContainsString(esIndicesToKeep, index) {
+				i.Log.Info("Removing stale index", "index", index)
+				if err = i.ESClient.DeleteIndex(index); err != nil {
 					errors = append(errors, err)
 				}
 			}
@@ -239,4 +270,12 @@ func (i *ReconcileIteration) createESConnector(pipelineVersion string) (*unstruc
 
 	return connect.CreateESConnector(
 		i.Client, i.Instance.Namespace, esConfig, i.Instance, i.Scheme, false)
+}
+
+func (i *ReconcileIteration) createESIndex(pipelineVersion string) error {
+	err := i.ESClient.CreateIndex(pipelineVersion)
+	if err != nil {
+		return err
+	}
+	return nil
 }
