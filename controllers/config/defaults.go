@@ -70,3 +70,20 @@ const defaultElasticSearchConnectorTemplate = `{
     "max.buffered.records": 500,
     "linger.ms": 100
 }`
+
+const defaultStandardInterval int64 = 120
+const defaultConnectorTasksMax int64 = 16
+const defaultConnectorBatchSize int64 = 100
+const defaultConnectorMaxAge int64 = 45
+
+var defaultValidationConfig = ValidationConfiguration{
+	Interval:            60 * 30,
+	AttemptsThreshold:   3,
+	PercentageThreshold: 5,
+}
+
+var defaultValidationConfigInit = ValidationConfiguration{
+	Interval:            60,
+	AttemptsThreshold:   30,
+	PercentageThreshold: 5,
+}

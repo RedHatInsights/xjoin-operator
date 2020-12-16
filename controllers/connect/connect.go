@@ -45,6 +45,7 @@ type DebeziumConnectorConfiguration struct {
 	Template    string
 	HBIDBParams config.DBParams
 	Version     string
+	MaxAge      int64
 }
 
 type ElasticSearchConnectorConfiguration struct {
@@ -54,6 +55,7 @@ type ElasticSearchConnectorConfiguration struct {
 	ElasticSearchUsername string
 	ElasticSearchPassword string
 	Version               string
+	MaxAge                int64
 }
 
 func CheckIfConnectorExists(c client.Client, name string, namespace string) (bool, error) {

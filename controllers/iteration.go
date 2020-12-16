@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
+	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,12 +35,16 @@ type ReconcileIteration struct {
 
 	HBIDBParams config.DBParams
 
-	ESClient *elasticsearch.ElasticSearch
+	ESClient    *elasticsearch.ElasticSearch
+	InventoryDb database.Database
 
 	GetRequeueInterval func(i *ReconcileIteration) (result int64)
 }
 
 func (i *ReconcileIteration) Close() {
+	if i.InventoryDb != nil {
+		i.InventoryDb.Close()
+	}
 }
 
 // logs the error and produces an error log message
@@ -88,4 +93,12 @@ func (i *ReconcileIteration) updateStatusAndRequeue() (reconcile.Result, error) 
 	delay := time.Second * time.Duration(i.GetRequeueInterval(i))
 	i.debug("RequeueAfter", "delay", delay)
 	return reconcile.Result{RequeueAfter: delay}, nil
+}
+
+func (i *ReconcileIteration) getValidationConfig() config.ValidationConfiguration {
+	if i.Instance.Status.InitialSyncInProgress == true {
+		return i.config.ValidationConfigInit
+	}
+
+	return i.config.ValidationConfig
 }

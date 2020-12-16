@@ -85,6 +85,13 @@ func (instance *XJoinPipeline) TransitionToInitialSync(pipelineVersion string) e
 	return nil
 }
 
+func (instance *XJoinPipeline) TransitionToNew() error {
+	instance.ResetValid()
+	instance.Status.InitialSyncInProgress = false
+	instance.Status.PipelineVersion = ""
+	return nil
+}
+
 func (instance *XJoinPipeline) assertState(targetState PipelineState, validStates ...PipelineState) error {
 	for _, state := range validStates {
 		if instance.GetState() == state {

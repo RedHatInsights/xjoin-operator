@@ -1,5 +1,7 @@
 package utils
 
+import "reflect"
+
 /*
  * Returns a copy of the given map with the given keys left out
  */
@@ -31,4 +33,45 @@ func ContainsString(list []string, s string) bool {
 		}
 	}
 	return false
+}
+
+func Abs(x int64) int64 {
+	if x < 0 {
+		return -x
+	}
+
+	return x
+}
+
+func IsNumber(x interface{}) bool {
+	kind := reflect.TypeOf(x).Kind()
+	return kind >= 2 && kind <= 16
+}
+
+type void struct{}
+
+func Difference(a, b []string) (diff []string) {
+	bMap := make(map[string]void, len(b))
+	diff = []string{}
+
+	for _, key := range b {
+		bMap[key] = void{}
+	}
+
+	// find missing values in a
+	for _, key := range a {
+		if _, ok := bMap[key]; !ok {
+			diff = append(diff, key)
+		}
+	}
+
+	return diff
+}
+
+func Min(x, y int) int {
+	if x < y {
+		return x
+	}
+
+	return y
 }

@@ -9,7 +9,7 @@ import (
 var (
 	hostCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "xjoin_hosts_total",
-		Help: "Total number of hosts in the given table in the application database",
+		Help: "Total number of hosts in the given ElasticSearch Index",
 	}, []string{"app"})
 
 	inconsistencyRatio = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -46,7 +46,9 @@ const (
 )
 
 func Init() {
-	metrics.Registry.MustRegister(hostCount, inconsistencyRatio, inconsistencyAbsolute, inconsistencyThreshold, validationFailedCount, refreshCount)
+	metrics.Registry.MustRegister(
+		hostCount, inconsistencyRatio, inconsistencyAbsolute,
+		inconsistencyThreshold, validationFailedCount, refreshCount)
 }
 
 func InitLabels(instance *xjoin.XJoinPipeline) {
@@ -54,4 +56,18 @@ func InitLabels(instance *xjoin.XJoinPipeline) {
 
 func PipelineRefreshed(instance *xjoin.XJoinPipeline, reason RefreshReason) {
 	refreshCount.WithLabelValues(string(reason)).Inc()
+}
+
+func ESHostCount(instance *xjoin.XJoinPipeline, value int64) {
+	hostCount.WithLabelValues("ElasticSearch").Set(float64(value))
+}
+
+func ValidationFinished(threshold int64, ratio float64, inconsistentTotal int64, isValid bool) {
+	inconsistencyThreshold.WithLabelValues("elasticsearch").Set(float64(threshold) / 100)
+	inconsistencyRatio.WithLabelValues("elasticsearch").Set(ratio)
+	inconsistencyAbsolute.WithLabelValues("elasticsearch").Set(float64(inconsistentTotal))
+
+	if !isValid {
+		validationFailedCount.WithLabelValues("elasticsearch").Inc()
+	}
 }

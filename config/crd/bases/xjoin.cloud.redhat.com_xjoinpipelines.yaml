@@ -42,6 +42,12 @@ spec:
             elasticSearchURL:
               minLength: 1
               type: string
+            maxAge:
+              format: int64
+              type: integer
+            validationThreshold:
+              format: int64
+              type: integer
           type: object
         status:
           description: XJoinPipelineStatus defines the observed state of XJoinPipeline

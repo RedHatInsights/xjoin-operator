@@ -18,15 +18,22 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/go-logr/logr"
+	"github.com/google/go-cmp/cmp"
+	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/connect"
+	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8errors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -34,16 +41,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strconv"
 	"time"
-
-	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	k8errors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // XJoinPipelineReconciler reconciles a XJoinPipeline object
 type XJoinPipelineReconciler struct {
-	Client client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Client   client.Client
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 const xjoinpipelineFinalizer = "finalizer.xjoin.cloud.redhat.com"
@@ -75,6 +80,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger logr.Logger, request ctrl.Requ
 		GetRequeueInterval: func(Instance *ReconcileIteration) int64 {
 			return i.config.StandardInterval
 		},
+		Recorder: r.Recorder,
 	}
 
 	if err = i.parseConfig(); err != nil {
@@ -164,12 +170,12 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 			return reconcile.Result{}, err
 		}
 
-		_, err = i.createDebeziumConnector(pipelineVersion)
+		_, err = i.createDebeziumConnector(pipelineVersion, false)
 		if err != nil {
 			i.error(err, "Error creating debezium connector")
 			return reconcile.Result{}, err
 		}
-		_, err = i.createESConnector(pipelineVersion)
+		_, err = i.createESConnector(pipelineVersion, false)
 		if err != nil {
 			i.error(err, "Error creating ES connector")
 			return reconcile.Result{}, err
@@ -179,7 +185,40 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 		return i.updateStatusAndRequeue()
 	}
 
-	return ctrl.Result{}, nil
+	// STATE_VALID
+	if i.Instance.GetState() == xjoin.STATE_VALID {
+		if updated, err := i.recreateAliasIfNeeded(); err != nil {
+			i.error(err, "Error updating hosts view")
+			return reconcile.Result{}, err
+		} else if updated {
+			i.eventNormal(
+				"ValidationSucceeded",
+				"Pipeline became valid. xjoin.inventory.hosts alias now points to %s",
+				elasticsearch.ESIndexName(i.Instance.Status.PipelineVersion))
+		}
+
+		return i.updateStatusAndRequeue()
+	}
+
+	// invalid pipeline - either STATE_INITIAL_SYNC or STATE_INVALID
+	if i.Instance.GetValid() == metav1.ConditionFalse {
+		if i.Instance.Status.ValidationFailedCount >= i.getValidationConfig().AttemptsThreshold {
+
+			// This pipeline never became valid.
+			if i.Instance.GetState() == xjoin.STATE_INITIAL_SYNC {
+				if err = i.updateAliasIfHealthier(); err != nil {
+					// if this fails continue and do refresh, keeping the old index active
+					i.Log.Error(err, "Failed to evaluate which table is healthier")
+				}
+			}
+
+			i.Instance.TransitionToNew()
+			i.probePipelineDidNotBecomeValid()
+			return i.updateStatusAndRequeue()
+		}
+	}
+
+	return i.updateStatusAndRequeue()
 }
 
 func (r *XJoinPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -246,7 +285,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	return
 }
 
-func (i *ReconcileIteration) createDebeziumConnector(pipelineVersion string) (*unstructured.Unstructured, error) {
+func (i *ReconcileIteration) createDebeziumConnector(pipelineVersion string, dryRun bool) (*unstructured.Unstructured, error) {
 	var debeziumConfig = connect.DebeziumConnectorConfiguration{
 		Cluster:     i.config.ConnectCluster,
 		Template:    i.config.DebeziumConnectorTemplate,
@@ -255,10 +294,10 @@ func (i *ReconcileIteration) createDebeziumConnector(pipelineVersion string) (*u
 	}
 
 	return connect.CreateDebeziumConnector(
-		i.Client, i.Instance.Namespace, debeziumConfig, i.Instance, i.Scheme, false)
+		i.Client, i.Instance.Namespace, debeziumConfig, i.Instance, i.Scheme, dryRun)
 }
 
-func (i *ReconcileIteration) createESConnector(pipelineVersion string) (*unstructured.Unstructured, error) {
+func (i *ReconcileIteration) createESConnector(pipelineVersion string, dryRun bool) (*unstructured.Unstructured, error) {
 	var esConfig = connect.ElasticSearchConnectorConfiguration{
 		Cluster:               i.config.ConnectCluster,
 		Template:              i.config.ElasticSearchConnectorTemplate,
@@ -266,10 +305,11 @@ func (i *ReconcileIteration) createESConnector(pipelineVersion string) (*unstruc
 		ElasticSearchUsername: i.config.ElasticSearchUsername,
 		ElasticSearchPassword: i.config.ElasticSearchPassword,
 		Version:               pipelineVersion,
+		MaxAge:                i.config.ConnectorMaxAge,
 	}
 
 	return connect.CreateESConnector(
-		i.Client, i.Instance.Namespace, esConfig, i.Instance, i.Scheme, false)
+		i.Client, i.Instance.Namespace, esConfig, i.Instance, i.Scheme, dryRun)
 }
 
 func (i *ReconcileIteration) createESIndex(pipelineVersion string) error {
@@ -278,4 +318,178 @@ func (i *ReconcileIteration) createESIndex(pipelineVersion string) error {
 		return err
 	}
 	return nil
+}
+
+func (i *ReconcileIteration) recreateAliasIfNeeded() (bool, error) {
+	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias()
+	if err != nil {
+		return false, err
+	}
+
+	validIndex := elasticsearch.ESIndexName(i.Instance.Status.PipelineVersion)
+	if currentIndices == nil || !utils.ContainsString(currentIndices, validIndex) {
+		i.Log.Info("Updating alias", "index", validIndex)
+		if err = i.ESClient.UpdateAlias(validIndex); err != nil {
+			return false, err
+		}
+
+		return true, nil
+	}
+
+	return false, nil
+}
+
+/*
+ * Should be called when a refreshed pipeline failed to become valid.
+ * This method will either keep the old invalid ES index "active" (i.e. used by the alias)
+ * or update the alias to the new (also invalid) table.
+ * None of these options a good one - this is about picking lesser evil
+ */
+func (i *ReconcileIteration) updateAliasIfHealthier() error {
+	indices, err := i.ESClient.GetCurrentIndicesWithAlias()
+
+	if err != nil {
+		return fmt.Errorf("Failed to determine active index %w", err)
+	}
+
+	if indices != nil {
+		if len(indices) == 1 && indices[0] == elasticsearch.ESIndexName(i.Instance.Status.PipelineVersion) {
+			return nil // index is already active, nothing to do
+		}
+
+		// no need to close this as that's done in ReconcileIteration.Close()
+		i.InventoryDb = database.NewBaseDatabase(&i.HBIDBParams)
+
+		if err = i.InventoryDb.Connect(); err != nil {
+			return err
+		}
+
+		hbiHostCount, err := i.InventoryDb.CountHosts()
+		if err != nil {
+			return fmt.Errorf("failed to get host count from inventory %w", err)
+		}
+
+		activeCount, err := i.ESClient.CountIndex("xjoin.inventory.hosts")
+		if err != nil {
+			return fmt.Errorf("failed to get host count from active index %w", err)
+		}
+		latestCount, err := i.ESClient.CountIndex(elasticsearch.ESIndexName(i.Instance.Status.PipelineVersion))
+		if err != nil {
+			return fmt.Errorf("failed to get host count from latest index %w", err)
+		}
+
+		if utils.Abs(hbiHostCount-latestCount) > utils.Abs(hbiHostCount-activeCount) {
+			return nil // the active table is healthier; do not update anything
+		}
+	}
+
+	if err = i.ESClient.UpdateAlias(elasticsearch.ESIndexName(i.Instance.Status.PipelineVersion)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (i *ReconcileIteration) checkForDeviation() (problem error, err error) {
+	if i.Instance.Status.XJoinConfigVersion != i.config.ConfigMapVersion {
+		return fmt.Errorf("ConfigMap changed. New version is %s", i.config.ConfigMapVersion), nil
+	}
+
+	//ES Index
+	indexExists, err := i.ESClient.IndexExists(elasticsearch.ESIndexName(i.Instance.Status.PipelineVersion))
+
+	if err != nil {
+		return nil, err
+	} else if indexExists == false {
+		return fmt.Errorf(
+			"elasticsearch index %s not found",
+			elasticsearch.ESIndexName(i.Instance.Status.PipelineVersion)), nil
+	}
+
+	esConnectorName := xjoin.ESConnectorName(i.Instance.Status.PipelineVersion)
+	problem, err = i.checkConnectorDeviation(esConnectorName, "es")
+	if err != nil {
+		return problem, err
+	}
+
+	debeziumConnectorName := xjoin.DebeziumConnectorName(i.Instance.Status.PipelineVersion)
+	problem, err = i.checkConnectorDeviation(debeziumConnectorName, "debezium")
+	if err != nil {
+		return problem, err
+	}
+	return nil, nil
+}
+
+func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, connectorType string) (problem error, err error) {
+	connector, err := connect.GetConnector(i.Client, connectorName, i.Instance.Namespace)
+	if err != nil {
+		if k8errors.IsNotFound(err) {
+			return fmt.Errorf(
+				"connector %s not found in %s", connectorName, i.Instance.Namespace), nil
+		}
+
+		return nil, err
+
+	}
+
+	if connect.IsFailed(connector) {
+		return fmt.Errorf("connector %s is in the FAILED state", connectorName), nil
+	}
+
+	if connector.GetLabels()[connect.LabelStrimziCluster] != i.config.ConnectCluster {
+		return fmt.Errorf(
+			"connectCluster changed from %s to %s",
+			connector.GetLabels()[connect.LabelStrimziCluster],
+			i.config.ConnectCluster), nil
+	}
+
+	/*
+		if connector.GetLabels()[connect.LabelMaxAge] != strconv.FormatInt(i.config.ConnectorMaxAge, 10) {
+			return fmt.Errorf(
+				"maxAge changed from %s to %d",
+				connector.GetLabels()[connect.LabelMaxAge],
+				i.config.ConnectorMaxAge), nil
+		}
+	*/
+
+	// compares the spec of the existing connector with the spec we would create if we were creating a new connector now
+	newConnector, err := i.createDryConnectorByType(connectorType)
+	if err != nil {
+		return nil, err
+	}
+
+	currentConnectorConfig, _, err1 := unstructured.NestedMap(connector.UnstructuredContent(), "spec", "config")
+	newConnectorConfig, _, err2 := unstructured.NestedMap(newConnector.UnstructuredContent(), "spec", "config")
+
+	if err1 == nil && err2 == nil {
+		diff := cmp.Diff(currentConnectorConfig, newConnectorConfig, NumberNormalizer)
+
+		if len(diff) > 0 {
+			return fmt.Errorf("connector configuration has changed: %s", diff), nil
+		}
+	}
+
+	return nil, nil
+}
+
+func (i *ReconcileIteration) createDryConnectorByType(conType string) (*unstructured.Unstructured, error) {
+	if conType == "es" {
+		return i.createESConnector(i.Instance.Status.PipelineVersion, true)
+	} else if conType == "debezium" {
+		return i.createDebeziumConnector(i.Instance.Status.PipelineVersion, true)
+	} else {
+		return nil, errors.New("invalid param. Must be one of [es, debezium]")
+	}
+}
+
+func NewXJoinReconciler(client client.Client,
+	scheme *runtime.Scheme,
+	log logr.Logger,
+	recorder record.EventRecorder) *XJoinPipelineReconciler {
+	return &XJoinPipelineReconciler{
+		Client:   client,
+		Log:      log,
+		Scheme:   scheme,
+		Recorder: recorder,
+	}
 }

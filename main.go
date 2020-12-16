@@ -67,10 +67,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = controllers.NewValidationReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		ctrl.Log.WithName("controllers").WithName("validation"),
+		true,
+		mgr.GetEventRecorderFor("validation"),
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Validation")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.XJoinPipelineReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("XJoinPipeline"),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("XJoinPipeline"),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("xjoin"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "XJoinPipeline")
 		os.Exit(1)
