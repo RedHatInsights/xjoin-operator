@@ -46,6 +46,11 @@ func (es *ElasticSearch) IndexExists(indexName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	if res.StatusCode == 404 {
+		return false, nil
+	}
+
 	err = parseResponse(res)
 	if err != nil {
 		return false, err

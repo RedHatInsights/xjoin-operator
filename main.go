@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -88,6 +89,8 @@ func main() {
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
+
+	metrics.Init()
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

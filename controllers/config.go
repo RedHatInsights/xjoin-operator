@@ -7,7 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-const configMapName = "cyndi"
+const configMapName = "xjoin"
 
 func (i *ReconcileIteration) parseConfig() error {
 	cyndiConfig, err := utils.FetchConfigMap(i.Client, i.Instance.Namespace, configMapName)

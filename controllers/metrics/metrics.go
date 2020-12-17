@@ -10,32 +10,32 @@ var (
 	hostCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "xjoin_hosts_total",
 		Help: "Total number of hosts in the given ElasticSearch Index",
-	}, []string{"app"})
+	}, []string{})
 
 	inconsistencyRatio = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "xjoin_inconsistency_ratio",
 		Help: "The ratio of inconsistency of data between the source database and the application replica",
-	}, []string{"app"})
+	}, []string{})
 
 	inconsistencyAbsolute = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "xjoin_inconsistency_total",
 		Help: "The total number of hosts that are not consistent with the origin",
-	}, []string{"app"})
+	}, []string{})
 
 	inconsistencyThreshold = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "xjoin_inconsistency_threshold",
 		Help: "The threshold of inconsistency below which the pipeline is considered valid",
-	}, []string{"app"})
+	}, []string{})
 
 	validationFailedCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "xjoin_validation_failed_total",
 		Help: "The number of validation iterations that failed",
-	}, []string{"app"})
+	}, []string{})
 
 	refreshCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "xjoin_refresh_total",
 		Help: "The number of times this pipeline has been refreshed",
-	}, []string{"app", "reason"})
+	}, []string{"reason"})
 )
 
 type RefreshReason string
@@ -59,15 +59,15 @@ func PipelineRefreshed(instance *xjoin.XJoinPipeline, reason RefreshReason) {
 }
 
 func ESHostCount(instance *xjoin.XJoinPipeline, value int64) {
-	hostCount.WithLabelValues("ElasticSearch").Set(float64(value))
+	hostCount.WithLabelValues().Set(float64(value))
 }
 
 func ValidationFinished(threshold int64, ratio float64, inconsistentTotal int64, isValid bool) {
-	inconsistencyThreshold.WithLabelValues("elasticsearch").Set(float64(threshold) / 100)
-	inconsistencyRatio.WithLabelValues("elasticsearch").Set(ratio)
-	inconsistencyAbsolute.WithLabelValues("elasticsearch").Set(float64(inconsistentTotal))
+	inconsistencyThreshold.WithLabelValues().Set(float64(threshold) / 100)
+	inconsistencyRatio.WithLabelValues().Set(ratio)
+	inconsistencyAbsolute.WithLabelValues().Set(float64(inconsistentTotal))
 
 	if !isValid {
-		validationFailedCount.WithLabelValues("elasticsearch").Inc()
+		validationFailedCount.WithLabelValues().Inc()
 	}
 }

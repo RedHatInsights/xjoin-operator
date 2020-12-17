@@ -253,6 +253,16 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		esIndicesToKeep = append(esIndicesToKeep, elasticsearch.ESIndexName(i.Instance.Status.PipelineVersion))
 	}
 
+	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias()
+	if err != nil {
+		errors = append(errors, err)
+	} else if currentIndices != nil && i.Instance.GetState() != xjoin.STATE_REMOVED {
+		version := currentIndices[0][len("xjoin.inventory.hosts"):len(currentIndices[0])]
+		connectorsToKeep = append(connectorsToKeep, xjoin.DebeziumConnectorName(version))
+		connectorsToKeep = append(connectorsToKeep, xjoin.ESConnectorName(version))
+		esIndicesToKeep = append(esIndicesToKeep, currentIndices...)
+	}
+
 	connectors, err := connect.GetConnectorsForOwner(i.Client, i.Instance.Namespace, i.Instance.GetUIDString())
 	if err != nil {
 		errors = append(errors, err)
