@@ -24,6 +24,10 @@ import (
 type XJoinPipelineSpec struct {
 	// +optional
 	// +kubebuilder:validation:MinLength:=1
+	KafkaCluster *string `json:"kafkaCluster,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:MinLength:=1
 	ConnectCluster *string `json:"connectCluster,omitempty"`
 
 	// +optional

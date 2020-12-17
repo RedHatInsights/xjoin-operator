@@ -24,9 +24,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
-	"github.com/redhatinsights/xjoin-operator/controllers/connect"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
+	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
@@ -98,6 +98,15 @@ func (r *XJoinPipelineReconciler) setup(reqLogger logr.Logger, request ctrl.Requ
 		return i, err
 	}
 
+	i.Kafka = kafka.Kafka{
+		Namespace:      instance.Namespace,
+		ConnectCluster: i.config.ConnectCluster,
+		KafkaCluster:   i.config.KafkaCluster,
+		Owner:          instance,
+		OwnerScheme:    i.Scheme,
+		Client:         i.Client,
+	}
+
 	return i, nil
 }
 
@@ -164,7 +173,13 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 		}
 		i.probeStartingInitialSync()
 
-		err := i.ESClient.CreateIndex(pipelineVersion)
+		err := i.Kafka.CreateTopic(pipelineVersion)
+		if err != nil {
+			i.error(err, "Error creating Kafka topic")
+			return reconcile.Result{}, err
+		}
+
+		err = i.ESClient.CreateIndex(pipelineVersion)
 		if err != nil {
 			i.error(err, "Error creating ElasticSearch index")
 			return reconcile.Result{}, err
@@ -245,12 +260,14 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	var (
 		connectorsToKeep []string
 		esIndicesToKeep  []string
+		topicsToKeep     []string
 	)
 
 	if i.Instance.GetState() != xjoin.STATE_REMOVED && i.Instance.Status.PipelineVersion != "" {
 		connectorsToKeep = append(connectorsToKeep, xjoin.DebeziumConnectorName(i.Instance.Status.PipelineVersion))
 		connectorsToKeep = append(connectorsToKeep, xjoin.ESConnectorName(i.Instance.Status.PipelineVersion))
 		esIndicesToKeep = append(esIndicesToKeep, elasticsearch.ESIndexName(i.Instance.Status.PipelineVersion))
+		topicsToKeep = append(topicsToKeep, kafka.TopicName(i.Instance.Status.PipelineVersion))
 	}
 
 	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias()
@@ -261,16 +278,18 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		connectorsToKeep = append(connectorsToKeep, xjoin.DebeziumConnectorName(version))
 		connectorsToKeep = append(connectorsToKeep, xjoin.ESConnectorName(version))
 		esIndicesToKeep = append(esIndicesToKeep, currentIndices...)
+		topicsToKeep = append(topicsToKeep, kafka.TopicName(version))
 	}
 
-	connectors, err := connect.GetConnectorsForOwner(i.Client, i.Instance.Namespace, i.Instance.GetUIDString())
+	//delete stale Kafka Connectors
+	connectors, err := kafka.GetConnectorsForOwner(i.Client, i.Instance.Namespace, i.Instance.GetUIDString())
 	if err != nil {
 		errors = append(errors, err)
 	} else {
 		for _, connector := range connectors.Items {
 			if !utils.ContainsString(connectorsToKeep, connector.GetName()) {
 				i.Log.Info("Removing stale connector", "connector", connector.GetName())
-				if err = connect.DeleteConnector(i.Client, connector.GetName(), i.Instance.Namespace); err != nil {
+				if err = kafka.DeleteConnector(i.Client, connector.GetName(), i.Instance.Namespace); err != nil {
 					errors = append(errors, err)
 				}
 			}
@@ -292,24 +311,36 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		}
 	}
 
+	//delete stale Kafka Topics
+	topics, err := i.Kafka.ListTopicNames()
+	if err != nil {
+		errors = append(errors, err)
+	} else {
+		for _, topic := range topics {
+			if !utils.ContainsString(topicsToKeep, topic) {
+				i.Log.Info("Removing stale topic", "topic", topic)
+				if err = i.Kafka.DeleteTopic(topic); err != nil {
+					errors = append(errors, err)
+				}
+			}
+		}
+	}
+
 	return
 }
 
 func (i *ReconcileIteration) createDebeziumConnector(pipelineVersion string, dryRun bool) (*unstructured.Unstructured, error) {
-	var debeziumConfig = connect.DebeziumConnectorConfiguration{
-		Cluster:     i.config.ConnectCluster,
+	var debeziumConfig = kafka.DebeziumConnectorConfiguration{
 		Template:    i.config.DebeziumConnectorTemplate,
 		HBIDBParams: i.HBIDBParams,
 		Version:     pipelineVersion,
 	}
 
-	return connect.CreateDebeziumConnector(
-		i.Client, i.Instance.Namespace, debeziumConfig, i.Instance, i.Scheme, dryRun)
+	return i.Kafka.CreateDebeziumConnector(debeziumConfig, dryRun)
 }
 
 func (i *ReconcileIteration) createESConnector(pipelineVersion string, dryRun bool) (*unstructured.Unstructured, error) {
-	var esConfig = connect.ElasticSearchConnectorConfiguration{
-		Cluster:               i.config.ConnectCluster,
+	var esConfig = kafka.ElasticSearchConnectorConfiguration{
 		Template:              i.config.ElasticSearchConnectorTemplate,
 		ElasticSearchURL:      i.config.ElasticSearchURL,
 		ElasticSearchUsername: i.config.ElasticSearchUsername,
@@ -318,8 +349,7 @@ func (i *ReconcileIteration) createESConnector(pipelineVersion string, dryRun bo
 		MaxAge:                i.config.ConnectorMaxAge,
 	}
 
-	return connect.CreateESConnector(
-		i.Client, i.Instance.Namespace, esConfig, i.Instance, i.Scheme, dryRun)
+	return i.Kafka.CreateESConnector(esConfig, dryRun)
 }
 
 func (i *ReconcileIteration) createESIndex(pipelineVersion string) error {
@@ -431,7 +461,7 @@ func (i *ReconcileIteration) checkForDeviation() (problem error, err error) {
 }
 
 func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, connectorType string) (problem error, err error) {
-	connector, err := connect.GetConnector(i.Client, connectorName, i.Instance.Namespace)
+	connector, err := kafka.GetConnector(i.Client, connectorName, i.Instance.Namespace)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			return fmt.Errorf(
@@ -442,14 +472,14 @@ func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, conne
 
 	}
 
-	if connect.IsFailed(connector) {
+	if kafka.IsFailed(connector) {
 		return fmt.Errorf("connector %s is in the FAILED state", connectorName), nil
 	}
 
-	if connector.GetLabels()[connect.LabelStrimziCluster] != i.config.ConnectCluster {
+	if connector.GetLabels()[kafka.LabelStrimziCluster] != i.config.ConnectCluster {
 		return fmt.Errorf(
 			"connectCluster changed from %s to %s",
-			connector.GetLabels()[connect.LabelStrimziCluster],
+			connector.GetLabels()[kafka.LabelStrimziCluster],
 			i.config.ConnectCluster), nil
 	}
 

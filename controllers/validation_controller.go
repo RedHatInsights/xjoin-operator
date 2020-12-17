@@ -72,9 +72,7 @@ func (r *ValidationReconciler) Reconcile(request ctrl.Request) (ctrl.Result, err
 			return reconcile.Result{}, err
 		} else if problem != nil {
 			i.probeStateDeviationRefresh(problem.Error())
-			if err = i.Instance.TransitionToNew(); err != nil {
-				return reconcile.Result{}, err
-			}
+			i.Instance.TransitionToNew()
 			return i.updateStatusAndRequeue()
 		}
 	}

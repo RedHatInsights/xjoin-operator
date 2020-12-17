@@ -1,4 +1,4 @@
-package connect
+package kafka
 
 import (
 	"bytes"
@@ -10,20 +10,16 @@ import (
 	"text/template"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
-	LabelAppName        = "cyndi/appName"
-	LabelInsightsOnly   = "cyndi/insightsOnly"
-	LabelMaxAge         = "cyndi/maxAge"
+	LabelMaxAge         = "xjoin/maxAge"
 	LabelStrimziCluster = "strimzi.io/cluster"
-	LabelOwner          = "cyndi/owner"
+	LabelOwner          = "xjoin/owner"
 )
 
 const failed = "FAILED"
@@ -41,7 +37,6 @@ var connectorsGVK = schema.GroupVersionKind{
 }
 
 type DebeziumConnectorConfiguration struct {
-	Cluster     string
 	Template    string
 	HBIDBParams config.DBParams
 	Version     string
@@ -49,7 +44,6 @@ type DebeziumConnectorConfiguration struct {
 }
 
 type ElasticSearchConnectorConfiguration struct {
-	Cluster               string
 	Template              string
 	ElasticSearchURL      string
 	ElasticSearchUsername string
@@ -58,7 +52,7 @@ type ElasticSearchConnectorConfiguration struct {
 	MaxAge                int64
 }
 
-func CheckIfConnectorExists(c client.Client, name string, namespace string) (bool, error) {
+func (kafka *Kafka) CheckIfConnectorExists(c client.Client, name string, namespace string) (bool, error) {
 	if name == "" {
 		return false, nil
 	}
@@ -72,26 +66,21 @@ func CheckIfConnectorExists(c client.Client, name string, namespace string) (boo
 	}
 }
 
-func newESConnectorResource(
-	namespace string,
-	config ElasticSearchConnectorConfiguration) (*unstructured.Unstructured, error) {
+func (kafka *Kafka) newESConnectorResource(config ElasticSearchConnectorConfiguration) (*unstructured.Unstructured, error) {
 	m := make(map[string]string)
 	m["ElasticSearchURL"] = config.ElasticSearchURL
 	m["ElasticSearchUsername"] = config.ElasticSearchUsername
 	m["ElasticSearchPassword"] = config.ElasticSearchPassword
 	m["Version"] = config.Version
 
-	return newConnectorResource(
+	return kafka.newConnectorResource(
 		v1alpha1.ESConnectorName(config.Version),
-		namespace,
-		config.Cluster,
 		"io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
 		m,
 		config.Template)
 }
 
-func newDebeziumConnectorResource(
-	namespace string,
+func (kafka *Kafka) newDebeziumConnectorResource(
 	config DebeziumConnectorConfiguration) (*unstructured.Unstructured, error) {
 
 	m := make(map[string]string)
@@ -102,18 +91,14 @@ func newDebeziumConnectorResource(
 	m["DBPassword"] = config.HBIDBParams.Password
 	m["Version"] = config.Version
 
-	return newConnectorResource(
+	return kafka.newConnectorResource(
 		v1alpha1.DebeziumConnectorName(config.Version),
-		namespace,
-		config.Cluster,
 		"io.debezium.connector.postgresql.PostgresConnector",
 		m,
 		config.Template)
 }
 
-func newConnectorResource(name string,
-	namespace string,
-	cluster string,
+func (kafka *Kafka) newConnectorResource(name string,
 	class string,
 	connectorConfig map[string]string,
 	connectorTemplate string) (*unstructured.Unstructured, error) {
@@ -141,9 +126,9 @@ func newConnectorResource(name string,
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      name,
-			"namespace": namespace,
+			"namespace": kafka.Namespace,
 			"labels": map[string]interface{}{
-				LabelStrimziCluster: cluster,
+				LabelStrimziCluster: kafka.ConnectCluster,
 			},
 		},
 		"spec": map[string]interface{}{
@@ -216,25 +201,20 @@ func IsFailed(connector *unstructured.Unstructured) bool {
 	return false
 }
 
-func CreateESConnector(c client.Client,
-	namespace string,
-	config ElasticSearchConnectorConfiguration,
-	owner metav1.Object,
-	ownerScheme *runtime.Scheme,
+func (kafka *Kafka) CreateESConnector(config ElasticSearchConnectorConfiguration,
 	dryRun bool) (*unstructured.Unstructured, error) {
-	connector, err := newESConnectorResource(namespace, config)
-
+	connector, err := kafka.newESConnectorResource(config)
 	if err != nil {
 		return nil, err
 	}
 
-	if owner != nil {
-		if err := controllerutil.SetControllerReference(owner, connector, ownerScheme); err != nil {
+	if kafka.Owner != nil {
+		if err := controllerutil.SetControllerReference(kafka.Owner, connector, kafka.OwnerScheme); err != nil {
 			return nil, err
 		}
 
 		labels := connector.GetLabels()
-		labels[LabelOwner] = string(owner.GetUID())
+		labels[LabelOwner] = string(kafka.Owner.GetUID())
 		connector.SetLabels(labels)
 	}
 
@@ -242,30 +222,23 @@ func CreateESConnector(c client.Client,
 		return connector, nil
 	}
 
-	return connector, c.Create(context.TODO(), connector)
+	return connector, kafka.Client.Create(context.TODO(), connector)
 }
 
-func CreateDebeziumConnector(
-	c client.Client,
-	namespace string,
-	config DebeziumConnectorConfiguration,
-	owner metav1.Object,
-	ownerScheme *runtime.Scheme,
+func (kafka *Kafka) CreateDebeziumConnector(config DebeziumConnectorConfiguration,
 	dryRun bool) (*unstructured.Unstructured, error) {
-
-	connector, err := newDebeziumConnectorResource(namespace, config)
-
+	connector, err := kafka.newDebeziumConnectorResource(config)
 	if err != nil {
 		return nil, err
 	}
 
-	if owner != nil {
-		if err := controllerutil.SetControllerReference(owner, connector, ownerScheme); err != nil {
+	if kafka.Owner != nil {
+		if err := controllerutil.SetControllerReference(kafka.Owner, connector, kafka.OwnerScheme); err != nil {
 			return nil, err
 		}
 
 		labels := connector.GetLabels()
-		labels[LabelOwner] = string(owner.GetUID())
+		labels[LabelOwner] = string(kafka.Owner.GetUID())
 		connector.SetLabels(labels)
 	}
 
@@ -273,5 +246,5 @@ func CreateDebeziumConnector(
 		return connector, nil
 	}
 
-	return connector, c.Create(context.TODO(), connector)
+	return connector, kafka.Client.Create(context.TODO(), connector)
 }

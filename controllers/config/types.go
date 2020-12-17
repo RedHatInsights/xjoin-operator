@@ -2,6 +2,7 @@ package config
 
 type XJoinConfiguration struct {
 	ConnectCluster                 string
+	KafkaCluster                   string
 	ElasticSearchURL               string
 	ElasticSearchUsername          string
 	ElasticSearchPassword          string

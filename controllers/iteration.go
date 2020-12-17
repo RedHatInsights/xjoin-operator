@@ -9,6 +9,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
+	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,6 +37,7 @@ type ReconcileIteration struct {
 	HBIDBParams config.DBParams
 
 	ESClient    *elasticsearch.ElasticSearch
+	Kafka       kafka.Kafka
 	InventoryDb database.Database
 
 	GetRequeueInterval func(i *ReconcileIteration) (result int64)

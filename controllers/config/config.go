@@ -30,6 +30,12 @@ func BuildXJoinConfig(instance *xjoin.XJoinPipeline, cm *corev1.ConfigMap) (*XJo
 		config.ConnectCluster = getStringValue(cm, "connect.cluster", defaultConnectCluster)
 	}
 
+	if instance != nil && instance.Spec.KafkaCluster != nil {
+		config.KafkaCluster = *instance.Spec.KafkaCluster
+	} else {
+		config.KafkaCluster = getStringValue(cm, "kafka.cluster", defaultKafkaCluster)
+	}
+
 	//TODO: handle a secret for ES params
 	config.ElasticSearchURL = getStringValue(cm, "elasticsearch.url", defaultElasticSearchURL)
 	config.ElasticSearchUsername = getStringValue(cm, "elasticsearch.url", defaultElasticSearchUsername)

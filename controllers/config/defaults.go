@@ -1,6 +1,7 @@
 package config
 
 const defaultConnectCluster = "xjoin-kafka-connect-strimzi"
+const defaultKafkaCluster = "xjoin-kafka-cluster"
 const defaultElasticSearchURL = "http://xjoin-elasticsearch-es-default:9200"
 const defaultElasticSearchUsername = "xjoin"
 const defaultElasticSearchPassword = "xjoin1337"
