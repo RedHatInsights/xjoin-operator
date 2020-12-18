@@ -47,7 +47,7 @@ type XJoinPipelineSpec struct {
 // XJoinPipelineStatus defines the observed state of XJoinPipeline
 type XJoinPipelineStatus struct {
 	PipelineVersion       string             `json:"pipelineVersion"`
-	XJoinConfigVersion    string             `json:"cyndiConfigVersion"`
+	XJoinConfigVersion    string             `json:"xjoinConfigVersion"`
 	InitialSyncInProgress bool               `json:"initialSyncInProgress"`
 	Conditions            []metav1.Condition `json:"conditions"`
 	// +kubebuilder:validation:Minimum:=0

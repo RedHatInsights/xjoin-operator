@@ -124,8 +124,6 @@ spec:
                 - type
                 type: object
               type: array
-            cyndiConfigVersion:
-              type: string
             initialSyncInProgress:
               type: boolean
             pipelineVersion:
@@ -134,12 +132,14 @@ spec:
               format: int64
               minimum: 0
               type: integer
+            xjoinConfigVersion:
+              type: string
           required:
           - conditions
-          - cyndiConfigVersion
           - initialSyncInProgress
           - pipelineVersion
           - validationFailedCount
+          - xjoinConfigVersion
           type: object
       type: object
   version: v1alpha1

@@ -10,17 +10,17 @@ import (
 const configMapName = "xjoin"
 
 func (i *ReconcileIteration) parseConfig() error {
-	cyndiConfig, err := utils.FetchConfigMap(i.Client, i.Instance.Namespace, configMapName)
+	xjoinConfig, err := utils.FetchConfigMap(i.Client, i.Instance.Namespace, configMapName)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			cyndiConfig = nil
+			xjoinConfig = nil
 		} else {
 			return err
 		}
 	}
 
-	i.config, err = config.BuildXJoinConfig(i.Instance, cyndiConfig)
+	i.config, err = config.BuildXJoinConfig(i.Instance, xjoinConfig)
 
 	if err != nil {
 		return fmt.Errorf("Error parsing %s configmap in %s: %w", configMapName, i.Instance.Namespace, err)
