@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"fmt"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"strings"
 	"text/template"
@@ -37,10 +37,11 @@ var connectorsGVK = schema.GroupVersionKind{
 }
 
 type DebeziumConnectorConfiguration struct {
-	Template    string
-	HBIDBParams config.DBParams
-	Version     string
-	MaxAge      int64
+	Template           string
+	HBIDBParams        config.DBParams
+	Version            string
+	MaxAge             int64
+	ResourceNamePrefix string
 }
 
 type ElasticSearchConnectorConfiguration struct {
@@ -50,6 +51,7 @@ type ElasticSearchConnectorConfiguration struct {
 	ElasticSearchPassword string
 	Version               string
 	MaxAge                int64
+	ResourceNamePrefix    string
 }
 
 func (kafka *Kafka) CheckIfConnectorExists(c client.Client, name string, namespace string) (bool, error) {
@@ -74,7 +76,7 @@ func (kafka *Kafka) newESConnectorResource(config ElasticSearchConnectorConfigur
 	m["Version"] = config.Version
 
 	return kafka.newConnectorResource(
-		v1alpha1.ESConnectorName(config.Version),
+		ESConnectorName(config.ResourceNamePrefix, config.Version),
 		"io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
 		m,
 		config.Template)
@@ -92,13 +94,14 @@ func (kafka *Kafka) newDebeziumConnectorResource(
 	m["Version"] = config.Version
 
 	return kafka.newConnectorResource(
-		v1alpha1.DebeziumConnectorName(config.Version),
+		DebeziumConnectorName(config.ResourceNamePrefix, config.Version),
 		"io.debezium.connector.postgresql.PostgresConnector",
 		m,
 		config.Template)
 }
 
-func (kafka *Kafka) newConnectorResource(name string,
+func (kafka *Kafka) newConnectorResource(
+	name string,
 	class string,
 	connectorConfig map[string]string,
 	connectorTemplate string) (*unstructured.Unstructured, error) {
@@ -201,8 +204,10 @@ func IsFailed(connector *unstructured.Unstructured) bool {
 	return false
 }
 
-func (kafka *Kafka) CreateESConnector(config ElasticSearchConnectorConfiguration,
+func (kafka *Kafka) CreateESConnector(
+	config ElasticSearchConnectorConfiguration,
 	dryRun bool) (*unstructured.Unstructured, error) {
+
 	connector, err := kafka.newESConnectorResource(config)
 	if err != nil {
 		return nil, err
@@ -225,8 +230,10 @@ func (kafka *Kafka) CreateESConnector(config ElasticSearchConnectorConfiguration
 	return connector, kafka.Client.Create(context.TODO(), connector)
 }
 
-func (kafka *Kafka) CreateDebeziumConnector(config DebeziumConnectorConfiguration,
+func (kafka *Kafka) CreateDebeziumConnector(
+	config DebeziumConnectorConfiguration,
 	dryRun bool) (*unstructured.Unstructured, error) {
+
 	connector, err := kafka.newDebeziumConnectorResource(config)
 	if err != nil {
 		return nil, err
@@ -247,4 +254,12 @@ func (kafka *Kafka) CreateDebeziumConnector(config DebeziumConnectorConfiguratio
 	}
 
 	return connector, kafka.Client.Create(context.TODO(), connector)
+}
+
+func DebeziumConnectorName(name string, pipelineVersion string) string {
+	return fmt.Sprintf("%s.db.%s", name, pipelineVersion)
+}
+
+func ESConnectorName(name string, pipelineVersion string) string {
+	return fmt.Sprintf("%s.es.%s", name, pipelineVersion)
 }

@@ -48,6 +48,9 @@ spec:
             maxAge:
               format: int64
               type: integer
+            resourceNamePrefix:
+              minLength: 3
+              type: string
             validationThreshold:
               format: int64
               type: integer

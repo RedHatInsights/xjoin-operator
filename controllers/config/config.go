@@ -14,6 +14,7 @@ const (
 	validationInterval            = "validation.interval"
 	validationAttemptsThreshold   = "validation.attempts.threshold"
 	validationPercentageThreshold = "validation.percentage.threshold"
+	defaultResourceNamePrefix     = "xjoin.inventory.hosts"
 )
 
 // These keys are excluded when computing a ConfigMap hash.
@@ -23,6 +24,12 @@ var keysIgnoredByRefresh []string
 func BuildXJoinConfig(instance *xjoin.XJoinPipeline, cm *corev1.ConfigMap) (*XJoinConfiguration, error) {
 	var err error
 	config := &XJoinConfiguration{}
+
+	if instance != nil && instance.Spec.ResourceNamePrefix != nil {
+		config.ResourceNamePrefix = *instance.Spec.ResourceNamePrefix
+	} else {
+		config.ResourceNamePrefix = getStringValue(cm, "resourceNamePrefix", defaultResourceNamePrefix)
+	}
 
 	if instance != nil && instance.Spec.ConnectCluster != nil {
 		config.ConnectCluster = *instance.Spec.ConnectCluster

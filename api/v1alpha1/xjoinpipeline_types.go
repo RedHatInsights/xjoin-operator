@@ -23,6 +23,10 @@ import (
 // XJoinPipelineSpec defines the desired state of XJoinPipeline
 type XJoinPipelineSpec struct {
 	// +optional
+	// +kubebuilder:validation:MinLength:=3
+	ResourceNamePrefix *string `json:"resourceNamePrefix,omitempty"`
+
+	// +optional
 	// +kubebuilder:validation:MinLength:=1
 	KafkaCluster *string `json:"kafkaCluster,omitempty"`
 
