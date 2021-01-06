@@ -100,11 +100,3 @@ func (instance *XJoinPipeline) assertState(targetState PipelineState, validState
 
 	return fmt.Errorf("Attempted invalid state transition from %s to %s", instance.GetState(), targetState)
 }
-
-func DebeziumConnectorName(pipelineVersion string) string {
-	return fmt.Sprintf("xjoin.inventory.hosts.db.%s", pipelineVersion)
-}
-
-func ESConnectorName(pipelineVersion string) string {
-	return fmt.Sprintf("xjoin.inventory.hosts.es.%s", pipelineVersion)
-}

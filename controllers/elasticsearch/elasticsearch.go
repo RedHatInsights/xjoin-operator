@@ -41,8 +41,8 @@ func NewElasticSearch(url string, username string, password string) (*ElasticSea
 	return es, nil
 }
 
-func (es *ElasticSearch) IndexExists(indexName string) (bool, error) {
-	res, err := es.client.Indices.Exists([]string{indexName})
+func (es *ElasticSearch) IndexExists(name string, pipelineVersion string) (bool, error) {
+	res, err := es.client.Indices.Exists([]string{ESIndexName(name, pipelineVersion)})
 	if err != nil {
 		return false, err
 	}
@@ -59,37 +59,41 @@ func (es *ElasticSearch) IndexExists(indexName string) (bool, error) {
 	return true, nil
 }
 
-func (es *ElasticSearch) CreateIndex(pipelineVersion string) error {
-	res, err := es.client.Indices.Create(ESIndexName(pipelineVersion))
+func (es *ElasticSearch) CreateIndex(name string, pipelineVersion string) error {
+	res, err := es.client.Indices.Create(ESIndexName(name, pipelineVersion))
 	if err != nil {
 		return err
 	}
 	return parseResponse(res)
 }
 
-func (es *ElasticSearch) DeleteIndex(indexName string) error {
-	res, err := es.client.Indices.Delete([]string{indexName})
+func (es *ElasticSearch) DeleteIndexByFullName(index string) error {
+	res, err := es.client.Indices.Delete([]string{index})
 	if err != nil {
 		return err
 	}
 	return parseResponse(res)
 }
 
-func (es *ElasticSearch) UpdateAlias(index string) error {
+func (es *ElasticSearch) DeleteIndex(name string, version string) error {
+	return es.DeleteIndexByFullName(ESIndexName(name, version))
+}
+
+func (es *ElasticSearch) UpdateAliasByFullIndexName(alias string, index string) error {
 
 	var req UpdateAliasRequest
 
 	removeIndex := UpdateAliasIndex{
 		Index: "*",
-		Alias: "xjoin.inventory.hosts",
+		Alias: alias,
 	}
 	addSourceIndex := UpdateAliasIndex{
 		Index: index,
-		Alias: "xjoin.inventory.hosts",
+		Alias: alias,
 	}
 	addSinkIndex := UpdateAliasIndex{
 		Index:        index,
-		Alias:        "xjoin.inventory.hosts",
+		Alias:        alias,
 		IsWriteIndex: true,
 	}
 	removeUpdateAction := RemoveAliasAction{
@@ -115,9 +119,13 @@ func (es *ElasticSearch) UpdateAlias(index string) error {
 	return parseResponse(res)
 }
 
-func (es *ElasticSearch) GetCurrentIndicesWithAlias() ([]string, error) {
+func (es *ElasticSearch) UpdateAlias(alias string, indexName string, version string) error {
+	return es.UpdateAliasByFullIndexName(alias, ESIndexName(indexName, version))
+}
+
+func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, error) {
 	req := esapi.CatAliasesRequest{
-		Name:   []string{"xjoin.inventory.hosts"},
+		Name:   []string{name},
 		Format: "JSON",
 	}
 	res, err := req.Do(context.Background(), es.client)
@@ -141,10 +149,10 @@ func (es *ElasticSearch) GetCurrentIndicesWithAlias() ([]string, error) {
 	return indices, nil
 }
 
-func (es *ElasticSearch) ListIndices() ([]string, error) {
+func (es *ElasticSearch) ListIndices(name string) ([]string, error) {
 	req := esapi.CatIndicesRequest{
 		Format: "JSON",
-		Index:  []string{"xjoin.inventory.hosts.*"},
+		Index:  []string{name + ".*"},
 		H:      []string{"index"},
 	}
 	res, err := req.Do(context.Background(), es.client)
@@ -251,6 +259,10 @@ func (es *ElasticSearch) GetHostIDs(index string) ([]string, error) {
 	return ids, nil
 }
 
+func ESIndexName(name string, pipelineVersion string) string {
+	return name + "." + pipelineVersion
+}
+
 func parseSearchResponse(scrollRes *esapi.Response) ([]string, SearchIDsResponse, error) {
 	var ids []string
 	var searchJSON SearchIDsResponse
@@ -266,10 +278,6 @@ func parseSearchResponse(scrollRes *esapi.Response) ([]string, SearchIDsResponse
 	}
 
 	return ids, searchJSON, nil
-}
-
-func ESIndexName(pipelineVersion string) string {
-	return "xjoin.inventory.hosts." + pipelineVersion
 }
 
 func parseResponse(res *esapi.Response) error {

@@ -25,21 +25,29 @@ oc secrets link -n $PROJECT_NAME default "$PULL_SECRET" --for=pull
 #kafka
 oc create ns kafka
 oc apply -f cluster-operator/ -n kafka
+oc apply -f cluster-operator/crd/ -n kafka
 
-oc apply -f 020-RoleBinding-strimzi-cluster-operator.yaml -n $PROJECT_NAME
-oc apply -f 032-RoleBinding-strimzi-cluster-operator-topic-operator-delegation.yaml -n $PROJECT_NAME
-oc apply -f 031-RoleBinding-strimzi-cluster-operator-entity-operator-delegation.yaml -n $PROJECT_NAME
+oc apply -f cluster-operator/020-RoleBinding-strimzi-cluster-operator.yaml -n $PROJECT_NAME
+oc apply -f cluster-operator/032-RoleBinding-strimzi-cluster-operator-topic-operator-delegation.yaml -n $PROJECT_NAME
+oc apply -f cluster-operator/031-RoleBinding-strimzi-cluster-operator-entity-operator-delegation.yaml -n $PROJECT_NAME
 
 oc create -n $PROJECT_NAME -f kafka-cluster.yml
 oc wait kafka/xjoin-kafka-cluster --for=condition=Ready --timeout=300s -n $PROJECT_NAME
 oc apply -f kafka-connect.yaml -n $PROJECT_NAME
 
-sleep 1
+echo "After apply kafka-connect"
+
+sleep 10
 
 oc secrets link xjoin-kafka-connect-strimzi-connect $PULL_SECRET --for=pull -n $PROJECT_NAME
-
-oc scale --replicas=1 kafkaconnect xjoin-kafka-connect-strimzi
+echo "After secret link xjoin-kafka-connect-strimzi-connect"
+sleep 5
+oc get KafkaConnect
+oc scale --replicas=1 kafkaconnect/xjoin-kafka-connect-strimzi
+sleep 5
+echo "After scale"
 oc wait kafkaconnect/xjoin-kafka-connect-strimzi --for=condition=Ready --timeout=300s -n $PROJECT_NAME
+echo "after wait"
 
 sleep 10
 
@@ -93,6 +101,7 @@ curl -X POST -u "elastic:$ES_PASSWORD" -k "http://elasticsearch:9200/_security/u
 
 ./forward-ports.sh
 
+cd ../
 oc apply -f examples/xjoin.configmap.yaml
 make install
 oc apply -f config/samples/xjoin_v1alpha1_xjoinpipeline.yaml
