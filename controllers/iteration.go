@@ -32,7 +32,7 @@ type ReconcileIteration struct {
 	Client   client.Client
 	Now      string
 
-	config config.XJoinConfiguration
+	parameters config.Parameters
 
 	ESClient    *elasticsearch.ElasticSearch
 	Kafka       kafka.Kafka
@@ -97,24 +97,24 @@ func (i *ReconcileIteration) updateStatusAndRequeue() (reconcile.Result, error) 
 
 func (i *ReconcileIteration) getValidationInterval() int {
 	if i.Instance.Status.InitialSyncInProgress == true {
-		return i.config.ValidationInitInterval.Int()
+		return i.parameters.ValidationInitInterval.Int()
 	}
 
-	return i.config.ValidationInterval.Int()
+	return i.parameters.ValidationInterval.Int()
 }
 
 func (i *ReconcileIteration) getValidationAttemptsThreshold() int {
 	if i.Instance.Status.InitialSyncInProgress == true {
-		return i.config.ValidationInitAttemptsThreshold.Int()
+		return i.parameters.ValidationInitAttemptsThreshold.Int()
 	}
 
-	return i.config.ValidationAttemptsThreshold.Int()
+	return i.parameters.ValidationAttemptsThreshold.Int()
 }
 
 func (i *ReconcileIteration) getValidationPercentageThreshold() int {
 	if i.Instance.Status.InitialSyncInProgress == true {
-		return i.config.ValidationInitPercentageThreshold.Int()
+		return i.parameters.ValidationInitPercentageThreshold.Int()
 	}
 
-	return i.config.ValidationPercentageThreshold.Int()
+	return i.parameters.ValidationPercentageThreshold.Int()
 }

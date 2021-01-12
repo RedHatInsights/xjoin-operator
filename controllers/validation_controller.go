@@ -39,11 +39,11 @@ func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request)
 	}
 
 	i.InventoryDb = database.NewBaseDatabase(database.DBParams{
-		Host:     i.config.HBIDBHost.String(),
-		User:     i.config.HBIDBUser.String(),
-		Name:     i.config.HBIDBName.String(),
-		Port:     i.config.HBIDBPort.String(),
-		Password: i.config.HBIDBPassword.String(),
+		Host:     i.parameters.HBIDBHost.String(),
+		User:     i.parameters.HBIDBUser.String(),
+		Name:     i.parameters.HBIDBName.String(),
+		Port:     i.parameters.HBIDBPort.String(),
+		Password: i.parameters.HBIDBPassword.String(),
 	})
 
 	if err = i.InventoryDb.Connect(); err != nil {

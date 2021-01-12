@@ -46,6 +46,14 @@ type XJoinPipelineSpec struct {
 	// +optional
 	// +kubebuilder:validation:Min:=0
 	MaxAge *int64 `json:"maxAge,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:MinLength:=1
+	HBIDBSecretName *string `json:"hbiDBSecretName,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:MinLength:=1
+	ElasticSearchSecretName *string `json:"elasticSearchSecretName,omitempty"`
 }
 
 // XJoinPipelineStatus defines the observed state of XJoinPipeline

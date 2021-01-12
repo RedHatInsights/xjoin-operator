@@ -50,7 +50,7 @@ func (kafka *Kafka) CheckIfConnectorExists(c client.Client, name string, namespa
 }
 
 func (kafka *Kafka) newESConnectorResource(
-	config config.XJoinConfiguration,
+	config config.Parameters,
 	pipelineVersion string) (*unstructured.Unstructured, error) {
 
 	m := make(map[string]interface{})
@@ -75,7 +75,7 @@ func (kafka *Kafka) newESConnectorResource(
 }
 
 func (kafka *Kafka) newDebeziumConnectorResource(
-	config config.XJoinConfiguration,
+	config config.Parameters,
 	pipelineVersion string) (*unstructured.Unstructured, error) {
 
 	m := make(map[string]interface{})
@@ -202,7 +202,7 @@ func IsFailed(connector *unstructured.Unstructured) bool {
 }
 
 func (kafka *Kafka) CreateESConnector(
-	config config.XJoinConfiguration,
+	config config.Parameters,
 	pipelineVersion string,
 	dryRun bool) (*unstructured.Unstructured, error) {
 
@@ -229,7 +229,7 @@ func (kafka *Kafka) CreateESConnector(
 }
 
 func (kafka *Kafka) CreateDebeziumConnector(
-	config config.XJoinConfiguration,
+	config config.Parameters,
 	pipelineVersion string,
 	dryRun bool) (*unstructured.Unstructured, error) {
 
