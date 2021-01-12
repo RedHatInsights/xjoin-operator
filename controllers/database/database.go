@@ -2,19 +2,25 @@ package database
 
 import (
 	"fmt"
-	"github.com/redhatinsights/xjoin-operator/controllers/config"
-
 	"github.com/jackc/pgx"
 )
 
 type BaseDatabase struct {
-	Config     *config.DBParams
 	connection *pgx.Conn
+	Config     DBParams
+}
+
+type DBParams struct {
+	User     string
+	Password string
+	Host     string
+	Name     string
+	Port     string
 }
 
 const connectionStringTemplate = "host=%s user=%s password=%s dbname=%s port=%s"
 
-func NewBaseDatabase(config *config.DBParams) Database {
+func NewBaseDatabase(config DBParams) Database {
 	return &BaseDatabase{
 		Config: config,
 	}
@@ -60,7 +66,7 @@ func (db *BaseDatabase) hostCountQuery() string {
 	return fmt.Sprintf(`SELECT count(*) FROM hosts`)
 }
 
-func (db *BaseDatabase) CountHosts() (int64, error) {
+func (db *BaseDatabase) CountHosts() (int, error) {
 	// TODO: add modified_on filter
 	// waiting on https://issues.redhat.com/browse/RHCLOUD-9545
 	rows, err := db.RunQuery(db.hostCountQuery())
@@ -71,9 +77,9 @@ func (db *BaseDatabase) CountHosts() (int64, error) {
 
 	defer rows.Close()
 
-	var response int64
+	var response int
 	for rows.Next() {
-		var count int64
+		var count int
 		err = rows.Scan(&count)
 		if err != nil {
 			return -1, err
@@ -115,7 +121,7 @@ func (db *BaseDatabase) GetHostIds() ([]string, error) {
 	return ids, nil
 }
 
-func GetConnection(params *config.DBParams) (connection *pgx.Conn, err error) {
+func GetConnection(params DBParams) (connection *pgx.Conn, err error) {
 	connStr := fmt.Sprintf(
 		connectionStringTemplate,
 		params.Host,

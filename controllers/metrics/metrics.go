@@ -58,11 +58,11 @@ func PipelineRefreshed(instance *xjoin.XJoinPipeline, reason RefreshReason) {
 	refreshCount.WithLabelValues(string(reason)).Inc()
 }
 
-func ESHostCount(instance *xjoin.XJoinPipeline, value int64) {
+func ESHostCount(instance *xjoin.XJoinPipeline, value int) {
 	hostCount.WithLabelValues().Set(float64(value))
 }
 
-func ValidationFinished(threshold int64, ratio float64, inconsistentTotal int64, isValid bool) {
+func ValidationFinished(threshold int, ratio float64, inconsistentTotal int, isValid bool) {
 	inconsistencyThreshold.WithLabelValues().Set(float64(threshold) / 100)
 	inconsistencyRatio.WithLabelValues().Set(ratio)
 	inconsistencyAbsolute.WithLabelValues().Set(float64(inconsistentTotal))

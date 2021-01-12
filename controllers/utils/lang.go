@@ -35,7 +35,7 @@ func ContainsString(list []string, s string) bool {
 	return false
 }
 
-func Abs(x int64) int64 {
+func Abs(x int) int {
 	if x < 0 {
 		return -x
 	}

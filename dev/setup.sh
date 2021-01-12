@@ -76,6 +76,7 @@ oc scale --replicas=1 deployment/inventory-db
 oc wait deployment/inventory-db --for=condition=Available --timeout=300s -n $PROJECT_NAME
 
 #elasticsearch
+oc apply -f elasticsearch.secret.yml -n $PROJECT_NAME
 oc apply -f https://download.elastic.co/downloads/eck/1.3.0/all-in-one.yaml
 sleep 10
 
@@ -97,6 +98,10 @@ sleep 3
 
 curl -X POST -u "elastic:$ES_PASSWORD" -k "http://elasticsearch:9200/_security/user/xjoin" \
      --data '{"password": "xjoin1337", "roles": ["superuser"]}' \
+     -H "Content-Type: application/json"
+
+curl -X POST -u "elastic:$ES_PASSWORD" -k "http://elasticsearch:9200/_security/user/test" \
+     --data '{"password": "test1337", "roles": ["superuser"]}' \
      -H "Content-Type: application/json"
 
 ./forward-ports.sh

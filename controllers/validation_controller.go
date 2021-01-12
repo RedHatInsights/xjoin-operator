@@ -5,6 +5,7 @@ import (
 	"fmt"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"k8s.io/client-go/tools/record"
 
 	"github.com/go-logr/logr"
@@ -26,18 +27,24 @@ type ValidationReconciler struct {
 	CheckResourceDeviation bool
 }
 
-func (r *ValidationReconciler) setup(reqLogger logr.Logger, request ctrl.Request) (ReconcileIteration, error) {
+func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request) (ReconcileIteration, error) {
 	i, err := r.XJoinPipelineReconciler.setup(reqLogger, request)
 
 	if err != nil || i.Instance == nil {
 		return i, err
 	}
 
-	i.GetRequeueInterval = func(i *ReconcileIteration) int64 {
-		return i.getValidationConfig().Interval
+	i.GetRequeueInterval = func(i *ReconcileIteration) int {
+		return i.getValidationInterval()
 	}
 
-	i.InventoryDb = database.NewBaseDatabase(&i.HBIDBParams)
+	i.InventoryDb = database.NewBaseDatabase(database.DBParams{
+		Host:     i.config.HBIDBHost.String(),
+		User:     i.config.HBIDBUser.String(),
+		Name:     i.config.HBIDBName.String(),
+		Port:     i.config.HBIDBPort.String(),
+		Password: i.config.HBIDBPassword.String(),
+	})
 
 	if err = i.InventoryDb.Connect(); err != nil {
 		return i, err
@@ -48,7 +55,7 @@ func (r *ValidationReconciler) setup(reqLogger logr.Logger, request ctrl.Request
 
 func (r *ValidationReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
-	reqLogger := r.Log.WithValues("Pipeline", request.Name, "Namespace", request.Namespace)
+	reqLogger := logger.NewLogger("controller_validation", "Pipeline", request.Name, "Namespace", request.Namespace)
 
 	i, err := r.setup(reqLogger, request)
 	defer i.Close()
@@ -140,11 +147,13 @@ func (r *ValidationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func NewValidationReconciler(client client.Client,
+func NewValidationReconciler(
+	client client.Client,
 	scheme *runtime.Scheme,
 	log logr.Logger,
 	checkResourceDeviation bool,
 	recorder record.EventRecorder) *ValidationReconciler {
+
 	return &ValidationReconciler{
 		XJoinPipelineReconciler: *NewXJoinReconciler(client, scheme, log, recorder),
 		CheckResourceDeviation:  checkResourceDeviation,

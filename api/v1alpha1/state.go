@@ -36,7 +36,7 @@ func (instance *XJoinPipeline) GetState() PipelineState {
 	}
 }
 
-func (instance *XJoinPipeline) SetValid(status metav1.ConditionStatus, reason string, message string, hostCount int64) {
+func (instance *XJoinPipeline) SetValid(status metav1.ConditionStatus, reason string, message string, hostCount int) {
 	meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:    validConditionType,
 		Status:  status,

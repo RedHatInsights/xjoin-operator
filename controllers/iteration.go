@@ -3,13 +3,13 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,19 +28,17 @@ type ReconcileIteration struct {
 
 	Recorder record.EventRecorder
 	Scheme   *runtime.Scheme
-	Log      logr.Logger
+	Log      logger.Log
 	Client   client.Client
 	Now      string
 
-	config *config.XJoinConfiguration
-
-	HBIDBParams config.DBParams
+	config config.XJoinConfiguration
 
 	ESClient    *elasticsearch.ElasticSearch
 	Kafka       kafka.Kafka
 	InventoryDb database.Database
 
-	GetRequeueInterval func(i *ReconcileIteration) (result int64)
+	GetRequeueInterval func(i *ReconcileIteration) (result int)
 }
 
 func (i *ReconcileIteration) Close() {
@@ -72,7 +70,7 @@ func (i *ReconcileIteration) eventWarning(reason, messageFmt string, args ...int
 }
 
 func (i *ReconcileIteration) debug(message string, keysAndValues ...interface{}) {
-	i.Log.V(1).Info(message, keysAndValues...)
+	i.Log.Debug(message, keysAndValues...)
 }
 
 func (i *ReconcileIteration) updateStatusAndRequeue() (reconcile.Result, error) {
@@ -97,10 +95,26 @@ func (i *ReconcileIteration) updateStatusAndRequeue() (reconcile.Result, error) 
 	return reconcile.Result{RequeueAfter: delay}, nil
 }
 
-func (i *ReconcileIteration) getValidationConfig() config.ValidationConfiguration {
+func (i *ReconcileIteration) getValidationInterval() int {
 	if i.Instance.Status.InitialSyncInProgress == true {
-		return i.config.ValidationConfigInit
+		return i.config.ValidationInitInterval.Int()
 	}
 
-	return i.config.ValidationConfig
+	return i.config.ValidationInterval.Int()
+}
+
+func (i *ReconcileIteration) getValidationAttemptsThreshold() int {
+	if i.Instance.Status.InitialSyncInProgress == true {
+		return i.config.ValidationInitAttemptsThreshold.Int()
+	}
+
+	return i.config.ValidationAttemptsThreshold.Int()
+}
+
+func (i *ReconcileIteration) getValidationPercentageThreshold() int {
+	if i.Instance.Status.InitialSyncInProgress == true {
+		return i.config.ValidationInitPercentageThreshold.Int()
+	}
+
+	return i.config.ValidationPercentageThreshold.Int()
 }

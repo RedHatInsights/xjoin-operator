@@ -10,13 +10,13 @@ import (
 const countMismatchThreshold = 0.5
 const idDiffMaxLength = 50
 
-func (i *ReconcileIteration) validate() (isValid bool, mismatchRatio float64, mismatchCount int64, hostCount int64, err error) {
+func (i *ReconcileIteration) validate() (isValid bool, mismatchRatio float64, mismatchCount int, hostCount int, err error) {
 	hbiHostCount, err := i.InventoryDb.CountHosts()
 	if err != nil {
 		return false, -1, -1, -1, err
 	}
 
-	esCount, err := i.ESClient.CountIndex(elasticsearch.ESIndexName(i.config.ResourceNamePrefix, i.Instance.Status.PipelineVersion))
+	esCount, err := i.ESClient.CountIndex(elasticsearch.ESIndexName(i.config.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion))
 	if err != nil {
 		return false, -1, -1, -1, err
 	}
@@ -34,7 +34,7 @@ func (i *ReconcileIteration) validate() (isValid bool, mismatchRatio float64, mi
 		i.Log.Info("Count mismatch ratio is above threshold, exiting early",
 			"countMismatchRatio", countMismatchRatio)
 		metrics.ValidationFinished(
-			i.getValidationConfig().PercentageThreshold, countMismatchRatio, countMismatch, false)
+			i.getValidationPercentageThreshold(), countMismatchRatio, countMismatch, false)
 		return false, countMismatchRatio, countMismatch, esCount, nil
 	}
 
@@ -43,7 +43,7 @@ func (i *ReconcileIteration) validate() (isValid bool, mismatchRatio float64, mi
 		return false, -1, -1, -1, err
 	}
 
-	esIds, err := i.ESClient.GetHostIDs(elasticsearch.ESIndexName(i.config.ResourceNamePrefix, i.Instance.Status.PipelineVersion))
+	esIds, err := i.ESClient.GetHostIDs(elasticsearch.ESIndexName(i.config.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion))
 	if err != nil {
 		return false, -1, -1, -1, err
 	}
@@ -51,14 +51,14 @@ func (i *ReconcileIteration) validate() (isValid bool, mismatchRatio float64, mi
 	i.Log.Info("Fetched host ids")
 	inHbiOnly := utils.Difference(hbiIds, esIds)
 	inAppOnly := utils.Difference(esIds, hbiIds)
-	mismatchCount = int64(len(inHbiOnly) + len(inAppOnly))
+	mismatchCount = len(inHbiOnly) + len(inAppOnly)
 
-	validationThresholdPercent := i.getValidationConfig().PercentageThreshold
+	validationThresholdPercent := i.getValidationPercentageThreshold()
 
 	idMismatchRatio := float64(mismatchCount) / math.Max(float64(len(hbiIds)), 1)
 	result := (idMismatchRatio * 100) <= float64(validationThresholdPercent)
 
-	metrics.ValidationFinished(i.getValidationConfig().PercentageThreshold, idMismatchRatio, mismatchCount, result)
+	metrics.ValidationFinished(i.getValidationPercentageThreshold(), idMismatchRatio, mismatchCount, result)
 	i.Log.Info(
 		"Validation results",
 		"validationThresholdPercent", validationThresholdPercent,
