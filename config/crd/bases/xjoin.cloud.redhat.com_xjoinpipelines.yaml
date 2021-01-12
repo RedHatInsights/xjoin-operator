@@ -39,7 +39,13 @@ spec:
             connectCluster:
               minLength: 1
               type: string
+            elasticSearchSecretName:
+              minLength: 1
+              type: string
             elasticSearchURL:
+              minLength: 1
+              type: string
+            hbiDBSecretName:
               minLength: 1
               type: string
             kafkaCluster:

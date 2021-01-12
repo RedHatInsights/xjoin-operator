@@ -43,7 +43,9 @@ func Setup(t *testing.T, suiteName string) {
 		logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
 
 		options := viper.New()
+		options.SetEnvPrefix("xjoin")
 		options.SetDefault("UseExistingCluster", false)
+		_ = options.BindEnv("UseExistingCluster")
 		useExistingCluster := options.GetBool("UseExistingCluster")
 
 		By("bootstrapping test environment")

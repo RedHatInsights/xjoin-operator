@@ -7,6 +7,7 @@ import (
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"hash/fnv"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -18,9 +19,23 @@ func FetchXJoinPipeline(c client.Client, namespacedName types.NamespacedName) (*
 }
 
 func FetchConfigMap(c client.Client, namespace string, name string) (*corev1.ConfigMap, error) {
-	config := &corev1.ConfigMap{}
-	err := c.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: namespace}, config)
-	return config, err
+	// Using a typed object.
+	pod := &corev1.ConfigMapList{
+		ListMeta: v1.ListMeta{},
+	}
+	// c is a created client.
+	_ = c.List(context.Background(), pod)
+
+	nameField := client.MatchingFields{"metadata.name": name}
+
+	configMaps := &corev1.ConfigMapList{}
+	err := c.List(context.TODO(), configMaps, nameField)
+	if len(configMaps.Items) == 0 {
+		emptyConfig := &corev1.ConfigMap{}
+		return emptyConfig, nil
+	} else {
+		return &configMaps.Items[0], err
+	}
 }
 
 func ConfigMapHash(cm *corev1.ConfigMap, ignoredKeys ...string) string {

@@ -36,7 +36,7 @@ func newXJoinReconciler() *XJoinPipelineReconciler {
 		record.NewFakeRecorder(10))
 }
 
-func getXJoinConfig() XJoinConfiguration {
+func getXJoinConfig() Parameters {
 	options := viper.New()
 	options.SetDefault("ElasticSearchURL", "http://localhost:9200")
 	options.SetDefault("ElasticSearchUsername", "test")
@@ -82,7 +82,7 @@ func createConfigMap(namespace string, name string, data map[string]string) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func createESSecret(namespace string, name string, params XJoinConfiguration) {
+func createESSecret(namespace string, name string, params Parameters) {
 	secret := &corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		ObjectMeta: metav1.ObjectMeta{
@@ -100,7 +100,7 @@ func createESSecret(namespace string, name string, params XJoinConfiguration) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func createDbSecret(namespace string, name string, params XJoinConfiguration) {
+func createDbSecret(namespace string, name string, params Parameters) {
 	secret := &corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		ObjectMeta: metav1.ObjectMeta{
