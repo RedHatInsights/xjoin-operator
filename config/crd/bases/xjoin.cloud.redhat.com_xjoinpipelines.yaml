@@ -132,7 +132,6 @@ spec:
             pipelineVersion:
               type: string
             validationFailedCount:
-              format: int64
               minimum: 0
               type: integer
             xjoinConfigVersion:

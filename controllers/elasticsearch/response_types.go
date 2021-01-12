@@ -3,7 +3,7 @@ package elasticsearch
 type SearchIDsResponse struct {
 	Hits struct {
 		Total struct {
-			Value    int64  `json:"value"`
+			Value    int    `json:"value"`
 			Relation string `json:"relation"`
 		} `json:"total"`
 		Hits []struct {

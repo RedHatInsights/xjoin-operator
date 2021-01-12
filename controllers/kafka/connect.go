@@ -17,7 +17,6 @@ import (
 )
 
 const (
-	LabelMaxAge         = "xjoin/maxAge"
 	LabelStrimziCluster = "strimzi.io/cluster"
 	LabelOwner          = "xjoin/owner"
 )
@@ -36,24 +35,6 @@ var connectorsGVK = schema.GroupVersionKind{
 	Version: "v1alpha1",
 }
 
-type DebeziumConnectorConfiguration struct {
-	Template           string
-	HBIDBParams        config.DBParams
-	Version            string
-	MaxAge             int64
-	ResourceNamePrefix string
-}
-
-type ElasticSearchConnectorConfiguration struct {
-	Template              string
-	ElasticSearchURL      string
-	ElasticSearchUsername string
-	ElasticSearchPassword string
-	Version               string
-	MaxAge                int64
-	ResourceNamePrefix    string
-}
-
 func (kafka *Kafka) CheckIfConnectorExists(c client.Client, name string, namespace string) (bool, error) {
 	if name == "" {
 		return false, nil
@@ -68,42 +49,59 @@ func (kafka *Kafka) CheckIfConnectorExists(c client.Client, name string, namespa
 	}
 }
 
-func (kafka *Kafka) newESConnectorResource(config ElasticSearchConnectorConfiguration) (*unstructured.Unstructured, error) {
-	m := make(map[string]string)
-	m["ElasticSearchURL"] = config.ElasticSearchURL
-	m["ElasticSearchUsername"] = config.ElasticSearchUsername
-	m["ElasticSearchPassword"] = config.ElasticSearchPassword
-	m["Version"] = config.Version
+func (kafka *Kafka) newESConnectorResource(
+	config config.XJoinConfiguration,
+	pipelineVersion string) (*unstructured.Unstructured, error) {
+
+	m := make(map[string]interface{})
+	m["ElasticSearchURL"] = config.ElasticSearchURL.String()
+	m["ElasticSearchUsername"] = config.ElasticSearchUsername.String()
+	m["ElasticSearchPassword"] = config.ElasticSearchPassword.String()
+	m["Version"] = pipelineVersion
+	m["TasksMax"] = config.ElasticSearchTasksMax.Int()
+	m["MaxInFlightRequests"] = config.ElasticSearchMaxInFlightRequests.Int()
+	m["ErrorsLogEnable"] = config.ElasticSearchErrorsLogEnable.Bool()
+	m["MaxRetries"] = config.ElasticSearchMaxRetries.Int()
+	m["RetryBackoffMS"] = config.ElasticSearchRetryBackoffMS.Int()
+	m["BatchSize"] = config.ElasticSearchBatchSize.Int()
+	m["MaxBufferedRecords"] = config.ElasticSearchMaxBufferedRecords.Int()
+	m["LingerMS"] = config.ElasticSearchLingerMS.Int()
 
 	return kafka.newConnectorResource(
-		ESConnectorName(config.ResourceNamePrefix, config.Version),
+		ESConnectorName(config.ResourceNamePrefix.String(), pipelineVersion),
 		"io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
 		m,
-		config.Template)
+		config.ElasticSearchConnectorTemplate.String())
 }
 
 func (kafka *Kafka) newDebeziumConnectorResource(
-	config DebeziumConnectorConfiguration) (*unstructured.Unstructured, error) {
+	config config.XJoinConfiguration,
+	pipelineVersion string) (*unstructured.Unstructured, error) {
 
-	m := make(map[string]string)
-	m["DBPort"] = config.HBIDBParams.Port
-	m["DBHostname"] = config.HBIDBParams.Host
-	m["DBName"] = config.HBIDBParams.Name
-	m["DBUser"] = config.HBIDBParams.User
-	m["DBPassword"] = config.HBIDBParams.Password
-	m["Version"] = config.Version
+	m := make(map[string]interface{})
+	m["DBPort"] = config.HBIDBPort.String()
+	m["DBHostname"] = config.HBIDBHost.String()
+	m["DBName"] = config.HBIDBName.String()
+	m["DBUser"] = config.HBIDBUser.String()
+	m["DBPassword"] = config.HBIDBPassword.String()
+	m["Version"] = pipelineVersion
+	m["TasksMax"] = config.DebeziumTasksMax.Int()
+	m["MaxBatchSize"] = config.DebeziumMaxBatchSize.Int()
+	m["QueueSize"] = config.DebeziumQueueSize.Int()
+	m["PollIntervalMS"] = config.DebeziumPollIntervalMS.Int()
+	m["ErrorsLogEnable"] = config.DebeziumErrorsLogEnable.Bool()
 
 	return kafka.newConnectorResource(
-		DebeziumConnectorName(config.ResourceNamePrefix, config.Version),
+		DebeziumConnectorName(config.ResourceNamePrefix.String(), pipelineVersion),
 		"io.debezium.connector.postgresql.PostgresConnector",
 		m,
-		config.Template)
+		config.DebeziumTemplate.String())
 }
 
 func (kafka *Kafka) newConnectorResource(
 	name string,
 	class string,
-	connectorConfig map[string]string,
+	connectorConfig map[string]interface{},
 	connectorTemplate string) (*unstructured.Unstructured, error) {
 
 	tmpl, err := template.New("configTemplate").Parse(connectorTemplate)
@@ -145,7 +143,6 @@ func (kafka *Kafka) newConnectorResource(
 	return u, nil
 }
 
-// TODO move to k8s?
 func GetConnector(c client.Client, name string, namespace string) (*unstructured.Unstructured, error) {
 	connector := EmptyConnector()
 	err := c.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: namespace}, connector)
@@ -205,10 +202,11 @@ func IsFailed(connector *unstructured.Unstructured) bool {
 }
 
 func (kafka *Kafka) CreateESConnector(
-	config ElasticSearchConnectorConfiguration,
+	config config.XJoinConfiguration,
+	pipelineVersion string,
 	dryRun bool) (*unstructured.Unstructured, error) {
 
-	connector, err := kafka.newESConnectorResource(config)
+	connector, err := kafka.newESConnectorResource(config, pipelineVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -231,10 +229,11 @@ func (kafka *Kafka) CreateESConnector(
 }
 
 func (kafka *Kafka) CreateDebeziumConnector(
-	config DebeziumConnectorConfiguration,
+	config config.XJoinConfiguration,
+	pipelineVersion string,
 	dryRun bool) (*unstructured.Unstructured, error) {
 
-	connector, err := kafka.newDebeziumConnectorResource(config)
+	connector, err := kafka.newDebeziumConnectorResource(config, pipelineVersion)
 	if err != nil {
 		return nil, err
 	}

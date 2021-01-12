@@ -177,7 +177,7 @@ func (es *ElasticSearch) ListIndices(name string) ([]string, error) {
 	return indices, nil
 }
 
-func (es *ElasticSearch) CountIndex(index string) (int64, error) {
+func (es *ElasticSearch) CountIndex(index string) (int, error) {
 	req := esapi.CatCountRequest{
 		Format: "JSON",
 		Index:  []string{index},
@@ -201,7 +201,7 @@ func (es *ElasticSearch) CountIndex(index string) (int64, error) {
 		return -1, err
 	}
 
-	return response, nil
+	return int(response), nil
 }
 
 func (es *ElasticSearch) GetHostIDs(index string) ([]string, error) {

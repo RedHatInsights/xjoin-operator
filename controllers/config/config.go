@@ -5,83 +5,126 @@ import (
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	corev1 "k8s.io/api/core/v1"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 )
 
+//TODO make these params
 const (
-	reconcileInterval             = "standard.interval"
-	validationInterval            = "validation.interval"
-	validationAttemptsThreshold   = "validation.attempts.threshold"
-	validationPercentageThreshold = "validation.percentage.threshold"
-	defaultResourceNamePrefix     = "xjoin.inventory.hosts"
+	elasticSearchSecret = "xjoin-elasticsearch"
+	hbiDBSecret         = "host-inventory-db"
 )
 
 // These keys are excluded when computing a ConfigMap hash.
 // Therefore, if they change that won't trigger a pipeline refresh
 var keysIgnoredByRefresh []string
 
-func BuildXJoinConfig(instance *xjoin.XJoinPipeline, cm *corev1.ConfigMap) (*XJoinConfiguration, error) {
-	var err error
-	config := &XJoinConfiguration{}
-
-	if instance != nil && instance.Spec.ResourceNamePrefix != nil {
-		config.ResourceNamePrefix = *instance.Spec.ResourceNamePrefix
-	} else {
-		config.ResourceNamePrefix = getStringValue(cm, "resourceNamePrefix", defaultResourceNamePrefix)
+func readSecretValue(secret *corev1.Secret, key string) (string, error) {
+	value := secret.Data[key]
+	if value == nil || string(value) == "" {
+		return "", fmt.Errorf("%s missing from %s secret", key, secret.ObjectMeta.Name)
 	}
 
-	if instance != nil && instance.Spec.ConnectCluster != nil {
-		config.ConnectCluster = *instance.Spec.ConnectCluster
-	} else {
-		config.ConnectCluster = getStringValue(cm, "connect.cluster", defaultConnectCluster)
-	}
+	return string(value), nil
+}
 
-	if instance != nil && instance.Spec.KafkaCluster != nil {
-		config.KafkaCluster = *instance.Spec.KafkaCluster
-	} else {
-		config.KafkaCluster = getStringValue(cm, "kafka.cluster", defaultKafkaCluster)
-	}
+func BuildXJoinConfig(instance *xjoin.XJoinPipeline, client client.Client) (XJoinConfiguration, error) {
+	config := NewXJoinConfiguration()
+	cm, err := utils.FetchConfigMap(client, instance.Namespace, "xjoin")
 
-	//TODO: handle a secret for ES params
-	config.ElasticSearchURL = getStringValue(cm, "elasticsearch.url", defaultElasticSearchURL)
-	config.ElasticSearchUsername = getStringValue(cm, "elasticsearch.url", defaultElasticSearchUsername)
-	config.ElasticSearchPassword = getStringValue(cm, "elasticsearch.url", defaultElasticSearchPassword)
+	hbiSecret, err := utils.FetchSecret(client, instance.Namespace, hbiDBSecret)
+	esSecret, err := utils.FetchSecret(client, instance.Namespace, elasticSearchSecret)
 
-	config.DebeziumConnectorTemplate = getStringValue(
-		cm, "debezium.connector.config", defaultDebeziumConnectorTemplate)
-	config.ElasticSearchConnectorTemplate = getStringValue(
-		cm, "elasticsearch.connector.config", defaultElasticSearchConnectorTemplate)
-
-	if config.ConnectorTasksMax, err = getIntValue(cm, "connector.tasks.max", defaultConnectorTasksMax); err != nil {
+	if err != nil {
 		return config, err
 	}
 
-	if config.ConnectorBatchSize, err = getIntValue(cm, "connector.batch.size", defaultConnectorBatchSize); err != nil {
+	configReflection := reflect.ValueOf(&config).Elem()
+
+	for i := 0; i < configReflection.NumField(); i++ {
+		param := configReflection.Field(i).Interface().(Parameter)
+		if param.DefaultValue == nil {
+			continue
+		}
+
+		if param.SpecKey != "" {
+			specReflection := reflect.ValueOf(&instance.Spec).Elem()
+			paramValue := specReflection.FieldByName(param.SpecKey).Interface()
+			err = param.SetValue(paramValue)
+			if err != nil {
+				return config, err
+			}
+		}
+
+		if param.Secret == elasticSearchSecret {
+			value, err := readSecretValue(esSecret, param.SecretKey)
+			if err != nil {
+				return config, err
+			}
+
+			err = param.SetValue(value)
+			if err != nil {
+				return config, err
+			}
+		}
+
+		if param.Secret == hbiDBSecret {
+			value, err := readSecretValue(hbiSecret, param.SecretKey)
+			if err != nil {
+				return config, err
+			}
+			err = param.SetValue(value)
+			if err != nil {
+				return config, err
+			}
+		}
+
+		if param.value == nil && param.ConfigMapKey != "" {
+			var value interface{}
+			if param.Type == reflect.String {
+				value = getStringValue(cm, param.ConfigMapKey, param.DefaultValue.(string))
+			} else if param.Type == reflect.Int {
+				value, err = getIntValue(cm, param.ConfigMapKey, param.DefaultValue.(int))
+			} else if param.Type == reflect.Bool {
+				value, err = getBoolValue(cm, param.ConfigMapKey, param.DefaultValue.(bool))
+			}
+
+			if err != nil {
+				return config, err
+			}
+
+			err = param.SetValue(value)
+			if err != nil {
+				return config, err
+			}
+		}
+
+		configReflection.Field(i).Set(reflect.ValueOf(param))
+	}
+
+	err = config.ConfigMapVersion.SetValue(utils.ConfigMapHash(cm, keysIgnoredByRefresh...))
+	if err != nil {
 		return config, err
 	}
 
-	if instance != nil && instance.Spec.MaxAge != nil {
-		config.ConnectorMaxAge = *instance.Spec.MaxAge
-	} else if config.ConnectorMaxAge, err = getIntValue(cm, "connector.max.age", defaultConnectorMaxAge); err != nil {
-		return config, err
+	return config, nil
+}
+
+func getBoolValue(cm *corev1.ConfigMap, key string, defaultValue bool) (bool, error) {
+	if cm == nil {
+		return defaultValue, nil
 	}
 
-	if config.StandardInterval, err = getIntValue(cm, reconcileInterval, defaultStandardInterval); err != nil {
-		return config, err
+	if value, ok := cm.Data[key]; ok {
+		if parsed, err := strconv.ParseBool(value); err != nil {
+			return false, fmt.Errorf(`"%s" is not a valid value for "%s"`, value, key)
+		} else {
+			return parsed, nil
+		}
 	}
 
-	if config.ValidationConfig, err = getValidationConfig(instance, cm, "", defaultValidationConfig); err != nil {
-		return config, err
-	}
-
-	if config.ValidationConfigInit, err = getValidationConfig(instance, cm, "init.", defaultValidationConfigInit); err != nil {
-		return config, err
-	}
-
-	config.ConfigMapVersion = utils.ConfigMapHash(cm, keysIgnoredByRefresh...)
-
-	return config, err
+	return defaultValue, nil
 }
 
 func getStringValue(cm *corev1.ConfigMap, key string, defaultValue string) string {
@@ -96,18 +139,7 @@ func getStringValue(cm *corev1.ConfigMap, key string, defaultValue string) strin
 	return defaultValue
 }
 
-func LoadSecret(c client.Client, namespace string, name string) (DBParams, error) {
-	secret, err := utils.FetchSecret(c, namespace, name)
-
-	if err != nil {
-		return DBParams{}, err
-	}
-
-	params, err := ParseDBSecret(secret)
-	return params, err
-}
-
-func getIntValue(cm *corev1.ConfigMap, key string, defaultValue int64) (int64, error) {
+func getIntValue(cm *corev1.ConfigMap, key string, defaultValue int) (int, error) {
 	if cm == nil {
 		return defaultValue, nil
 	}
@@ -116,35 +148,9 @@ func getIntValue(cm *corev1.ConfigMap, key string, defaultValue int64) (int64, e
 		if parsed, err := strconv.ParseInt(value, 10, 64); err != nil {
 			return -1, fmt.Errorf(`"%s" is not a valid value for "%s"`, value, key)
 		} else {
-			return parsed, nil
+			return int(parsed), nil
 		}
 	}
 
 	return defaultValue, nil
-}
-
-func getValidationConfig(instance *xjoin.XJoinPipeline,
-	cm *corev1.ConfigMap,
-	prefix string,
-	defaultValue ValidationConfiguration) (ValidationConfiguration, error) {
-	var (
-		err    error
-		result = ValidationConfiguration{}
-	)
-
-	if result.Interval, err = getIntValue(cm, fmt.Sprintf("%s%s", prefix, validationInterval), defaultValue.Interval); err != nil {
-		return result, err
-	}
-
-	if result.AttemptsThreshold, err = getIntValue(cm, fmt.Sprintf("%s%s", prefix, validationAttemptsThreshold), defaultValue.AttemptsThreshold); err != nil {
-		return result, err
-	}
-
-	if instance != nil && instance.Spec.ValidationThreshold != nil {
-		result.PercentageThreshold = *instance.Spec.ValidationThreshold
-	} else if result.PercentageThreshold, err = getIntValue(cm, fmt.Sprintf("%s%s", prefix, validationPercentageThreshold), defaultValue.PercentageThreshold); err != nil {
-		return result, err
-	}
-
-	return result, err
 }

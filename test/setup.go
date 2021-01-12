@@ -2,6 +2,7 @@ package test
 
 import (
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/spf13/viper"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -41,7 +42,10 @@ func Setup(t *testing.T, suiteName string) {
 	var _ = BeforeSuite(func(done Done) {
 		logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
 
-		useExistingCluster := true
+		options := viper.New()
+		options.SetDefault("UseExistingCluster", false)
+		useExistingCluster := options.GetBool("UseExistingCluster")
+
 		By("bootstrapping test environment")
 		testEnv = &envtest.Environment{
 			CRDDirectoryPaths:  []string{filepath.Join(getRootDir(), "config", "crd", "bases"), filepath.Join(getRootDir(), "dev", "cluster-operator", "crd")},
