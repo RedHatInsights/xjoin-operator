@@ -175,6 +175,7 @@ var _ = Describe("Pipeline operations", func() {
 		namespacedName types.NamespacedName
 		r              *XJoinPipelineReconciler
 		es             *elasticsearch.ElasticSearch
+		kafkaClient    kafka.Kafka
 	)
 
 	var reconcile = func() (result ctrl.Result) {
@@ -200,6 +201,14 @@ var _ = Describe("Pipeline operations", func() {
 		xjoinConfig := getXJoinConfig()
 		createDbSecret(namespacedName.Namespace, "host-inventory-db", xjoinConfig)
 		createESSecret(namespacedName.Namespace, "xjoin-elasticsearch", xjoinConfig)
+
+		kafkaClient = kafka.Kafka{
+			Namespace:   namespacedName.Namespace,
+			Owner:       nil,
+			OwnerScheme: r.Scheme,
+			Client:      r.Client,
+			Parameters:  xjoinConfig,
+		}
 	})
 
 	AfterEach(func() {
@@ -231,7 +240,7 @@ var _ = Describe("Pipeline operations", func() {
 	})
 
 	Describe("New -> InitialSync", func() {
-		It("Creates a connector and ES Index for a new pipeline", func() {
+		It("Creates a connector, ES Index, and topic for a new pipeline", func() {
 			createPipeline(namespacedName)
 			reconcile()
 
@@ -328,6 +337,10 @@ var _ = Describe("Pipeline operations", func() {
 			aliases, err := es.GetCurrentIndicesWithAlias(*pipeline.Spec.ResourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(aliases).To(BeEmpty())
+
+			kafkaClient.Owner = pipeline
+			topics, err := kafkaClient.ListTopicNames()
+			Expect(topics).To(ContainElement(kafka.TopicName(pipeline.Status.PipelineVersion)))
 		})
 
 		It("Considers configmap configuration", func() {

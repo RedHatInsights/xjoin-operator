@@ -33,12 +33,12 @@ func (kafka *Kafka) CreateTopic(pipelineVersion string) error {
 			"name":      TopicName(pipelineVersion),
 			"namespace": kafka.Namespace,
 			"labels": map[string]interface{}{
-				"strimzi.io/cluster": kafka.KafkaCluster,
+				"strimzi.io/cluster": kafka.Parameters.KafkaCluster.String(),
 			},
 		},
 		"spec": map[string]interface{}{
-			"replicas":   1,
-			"partitions": 1,
+			"replicas":   kafka.Parameters.KafkaTopicReplicas.Int(),
+			"partitions": kafka.Parameters.KafkaTopicPartitions.Int(),
 			"topicName":  TopicName(pipelineVersion),
 		},
 	}

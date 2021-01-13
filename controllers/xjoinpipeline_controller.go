@@ -99,12 +99,11 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 	i.ESClient = es
 
 	i.Kafka = kafka.Kafka{
-		Namespace:      instance.Namespace,
-		ConnectCluster: i.parameters.ConnectCluster.String(),
-		KafkaCluster:   i.parameters.KafkaCluster.String(),
-		Owner:          instance,
-		OwnerScheme:    i.Scheme,
-		Client:         i.Client,
+		Namespace:   instance.Namespace,
+		Owner:       instance,
+		OwnerScheme: i.Scheme,
+		Client:      i.Client,
+		Parameters:  i.parameters,
 	}
 
 	return i, nil

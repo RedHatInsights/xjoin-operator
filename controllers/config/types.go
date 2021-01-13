@@ -49,6 +49,8 @@ type Parameters struct {
 	HBIDBPassword                     Parameter
 	HBIDBSecretName                   Parameter
 	ElasticSearchSecretName           Parameter
+	KafkaTopicPartitions              Parameter
+	KafkaTopicReplicas                Parameter
 }
 
 func NewXJoinConfiguration() Parameters {
@@ -306,6 +308,16 @@ func NewXJoinConfiguration() Parameters {
 			Secret:       secretTypes.hbiDB,
 			SecretKey:    "db.password",
 			DefaultValue: "insights",
+		},
+		KafkaTopicPartitions: Parameter{
+			Type:         reflect.Int,
+			ConfigMapKey: "kafka.topic.partitions",
+			DefaultValue: 1,
+		},
+		KafkaTopicReplicas: Parameter{
+			Type:         reflect.Int,
+			ConfigMapKey: "kafka.topic.replicas",
+			DefaultValue: 1,
 		},
 	}
 }
