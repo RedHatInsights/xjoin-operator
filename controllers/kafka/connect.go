@@ -129,7 +129,7 @@ func (kafka *Kafka) newConnectorResource(
 			"name":      name,
 			"namespace": kafka.Namespace,
 			"labels": map[string]interface{}{
-				LabelStrimziCluster: kafka.ConnectCluster,
+				LabelStrimziCluster: kafka.Parameters.ConnectCluster.String(),
 			},
 		},
 		"spec": map[string]interface{}{
