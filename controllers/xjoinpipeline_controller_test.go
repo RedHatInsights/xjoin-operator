@@ -36,7 +36,7 @@ func newXJoinReconciler() *XJoinPipelineReconciler {
 		record.NewFakeRecorder(10))
 }
 
-func getXJoinConfig() Parameters {
+func getParameters() Parameters {
 	options := viper.New()
 	options.SetDefault("ElasticSearchURL", "http://localhost:9200")
 	options.SetDefault("ElasticSearchUsername", "test")
@@ -46,6 +46,7 @@ func getXJoinConfig() Parameters {
 	options.SetDefault("HBIDBUser", "postgres")
 	options.SetDefault("HBIDBPassword", "postgres")
 	options.SetDefault("HBIDBName", "test")
+	options.SetDefault("ResourceNamePrefix", resourceNamePrefix)
 	options.AutomaticEnv()
 
 	xjoinConfiguration := NewXJoinConfiguration()
@@ -64,6 +65,8 @@ func getXJoinConfig() Parameters {
 	err = xjoinConfiguration.HBIDBPassword.SetValue(options.GetString("HBIDBPassword"))
 	Expect(err).ToNot(HaveOccurred())
 	err = xjoinConfiguration.HBIDBName.SetValue(options.GetString("HBIDBName"))
+	Expect(err).ToNot(HaveOccurred())
+	err = xjoinConfiguration.ResourceNamePrefix.SetValue(options.GetString("ResourceNamePrefix"))
 	Expect(err).ToNot(HaveOccurred())
 
 	return xjoinConfiguration
@@ -174,8 +177,9 @@ var _ = Describe("Pipeline operations", func() {
 	var (
 		namespacedName types.NamespacedName
 		r              *XJoinPipelineReconciler
-		es             *elasticsearch.ElasticSearch
+		esClient       *elasticsearch.ElasticSearch
 		kafkaClient    kafka.Kafka
+		parameters     Parameters
 	)
 
 	var reconcile = func() (result ctrl.Result) {
@@ -193,30 +197,30 @@ var _ = Describe("Pipeline operations", func() {
 
 		r = newXJoinReconciler()
 
-		esClient, err := elasticsearch.NewElasticSearch(
-			"http://localhost:9200", "xjoin", "xjoin1337")
-		es = esClient
+		es, err := elasticsearch.NewElasticSearch(
+			"http://localhost:9200", "xjoin", "xjoin1337", resourceNamePrefix)
+		esClient = es
 		Expect(err).ToNot(HaveOccurred())
 
-		xjoinConfig := getXJoinConfig()
-		createDbSecret(namespacedName.Namespace, "host-inventory-db", xjoinConfig)
-		createESSecret(namespacedName.Namespace, "xjoin-elasticsearch", xjoinConfig)
+		parameters = getParameters()
+		createDbSecret(namespacedName.Namespace, "host-inventory-db", parameters)
+		createESSecret(namespacedName.Namespace, "xjoin-elasticsearch", parameters)
 
 		kafkaClient = kafka.Kafka{
 			Namespace:   namespacedName.Namespace,
 			Owner:       nil,
 			OwnerScheme: r.Scheme,
 			Client:      r.Client,
-			Parameters:  xjoinConfig,
+			Parameters:  parameters,
 		}
 	})
 
 	AfterEach(func() {
 		//Delete any leftover ES indices
-		indices, err := es.ListIndices(resourceNamePrefix)
+		indices, err := esClient.ListIndices()
 		Expect(err).ToNot(HaveOccurred())
 		for _, index := range indices {
-			err = es.DeleteIndexByFullName(index)
+			err = esClient.DeleteIndexByFullName(index)
 			Expect(err).ToNot(HaveOccurred())
 		}
 
@@ -250,7 +254,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
 
 			dbConnector, err := kafka.GetConnector(
-				test.Client, kafka.DebeziumConnectorName(*pipeline.Spec.ResourceNamePrefix, pipeline.Status.PipelineVersion), namespacedName.Namespace)
+				test.Client, kafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion), namespacedName.Namespace)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(dbConnector.GetLabels()["strimzi.io/cluster"]).To(Equal("xjoin-kafka-connect-strimzi"))
 			Expect(dbConnector.GetName()).To(Equal(resourceNamePrefix + ".db." + pipeline.Status.PipelineVersion))
@@ -278,7 +282,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(dbConnectorConfig["transforms.unwrap.type"]).To(Equal("io.debezium.transforms.ExtractNewRecordState"))
 
 			esConnector, err := kafka.GetConnector(
-				test.Client, kafka.ESConnectorName(*pipeline.Spec.ResourceNamePrefix, pipeline.Status.PipelineVersion), namespacedName.Namespace)
+				test.Client, kafkaClient.ESConnectorName(pipeline.Status.PipelineVersion), namespacedName.Namespace)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnector.GetLabels()["strimzi.io/cluster"]).To(Equal("xjoin-kafka-connect-strimzi"))
 			Expect(esConnector.GetName()).To(Equal(resourceNamePrefix + ".es." + pipeline.Status.PipelineVersion))
@@ -330,17 +334,17 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["transforms.renameTopic.replacement"]).To(Equal("xjoin.inventory.hosts." + pipeline.Status.PipelineVersion))
 			Expect(esConnectorConfig["max.in.flight.requests"]).To(Equal(int64(1)))
 
-			exists, err := es.IndexExists(*pipeline.Spec.ResourceNamePrefix, pipeline.Status.PipelineVersion)
+			exists, err := esClient.IndexExists(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exists).To(BeTrue())
 
-			aliases, err := es.GetCurrentIndicesWithAlias(*pipeline.Spec.ResourceNamePrefix)
+			aliases, err := esClient.GetCurrentIndicesWithAlias(*pipeline.Spec.ResourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(aliases).To(BeEmpty())
 
 			kafkaClient.Owner = pipeline
 			topics, err := kafkaClient.ListTopicNames()
-			Expect(topics).To(ContainElement(kafka.TopicName(pipeline.Status.PipelineVersion)))
+			Expect(topics).To(ContainElement(kafkaClient.TopicName(pipeline.Status.PipelineVersion)))
 		})
 
 		It("Considers configmap configuration", func() {
@@ -377,7 +381,7 @@ var _ = Describe("Pipeline operations", func() {
 
 			pipeline := getPipeline(namespacedName)
 			esConnector, err := kafka.GetConnector(
-				test.Client, kafka.ESConnectorName(*pipeline.Spec.ResourceNamePrefix, pipeline.Status.PipelineVersion), namespacedName.Namespace)
+				test.Client, kafkaClient.ESConnectorName(pipeline.Status.PipelineVersion), namespacedName.Namespace)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnector.GetLabels()["strimzi.io/cluster"]).To(Equal(cm["connect.cluster"]))
@@ -395,7 +399,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["linger.ms"]).To(Equal(strToInt64(cm["elasticsearch.connector.linger.ms"])))
 
 			dbConnector, err := kafka.GetConnector(
-				test.Client, kafka.DebeziumConnectorName(*pipeline.Spec.ResourceNamePrefix, pipeline.Status.PipelineVersion), namespacedName.Namespace)
+				test.Client, kafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion), namespacedName.Namespace)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(dbConnector.GetLabels()["strimzi.io/cluster"]).To(Equal(cm["connect.cluster"]))
@@ -409,5 +413,162 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(dbConnectorConfig["errors.log.enable"]).To(Equal(strToBool(cm["debezium.connector.errors.log.enable"])))
 		})
 
+		It("Considers db secret name configuration", func() {
+			hbiDBSecret, err := utils.FetchSecret(test.Client, namespacedName.Namespace, parameters.HBIDBSecretName.String())
+			Expect(err).ToNot(HaveOccurred())
+			err = test.Client.Delete(context.TODO(), hbiDBSecret)
+			Expect(err).ToNot(HaveOccurred())
+
+			secretName := "test-hbi-db-secret"
+			createDbSecret(namespacedName.Namespace, secretName, parameters)
+
+			createPipeline(namespacedName, &xjoin.XJoinPipelineSpec{HBIDBSecretName: &secretName})
+			reconcile() //this will fail if the secret is missing
+		})
+
+		It("Considers es secret name configuration", func() {
+			elasticSearchSecret, err := utils.FetchSecret(test.Client, namespacedName.Namespace, parameters.ElasticSearchSecretName.String())
+			Expect(err).ToNot(HaveOccurred())
+			err = test.Client.Delete(context.TODO(), elasticSearchSecret)
+			Expect(err).ToNot(HaveOccurred())
+
+			secretName := "test-elasticsearch-secret"
+			createESSecret(namespacedName.Namespace, secretName, parameters)
+
+			createPipeline(namespacedName, &xjoin.XJoinPipelineSpec{ElasticSearchSecretName: &secretName})
+			reconcile() //this will fail if the secret is missing
+		})
+
+		It("Removes stale connectors", func() {
+			_, err := kafkaClient.CreateDebeziumConnector("1", false)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = kafkaClient.CreateDebeziumConnector("2", false)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = kafkaClient.CreateESConnector("1", false)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = kafkaClient.CreateESConnector("2", false)
+			Expect(err).ToNot(HaveOccurred())
+
+			connectors, err := kafkaClient.ListConnectors()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(connectors.Items)).To(Equal(4))
+
+			createPipeline(namespacedName)
+			reconcile()
+			connectors, err = kafkaClient.ListConnectors()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(connectors.Items)).To(Equal(2))
+		})
+
+		It("Removes stale indices", func() {
+			err := esClient.CreateIndex("1")
+			Expect(err).ToNot(HaveOccurred())
+			err = esClient.CreateIndex("2")
+			Expect(err).ToNot(HaveOccurred())
+
+			indices, err := esClient.ListIndices()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(indices)).To(Equal(2))
+
+			createPipeline(namespacedName)
+			reconcile()
+			indices, err = esClient.ListIndices()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(indices)).To(Equal(1))
+		})
+
+		It("Removes stale topics", func() {
+			err := kafkaClient.CreateTopic("1")
+			Expect(err).ToNot(HaveOccurred())
+			err = kafkaClient.CreateTopic("2")
+			Expect(err).ToNot(HaveOccurred())
+
+			topics, err := kafkaClient.ListTopicNames()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(topics)).To(Equal(2))
+
+			createPipeline(namespacedName)
+			reconcile()
+
+			topics, err = kafkaClient.ListTopicNames()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(topics)).To(Equal(1))
+		})
+
+		It("Removes stale replication slots", func() {
+		})
+	})
+
+	Describe("InitialSync -> Valid", func() {
+		It("Creates the elasticsearch alias", func() {
+		})
+
+		It("Triggers refresh if pipeline fails to become valid for too long", func() {
+		})
+	})
+
+	Describe("Invalid -> New", func() {
+		It("Triggers refresh if pipeline in invalid for too long", func() {
+
+		})
+
+		Context("In a refresh", func() {
+			It("Keeps the old table active until the new one is valid", func() {
+			})
+		})
+	})
+
+	Describe("Valid -> New", func() {
+		It("Triggers refresh if configmap is created", func() {
+
+		})
+
+		It("Triggers refresh if configmap changes", func() {
+		})
+
+		It("Triggers refresh if database secret changes", func() {
+		})
+
+		It("Triggers refresh if table disappears", func() {
+		})
+
+		It("Triggers refresh if connector disappears", func() {
+		})
+
+		It("Triggers refresh if connector configuration disagrees", func() {
+		})
+
+		It("Triggers refresh if connect cluster changes", func() {
+		})
+
+		It("Triggers refresh if MaxAge changes", func() {
+		})
+
+	})
+
+	Describe("-> Removed", func() {
+		It("Artifacts removed when initializing pipeline is removed", func() {
+		})
+
+		It("Artifacts removed when valid pipeline is removed", func() {
+		})
+	})
+
+	Describe("Failures", func() {
+		It("Fails if App DB secret is missing", func() {
+		})
+
+		It("Fails if App DB secret is misconfigured", func() {
+		})
+
+		It("Fails if the configmap is misconfigured", func() {
+
+		})
+
+		It("Fails if DB table cannot be created", func() {
+		})
+
+		It("Fails if inventory.hosts view cannot be created", func() {
+		})
 	})
 })

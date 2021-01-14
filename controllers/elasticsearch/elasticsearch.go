@@ -17,11 +17,13 @@ import (
 )
 
 type ElasticSearch struct {
-	client *elasticsearch.Client
+	client             *elasticsearch.Client
+	resourceNamePrefix string
 }
 
-func NewElasticSearch(url string, username string, password string) (*ElasticSearch, error) {
+func NewElasticSearch(url string, username string, password string, resourceNamePrefix string) (*ElasticSearch, error) {
 	es := new(ElasticSearch)
+	es.resourceNamePrefix = resourceNamePrefix
 	cfg := elasticsearch.Config{
 		Addresses: []string{url},
 		Username:  username,
@@ -41,8 +43,8 @@ func NewElasticSearch(url string, username string, password string) (*ElasticSea
 	return es, nil
 }
 
-func (es *ElasticSearch) IndexExists(name string, pipelineVersion string) (bool, error) {
-	res, err := es.client.Indices.Exists([]string{ESIndexName(name, pipelineVersion)})
+func (es *ElasticSearch) IndexExists(pipelineVersion string) (bool, error) {
+	res, err := es.client.Indices.Exists([]string{es.ESIndexName(pipelineVersion)})
 	if err != nil {
 		return false, err
 	}
@@ -59,8 +61,8 @@ func (es *ElasticSearch) IndexExists(name string, pipelineVersion string) (bool,
 	return true, nil
 }
 
-func (es *ElasticSearch) CreateIndex(name string, pipelineVersion string) error {
-	res, err := es.client.Indices.Create(ESIndexName(name, pipelineVersion))
+func (es *ElasticSearch) CreateIndex(pipelineVersion string) error {
+	res, err := es.client.Indices.Create(es.ESIndexName(pipelineVersion))
 	if err != nil {
 		return err
 	}
@@ -75,8 +77,8 @@ func (es *ElasticSearch) DeleteIndexByFullName(index string) error {
 	return parseResponse(res)
 }
 
-func (es *ElasticSearch) DeleteIndex(name string, version string) error {
-	return es.DeleteIndexByFullName(ESIndexName(name, version))
+func (es *ElasticSearch) DeleteIndex(version string) error {
+	return es.DeleteIndexByFullName(es.ESIndexName(version))
 }
 
 func (es *ElasticSearch) UpdateAliasByFullIndexName(alias string, index string) error {
@@ -119,8 +121,8 @@ func (es *ElasticSearch) UpdateAliasByFullIndexName(alias string, index string) 
 	return parseResponse(res)
 }
 
-func (es *ElasticSearch) UpdateAlias(alias string, indexName string, version string) error {
-	return es.UpdateAliasByFullIndexName(alias, ESIndexName(indexName, version))
+func (es *ElasticSearch) UpdateAlias(alias string, version string) error {
+	return es.UpdateAliasByFullIndexName(alias, es.ESIndexName(version))
 }
 
 func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, error) {
@@ -149,10 +151,10 @@ func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, erro
 	return indices, nil
 }
 
-func (es *ElasticSearch) ListIndices(name string) ([]string, error) {
+func (es *ElasticSearch) ListIndices() ([]string, error) {
 	req := esapi.CatIndicesRequest{
 		Format: "JSON",
-		Index:  []string{name + ".*"},
+		Index:  []string{es.resourceNamePrefix + ".*"},
 		H:      []string{"index"},
 	}
 	res, err := req.Do(context.Background(), es.client)
@@ -259,8 +261,8 @@ func (es *ElasticSearch) GetHostIDs(index string) ([]string, error) {
 	return ids, nil
 }
 
-func ESIndexName(name string, pipelineVersion string) string {
-	return name + "." + pipelineVersion
+func (es *ElasticSearch) ESIndexName(pipelineVersion string) string {
+	return es.resourceNamePrefix + "." + pipelineVersion
 }
 
 func parseSearchResponse(scrollRes *esapi.Response) ([]string, SearchIDsResponse, error) {

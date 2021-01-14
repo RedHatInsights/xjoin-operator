@@ -91,7 +91,8 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 	es, err := elasticsearch.NewElasticSearch(
 		i.parameters.ElasticSearchURL.String(),
 		i.parameters.ElasticSearchUsername.String(),
-		i.parameters.ElasticSearchPassword.String())
+		i.parameters.ElasticSearchPassword.String(),
+		i.parameters.ResourceNamePrefix.String())
 
 	if err != nil {
 		return i, err
@@ -178,18 +179,18 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 			return reconcile.Result{}, err
 		}
 
-		err = i.ESClient.CreateIndex(i.parameters.ResourceNamePrefix.String(), pipelineVersion)
+		err = i.ESClient.CreateIndex(pipelineVersion)
 		if err != nil {
 			i.error(err, "Error creating ElasticSearch index")
 			return reconcile.Result{}, err
 		}
 
-		_, err = i.Kafka.CreateDebeziumConnector(i.parameters, pipelineVersion, false)
+		_, err = i.Kafka.CreateDebeziumConnector(pipelineVersion, false)
 		if err != nil {
 			i.error(err, "Error creating debezium connector")
 			return reconcile.Result{}, err
 		}
-		_, err = i.Kafka.CreateESConnector(i.parameters, pipelineVersion, false)
+		_, err = i.Kafka.CreateESConnector(pipelineVersion, false)
 		if err != nil {
 			i.error(err, "Error creating ES connector")
 			return reconcile.Result{}, err
@@ -208,7 +209,7 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 			i.eventNormal(
 				"ValidationSucceeded",
 				"Pipeline became valid. xjoin.inventory.hosts alias now points to %s",
-				elasticsearch.ESIndexName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion))
+				i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
 		}
 
 		return i.updateStatusAndRequeue()
@@ -262,26 +263,28 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		topicsToKeep     []string
 	)
 
+	resourceNamePrefix := i.parameters.ResourceNamePrefix.String()
+
 	if i.Instance.GetState() != xjoin.STATE_REMOVED && i.Instance.Status.PipelineVersion != "" {
-		connectorsToKeep = append(connectorsToKeep, kafka.DebeziumConnectorName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion))
-		connectorsToKeep = append(connectorsToKeep, kafka.ESConnectorName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion))
-		esIndicesToKeep = append(esIndicesToKeep, elasticsearch.ESIndexName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion))
-		topicsToKeep = append(topicsToKeep, kafka.TopicName(i.Instance.Status.PipelineVersion))
+		connectorsToKeep = append(connectorsToKeep, i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion))
+		connectorsToKeep = append(connectorsToKeep, i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion))
+		esIndicesToKeep = append(esIndicesToKeep, i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
+		topicsToKeep = append(topicsToKeep, i.Kafka.TopicName(i.Instance.Status.PipelineVersion))
 	}
 
-	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(i.parameters.ResourceNamePrefix.String())
+	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(resourceNamePrefix)
 	if err != nil {
 		errors = append(errors, err)
 	} else if currentIndices != nil && i.Instance.GetState() != xjoin.STATE_REMOVED {
 		version := currentIndices[0][len("xjoin.inventory.hosts"):len(currentIndices[0])]
-		connectorsToKeep = append(connectorsToKeep, kafka.DebeziumConnectorName(i.parameters.ResourceNamePrefix.String(), version))
-		connectorsToKeep = append(connectorsToKeep, kafka.ESConnectorName(i.parameters.ResourceNamePrefix.String(), version))
+		connectorsToKeep = append(connectorsToKeep, i.Kafka.DebeziumConnectorName(version))
+		connectorsToKeep = append(connectorsToKeep, i.Kafka.ESConnectorName(version))
 		esIndicesToKeep = append(esIndicesToKeep, currentIndices...)
-		topicsToKeep = append(topicsToKeep, kafka.TopicName(version))
+		topicsToKeep = append(topicsToKeep, i.Kafka.TopicName(version))
 	}
 
 	//delete stale Kafka Connectors
-	connectors, err := kafka.GetConnectorsForOwner(i.Client, i.Instance.Namespace, i.Instance.GetUIDString())
+	connectors, err := i.Kafka.ListConnectors()
 	if err != nil {
 		errors = append(errors, err)
 	} else {
@@ -296,7 +299,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	}
 
 	//delete stale ES indices
-	indices, err := i.ESClient.ListIndices(i.parameters.ResourceNamePrefix.String())
+	indices, err := i.ESClient.ListIndices()
 	if err != nil {
 		errors = append(errors, err)
 	} else {
@@ -329,7 +332,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 }
 
 func (i *ReconcileIteration) createESIndex(pipelineVersion string) error {
-	err := i.ESClient.CreateIndex(i.parameters.ResourceNamePrefix.String(), pipelineVersion)
+	err := i.ESClient.CreateIndex(pipelineVersion)
 	if err != nil {
 		return err
 	}
@@ -342,7 +345,7 @@ func (i *ReconcileIteration) recreateAliasIfNeeded() (bool, error) {
 		return false, err
 	}
 
-	validIndex := elasticsearch.ESIndexName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion)
+	validIndex := i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)
 	if currentIndices == nil || !utils.ContainsString(currentIndices, validIndex) {
 		i.Log.Info("Updating alias", "index", validIndex)
 		if err = i.ESClient.UpdateAliasByFullIndexName(i.parameters.ResourceNamePrefix.String(), validIndex); err != nil {
@@ -369,8 +372,7 @@ func (i *ReconcileIteration) updateAliasIfHealthier() error {
 	}
 
 	if indices != nil {
-		if len(indices) == 1 && indices[0] == elasticsearch.ESIndexName(
-			i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion) {
+		if len(indices) == 1 && indices[0] == i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion) {
 			return nil // index is already active, nothing to do
 		}
 
@@ -396,7 +398,7 @@ func (i *ReconcileIteration) updateAliasIfHealthier() error {
 		if err != nil {
 			return fmt.Errorf("failed to get host count from active index %w", err)
 		}
-		latestCount, err := i.ESClient.CountIndex(elasticsearch.ESIndexName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion))
+		latestCount, err := i.ESClient.CountIndex(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
 		if err != nil {
 			return fmt.Errorf("failed to get host count from latest index %w", err)
 		}
@@ -408,7 +410,7 @@ func (i *ReconcileIteration) updateAliasIfHealthier() error {
 
 	if err = i.ESClient.UpdateAliasByFullIndexName(
 		i.parameters.ResourceNamePrefix.String(),
-		elasticsearch.ESIndexName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion)); err != nil {
+		i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)); err != nil {
 		return err
 	}
 
@@ -421,23 +423,23 @@ func (i *ReconcileIteration) checkForDeviation() (problem error, err error) {
 	}
 
 	//ES Index
-	indexExists, err := i.ESClient.IndexExists(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion)
+	indexExists, err := i.ESClient.IndexExists(i.Instance.Status.PipelineVersion)
 
 	if err != nil {
 		return nil, err
 	} else if indexExists == false {
 		return fmt.Errorf(
 			"elasticsearch index %s not found",
-			elasticsearch.ESIndexName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion)), nil
+			i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)), nil
 	}
 
-	esConnectorName := kafka.ESConnectorName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion)
+	esConnectorName := i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion)
 	problem, err = i.checkConnectorDeviation(esConnectorName, "es")
 	if err != nil {
 		return problem, err
 	}
 
-	debeziumConnectorName := kafka.DebeziumConnectorName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion)
+	debeziumConnectorName := i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion)
 	problem, err = i.checkConnectorDeviation(debeziumConnectorName, "debezium")
 	if err != nil {
 		return problem, err
@@ -499,9 +501,9 @@ func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, conne
 
 func (i *ReconcileIteration) createDryConnectorByType(conType string) (*unstructured.Unstructured, error) {
 	if conType == "es" {
-		return i.Kafka.CreateESConnector(i.parameters, i.Instance.Status.PipelineVersion, true)
+		return i.Kafka.CreateESConnector(i.Instance.Status.PipelineVersion, true)
 	} else if conType == "debezium" {
-		return i.Kafka.CreateDebeziumConnector(i.parameters, i.Instance.Status.PipelineVersion, true)
+		return i.Kafka.CreateDebeziumConnector(i.Instance.Status.PipelineVersion, true)
 	} else {
 		return nil, errors.New("invalid param. Must be one of [es, debezium]")
 	}

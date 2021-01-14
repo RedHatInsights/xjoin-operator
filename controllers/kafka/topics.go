@@ -22,15 +22,15 @@ var topicsGroupVersionKind = schema.GroupVersionKind{
 	Version: "v1alpha1",
 }
 
-func TopicName(pipelineVersion string) string {
-	return fmt.Sprintf("xjoin.inventory.%s.public.hosts", pipelineVersion)
+func (kafka *Kafka) TopicName(pipelineVersion string) string {
+	return fmt.Sprintf(kafka.Parameters.ResourceNamePrefix.String() + "." + pipelineVersion)
 }
 
 func (kafka *Kafka) CreateTopic(pipelineVersion string) error {
 	topic := &unstructured.Unstructured{}
 	topic.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      TopicName(pipelineVersion),
+			"name":      kafka.TopicName(pipelineVersion),
 			"namespace": kafka.Namespace,
 			"labels": map[string]interface{}{
 				"strimzi.io/cluster": kafka.Parameters.KafkaCluster.String(),
@@ -39,7 +39,7 @@ func (kafka *Kafka) CreateTopic(pipelineVersion string) error {
 		"spec": map[string]interface{}{
 			"replicas":   kafka.Parameters.KafkaTopicReplicas.Int(),
 			"partitions": kafka.Parameters.KafkaTopicPartitions.Int(),
-			"topicName":  TopicName(pipelineVersion),
+			"topicName":  kafka.TopicName(pipelineVersion),
 		},
 	}
 
@@ -76,7 +76,7 @@ func (kafka *Kafka) ListTopicNames() ([]string, error) {
 	topics.SetGroupVersionKind(topicsGroupVersionKind)
 
 	err := kafka.Client.List(
-		context.TODO(), topics, client.InNamespace(kafka.Namespace), client.MatchingLabels{LabelOwner: kafka.Owner.GetUIDString()})
+		context.TODO(), topics, client.InNamespace(kafka.Namespace))
 
 	var response []string
 	if topics.Items != nil {
