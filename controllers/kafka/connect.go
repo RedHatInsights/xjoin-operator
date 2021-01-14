@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"strings"
 	"text/template"
 
@@ -49,53 +48,49 @@ func (kafka *Kafka) CheckIfConnectorExists(c client.Client, name string, namespa
 	}
 }
 
-func (kafka *Kafka) newESConnectorResource(
-	config config.Parameters,
-	pipelineVersion string) (*unstructured.Unstructured, error) {
+func (kafka *Kafka) newESConnectorResource(pipelineVersion string) (*unstructured.Unstructured, error) {
 
 	m := make(map[string]interface{})
-	m["ElasticSearchURL"] = config.ElasticSearchURL.String()
-	m["ElasticSearchUsername"] = config.ElasticSearchUsername.String()
-	m["ElasticSearchPassword"] = config.ElasticSearchPassword.String()
+	m["ElasticSearchURL"] = kafka.Parameters.ElasticSearchURL.String()
+	m["ElasticSearchUsername"] = kafka.Parameters.ElasticSearchUsername.String()
+	m["ElasticSearchPassword"] = kafka.Parameters.ElasticSearchPassword.String()
 	m["Version"] = pipelineVersion
-	m["TasksMax"] = config.ElasticSearchTasksMax.Int()
-	m["MaxInFlightRequests"] = config.ElasticSearchMaxInFlightRequests.Int()
-	m["ErrorsLogEnable"] = config.ElasticSearchErrorsLogEnable.Bool()
-	m["MaxRetries"] = config.ElasticSearchMaxRetries.Int()
-	m["RetryBackoffMS"] = config.ElasticSearchRetryBackoffMS.Int()
-	m["BatchSize"] = config.ElasticSearchBatchSize.Int()
-	m["MaxBufferedRecords"] = config.ElasticSearchMaxBufferedRecords.Int()
-	m["LingerMS"] = config.ElasticSearchLingerMS.Int()
+	m["TasksMax"] = kafka.Parameters.ElasticSearchTasksMax.Int()
+	m["MaxInFlightRequests"] = kafka.Parameters.ElasticSearchMaxInFlightRequests.Int()
+	m["ErrorsLogEnable"] = kafka.Parameters.ElasticSearchErrorsLogEnable.Bool()
+	m["MaxRetries"] = kafka.Parameters.ElasticSearchMaxRetries.Int()
+	m["RetryBackoffMS"] = kafka.Parameters.ElasticSearchRetryBackoffMS.Int()
+	m["BatchSize"] = kafka.Parameters.ElasticSearchBatchSize.Int()
+	m["MaxBufferedRecords"] = kafka.Parameters.ElasticSearchMaxBufferedRecords.Int()
+	m["LingerMS"] = kafka.Parameters.ElasticSearchLingerMS.Int()
 
 	return kafka.newConnectorResource(
-		ESConnectorName(config.ResourceNamePrefix.String(), pipelineVersion),
+		kafka.ESConnectorName(pipelineVersion),
 		"io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
 		m,
-		config.ElasticSearchConnectorTemplate.String())
+		kafka.Parameters.ElasticSearchConnectorTemplate.String())
 }
 
-func (kafka *Kafka) newDebeziumConnectorResource(
-	config config.Parameters,
-	pipelineVersion string) (*unstructured.Unstructured, error) {
+func (kafka *Kafka) newDebeziumConnectorResource(pipelineVersion string) (*unstructured.Unstructured, error) {
 
 	m := make(map[string]interface{})
-	m["DBPort"] = config.HBIDBPort.String()
-	m["DBHostname"] = config.HBIDBHost.String()
-	m["DBName"] = config.HBIDBName.String()
-	m["DBUser"] = config.HBIDBUser.String()
-	m["DBPassword"] = config.HBIDBPassword.String()
+	m["DBPort"] = kafka.Parameters.HBIDBPort.String()
+	m["DBHostname"] = kafka.Parameters.HBIDBHost.String()
+	m["DBName"] = kafka.Parameters.HBIDBName.String()
+	m["DBUser"] = kafka.Parameters.HBIDBUser.String()
+	m["DBPassword"] = kafka.Parameters.HBIDBPassword.String()
 	m["Version"] = pipelineVersion
-	m["TasksMax"] = config.DebeziumTasksMax.Int()
-	m["MaxBatchSize"] = config.DebeziumMaxBatchSize.Int()
-	m["QueueSize"] = config.DebeziumQueueSize.Int()
-	m["PollIntervalMS"] = config.DebeziumPollIntervalMS.Int()
-	m["ErrorsLogEnable"] = config.DebeziumErrorsLogEnable.Bool()
+	m["TasksMax"] = kafka.Parameters.DebeziumTasksMax.Int()
+	m["MaxBatchSize"] = kafka.Parameters.DebeziumMaxBatchSize.Int()
+	m["QueueSize"] = kafka.Parameters.DebeziumQueueSize.Int()
+	m["PollIntervalMS"] = kafka.Parameters.DebeziumPollIntervalMS.Int()
+	m["ErrorsLogEnable"] = kafka.Parameters.DebeziumErrorsLogEnable.Bool()
 
 	return kafka.newConnectorResource(
-		DebeziumConnectorName(config.ResourceNamePrefix.String(), pipelineVersion),
+		kafka.DebeziumConnectorName(pipelineVersion),
 		"io.debezium.connector.postgresql.PostgresConnector",
 		m,
-		config.DebeziumTemplate.String())
+		kafka.Parameters.DebeziumTemplate.String())
 }
 
 func (kafka *Kafka) newConnectorResource(
@@ -149,11 +144,11 @@ func GetConnector(c client.Client, name string, namespace string) (*unstructured
 	return connector, err
 }
 
-func GetConnectorsForOwner(c client.Client, namespace string, owner string) (*unstructured.UnstructuredList, error) {
+func (kafka *Kafka) ListConnectors() (*unstructured.UnstructuredList, error) {
 	connectors := &unstructured.UnstructuredList{}
 	connectors.SetGroupVersionKind(connectorsGVK)
 
-	err := c.List(context.TODO(), connectors, client.InNamespace(namespace), client.MatchingLabels{LabelOwner: owner})
+	err := kafka.Client.List(context.TODO(), connectors, client.InNamespace(kafka.Namespace))
 	return connectors, err
 }
 
@@ -202,11 +197,10 @@ func IsFailed(connector *unstructured.Unstructured) bool {
 }
 
 func (kafka *Kafka) CreateESConnector(
-	config config.Parameters,
 	pipelineVersion string,
 	dryRun bool) (*unstructured.Unstructured, error) {
 
-	connector, err := kafka.newESConnectorResource(config, pipelineVersion)
+	connector, err := kafka.newESConnectorResource(pipelineVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -229,11 +223,10 @@ func (kafka *Kafka) CreateESConnector(
 }
 
 func (kafka *Kafka) CreateDebeziumConnector(
-	config config.Parameters,
 	pipelineVersion string,
 	dryRun bool) (*unstructured.Unstructured, error) {
 
-	connector, err := kafka.newDebeziumConnectorResource(config, pipelineVersion)
+	connector, err := kafka.newDebeziumConnectorResource(pipelineVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -255,10 +248,10 @@ func (kafka *Kafka) CreateDebeziumConnector(
 	return connector, kafka.Client.Create(context.TODO(), connector)
 }
 
-func DebeziumConnectorName(name string, pipelineVersion string) string {
-	return fmt.Sprintf("%s.db.%s", name, pipelineVersion)
+func (kafka *Kafka) DebeziumConnectorName(pipelineVersion string) string {
+	return fmt.Sprintf("%s.db.%s", kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
 }
 
-func ESConnectorName(name string, pipelineVersion string) string {
-	return fmt.Sprintf("%s.es.%s", name, pipelineVersion)
+func (kafka *Kafka) ESConnectorName(pipelineVersion string) string {
+	return fmt.Sprintf("%s.es.%s", kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
 }

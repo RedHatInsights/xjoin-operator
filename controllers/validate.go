@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"math"
@@ -16,7 +15,7 @@ func (i *ReconcileIteration) validate() (isValid bool, mismatchRatio float64, mi
 		return false, -1, -1, -1, err
 	}
 
-	esCount, err := i.ESClient.CountIndex(elasticsearch.ESIndexName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion))
+	esCount, err := i.ESClient.CountIndex(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
 	if err != nil {
 		return false, -1, -1, -1, err
 	}
@@ -43,7 +42,7 @@ func (i *ReconcileIteration) validate() (isValid bool, mismatchRatio float64, mi
 		return false, -1, -1, -1, err
 	}
 
-	esIds, err := i.ESClient.GetHostIDs(elasticsearch.ESIndexName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion))
+	esIds, err := i.ESClient.GetHostIDs(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
 	if err != nil {
 		return false, -1, -1, -1, err
 	}
