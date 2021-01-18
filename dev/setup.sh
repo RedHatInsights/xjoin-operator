@@ -32,22 +32,18 @@ oc apply -f cluster-operator/032-RoleBinding-strimzi-cluster-operator-topic-oper
 oc apply -f cluster-operator/031-RoleBinding-strimzi-cluster-operator-entity-operator-delegation.yaml -n $PROJECT_NAME
 
 oc create -n $PROJECT_NAME -f kafka-cluster.yml
-oc wait kafka/xjoin-kafka-cluster --for=condition=Ready --timeout=300s -n $PROJECT_NAME
+echo "Waiting for kafka cluster to be ready"
+oc wait kafka/xjoin-kafka-cluster --for=condition=Ready --timeout=150s -n $PROJECT_NAME
 oc apply -f kafka-connect.yaml -n $PROJECT_NAME
-
-echo "After apply kafka-connect"
-
 sleep 10
-
 oc secrets link xjoin-kafka-connect-strimzi-connect $PULL_SECRET --for=pull -n $PROJECT_NAME
-echo "After secret link xjoin-kafka-connect-strimzi-connect"
 sleep 5
 oc get KafkaConnect
 oc scale --replicas=1 kafkaconnect/xjoin-kafka-connect-strimzi
 sleep 5
-echo "After scale"
-oc wait kafkaconnect/xjoin-kafka-connect-strimzi --for=condition=Ready --timeout=300s -n $PROJECT_NAME
-echo "after wait"
+echo "Waiting for connect to be ready"
+oc wait kafkaconnect/xjoin-kafka-connect-strimzi --for=condition=Ready --timeout=150s -n $PROJECT_NAME
+oc apply -f kafka-connect-topics.yaml
 
 sleep 10
 
@@ -56,13 +52,16 @@ oc project $PROJECT_NAME
 #inventory
 oc apply -f inventory-db.secret.yml -n $PROJECT_NAME
 oc apply -f inventory-db.yaml -n $PROJECT_NAME
-oc wait deployment/inventory-db --for=condition=Available --timeout=300s -n $PROJECT_NAME
+echo "Waiting for inventory db to be ready"
+oc wait deployment/inventory-db --for=condition=Available --timeout=150s -n $PROJECT_NAME
 
 oc apply -f inventory-mq.yml -n $PROJECT_NAME
 oc apply -f inventory-api.yml -n $PROJECT_NAME
 
-oc wait dc/inventory-mq-pmin --for=condition=Available --timeout=300s -n $PROJECT_NAME
-oc wait deployment/insights-inventory --for=condition=Available --timeout=300s -n $PROJECT_NAME
+echo "Waiting for inventory-mq-pmin to be ready"
+oc wait dc/inventory-mq-pmin --for=condition=Available --timeout=150s -n $PROJECT_NAME
+echo "Waiting for insights-inventory to be ready"
+oc wait deployment/insights-inventory --for=condition=Available --timeout=150s -n $PROJECT_NAME
 
 pkill -f "oc port-forward svc/inventory-db"
 oc port-forward svc/inventory-db 5432:5432 -n xjoin-operator-project &
@@ -73,7 +72,8 @@ psql -U postgres -h inventory-db -p 5432 -d insights -c "ALTER SYSTEM SET wal_le
 oc scale --replicas=0 deployment/inventory-db
 sleep 1
 oc scale --replicas=1 deployment/inventory-db
-oc wait deployment/inventory-db --for=condition=Available --timeout=300s -n $PROJECT_NAME
+echo "Waiting for inventory-db to be ready"
+oc wait deployment/inventory-db --for=condition=Available --timeout=150s -n $PROJECT_NAME
 
 #elasticsearch
 oc apply -f elasticsearch.secret.yml -n $PROJECT_NAME
@@ -82,7 +82,8 @@ sleep 10
 
 oc create -n $PROJECT_NAME -f elasticsearch.yml
 sleep 60
-oc wait pods/xjoin-elasticsearch-es-default-0 --for=condition=Ready --timeout=300s -n $PROJECT_NAME
+echo "Waiting for xjoin-elasticsearch to be ready"
+oc wait pods/xjoin-elasticsearch-es-default-0 --for=condition=Ready --timeout=150s -n $PROJECT_NAME
 
 ES_PASSWORD=$(oc get secret xjoin-elasticsearch-es-elastic-user \
             -n xjoin-operator-project \
