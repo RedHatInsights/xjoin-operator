@@ -46,6 +46,14 @@ Modifications will be necessary to support M3 (joining data between applications
     dev/forward-ports.sh
     ```
    
+### Reset the development environment
+The Openshift environment can be deleted with this script:
+```
+dev/teardown.sh
+```
+
+Afterwards, the environment can be setup again without restarting CRC via `dev/setup.sh <pull-secret-name> <pull-secret-file-location>`.
+   
 ### Running the operator locally
 
 With the cluster set up it is now possible to install manifests and run the operator locally.

@@ -1,0 +1,38 @@
+---
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaTopic
+metadata:
+  labels:
+    strimzi.io/cluster: xjoin-kafka-cluster
+  name: connect-cluster-offsets
+  namespace: xjoin-operator-project
+spec:
+  partitions: 1
+  replicas: 1
+  topicName: connect-cluster-offsets
+
+---
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaTopic
+metadata:
+  labels:
+    strimzi.io/cluster: xjoin-kafka-cluster
+  name: connect-cluster-configs
+  namespace: xjoin-operator-project
+spec:
+  partitions: 1
+  replicas: 1
+  topicName: connect-cluster-configs
+
+---
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaTopic
+metadata:
+  labels:
+    strimzi.io/cluster: xjoin-kafka-cluster
+  name: connect-cluster-status
+  namespace: xjoin-operator-project
+spec:
+  partitions: 1
+  replicas: 1
+  topicName: connect-cluster-status
