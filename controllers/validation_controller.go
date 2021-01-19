@@ -38,7 +38,7 @@ func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request)
 		return i.getValidationInterval()
 	}
 
-	i.InventoryDb = database.NewBaseDatabase(database.DBParams{
+	i.InventoryDb = database.NewDatabase(database.DBParams{
 		Host:     i.parameters.HBIDBHost.String(),
 		User:     i.parameters.HBIDBUser.String(),
 		Name:     i.parameters.HBIDBName.String(),

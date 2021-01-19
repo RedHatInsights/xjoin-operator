@@ -1,0 +1,74 @@
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    app: cp-kafkacat
+  name: cp-kafkacat
+spec:
+  lookupPolicy:
+    local: false
+  tags:
+    - from:
+        kind: DockerImage
+        name: confluentinc/cp-kafkacat
+      name: latest
+      referencePolicy:
+        type: Source
+
+---
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  labels:
+    app: cp-kafkacat
+  name: cp-kafkacat
+spec:
+  replicas: 1
+  selector:
+    app: cp-kafkacat
+    deploymentconfig: cp-kafkacat
+  strategy:
+    activeDeadlineSeconds: 21600
+    resources: {}
+    rollingParams:
+      intervalSeconds: 1
+      maxSurge: 25%
+      maxUnavailable: 25%
+      timeoutSeconds: 600
+      updatePeriodSeconds: 1
+    type: Rolling
+  template:
+    metadata:
+      labels:
+        app: cp-kafkacat
+        deploymentconfig: cp-kafkacat
+    spec:
+      containers:
+        - command:
+            - /bin/bash
+            - '-c'
+            - sleep 9999999
+          image: >-
+            confluentinc/cp-kafkacat@sha256:0ebe289e76ae6d2bb0cf16d06ed1ffbd6ebd4724727747614cb715403baad1b9
+          imagePullPolicy: Always
+          name: cp-kafkacat
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+  test: false
+  triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+          - cp-kafkacat
+        from:
+          kind: ImageStreamTag
+          name: 'cp-kafkacat:latest'
+      type: ImageChange

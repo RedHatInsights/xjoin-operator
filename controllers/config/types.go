@@ -15,6 +15,7 @@ var secretTypes = secrets{
 type Parameters struct {
 	ResourceNamePrefix                Parameter
 	ConnectCluster                    Parameter
+	ConnectClusterNamespace           Parameter
 	KafkaCluster                      Parameter
 	ConfigMapVersion                  Parameter
 	StandardInterval                  Parameter
@@ -61,13 +62,19 @@ func NewXJoinConfiguration() Parameters {
 		},
 		ResourceNamePrefix: Parameter{
 			SpecKey:      "ResourceNamePrefix",
-			DefaultValue: "xjoin.inventory.hosts",
+			DefaultValue: "xjoin.inventory",
 			Type:         reflect.String,
 		},
 		ConnectCluster: Parameter{
 			SpecKey:      "ConnectCluster",
 			ConfigMapKey: "connect.cluster",
 			DefaultValue: "xjoin-kafka-connect-strimzi",
+			Type:         reflect.String,
+		},
+		ConnectClusterNamespace: Parameter{
+			SpecKey:      "ConnectClusterNamespace",
+			ConfigMapKey: "connect.cluster.namespace",
+			DefaultValue: "xjoin-operator-project",
 			Type:         reflect.String,
 		},
 		HBIDBSecretName: Parameter{
@@ -134,7 +141,7 @@ func NewXJoinConfiguration() Parameters {
 				"connection.username": "{{.ElasticSearchUsername}}",
 				"connection.password": "{{.ElasticSearchPassword}}",
 				"type.name": "_doc",
-				"transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString, renameTopic",
+				"transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString",
 				"transforms.valueToKey.type":"org.apache.kafka.connect.transforms.ValueToKey",
 				"transforms.valueToKey.fields":"id",
 				"transforms.extractKey.type":"org.apache.kafka.connect.transforms.ExtractField$Key",
@@ -144,9 +151,6 @@ func NewXJoinConfiguration() Parameters {
 				"transforms.deleteIf.type": "com.redhat.insights.deleteifsmt.DeleteIf$Value",
 				"transforms.deleteIf.field": "__deleted",
 				"transforms.deleteIf.value": "true",
-				"transforms.renameTopic.type":"org.apache.kafka.connect.transforms.RegexRouter",
-				"transforms.renameTopic.regex":"xjoin\\.inventory\\.{{.Version}}.public\\.hosts",
-				"transforms.renameTopic.replacement":"xjoin.inventory.hosts.{{.Version}}",
 				"transforms.flattenList.type": "com.redhat.insights.flattenlistsmt.FlattenList$Value",
 				"transforms.flattenList.sourceField": "tags",
 				"transforms.flattenList.outputField": "tags_structured",
@@ -193,7 +197,7 @@ func NewXJoinConfiguration() Parameters {
 		ElasticSearchTasksMax: Parameter{
 			Type:         reflect.Int,
 			ConfigMapKey: "elasticsearch.connector.tasks.max",
-			DefaultValue: 50,
+			DefaultValue: 1,
 		},
 		ElasticSearchMaxInFlightRequests: Parameter{
 			Type:         reflect.Int,
@@ -240,7 +244,7 @@ func NewXJoinConfiguration() Parameters {
 				"database.user": "{{.DBUser}}",
 				"database.password": "{{.DBPassword}}",
 				"database.dbname": "{{.DBName}}",
-				"database.server.name": "xjoin.inventory.{{.Version}}",
+				"database.server.name": "{{.ResourceNamePrefix}}.{{.Version}}",
 				"table.whitelist": "public.hosts",
 				"plugin.name": "pgoutput",
 				"transforms": "unwrap",
@@ -248,7 +252,7 @@ func NewXJoinConfiguration() Parameters {
 				"transforms.unwrap.delete.handling.mode": "rewrite",
 				"errors.log.enable": {{.ErrorsLogEnable}},
 				"errors.log.include.messages": true,
-				"slot.name": "xjoin_inventory_{{.Version}}",
+				"slot.name": "{{.ReplicationSlotName}}",
 				"max.queue.size": {{.QueueSize}},
 				"max.batch.size": {{.MaxBatchSize}},
 				"poll.interval.ms": {{.PollIntervalMS}}

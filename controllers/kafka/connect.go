@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"strings"
 	"text/template"
 
@@ -12,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
@@ -34,12 +34,12 @@ var connectorsGVK = schema.GroupVersionKind{
 	Version: "v1alpha1",
 }
 
-func (kafka *Kafka) CheckIfConnectorExists(c client.Client, name string, namespace string) (bool, error) {
+func (kafka *Kafka) CheckIfConnectorExists(name string) (bool, error) {
 	if name == "" {
 		return false, nil
 	}
 
-	if _, err := GetConnector(c, name, namespace); err != nil && errors.IsNotFound(err) {
+	if _, err := kafka.GetConnector(name); err != nil && errors.IsNotFound(err) {
 		return false, nil
 	} else if err == nil {
 		return true, nil
@@ -85,6 +85,8 @@ func (kafka *Kafka) newDebeziumConnectorResource(pipelineVersion string) (*unstr
 	m["QueueSize"] = kafka.Parameters.DebeziumQueueSize.Int()
 	m["PollIntervalMS"] = kafka.Parameters.DebeziumPollIntervalMS.Int()
 	m["ErrorsLogEnable"] = kafka.Parameters.DebeziumErrorsLogEnable.Bool()
+	m["ResourceNamePrefix"] = kafka.Parameters.ResourceNamePrefix.String()
+	m["ReplicationSlotName"] = database.ReplicationSlotName(kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
 
 	return kafka.newConnectorResource(
 		kafka.DebeziumConnectorName(pipelineVersion),
@@ -122,7 +124,7 @@ func (kafka *Kafka) newConnectorResource(
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      name,
-			"namespace": kafka.Namespace,
+			"namespace": kafka.Parameters.ConnectClusterNamespace.String(),
 			"labels": map[string]interface{}{
 				LabelStrimziCluster: kafka.Parameters.ConnectCluster.String(),
 			},
@@ -138,17 +140,49 @@ func (kafka *Kafka) newConnectorResource(
 	return u, nil
 }
 
-func GetConnector(c client.Client, name string, namespace string) (*unstructured.Unstructured, error) {
+func (kafka *Kafka) GetConnector(name string) (*unstructured.Unstructured, error) {
 	connector := EmptyConnector()
-	err := c.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: namespace}, connector)
+	err := kafka.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: kafka.Parameters.ConnectClusterNamespace.String()}, connector)
 	return connector, err
+}
+
+func (kafka *Kafka) DeleteConnectorsForPipelineVersion(pipelineVersion string) error {
+	connectorsToDelete, err := kafka.ListConnectorNamesForPipelineVersion(pipelineVersion)
+	if err != nil {
+		return err
+	}
+
+	for _, connector := range connectorsToDelete {
+		err = kafka.DeleteConnector(connector)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (kafka *Kafka) ListConnectorNamesForPipelineVersion(pipelineVersion string) ([]string, error) {
+	connectors, err := kafka.ListConnectors()
+	if err != nil {
+		return nil, err
+	}
+
+	var names []string
+	for _, connector := range connectors.Items {
+		if strings.Index(connector.GetName(), pipelineVersion) != -1 {
+			names = append(names, connector.GetName())
+		}
+	}
+
+	return names, err
 }
 
 func (kafka *Kafka) ListConnectors() (*unstructured.UnstructuredList, error) {
 	connectors := &unstructured.UnstructuredList{}
 	connectors.SetGroupVersionKind(connectorsGVK)
 
-	err := kafka.Client.List(context.TODO(), connectors, client.InNamespace(kafka.Namespace))
+	err := kafka.Client.List(context.TODO(), connectors, client.InNamespace(kafka.Parameters.ConnectClusterNamespace.String()))
 	return connectors, err
 }
 
@@ -161,13 +195,13 @@ func EmptyConnector() *unstructured.Unstructured {
 /*
  * Delete the given connector. This operation is idempotent i.e. it silently ignores if the connector does not exist.
  */
-func DeleteConnector(c client.Client, name string, namespace string) error {
+func (kafka *Kafka) DeleteConnector(name string) error {
 	connector := &unstructured.Unstructured{}
 	connector.SetName(name)
-	connector.SetNamespace(namespace)
+	connector.SetNamespace(kafka.Parameters.ConnectClusterNamespace.String())
 	connector.SetGroupVersionKind(connectorGVK)
 
-	if err := c.Delete(context.TODO(), connector); err != nil && !errors.IsNotFound(err) {
+	if err := kafka.Client.Delete(context.TODO(), connector); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
@@ -205,15 +239,17 @@ func (kafka *Kafka) CreateESConnector(
 		return nil, err
 	}
 
-	if kafka.Owner != nil {
-		if err := controllerutil.SetControllerReference(kafka.Owner, connector, kafka.OwnerScheme); err != nil {
-			return nil, err
-		}
+	/*
+		if kafka.Owner != nil {
+			if err := controllerutil.SetControllerReference(kafka.Owner, connector, kafka.OwnerScheme); err != nil {
+				return nil, err
+			}
 
-		labels := connector.GetLabels()
-		labels[LabelOwner] = string(kafka.Owner.GetUID())
-		connector.SetLabels(labels)
-	}
+			labels := connector.GetLabels()
+			labels[LabelOwner] = string(kafka.Owner.GetUID())
+			connector.SetLabels(labels)
+		}
+	*/
 
 	if dryRun {
 		return connector, nil
@@ -231,16 +267,17 @@ func (kafka *Kafka) CreateDebeziumConnector(
 		return nil, err
 	}
 
-	if kafka.Owner != nil {
-		if err := controllerutil.SetControllerReference(kafka.Owner, connector, kafka.OwnerScheme); err != nil {
-			return nil, err
+	/*
+		if kafka.Owner != nil {
+			if err := controllerutil.SetControllerReference(kafka.Owner, connector, kafka.OwnerScheme); err != nil {
+				return nil, err
+			}
+
+			labels := connector.GetLabels()
+			labels[LabelOwner] = string(kafka.Owner.GetUID())
+			connector.SetLabels(labels)
 		}
-
-		labels := connector.GetLabels()
-		labels[LabelOwner] = string(kafka.Owner.GetUID())
-		connector.SetLabels(labels)
-	}
-
+	*/
 	if dryRun {
 		return connector, nil
 	}

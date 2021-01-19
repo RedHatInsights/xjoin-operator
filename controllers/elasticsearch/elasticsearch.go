@@ -49,13 +49,11 @@ func (es *ElasticSearch) IndexExists(pipelineVersion string) (bool, error) {
 		return false, err
 	}
 
-	if res.StatusCode == 404 {
-		return false, nil
-	}
-
-	err = parseResponse(res)
-	if err != nil {
+	responseCode, err := parseResponse(res)
+	if err != nil && responseCode != 404 {
 		return false, err
+	} else if responseCode == 404 {
+		return false, nil
 	}
 
 	return true, nil
@@ -66,7 +64,9 @@ func (es *ElasticSearch) CreateIndex(pipelineVersion string) error {
 	if err != nil {
 		return err
 	}
-	return parseResponse(res)
+
+	_, err = parseResponse(res)
+	return err
 }
 
 func (es *ElasticSearch) DeleteIndexByFullName(index string) error {
@@ -74,7 +74,13 @@ func (es *ElasticSearch) DeleteIndexByFullName(index string) error {
 	if err != nil {
 		return err
 	}
-	return parseResponse(res)
+
+	responseCode, err := parseResponse(res)
+	if err != nil && responseCode != 404 {
+		return err
+	}
+
+	return nil
 }
 
 func (es *ElasticSearch) DeleteIndex(version string) error {
@@ -118,7 +124,8 @@ func (es *ElasticSearch) UpdateAliasByFullIndexName(alias string, index string) 
 		return err
 	}
 
-	return parseResponse(res)
+	_, err = parseResponse(res)
+	return err
 }
 
 func (es *ElasticSearch) UpdateAlias(alias string, version string) error {
@@ -262,7 +269,7 @@ func (es *ElasticSearch) GetHostIDs(index string) ([]string, error) {
 }
 
 func (es *ElasticSearch) ESIndexName(pipelineVersion string) string {
-	return es.resourceNamePrefix + "." + pipelineVersion
+	return es.resourceNamePrefix + "." + pipelineVersion + ".public.hosts"
 }
 
 func parseSearchResponse(scrollRes *esapi.Response) ([]string, SearchIDsResponse, error) {
@@ -282,18 +289,18 @@ func parseSearchResponse(scrollRes *esapi.Response) ([]string, SearchIDsResponse
 	return ids, searchJSON, nil
 }
 
-func parseResponse(res *esapi.Response) error {
+func parseResponse(res *esapi.Response) (int, error) {
 	_, err := io.Copy(ioutil.Discard, res.Body)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	//TODO: handle error here
 	defer res.Body.Close()
 
 	if res.IsError() {
-		return errors.New(
+		return res.StatusCode, errors.New(
 			fmt.Sprintf("Elasticsearch API error: %s, %s", strconv.Itoa(res.StatusCode), res.Body))
 	}
 
-	return nil
+	return res.StatusCode, nil
 }

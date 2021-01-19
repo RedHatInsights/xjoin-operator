@@ -4,6 +4,7 @@ import (
 	"context"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	. "github.com/redhatinsights/xjoin-operator/controllers/config"
+	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -38,14 +39,14 @@ func newXJoinReconciler() *XJoinPipelineReconciler {
 
 func getParameters() Parameters {
 	options := viper.New()
-	options.SetDefault("ElasticSearchURL", "http://localhost:9200")
+	options.SetDefault("ElasticSearchURL", "http://xjoin-elasticsearch-es-http:9200")
 	options.SetDefault("ElasticSearchUsername", "test")
 	options.SetDefault("ElasticSearchPassword", "test1337")
-	options.SetDefault("HBIDBHost", "localhost")
+	options.SetDefault("HBIDBHost", "inventory-db")
 	options.SetDefault("HBIDBPort", "5432")
-	options.SetDefault("HBIDBUser", "postgres")
-	options.SetDefault("HBIDBPassword", "postgres")
-	options.SetDefault("HBIDBName", "test")
+	options.SetDefault("HBIDBUser", "insights")
+	options.SetDefault("HBIDBPassword", "insights")
+	options.SetDefault("HBIDBName", "insights")
 	options.SetDefault("ResourceNamePrefix", resourceNamePrefix)
 	options.AutomaticEnv()
 
@@ -72,11 +73,11 @@ func getParameters() Parameters {
 	return xjoinConfiguration
 }
 
-func createConfigMap(namespace string, name string, data map[string]string) {
+func (i *TestIteration) CreateConfigMap(name string, data map[string]string) {
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: i.NamespacedName.Namespace,
 		},
 		Data: data,
 	}
@@ -85,17 +86,17 @@ func createConfigMap(namespace string, name string, data map[string]string) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func createESSecret(namespace string, name string, params Parameters) {
+func (i *TestIteration) CreateESSecret(name string) {
 	secret := &corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: i.NamespacedName.Namespace,
 		},
 		Data: map[string][]byte{
-			"url":      []byte(params.ElasticSearchURL.String()),
-			"username": []byte(params.ElasticSearchUsername.String()),
-			"password": []byte(params.ElasticSearchPassword.String()),
+			"url":      []byte(i.Parameters.ElasticSearchURL.String()),
+			"username": []byte(i.Parameters.ElasticSearchUsername.String()),
+			"password": []byte(i.Parameters.ElasticSearchPassword.String()),
 		},
 	}
 
@@ -103,19 +104,19 @@ func createESSecret(namespace string, name string, params Parameters) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func createDbSecret(namespace string, name string, params Parameters) {
+func (i *TestIteration) CreateDbSecret(name string) {
 	secret := &corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: i.NamespacedName.Namespace,
 		},
 		Data: map[string][]byte{
-			"db.host":     []byte(params.HBIDBHost.String()),
-			"db.port":     []byte(params.HBIDBPort.String()),
-			"db.name":     []byte(params.HBIDBName.String()),
-			"db.user":     []byte(params.HBIDBUser.String()),
-			"db.password": []byte(params.HBIDBPassword.String()),
+			"db.host":     []byte(i.Parameters.HBIDBHost.String()),
+			"db.port":     []byte(i.Parameters.HBIDBPort.String()),
+			"db.name":     []byte(i.Parameters.HBIDBName.String()),
+			"db.user":     []byte(i.Parameters.HBIDBUser.String()),
+			"db.password": []byte(i.Parameters.HBIDBPassword.String()),
 		},
 	}
 
@@ -123,7 +124,7 @@ func createDbSecret(namespace string, name string, params Parameters) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func createPipeline(namespacedName types.NamespacedName, specs ...*xjoin.XJoinPipelineSpec) {
+func (i *TestIteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) {
 	var (
 		ctx  = context.Background()
 		spec *xjoin.XJoinPipelineSpec
@@ -133,6 +134,7 @@ func createPipeline(namespacedName types.NamespacedName, specs ...*xjoin.XJoinPi
 
 	if len(specs) == 1 {
 		spec = specs[0]
+		specs[0].ResourceNamePrefix = &resourceNamePrefix
 	} else {
 		spec = &xjoin.XJoinPipelineSpec{
 			ResourceNamePrefix: &resourceNamePrefix,
@@ -141,18 +143,19 @@ func createPipeline(namespacedName types.NamespacedName, specs ...*xjoin.XJoinPi
 
 	pipeline := xjoin.XJoinPipeline{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      namespacedName.Name,
-			Namespace: namespacedName.Namespace,
+			Name:      i.NamespacedName.Name,
+			Namespace: i.NamespacedName.Namespace,
 		},
 		Spec: *spec,
 	}
 
 	err := test.Client.Create(ctx, &pipeline)
 	Expect(err).ToNot(HaveOccurred())
+	i.Pipelines = append(i.Pipelines, &pipeline)
 }
 
-func getPipeline(namespacedName types.NamespacedName) (pipeline *xjoin.XJoinPipeline) {
-	pipeline, err := utils.FetchXJoinPipeline(test.Client, namespacedName)
+func (i *TestIteration) GetPipeline() (pipeline *xjoin.XJoinPipeline) {
+	pipeline, err := utils.FetchXJoinPipeline(test.Client, i.NamespacedName)
 	Expect(err).ToNot(HaveOccurred())
 	return
 }
@@ -173,54 +176,76 @@ func strToInt64(str string) int64 {
 	return i
 }
 
-var _ = Describe("Pipeline operations", func() {
-	var (
-		namespacedName types.NamespacedName
-		r              *XJoinPipelineReconciler
-		esClient       *elasticsearch.ElasticSearch
-		kafkaClient    kafka.Kafka
-		parameters     Parameters
-	)
+type TestIteration struct {
+	NamespacedName types.NamespacedName
+	Reconciler     *XJoinPipelineReconciler
+	EsClient       *elasticsearch.ElasticSearch
+	KafkaClient    kafka.Kafka
+	Parameters     Parameters
+	DbClient       *database.Database
+	Pipelines      []*xjoin.XJoinPipeline
+}
 
-	var reconcile = func() (result ctrl.Result) {
-		result, err := r.Reconcile(ctrl.Request{NamespacedName: namespacedName})
-		Expect(err).ToNot(HaveOccurred())
-		Expect(result.Requeue).To(BeFalse())
-		return
-	}
+func NewTestIteration() *TestIteration {
+	testIteration := TestIteration{}
+	return &testIteration
+}
+
+func (i *TestIteration) Reconcile() (result ctrl.Result) {
+	result, err := i.Reconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(result.Requeue).To(BeFalse())
+	return
+}
+
+var _ = Describe("Pipeline operations", func() {
+	var i *TestIteration
 
 	BeforeEach(func() {
-		namespacedName = types.NamespacedName{
+		i = NewTestIteration()
+
+		i.NamespacedName = types.NamespacedName{
 			Name:      "test-pipeline-01",
-			Namespace: test.UniqueNamespace(),
+			Namespace: test.UniqueNamespace(resourceNamePrefix),
 		}
 
-		r = newXJoinReconciler()
+		i.Reconciler = newXJoinReconciler()
 
 		es, err := elasticsearch.NewElasticSearch(
-			"http://localhost:9200", "xjoin", "xjoin1337", resourceNamePrefix)
-		esClient = es
+			"http://xjoin-elasticsearch-es-http:9200", "xjoin", "xjoin1337", resourceNamePrefix)
+		i.EsClient = es
 		Expect(err).ToNot(HaveOccurred())
 
-		parameters = getParameters()
-		createDbSecret(namespacedName.Namespace, "host-inventory-db", parameters)
-		createESSecret(namespacedName.Namespace, "xjoin-elasticsearch", parameters)
+		i.Parameters = getParameters()
+		i.CreateDbSecret("host-inventory-db")
+		i.CreateESSecret("xjoin-elasticsearch")
 
-		kafkaClient = kafka.Kafka{
-			Namespace:   namespacedName.Namespace,
+		i.KafkaClient = kafka.Kafka{
+			Namespace:   i.NamespacedName.Namespace,
 			Owner:       nil,
-			OwnerScheme: r.Scheme,
-			Client:      r.Client,
-			Parameters:  parameters,
+			OwnerScheme: i.Reconciler.Scheme,
+			Client:      i.Reconciler.Client,
+			Parameters:  i.Parameters,
 		}
+
+		i.DbClient = database.NewDatabase(database.DBParams{
+			Host:     i.Parameters.HBIDBHost.String(),
+			Port:     i.Parameters.HBIDBPort.String(),
+			User:     i.Parameters.HBIDBUser.String(),
+			Password: i.Parameters.HBIDBPassword.String(),
+			Name:     i.Parameters.HBIDBName.String(),
+		})
+
+		err = i.DbClient.Connect()
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		//Delete any leftover ES indices
-		indices, err := esClient.ListIndices()
+		indices, err := i.EsClient.ListIndices()
 		Expect(err).ToNot(HaveOccurred())
 		for _, index := range indices {
-			err = esClient.DeleteIndexByFullName(index)
+			err = i.EsClient.DeleteIndexByFullName(index)
 			Expect(err).ToNot(HaveOccurred())
 		}
 
@@ -228,33 +253,53 @@ var _ = Describe("Pipeline operations", func() {
 		projects.SetKind("Namespace")
 		projects.SetAPIVersion("v1")
 
-		err = r.Client.List(context.TODO(), projects)
+		err = i.Reconciler.Client.List(context.TODO(), projects)
 		Expect(err).ToNot(HaveOccurred())
 
+		//remove finalizers from leftover pipelines so the project can be deleted
+		for _, p := range i.Pipelines {
+			pipeline, err :=
+				utils.FetchXJoinPipeline(test.Client, types.NamespacedName{Name: p.Name, Namespace: p.Namespace})
+			Expect(err).ToNot(HaveOccurred())
+			err = i.KafkaClient.DeleteConnectorsForPipelineVersion(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
+			err = i.DbClient.RemoveReplicationSlotsForPipelineVersion(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
+			err = i.EsClient.DeleteIndex(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
+			if pipeline.DeletionTimestamp == nil {
+				pipeline.ObjectMeta.Finalizers = nil
+				err = i.Reconciler.Client.Update(context.Background(), pipeline)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		}
+
+		//delete leftover projects
 		for _, p := range projects.Items {
-			if strings.Index(p.GetName(), resourceNamePrefix) == 0 {
+			if strings.Index(p.GetName(), resourceNamePrefix) == 0 && p.GetDeletionTimestamp() == nil {
 				project := &unstructured.Unstructured{}
 				project.SetName(p.GetName())
 				project.SetNamespace(p.GetNamespace())
 				project.SetGroupVersionKind(p.GroupVersionKind())
-				err = r.Client.Delete(context.TODO(), project)
+				err = i.Reconciler.Client.Delete(context.TODO(), project)
 				Expect(err).ToNot(HaveOccurred())
+				err = i.KafkaClient.DeleteConnectorsForPipelineVersion("1")
 			}
 		}
 	})
 
 	Describe("New -> InitialSync", func() {
 		It("Creates a connector, ES Index, and topic for a new pipeline", func() {
-			createPipeline(namespacedName)
-			reconcile()
+			i.CreatePipeline()
+			i.Reconcile()
 
-			pipeline := getPipeline(namespacedName)
+			pipeline := i.GetPipeline()
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
 			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
 
-			dbConnector, err := kafka.GetConnector(
-				test.Client, kafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion), namespacedName.Namespace)
+			dbConnector, err := i.KafkaClient.GetConnector(
+				i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(dbConnector.GetLabels()["strimzi.io/cluster"]).To(Equal("xjoin-kafka-connect-strimzi"))
 			Expect(dbConnector.GetName()).To(Equal(resourceNamePrefix + ".db." + pipeline.Status.PipelineVersion))
@@ -262,27 +307,27 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(dbConnectorSpec["class"]).To(Equal("io.debezium.connector.postgresql.PostgresConnector"))
 			Expect(dbConnectorSpec["pause"]).To(Equal(false))
 			dbConnectorConfig := dbConnectorSpec["config"].(map[string]interface{})
-			Expect(dbConnectorConfig["database.dbname"]).To(Equal("test"))
-			Expect(dbConnectorConfig["database.password"]).To(Equal("postgres"))
+			Expect(dbConnectorConfig["database.dbname"]).To(Equal("insights"))
+			Expect(dbConnectorConfig["database.password"]).To(Equal("insights"))
 			Expect(dbConnectorConfig["database.port"]).To(Equal("5432"))
 			Expect(dbConnectorConfig["tasks.max"]).To(Equal("1"))
-			Expect(dbConnectorConfig["database.user"]).To(Equal("postgres"))
+			Expect(dbConnectorConfig["database.user"]).To(Equal("insights"))
 			Expect(dbConnectorConfig["max.batch.size"]).To(Equal(int64(10)))
 			Expect(dbConnectorConfig["plugin.name"]).To(Equal("pgoutput"))
 			Expect(dbConnectorConfig["transforms"]).To(Equal("unwrap"))
 			Expect(dbConnectorConfig["transforms.unwrap.delete.handling.mode"]).To(Equal("rewrite"))
-			Expect(dbConnectorConfig["database.hostname"]).To(Equal("localhost"))
+			Expect(dbConnectorConfig["database.hostname"]).To(Equal("inventory-db"))
 			Expect(dbConnectorConfig["errors.log.include.messages"]).To(Equal(true))
 			Expect(dbConnectorConfig["max.queue.size"]).To(Equal(int64(1000)))
 			Expect(dbConnectorConfig["poll.interval.ms"]).To(Equal(int64(100)))
-			Expect(dbConnectorConfig["slot.name"]).To(Equal("xjoin_inventory_" + pipeline.Status.PipelineVersion))
+			Expect(dbConnectorConfig["slot.name"]).To(Equal(resourceNamePrefix + "_" + pipeline.Status.PipelineVersion))
 			Expect(dbConnectorConfig["table.whitelist"]).To(Equal("public.hosts"))
-			Expect(dbConnectorConfig["database.server.name"]).To(Equal("xjoin.inventory." + pipeline.Status.PipelineVersion))
+			Expect(dbConnectorConfig["database.server.name"]).To(Equal(resourceNamePrefix + "." + pipeline.Status.PipelineVersion))
 			Expect(dbConnectorConfig["errors.log.enable"]).To(Equal(true))
 			Expect(dbConnectorConfig["transforms.unwrap.type"]).To(Equal("io.debezium.transforms.ExtractNewRecordState"))
 
-			esConnector, err := kafka.GetConnector(
-				test.Client, kafkaClient.ESConnectorName(pipeline.Status.PipelineVersion), namespacedName.Namespace)
+			esConnector, err := i.KafkaClient.GetConnector(
+				i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnector.GetLabels()["strimzi.io/cluster"]).To(Equal("xjoin-kafka-connect-strimzi"))
 			Expect(esConnector.GetName()).To(Equal(resourceNamePrefix + ".es." + pipeline.Status.PipelineVersion))
@@ -303,7 +348,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["transforms.renameTopic.type"]).To(Equal("org.apache.kafka.connect.transforms.RegexRouter"))
 			Expect(esConnectorConfig["auto.create.indices.at.start"]).To(Equal(false))
 			Expect(esConnectorConfig["behavior.on.null.values"]).To(Equal("delete"))
-			Expect(esConnectorConfig["connection.url"]).To(Equal("http://localhost:9200"))
+			Expect(esConnectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-http:9200"))
 			Expect(esConnectorConfig["errors.log.enable"]).To(Equal(true))
 			Expect(esConnectorConfig["max.retries"]).To(Equal(int64(8)))
 			Expect(esConnectorConfig["transforms.deleteIf.field"]).To(Equal("__deleted"))
@@ -334,21 +379,21 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["transforms.renameTopic.replacement"]).To(Equal("xjoin.inventory.hosts." + pipeline.Status.PipelineVersion))
 			Expect(esConnectorConfig["max.in.flight.requests"]).To(Equal(int64(1)))
 
-			exists, err := esClient.IndexExists(pipeline.Status.PipelineVersion)
+			exists, err := i.EsClient.IndexExists(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exists).To(BeTrue())
 
-			aliases, err := esClient.GetCurrentIndicesWithAlias(*pipeline.Spec.ResourceNamePrefix)
+			aliases, err := i.EsClient.GetCurrentIndicesWithAlias(*pipeline.Spec.ResourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(aliases).To(BeEmpty())
 
-			kafkaClient.Owner = pipeline
-			topics, err := kafkaClient.ListTopicNames()
-			Expect(topics).To(ContainElement(kafkaClient.TopicName(pipeline.Status.PipelineVersion)))
+			i.KafkaClient.Owner = pipeline
+			topics, err := i.KafkaClient.ListTopicNames()
+			Expect(topics).To(ContainElement(i.KafkaClient.TopicName(pipeline.Status.PipelineVersion)))
 		})
 
 		It("Considers configmap configuration", func() {
-			createPipeline(namespacedName)
+			i.CreatePipeline()
 
 			cm := map[string]string{
 				"connect.cluster":                                     "test.connect.cluster",
@@ -376,12 +421,12 @@ var _ = Describe("Pipeline operations", func() {
 				"init.validation.interval":                            "-18",
 			}
 
-			createConfigMap(namespacedName.Namespace, "xjoin", cm)
-			reconcile()
+			i.CreateConfigMap("xjoin", cm)
+			i.Reconcile()
 
-			pipeline := getPipeline(namespacedName)
-			esConnector, err := kafka.GetConnector(
-				test.Client, kafkaClient.ESConnectorName(pipeline.Status.PipelineVersion), namespacedName.Namespace)
+			pipeline := i.GetPipeline()
+			esConnector, err := i.KafkaClient.GetConnector(
+				i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion))
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnector.GetLabels()["strimzi.io/cluster"]).To(Equal(cm["connect.cluster"]))
@@ -398,8 +443,8 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["max.buffered.records"]).To(Equal(strToInt64(cm["elasticsearch.connector.max.buffered.records"])))
 			Expect(esConnectorConfig["linger.ms"]).To(Equal(strToInt64(cm["elasticsearch.connector.linger.ms"])))
 
-			dbConnector, err := kafka.GetConnector(
-				test.Client, kafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion), namespacedName.Namespace)
+			dbConnector, err := i.KafkaClient.GetConnector(
+				i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(dbConnector.GetLabels()["strimzi.io/cluster"]).To(Equal(cm["connect.cluster"]))
@@ -414,88 +459,106 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Considers db secret name configuration", func() {
-			hbiDBSecret, err := utils.FetchSecret(test.Client, namespacedName.Namespace, parameters.HBIDBSecretName.String())
+			hbiDBSecret, err := utils.FetchSecret(
+				test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			err = test.Client.Delete(context.TODO(), hbiDBSecret)
 			Expect(err).ToNot(HaveOccurred())
 
 			secretName := "test-hbi-db-secret"
-			createDbSecret(namespacedName.Namespace, secretName, parameters)
+			i.CreateDbSecret(secretName)
 
-			createPipeline(namespacedName, &xjoin.XJoinPipelineSpec{HBIDBSecretName: &secretName})
-			reconcile() //this will fail if the secret is missing
+			i.CreatePipeline(&xjoin.XJoinPipelineSpec{HBIDBSecretName: &secretName})
+			i.Reconcile() //this will fail if the secret is missing
 		})
 
 		It("Considers es secret name configuration", func() {
-			elasticSearchSecret, err := utils.FetchSecret(test.Client, namespacedName.Namespace, parameters.ElasticSearchSecretName.String())
+			elasticSearchSecret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			err = test.Client.Delete(context.TODO(), elasticSearchSecret)
 			Expect(err).ToNot(HaveOccurred())
 
 			secretName := "test-elasticsearch-secret"
-			createESSecret(namespacedName.Namespace, secretName, parameters)
+			i.CreateESSecret(secretName)
 
-			createPipeline(namespacedName, &xjoin.XJoinPipelineSpec{ElasticSearchSecretName: &secretName})
-			reconcile() //this will fail if the secret is missing
+			i.CreatePipeline(&xjoin.XJoinPipelineSpec{ElasticSearchSecretName: &secretName})
+			i.Reconcile() //this will fail if the secret is missing
 		})
 
 		It("Removes stale connectors", func() {
-			_, err := kafkaClient.CreateDebeziumConnector("1", false)
+			_, err := i.KafkaClient.CreateDebeziumConnector("1", false)
 			Expect(err).ToNot(HaveOccurred())
-			_, err = kafkaClient.CreateDebeziumConnector("2", false)
+			_, err = i.KafkaClient.CreateDebeziumConnector("2", false)
 			Expect(err).ToNot(HaveOccurred())
-			_, err = kafkaClient.CreateESConnector("1", false)
+			_, err = i.KafkaClient.CreateESConnector("1", false)
 			Expect(err).ToNot(HaveOccurred())
-			_, err = kafkaClient.CreateESConnector("2", false)
+			_, err = i.KafkaClient.CreateESConnector("2", false)
 			Expect(err).ToNot(HaveOccurred())
 
-			connectors, err := kafkaClient.ListConnectors()
+			connectors, err := i.KafkaClient.ListConnectors()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(connectors.Items)).To(Equal(4))
 
-			createPipeline(namespacedName)
-			reconcile()
-			connectors, err = kafkaClient.ListConnectors()
+			i.CreatePipeline()
+			i.Reconcile()
+			connectors, err = i.KafkaClient.ListConnectors()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(connectors.Items)).To(Equal(2))
 		})
 
 		It("Removes stale indices", func() {
-			err := esClient.CreateIndex("1")
+			err := i.EsClient.CreateIndex("1")
 			Expect(err).ToNot(HaveOccurred())
-			err = esClient.CreateIndex("2")
+			err = i.EsClient.CreateIndex("2")
 			Expect(err).ToNot(HaveOccurred())
 
-			indices, err := esClient.ListIndices()
+			indices, err := i.EsClient.ListIndices()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(indices)).To(Equal(2))
 
-			createPipeline(namespacedName)
-			reconcile()
-			indices, err = esClient.ListIndices()
+			i.CreatePipeline()
+			i.Reconcile()
+			indices, err = i.EsClient.ListIndices()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(indices)).To(Equal(1))
 		})
 
 		It("Removes stale topics", func() {
-			err := kafkaClient.CreateTopic("1")
+			err := i.KafkaClient.CreateTopic("1")
 			Expect(err).ToNot(HaveOccurred())
-			err = kafkaClient.CreateTopic("2")
+			err = i.KafkaClient.CreateTopic("2")
 			Expect(err).ToNot(HaveOccurred())
 
-			topics, err := kafkaClient.ListTopicNames()
+			topics, err := i.KafkaClient.ListTopicNames()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(topics)).To(Equal(2))
 
-			createPipeline(namespacedName)
-			reconcile()
+			i.CreatePipeline()
+			i.Reconcile()
 
-			topics, err = kafkaClient.ListTopicNames()
+			topics, err = i.KafkaClient.ListTopicNames()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(topics)).To(Equal(1))
 		})
 
 		It("Removes stale replication slots", func() {
+			err := i.DbClient.CreateReplicationSlot(resourceNamePrefix + "_1")
+			Expect(err).ToNot(HaveOccurred())
+			err = i.DbClient.CreateReplicationSlot(resourceNamePrefix + "_2")
+			Expect(err).ToNot(HaveOccurred())
+
+			slots, err := i.DbClient.ListReplicationSlots(resourceNamePrefix)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(slots)).To(Equal(2))
+
+			i.CreatePipeline()
+			i.Reconcile()
+
+			slots, err = i.DbClient.ListReplicationSlots(resourceNamePrefix)
+			Expect(err).ToNot(HaveOccurred())
+
+			//It takes a few seconds for the new slot to be created. Assume it hasn't been created.
+			Expect(len(slots)).To(Equal(0))
 		})
 	})
 

@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -107,7 +108,33 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		Parameters:  i.parameters,
 	}
 
+	i.InventoryDb = database.NewDatabase(database.DBParams{
+		Host:     i.parameters.HBIDBHost.String(),
+		User:     i.parameters.HBIDBUser.String(),
+		Name:     i.parameters.HBIDBName.String(),
+		Port:     i.parameters.HBIDBPort.String(),
+		Password: i.parameters.HBIDBPassword.String(),
+	})
+
+	if err = i.InventoryDb.Connect(); err != nil {
+		return i, err
+	}
+
 	return i, nil
+}
+
+func (r *XJoinPipelineReconciler) Finalize(i ReconcileIteration) error {
+	err := i.Kafka.DeleteConnectorsForPipelineVersion(i.Instance.Status.PipelineVersion)
+	if err != nil {
+		return err
+	}
+
+	err = i.InventoryDb.RemoveReplicationSlotsForPipelineVersion(i.Instance.Status.PipelineVersion)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // +kubebuilder:rbac:groups=xjoin.cloud.redhat.com,resources=xjoinpipelines;xjoinpipelines/status;xjoinpipelines/finalizers,verbs=*
@@ -144,6 +171,30 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 	if i.Instance.GetState() == xjoin.STATE_REMOVED {
 		if len(xjoinErrors) > 0 {
 			return reconcile.Result{}, xjoinErrors[0]
+		}
+
+		err = i.Kafka.DeleteConnectorsForPipelineVersion(i.Instance.Status.PipelineVersion)
+		if err != nil {
+			i.error(err, "Error deleting connectors")
+			return reconcile.Result{}, err
+		}
+
+		err = i.InventoryDb.RemoveReplicationSlotsForPipelineVersion(i.Instance.Status.PipelineVersion)
+		if err != nil {
+			i.error(err, "Error removing replication slots")
+			return reconcile.Result{}, err
+		}
+
+		err = i.ESClient.DeleteIndex(i.Instance.Status.PipelineVersion)
+		if err != nil {
+			i.error(err, "Error removing ES indices")
+			return reconcile.Result{}, err
+		}
+
+		err = i.Kafka.DeleteConnectorsForPipelineVersion(i.Instance.Status.PipelineVersion)
+		if err != nil {
+			i.error(err, "Error deleting connectors")
+			return reconcile.Result{}, err
 		}
 
 		if err = i.removeFinalizer(); err != nil {
@@ -258,9 +309,10 @@ func (i *ReconcileIteration) removeFinalizer() error {
 
 func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	var (
-		connectorsToKeep []string
-		esIndicesToKeep  []string
-		topicsToKeep     []string
+		connectorsToKeep       []string
+		esIndicesToKeep        []string
+		topicsToKeep           []string
+		replicationSlotsToKeep []string
 	)
 
 	resourceNamePrefix := i.parameters.ResourceNamePrefix.String()
@@ -270,6 +322,9 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		connectorsToKeep = append(connectorsToKeep, i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion))
 		esIndicesToKeep = append(esIndicesToKeep, i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
 		topicsToKeep = append(topicsToKeep, i.Kafka.TopicName(i.Instance.Status.PipelineVersion))
+		replicationSlotsToKeep = append(
+			replicationSlotsToKeep,
+			database.ReplicationSlotName(resourceNamePrefix, i.Instance.Status.PipelineVersion))
 	}
 
 	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(resourceNamePrefix)
@@ -281,6 +336,8 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		connectorsToKeep = append(connectorsToKeep, i.Kafka.ESConnectorName(version))
 		esIndicesToKeep = append(esIndicesToKeep, currentIndices...)
 		topicsToKeep = append(topicsToKeep, i.Kafka.TopicName(version))
+		replicationSlotsToKeep = append(
+			replicationSlotsToKeep, database.ReplicationSlotName(resourceNamePrefix, version))
 	}
 
 	//delete stale Kafka Connectors
@@ -291,7 +348,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		for _, connector := range connectors.Items {
 			if !utils.ContainsString(connectorsToKeep, connector.GetName()) {
 				i.Log.Info("Removing stale connector", "connector", connector.GetName())
-				if err = kafka.DeleteConnector(i.Client, connector.GetName(), i.Instance.Namespace); err != nil {
+				if err = i.Kafka.DeleteConnector(connector.GetName()); err != nil {
 					errors = append(errors, err)
 				}
 			}
@@ -319,9 +376,24 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		errors = append(errors, err)
 	} else {
 		for _, topic := range topics {
-			if !utils.ContainsString(topicsToKeep, topic) {
+			if !utils.ContainsString(topicsToKeep, topic) && strings.Index(topic, resourceNamePrefix) == 0 {
 				i.Log.Info("Removing stale topic", "topic", topic)
 				if err = i.Kafka.DeleteTopic(topic); err != nil {
+					errors = append(errors, err)
+				}
+			}
+		}
+	}
+
+	//delete stale replication slots
+	slots, err := i.InventoryDb.ListReplicationSlots(resourceNamePrefix)
+	if err != nil {
+		errors = append(errors, err)
+	} else {
+		for _, slot := range slots {
+			if !utils.ContainsString(replicationSlotsToKeep, slot) {
+				i.Log.Info("Removing stale replication slot", "slot", slot)
+				if err = i.InventoryDb.RemoveReplicationSlot(slot); err != nil {
 					errors = append(errors, err)
 				}
 			}
@@ -377,7 +449,7 @@ func (i *ReconcileIteration) updateAliasIfHealthier() error {
 		}
 
 		// no need to close this as that's done in ReconcileIteration.Close()
-		i.InventoryDb = database.NewBaseDatabase(database.DBParams{
+		i.InventoryDb = database.NewDatabase(database.DBParams{
 			Host:     i.parameters.HBIDBHost.String(),
 			User:     i.parameters.HBIDBUser.String(),
 			Name:     i.parameters.HBIDBName.String(),
@@ -448,7 +520,7 @@ func (i *ReconcileIteration) checkForDeviation() (problem error, err error) {
 }
 
 func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, connectorType string) (problem error, err error) {
-	connector, err := kafka.GetConnector(i.Client, connectorName, i.Instance.Namespace)
+	connector, err := i.Kafka.GetConnector(connectorName)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			return fmt.Errorf(

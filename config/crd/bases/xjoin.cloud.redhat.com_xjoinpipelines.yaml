@@ -39,6 +39,9 @@ spec:
             connectCluster:
               minLength: 1
               type: string
+            connectClusterNamespace:
+              minLength: 1
+              type: string
             elasticSearchSecretName:
               minLength: 1
               type: string
