@@ -102,6 +102,11 @@ func (in *XJoinPipelineSpec) DeepCopyInto(out *XJoinPipelineSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.ConnectClusterNamespace != nil {
+		in, out := &in.ConnectClusterNamespace, &out.ConnectClusterNamespace
+		*out = new(string)
+		**out = **in
+	}
 	if in.ElasticSearchSecret != nil {
 		in, out := &in.ElasticSearchSecret, &out.ElasticSearchSecret
 		*out = new(string)

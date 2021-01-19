@@ -23,7 +23,7 @@ var topicsGroupVersionKind = schema.GroupVersionKind{
 }
 
 func (kafka *Kafka) TopicName(pipelineVersion string) string {
-	return fmt.Sprintf(kafka.Parameters.ResourceNamePrefix.String() + "." + pipelineVersion)
+	return fmt.Sprintf(kafka.Parameters.ResourceNamePrefix.String() + "." + pipelineVersion + ".public.hosts")
 }
 
 func (kafka *Kafka) CreateTopic(pipelineVersion string) error {

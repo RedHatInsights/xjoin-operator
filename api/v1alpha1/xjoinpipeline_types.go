@@ -36,6 +36,10 @@ type XJoinPipelineSpec struct {
 
 	// +optional
 	// +kubebuilder:validation:MinLength:=1
+	ConnectClusterNamespace *string `json:"connectClusterNamespace,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:MinLength:=1
 	ElasticSearchSecret *string `json:"elasticSearchURL,omitempty"`
 
 	// +optional

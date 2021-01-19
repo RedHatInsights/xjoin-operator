@@ -36,7 +36,7 @@ type ReconcileIteration struct {
 
 	ESClient    *elasticsearch.ElasticSearch
 	Kafka       kafka.Kafka
-	InventoryDb database.Database
+	InventoryDb *database.Database
 
 	GetRequeueInterval func(i *ReconcileIteration) (result int)
 }

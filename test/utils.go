@@ -11,8 +11,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func UniqueNamespace() (namespace string) {
-	namespace = fmt.Sprintf("test-%d", time.Now().UnixNano())
+func UniqueNamespace(prefix string) (namespace string) {
+	namespace = fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 	err := Client.Create(context.TODO(), ns)
 	Expect(err).ToNot(HaveOccurred())

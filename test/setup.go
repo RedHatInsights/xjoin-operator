@@ -22,7 +22,6 @@ import (
 )
 
 var Client client.Client
-var Clientset *kubernetes.Clientset
 
 var testEnv *envtest.Environment
 var cfg *rest.Config
@@ -39,13 +38,14 @@ func getRootDir() string {
  * Registers Ginkgo Handler.
  */
 func Setup(t *testing.T, suiteName string) {
+
 	var _ = BeforeSuite(func(done Done) {
 		logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
 
 		options := viper.New()
 		options.SetEnvPrefix("xjoin")
 		options.SetDefault("UseExistingCluster", false)
-		_ = options.BindEnv("UseExistingCluster")
+		_ = options.BindEnv(options.AllKeys()...)
 		useExistingCluster := options.GetBool("UseExistingCluster")
 
 		By("bootstrapping test environment")
@@ -66,7 +66,7 @@ func Setup(t *testing.T, suiteName string) {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(Client).ToNot(BeNil())
 
-		Clientset, err = kubernetes.NewForConfig(cfg)
+		_, err = kubernetes.NewForConfig(cfg)
 		Expect(err).ToNot(HaveOccurred())
 
 		close(done)

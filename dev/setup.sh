@@ -40,6 +40,7 @@ oc secrets link xjoin-kafka-connect-strimzi-connect $PULL_SECRET --for=pull -n $
 sleep 5
 oc get KafkaConnect
 oc scale --replicas=1 kafkaconnect/xjoin-kafka-connect-strimzi
+oc scale --replicas=1 deployments/xjoin-kafka-connect-strimzi-connect
 sleep 5
 echo "Waiting for connect to be ready"
 oc wait kafkaconnect/xjoin-kafka-connect-strimzi --for=condition=Ready --timeout=150s -n $PROJECT_NAME
@@ -48,6 +49,9 @@ oc apply -f kafka-connect-topics.yaml
 sleep 10
 
 oc project $PROJECT_NAME
+
+#kafkacat
+oc apply -f kafkacat.yml -n $PROJECT_NAME
 
 #inventory
 oc apply -f inventory-db.secret.yml -n $PROJECT_NAME
