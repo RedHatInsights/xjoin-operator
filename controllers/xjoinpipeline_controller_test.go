@@ -341,7 +341,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["errors.log.include.messages"]).To(Equal(true))
 			Expect(esConnectorConfig["linger.ms"]).To(Equal(int64(100)))
 			Expect(esConnectorConfig["retry.backoff.ms"]).To(Equal(int64(100)))
-			Expect(esConnectorConfig["tasks.max"]).To(Equal("50"))
+			Expect(esConnectorConfig["tasks.max"]).To(Equal("1"))
 			Expect(esConnectorConfig["topics"]).To(Equal("xjoin.inventory." + pipeline.Status.PipelineVersion + ".public.hosts"))
 			Expect(esConnectorConfig["transforms.expandJSON.sourceFields"]).To(Equal("tags"))
 			Expect(esConnectorConfig["transforms.flattenListString.sourceField"]).To(Equal("tags"))
