@@ -7,8 +7,9 @@ import (
 )
 
 type Kafka struct {
-	Namespace   string
-	OwnerScheme *runtime.Scheme
-	Client      client.Client
-	Parameters  config.Parameters
+	Namespace     string
+	OwnerScheme   *runtime.Scheme
+	Client        client.Client
+	Parameters    config.Parameters
+	ParametersMap map[string]interface{}
 }
