@@ -101,11 +101,9 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 	i.ESClient = es
 
 	i.Kafka = kafka.Kafka{
-		Namespace:   instance.Namespace,
-		Owner:       instance,
-		OwnerScheme: i.Scheme,
-		Client:      i.Client,
-		Parameters:  i.parameters,
+		Namespace:  instance.Namespace,
+		Client:     i.Client,
+		Parameters: i.parameters,
 	}
 
 	i.InventoryDb = database.NewDatabase(database.DBParams{
@@ -134,6 +132,15 @@ func (r *XJoinPipelineReconciler) Finalize(i ReconcileIteration) error {
 		return err
 	}
 
+	err = i.Kafka.DeleteTopicByPipelineVersion(i.Instance.Status.PipelineVersion)
+	if err != nil {
+		return err
+	}
+
+	err = i.ESClient.DeleteIndex(i.Instance.Status.PipelineVersion)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

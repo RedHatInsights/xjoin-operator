@@ -79,6 +79,8 @@ oc scale --replicas=1 deployment/inventory-db
 echo "Waiting for inventory-db to be ready"
 oc wait deployment/inventory-db --for=condition=Available --timeout=150s -n $PROJECT_NAME
 
+psql -U postgres -h inventory-db -p 5432 -d insights -c "CREATE DATABASE test WITH TEMPLATE insights;"
+
 #elasticsearch
 oc apply -f elasticsearch.secret.yml -n $PROJECT_NAME
 oc apply -f https://download.elastic.co/downloads/eck/1.3.0/all-in-one.yaml

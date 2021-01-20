@@ -97,6 +97,11 @@ func (in *XJoinPipelineSpec) DeepCopyInto(out *XJoinPipelineSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.KafkaClusterNamespace != nil {
+		in, out := &in.KafkaClusterNamespace, &out.KafkaClusterNamespace
+		*out = new(string)
+		**out = **in
+	}
 	if in.ConnectCluster != nil {
 		in, out := &in.ConnectCluster, &out.ConnectCluster
 		*out = new(string)

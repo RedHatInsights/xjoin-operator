@@ -2,7 +2,7 @@ package test
 
 import (
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	"github.com/spf13/viper"
+	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -41,12 +41,7 @@ func Setup(t *testing.T, suiteName string) {
 
 	var _ = BeforeSuite(func(done Done) {
 		logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
-
-		options := viper.New()
-		options.SetEnvPrefix("xjoin")
-		options.SetDefault("UseExistingCluster", false)
-		_ = options.BindEnv(options.AllKeys()...)
-		useExistingCluster := options.GetBool("UseExistingCluster")
+		useExistingCluster := true
 
 		By("bootstrapping test environment")
 		testEnv = &envtest.Environment{
@@ -67,6 +62,24 @@ func Setup(t *testing.T, suiteName string) {
 		Expect(Client).ToNot(BeNil())
 
 		_, err = kubernetes.NewForConfig(cfg)
+		Expect(err).ToNot(HaveOccurred())
+
+		//make sure the test environment is clean
+		dbClient := database.NewDatabase(database.DBParams{
+			Host:     "inventory-db",
+			Port:     "5432",
+			User:     "insights",
+			Password: "insights",
+			Name:     "test",
+		})
+
+		err = dbClient.Connect()
+		Expect(err).ToNot(HaveOccurred())
+
+		err = dbClient.RemoveReplicationSlotsForPrefix("xjointest")
+		Expect(err).ToNot(HaveOccurred())
+
+		err = dbClient.Close()
 		Expect(err).ToNot(HaveOccurred())
 
 		close(done)

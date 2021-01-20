@@ -32,6 +32,10 @@ type XJoinPipelineSpec struct {
 
 	// +optional
 	// +kubebuilder:validation:MinLength:=1
+	KafkaClusterNamespace *string `json:"kafkaClusterNamespace,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:MinLength:=1
 	ConnectCluster *string `json:"connectCluster,omitempty"`
 
 	// +optional

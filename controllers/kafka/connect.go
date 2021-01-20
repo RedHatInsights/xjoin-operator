@@ -63,6 +63,7 @@ func (kafka *Kafka) newESConnectorResource(pipelineVersion string) (*unstructure
 	m["BatchSize"] = kafka.Parameters.ElasticSearchBatchSize.Int()
 	m["MaxBufferedRecords"] = kafka.Parameters.ElasticSearchMaxBufferedRecords.Int()
 	m["LingerMS"] = kafka.Parameters.ElasticSearchLingerMS.Int()
+	m["ResourceNamePrefix"] = kafka.Parameters.ResourceNamePrefix.String()
 
 	return kafka.newConnectorResource(
 		kafka.ESConnectorName(pipelineVersion),
