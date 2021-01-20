@@ -17,6 +17,7 @@ type Parameters struct {
 	ConnectCluster                    Parameter
 	ConnectClusterNamespace           Parameter
 	KafkaCluster                      Parameter
+	KafkaClusterNamespace             Parameter
 	ConfigMapVersion                  Parameter
 	StandardInterval                  Parameter
 	ValidationInterval                Parameter
@@ -95,6 +96,12 @@ func NewXJoinConfiguration() Parameters {
 			DefaultValue: "xjoin-kafka-cluster",
 			Type:         reflect.String,
 		},
+		KafkaClusterNamespace: Parameter{
+			SpecKey:      "KafkaClusterNamespace",
+			ConfigMapKey: "kafka.cluster.namespace",
+			DefaultValue: "xjoin-operator-project",
+			Type:         reflect.String,
+		},
 		StandardInterval: Parameter{
 			ConfigMapKey: "standard.interval",
 			DefaultValue: 120,
@@ -135,7 +142,7 @@ func NewXJoinConfiguration() Parameters {
 			ConfigMapKey: "elasticsearch.connector.config",
 			DefaultValue: `{
 				"tasks.max": "{{.TasksMax}}",
-				"topics": "xjoin.inventory.{{.Version}}.public.hosts",
+				"topics": "{{.ResourceNamePrefix}}.{{.Version}}.public.hosts",
 				"key.ignore": "false",
 				"connection.url": "{{.ElasticSearchURL}}",
 				"connection.username": "{{.ElasticSearchUsername}}",

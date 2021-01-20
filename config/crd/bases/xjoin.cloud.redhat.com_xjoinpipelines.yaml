@@ -54,6 +54,9 @@ spec:
             kafkaCluster:
               minLength: 1
               type: string
+            kafkaClusterNamespace:
+              minLength: 1
+              type: string
             maxAge:
               format: int64
               type: integer

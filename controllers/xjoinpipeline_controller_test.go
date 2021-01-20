@@ -13,6 +13,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"time"
+
 	//"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -37,6 +39,15 @@ func newXJoinReconciler() *XJoinPipelineReconciler {
 		record.NewFakeRecorder(10))
 }
 
+func newValidationReconciler() *ValidationReconciler {
+	return NewValidationReconciler(
+		test.Client,
+		scheme.Scheme,
+		logf.Log.WithName("test-validation"),
+		true,
+		record.NewFakeRecorder(10))
+}
+
 func getParameters() Parameters {
 	options := viper.New()
 	options.SetDefault("ElasticSearchURL", "http://xjoin-elasticsearch-es-http:9200")
@@ -46,7 +57,7 @@ func getParameters() Parameters {
 	options.SetDefault("HBIDBPort", "5432")
 	options.SetDefault("HBIDBUser", "insights")
 	options.SetDefault("HBIDBPassword", "insights")
-	options.SetDefault("HBIDBName", "insights")
+	options.SetDefault("HBIDBName", "test")
 	options.SetDefault("ResourceNamePrefix", resourceNamePrefix)
 	options.AutomaticEnv()
 
@@ -177,13 +188,14 @@ func strToInt64(str string) int64 {
 }
 
 type TestIteration struct {
-	NamespacedName types.NamespacedName
-	Reconciler     *XJoinPipelineReconciler
-	EsClient       *elasticsearch.ElasticSearch
-	KafkaClient    kafka.Kafka
-	Parameters     Parameters
-	DbClient       *database.Database
-	Pipelines      []*xjoin.XJoinPipeline
+	NamespacedName       types.NamespacedName
+	XJoinReconciler      *XJoinPipelineReconciler
+	ValidationReconciler *ValidationReconciler
+	EsClient             *elasticsearch.ElasticSearch
+	KafkaClient          kafka.Kafka
+	Parameters           Parameters
+	DbClient             *database.Database
+	Pipelines            []*xjoin.XJoinPipeline
 }
 
 func NewTestIteration() *TestIteration {
@@ -191,11 +203,35 @@ func NewTestIteration() *TestIteration {
 	return &testIteration
 }
 
-func (i *TestIteration) Reconcile() (result ctrl.Result) {
-	result, err := i.Reconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+func (i *TestIteration) ReconcileXJoin() (result ctrl.Result) {
+	result, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(result.Requeue).To(BeFalse())
 	return
+}
+
+func (i *TestIteration) ReconcileValidation() (result ctrl.Result) {
+	result, err := i.ValidationReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(result.Requeue).To(BeFalse())
+	return
+}
+
+func (i *TestIteration) WaitForPipelineToBeValid() *xjoin.XJoinPipeline {
+	var pipeline *xjoin.XJoinPipeline
+
+	for j := 0; j < 10; j++ {
+		i.ReconcileValidation()
+		pipeline = i.GetPipeline()
+
+		if pipeline.GetState() == xjoin.STATE_VALID {
+			break
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	return pipeline
 }
 
 var _ = Describe("Pipeline operations", func() {
@@ -209,7 +245,8 @@ var _ = Describe("Pipeline operations", func() {
 			Namespace: test.UniqueNamespace(resourceNamePrefix),
 		}
 
-		i.Reconciler = newXJoinReconciler()
+		i.XJoinReconciler = newXJoinReconciler()
+		i.ValidationReconciler = newValidationReconciler()
 
 		es, err := elasticsearch.NewElasticSearch(
 			"http://xjoin-elasticsearch-es-http:9200", "xjoin", "xjoin1337", resourceNamePrefix)
@@ -221,11 +258,9 @@ var _ = Describe("Pipeline operations", func() {
 		i.CreateESSecret("xjoin-elasticsearch")
 
 		i.KafkaClient = kafka.Kafka{
-			Namespace:   i.NamespacedName.Namespace,
-			Owner:       nil,
-			OwnerScheme: i.Reconciler.Scheme,
-			Client:      i.Reconciler.Client,
-			Parameters:  i.Parameters,
+			Namespace:  i.NamespacedName.Namespace,
+			Client:     i.XJoinReconciler.Client,
+			Parameters: i.Parameters,
 		}
 
 		i.DbClient = database.NewDatabase(database.DBParams{
@@ -253,7 +288,7 @@ var _ = Describe("Pipeline operations", func() {
 		projects.SetKind("Namespace")
 		projects.SetAPIVersion("v1")
 
-		err = i.Reconciler.Client.List(context.TODO(), projects)
+		err = i.XJoinReconciler.Client.List(context.TODO(), projects)
 		Expect(err).ToNot(HaveOccurred())
 
 		//remove finalizers from leftover pipelines so the project can be deleted
@@ -263,13 +298,15 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			err = i.KafkaClient.DeleteConnectorsForPipelineVersion(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
+			err = i.KafkaClient.DeleteTopicByPipelineVersion(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
 			err = i.DbClient.RemoveReplicationSlotsForPipelineVersion(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 			err = i.EsClient.DeleteIndex(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 			if pipeline.DeletionTimestamp == nil {
 				pipeline.ObjectMeta.Finalizers = nil
-				err = i.Reconciler.Client.Update(context.Background(), pipeline)
+				err = i.XJoinReconciler.Client.Update(context.Background(), pipeline)
 				Expect(err).ToNot(HaveOccurred())
 			}
 		}
@@ -281,7 +318,7 @@ var _ = Describe("Pipeline operations", func() {
 				project.SetName(p.GetName())
 				project.SetNamespace(p.GetNamespace())
 				project.SetGroupVersionKind(p.GroupVersionKind())
-				err = i.Reconciler.Client.Delete(context.TODO(), project)
+				err = i.XJoinReconciler.Client.Delete(context.TODO(), project)
 				Expect(err).ToNot(HaveOccurred())
 				err = i.KafkaClient.DeleteConnectorsForPipelineVersion("1")
 			}
@@ -291,7 +328,7 @@ var _ = Describe("Pipeline operations", func() {
 	Describe("New -> InitialSync", func() {
 		It("Creates a connector, ES Index, and topic for a new pipeline", func() {
 			i.CreatePipeline()
-			i.Reconcile()
+			i.ReconcileXJoin()
 
 			pipeline := i.GetPipeline()
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
@@ -307,7 +344,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(dbConnectorSpec["class"]).To(Equal("io.debezium.connector.postgresql.PostgresConnector"))
 			Expect(dbConnectorSpec["pause"]).To(Equal(false))
 			dbConnectorConfig := dbConnectorSpec["config"].(map[string]interface{})
-			Expect(dbConnectorConfig["database.dbname"]).To(Equal("insights"))
+			Expect(dbConnectorConfig["database.dbname"]).To(Equal("test"))
 			Expect(dbConnectorConfig["database.password"]).To(Equal("insights"))
 			Expect(dbConnectorConfig["database.port"]).To(Equal("5432"))
 			Expect(dbConnectorConfig["tasks.max"]).To(Equal("1"))
@@ -342,10 +379,9 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["linger.ms"]).To(Equal(int64(100)))
 			Expect(esConnectorConfig["retry.backoff.ms"]).To(Equal(int64(100)))
 			Expect(esConnectorConfig["tasks.max"]).To(Equal("1"))
-			Expect(esConnectorConfig["topics"]).To(Equal("xjoin.inventory." + pipeline.Status.PipelineVersion + ".public.hosts"))
+			Expect(esConnectorConfig["topics"]).To(Equal(resourceNamePrefix + "." + pipeline.Status.PipelineVersion + ".public.hosts"))
 			Expect(esConnectorConfig["transforms.expandJSON.sourceFields"]).To(Equal("tags"))
 			Expect(esConnectorConfig["transforms.flattenListString.sourceField"]).To(Equal("tags"))
-			Expect(esConnectorConfig["transforms.renameTopic.type"]).To(Equal("org.apache.kafka.connect.transforms.RegexRouter"))
 			Expect(esConnectorConfig["auto.create.indices.at.start"]).To(Equal(false))
 			Expect(esConnectorConfig["behavior.on.null.values"]).To(Equal("delete"))
 			Expect(esConnectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-http:9200"))
@@ -355,7 +391,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["transforms.extractKey.field"]).To(Equal("id"))
 			Expect(esConnectorConfig["transforms.flattenListString.type"]).To(Equal("com.redhat.insights.flattenlistsmt.FlattenList$Value"))
 			Expect(esConnectorConfig["transforms.valueToKey.type"]).To(Equal("org.apache.kafka.connect.transforms.ValueToKey"))
-			Expect(esConnectorConfig["transforms"]).To(Equal("valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString, renameTopic"))
+			Expect(esConnectorConfig["transforms"]).To(Equal("valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString"))
 			Expect(esConnectorConfig["transforms.flattenList.mode"]).To(Equal("keys"))
 			Expect(esConnectorConfig["transforms.flattenListString.encode"]).To(Equal(true))
 			Expect(esConnectorConfig["transforms.flattenListString.outputField"]).To(Equal("tags_string"))
@@ -375,8 +411,6 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["transforms.extractKey.type"]).To(Equal("org.apache.kafka.connect.transforms.ExtractField$Key"))
 			Expect(esConnectorConfig["transforms.flattenList.keys"]).To(Equal("namespace,key,value"))
 			Expect(esConnectorConfig["transforms.flattenListString.mode"]).To(Equal("join"))
-			Expect(esConnectorConfig["transforms.renameTopic.regex"]).To(Equal("xjoin\\.inventory\\." + pipeline.Status.PipelineVersion + ".public\\.hosts"))
-			Expect(esConnectorConfig["transforms.renameTopic.replacement"]).To(Equal("xjoin.inventory.hosts." + pipeline.Status.PipelineVersion))
 			Expect(esConnectorConfig["max.in.flight.requests"]).To(Equal(int64(1)))
 
 			exists, err := i.EsClient.IndexExists(pipeline.Status.PipelineVersion)
@@ -387,8 +421,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(aliases).To(BeEmpty())
 
-			i.KafkaClient.Owner = pipeline
-			topics, err := i.KafkaClient.ListTopicNames()
+			topics, err := i.KafkaClient.ListTopicNamesForPipelineVersion(pipeline.Status.PipelineVersion)
 			Expect(topics).To(ContainElement(i.KafkaClient.TopicName(pipeline.Status.PipelineVersion)))
 		})
 
@@ -422,7 +455,7 @@ var _ = Describe("Pipeline operations", func() {
 			}
 
 			i.CreateConfigMap("xjoin", cm)
-			i.Reconcile()
+			i.ReconcileXJoin()
 
 			pipeline := i.GetPipeline()
 			esConnector, err := i.KafkaClient.GetConnector(
@@ -434,7 +467,7 @@ var _ = Describe("Pipeline operations", func() {
 			esConnectorSpec := esConnector.Object["spec"].(map[string]interface{})
 			esConnectorConfig := esConnectorSpec["config"].(map[string]interface{})
 			Expect(esConnectorConfig["tasks.max"]).To(Equal(cm["elasticsearch.connector.tasks.max"]))
-			Expect(esConnectorConfig["topics"]).To(Equal("xjoin.inventory." + pipeline.Status.PipelineVersion + ".public.hosts"))
+			Expect(esConnectorConfig["topics"]).To(Equal(resourceNamePrefix + "." + pipeline.Status.PipelineVersion + ".public.hosts"))
 			Expect(esConnectorConfig["batch.size"]).To(Equal(strToInt64(cm["elasticsearch.connector.batch.size"])))
 			Expect(esConnectorConfig["max.in.flight.requests"]).To(Equal(strToInt64(cm["elasticsearch.connector.max.in.flight.requests"])))
 			Expect(esConnectorConfig["errors.log.enable"]).To(Equal(strToBool(cm["elasticsearch.connector.errors.log.enable"])))
@@ -469,7 +502,7 @@ var _ = Describe("Pipeline operations", func() {
 			i.CreateDbSecret(secretName)
 
 			i.CreatePipeline(&xjoin.XJoinPipelineSpec{HBIDBSecretName: &secretName})
-			i.Reconcile() //this will fail if the secret is missing
+			i.ReconcileXJoin() //this will fail if the secret is missing
 		})
 
 		It("Considers es secret name configuration", func() {
@@ -482,7 +515,7 @@ var _ = Describe("Pipeline operations", func() {
 			i.CreateESSecret(secretName)
 
 			i.CreatePipeline(&xjoin.XJoinPipelineSpec{ElasticSearchSecretName: &secretName})
-			i.Reconcile() //this will fail if the secret is missing
+			i.ReconcileXJoin() //this will fail if the secret is missing
 		})
 
 		It("Removes stale connectors", func() {
@@ -500,7 +533,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(len(connectors.Items)).To(Equal(4))
 
 			i.CreatePipeline()
-			i.Reconcile()
+			i.ReconcileXJoin()
 			connectors, err = i.KafkaClient.ListConnectors()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(connectors.Items)).To(Equal(2))
@@ -517,7 +550,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(len(indices)).To(Equal(2))
 
 			i.CreatePipeline()
-			i.Reconcile()
+			i.ReconcileXJoin()
 			indices, err = i.EsClient.ListIndices()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(indices)).To(Equal(1))
@@ -534,7 +567,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(len(topics)).To(Equal(2))
 
 			i.CreatePipeline()
-			i.Reconcile()
+			i.ReconcileXJoin()
 
 			topics, err = i.KafkaClient.ListTopicNames()
 			Expect(err).ToNot(HaveOccurred())
@@ -542,7 +575,9 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Removes stale replication slots", func() {
-			err := i.DbClient.CreateReplicationSlot(resourceNamePrefix + "_1")
+			err := i.DbClient.RemoveReplicationSlotsForPrefix(resourceNamePrefix)
+			Expect(err).ToNot(HaveOccurred())
+			err = i.DbClient.CreateReplicationSlot(resourceNamePrefix + "_1")
 			Expect(err).ToNot(HaveOccurred())
 			err = i.DbClient.CreateReplicationSlot(resourceNamePrefix + "_2")
 			Expect(err).ToNot(HaveOccurred())
@@ -552,18 +587,30 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(len(slots)).To(Equal(2))
 
 			i.CreatePipeline()
-			i.Reconcile()
+			i.ReconcileXJoin()
 
 			slots, err = i.DbClient.ListReplicationSlots(resourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
 
-			//It takes a few seconds for the new slot to be created. Assume it hasn't been created.
+			//It takes a few seconds for the new slot to be created so this will be 0
 			Expect(len(slots)).To(Equal(0))
 		})
 	})
 
 	Describe("InitialSync -> Valid", func() {
 		It("Creates the elasticsearch alias", func() {
+			i.CreatePipeline()
+			i.ReconcileXJoin()
+			pipeline := i.GetPipeline()
+			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
+			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
+			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
+
+			pipeline = i.WaitForPipelineToBeValid()
+
+			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
+			Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
+			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
 		})
 
 		It("Triggers refresh if pipeline fails to become valid for too long", func() {

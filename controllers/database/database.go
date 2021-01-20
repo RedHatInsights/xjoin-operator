@@ -109,8 +109,10 @@ func (db *Database) RemoveReplicationSlot(slot string) error {
 	return nil
 }
 
-func (db *Database) RemoveReplicationSlotsForPipelineVersion(pipelineVersion string) error {
-	rows, err := db.RunQuery("SELECT slot_name from pg_catalog.pg_replication_slots")
+func (db *Database) RemoveReplicationSlotsForPrefix(resourceNamePrefix string) error {
+
+	rows, err := db.RunQuery(
+		fmt.Sprintf("SELECT slot_name from pg_catalog.pg_replication_slots WHERE slot_name LIKE '%s%%'", resourceNamePrefix))
 	if err != nil {
 		return err
 	}
@@ -122,9 +124,36 @@ func (db *Database) RemoveReplicationSlotsForPipelineVersion(pipelineVersion str
 		if err != nil {
 			return err
 		}
-		if strings.Index(slot, pipelineVersion) != -1 {
-			slots = append(slots, slot)
+		slots = append(slots, slot)
+	}
+	rows.Close()
+
+	for _, slot := range slots {
+		dropRows, err := db.RunQuery(fmt.Sprintf(`SELECT pg_drop_replication_slot('%s')`, slot))
+		if err != nil {
+			return err
 		}
+		dropRows.Close()
+	}
+
+	return nil
+}
+
+func (db *Database) RemoveReplicationSlotsForPipelineVersion(pipelineVersion string) error {
+	rows, err := db.RunQuery(
+		fmt.Sprintf("SELECT slot_name from pg_catalog.pg_replication_slots WHERE slot_name LIKE '%%%s%%'", pipelineVersion))
+	if err != nil {
+		return err
+	}
+
+	var slots []string
+	for rows.Next() {
+		var slot string
+		err = rows.Scan(&slot)
+		if err != nil {
+			return err
+		}
+		slots = append(slots, slot)
 	}
 	rows.Close()
 
@@ -218,21 +247,4 @@ func (db *Database) GetConnection() (connection *pgx.Conn, err error) {
 			return connection, nil
 		}
 	}
-}
-
-//used for tests
-func (db *Database) CreateDatabase(name string) error {
-	rows, err := db.RunQuery(fmt.Sprintf("CREATE DATABASE %s", name))
-	if rows != nil {
-		rows.Close()
-	}
-	return err
-}
-
-func (db *Database) DropDatabase(name string) error {
-	rows, err := db.RunQuery(fmt.Sprintf("DROP DATABASE IF EXISTS %s", name))
-	if rows != nil {
-		rows.Close()
-	}
-	return err
 }
