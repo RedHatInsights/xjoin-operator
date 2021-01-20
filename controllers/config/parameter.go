@@ -43,6 +43,14 @@ func (p *Parameter) Bool() bool {
 	}
 }
 
+func (p *Parameter) Value() interface{} {
+	if p.value == nil {
+		return p.DefaultValue
+	} else {
+		return p.value
+	}
+}
+
 func (p *Parameter) SetValue(value interface{}) error {
 	log.Trace(fmt.Sprintf(
 		"Setting value to: %s for parameter: \nCM key: %s \nSpec key: %s \nSecret key: %s%s",

@@ -101,9 +101,10 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 	i.ESClient = es
 
 	i.Kafka = kafka.Kafka{
-		Namespace:  instance.Namespace,
-		Client:     i.Client,
-		Parameters: i.parameters,
+		Namespace:     instance.Namespace,
+		Client:        i.Client,
+		Parameters:    i.parameters,
+		ParametersMap: xjoinConfig.ParametersMap,
 	}
 
 	i.InventoryDb = database.NewDatabase(database.DBParams{

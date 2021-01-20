@@ -20,6 +20,7 @@ type Config struct {
 	instance            *xjoin.XJoinPipeline
 	configMap           *corev1.ConfigMap
 	Parameters          Parameters
+	ParametersMap       map[string]interface{}
 }
 
 func NewConfig(instance *xjoin.XJoinPipeline, client client.Client) (*Config, error) {
@@ -124,6 +125,7 @@ func (config *Config) parameterValue(param Parameter) (reflect.Value, error) {
 func (config *Config) buildXJoinConfig() error {
 
 	configReflection := reflect.ValueOf(&config.Parameters).Elem()
+	parametersMap := make(map[string]interface{})
 
 	for i := 0; i < configReflection.NumField(); i++ {
 		param := configReflection.Field(i).Interface().(Parameter)
@@ -135,7 +137,12 @@ func (config *Config) buildXJoinConfig() error {
 			return err
 		}
 		configReflection.Field(i).Set(value)
+
+		updatedParameter := configReflection.Field(i).Interface().(Parameter)
+		parametersMap[configReflection.Type().Field(i).Name] = updatedParameter.Value()
 	}
+
+	config.ParametersMap = parametersMap
 
 	err := config.Parameters.ConfigMapVersion.SetValue(utils.ConfigMapHash(config.configMap, keysIgnoredByRefresh...))
 	if err != nil {

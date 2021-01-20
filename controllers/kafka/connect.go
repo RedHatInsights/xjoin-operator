@@ -49,21 +49,8 @@ func (kafka *Kafka) CheckIfConnectorExists(name string) (bool, error) {
 }
 
 func (kafka *Kafka) newESConnectorResource(pipelineVersion string) (*unstructured.Unstructured, error) {
-
-	m := make(map[string]interface{})
-	m["ElasticSearchURL"] = kafka.Parameters.ElasticSearchURL.String()
-	m["ElasticSearchUsername"] = kafka.Parameters.ElasticSearchUsername.String()
-	m["ElasticSearchPassword"] = kafka.Parameters.ElasticSearchPassword.String()
+	m := kafka.ParametersMap
 	m["Version"] = pipelineVersion
-	m["TasksMax"] = kafka.Parameters.ElasticSearchTasksMax.Int()
-	m["MaxInFlightRequests"] = kafka.Parameters.ElasticSearchMaxInFlightRequests.Int()
-	m["ErrorsLogEnable"] = kafka.Parameters.ElasticSearchErrorsLogEnable.Bool()
-	m["MaxRetries"] = kafka.Parameters.ElasticSearchMaxRetries.Int()
-	m["RetryBackoffMS"] = kafka.Parameters.ElasticSearchRetryBackoffMS.Int()
-	m["BatchSize"] = kafka.Parameters.ElasticSearchBatchSize.Int()
-	m["MaxBufferedRecords"] = kafka.Parameters.ElasticSearchMaxBufferedRecords.Int()
-	m["LingerMS"] = kafka.Parameters.ElasticSearchLingerMS.Int()
-	m["ResourceNamePrefix"] = kafka.Parameters.ResourceNamePrefix.String()
 
 	return kafka.newConnectorResource(
 		kafka.ESConnectorName(pipelineVersion),
@@ -73,20 +60,8 @@ func (kafka *Kafka) newESConnectorResource(pipelineVersion string) (*unstructure
 }
 
 func (kafka *Kafka) newDebeziumConnectorResource(pipelineVersion string) (*unstructured.Unstructured, error) {
-
-	m := make(map[string]interface{})
-	m["DBPort"] = kafka.Parameters.HBIDBPort.String()
-	m["DBHostname"] = kafka.Parameters.HBIDBHost.String()
-	m["DBName"] = kafka.Parameters.HBIDBName.String()
-	m["DBUser"] = kafka.Parameters.HBIDBUser.String()
-	m["DBPassword"] = kafka.Parameters.HBIDBPassword.String()
+	m := kafka.ParametersMap
 	m["Version"] = pipelineVersion
-	m["TasksMax"] = kafka.Parameters.DebeziumTasksMax.Int()
-	m["MaxBatchSize"] = kafka.Parameters.DebeziumMaxBatchSize.Int()
-	m["QueueSize"] = kafka.Parameters.DebeziumQueueSize.Int()
-	m["PollIntervalMS"] = kafka.Parameters.DebeziumPollIntervalMS.Int()
-	m["ErrorsLogEnable"] = kafka.Parameters.DebeziumErrorsLogEnable.Bool()
-	m["ResourceNamePrefix"] = kafka.Parameters.ResourceNamePrefix.String()
 	m["ReplicationSlotName"] = database.ReplicationSlotName(kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
 
 	return kafka.newConnectorResource(

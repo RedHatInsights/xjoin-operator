@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"reflect"
 	"time"
 
 	//"k8s.io/apimachinery/pkg/runtime/schema"
@@ -48,7 +49,19 @@ func newValidationReconciler() *ValidationReconciler {
 		record.NewFakeRecorder(10))
 }
 
-func getParameters() Parameters {
+func parametersToMap(parameters Parameters) map[string]interface{} {
+	configReflection := reflect.ValueOf(&parameters).Elem()
+	parametersMap := make(map[string]interface{})
+
+	for i := 0; i < configReflection.NumField(); i++ {
+		param := configReflection.Field(i).Interface().(Parameter)
+		parametersMap[configReflection.Type().Field(i).Name] = param.Value()
+	}
+
+	return parametersMap
+}
+
+func getParameters() (Parameters, map[string]interface{}) {
 	options := viper.New()
 	options.SetDefault("ElasticSearchURL", "http://xjoin-elasticsearch-es-http:9200")
 	options.SetDefault("ElasticSearchUsername", "test")
@@ -81,7 +94,7 @@ func getParameters() Parameters {
 	err = xjoinConfiguration.ResourceNamePrefix.SetValue(options.GetString("ResourceNamePrefix"))
 	Expect(err).ToNot(HaveOccurred())
 
-	return xjoinConfiguration
+	return xjoinConfiguration, parametersToMap(xjoinConfiguration)
 }
 
 func (i *TestIteration) CreateConfigMap(name string, data map[string]string) {
@@ -194,6 +207,7 @@ type TestIteration struct {
 	EsClient             *elasticsearch.ElasticSearch
 	KafkaClient          kafka.Kafka
 	Parameters           Parameters
+	ParametersMap        map[string]interface{}
 	DbClient             *database.Database
 	Pipelines            []*xjoin.XJoinPipeline
 }
@@ -253,14 +267,15 @@ var _ = Describe("Pipeline operations", func() {
 		i.EsClient = es
 		Expect(err).ToNot(HaveOccurred())
 
-		i.Parameters = getParameters()
+		i.Parameters, i.ParametersMap = getParameters()
 		i.CreateDbSecret("host-inventory-db")
 		i.CreateESSecret("xjoin-elasticsearch")
 
 		i.KafkaClient = kafka.Kafka{
-			Namespace:  i.NamespacedName.Namespace,
-			Client:     i.XJoinReconciler.Client,
-			Parameters: i.Parameters,
+			Namespace:     i.NamespacedName.Namespace,
+			Client:        i.XJoinReconciler.Client,
+			Parameters:    i.Parameters,
+			ParametersMap: i.ParametersMap,
 		}
 
 		i.DbClient = database.NewDatabase(database.DBParams{
