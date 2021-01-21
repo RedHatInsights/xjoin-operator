@@ -5,11 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"hash/fnv"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var log = logger.NewLogger("k8s")
 
 func FetchXJoinPipeline(c client.Client, namespacedName types.NamespacedName) (*xjoin.XJoinPipeline, error) {
 	instance := &xjoin.XJoinPipeline{}
@@ -33,26 +38,32 @@ func FetchConfigMap(c client.Client, namespace string, name string) (*corev1.Con
 	}
 }
 
-func ConfigMapHash(cm *corev1.ConfigMap, ignoredKeys ...string) string {
+func ConfigMapHash(cm *corev1.ConfigMap, ignoredKeys ...string) (string, error) {
 	if cm == nil {
-		return "-1"
+		return "-1", nil
 	}
 
 	values := Omit(cm.Data, ignoredKeys...)
 
-	json, err := json.Marshal(values)
+	jsonVal, err := json.Marshal(values)
 
 	if err != nil {
-		return "-2"
+		return "-2", nil
 	}
 
 	algorithm := fnv.New32a()
-	algorithm.Write(json)
-	return fmt.Sprint(algorithm.Sum32())
+	_, err = algorithm.Write(jsonVal)
+	return fmt.Sprint(algorithm.Sum32()), err
 }
 
 func FetchSecret(c client.Client, namespace string, name string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{}
 	err := c.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, secret)
+
+	if statusError, isStatus := err.(*errors.StatusError); isStatus && statusError.Status().Reason == metav1.StatusReasonNotFound {
+		log.Info("Secret not found.", "namespace", namespace, "name", name)
+		return nil, nil
+	}
+
 	return secret, err
 }

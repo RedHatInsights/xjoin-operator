@@ -144,7 +144,12 @@ func (config *Config) buildXJoinConfig() error {
 
 	config.ParametersMap = parametersMap
 
-	err := config.Parameters.ConfigMapVersion.SetValue(utils.ConfigMapHash(config.configMap, keysIgnoredByRefresh...))
+	configMapHash, err := utils.ConfigMapHash(config.configMap, keysIgnoredByRefresh...)
+	if err != nil {
+		return err
+	}
+
+	err = config.Parameters.ConfigMapVersion.SetValue(configMapHash)
 	if err != nil {
 		return err
 	}
