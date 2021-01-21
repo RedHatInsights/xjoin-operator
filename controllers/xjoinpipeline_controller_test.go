@@ -745,12 +745,61 @@ var _ = Describe("Pipeline operations", func() {
 	})
 
 	Describe("Invalid -> New", func() {
-		It("Triggers refresh if pipeline in invalid for too long", func() {
-
-		})
-
 		Context("In a refresh", func() {
 			It("Keeps the old table active until the new one is valid", func() {
+				hostId, err := uuid.NewUUID()
+				Expect(err).ToNot(HaveOccurred())
+
+				i.CreatePipeline()
+
+				cm := map[string]string{
+					"validation.attempts.threshold": "2",
+				}
+
+				i.CreateConfigMap("xjoin", cm)
+				i.ReconcileXJoin()
+				i.ReconcileValidation()
+				pipeline := i.ReconcileXJoin()
+				activeIndex := pipeline.Status.ActiveIndexName
+				Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
+				Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
+				Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
+
+				err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+				Expect(err).ToNot(HaveOccurred())
+				i.InsertHost(hostId.String())
+
+				i.ReconcileValidation()
+				pipeline = i.ReconcileXJoin()
+				Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
+				Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
+				Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
+				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+
+				i.ReconcileValidation()
+				pipeline = i.ReconcileXJoin()
+				Expect(pipeline.GetState()).To(Equal(xjoin.STATE_NEW))
+				Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
+				Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
+				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+
+				i.InsertHost(hostId.String())
+
+				i.ReconcileValidation()
+				pipeline = i.ReconcileXJoin()
+				Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
+				Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
+				Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
+				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+
+				i.IndexDocument(pipeline.Status.PipelineVersion, hostId.String())
+
+				i.ReconcileValidation()
+				pipeline = i.ReconcileXJoin()
+				Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
+				Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
+				Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
+				Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
 			})
 		})
 	})
