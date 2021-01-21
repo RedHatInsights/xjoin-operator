@@ -70,6 +70,8 @@ spec:
         status:
           description: XJoinPipelineStatus defines the observed state of XJoinPipeline
           properties:
+            activeIndexName:
+              type: string
             conditions:
               items:
                 description: "Condition contains details for one aspect of the current
@@ -139,6 +141,8 @@ spec:
                 - type
                 type: object
               type: array
+            indexName:
+              type: string
             initialSyncInProgress:
               type: boolean
             pipelineVersion:

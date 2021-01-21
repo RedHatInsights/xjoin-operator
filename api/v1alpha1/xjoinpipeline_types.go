@@ -70,8 +70,11 @@ type XJoinPipelineStatus struct {
 	XJoinConfigVersion    string             `json:"xjoinConfigVersion"`
 	InitialSyncInProgress bool               `json:"initialSyncInProgress"`
 	Conditions            []metav1.Condition `json:"conditions"`
+
 	// +kubebuilder:validation:Minimum:=0
 	ValidationFailedCount int `json:"validationFailedCount"`
+	ActiveIndexName string `json:"activeIndexName"`
+	IndexName string `json:"indexName"`
 }
 
 // +kubebuilder:object:root=true

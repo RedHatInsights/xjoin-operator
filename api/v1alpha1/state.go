@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -73,7 +74,7 @@ func (instance *XJoinPipeline) GetValid() metav1.ConditionStatus {
 	return condition.Status
 }
 
-func (instance *XJoinPipeline) TransitionToInitialSync(pipelineVersion string) error {
+func (instance *XJoinPipeline) TransitionToInitialSync(resourceNamePrefix string, pipelineVersion string) error {
 	if err := instance.assertState(STATE_INITIAL_SYNC, STATE_INITIAL_SYNC, STATE_NEW); err != nil {
 		return err
 	}
@@ -81,6 +82,7 @@ func (instance *XJoinPipeline) TransitionToInitialSync(pipelineVersion string) e
 	instance.ResetValid()
 	instance.Status.InitialSyncInProgress = true
 	instance.Status.PipelineVersion = pipelineVersion
+	instance.Status.IndexName = elasticsearch.ESIndexName(resourceNamePrefix, pipelineVersion)
 
 	return nil
 }
