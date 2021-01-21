@@ -215,18 +215,6 @@ func (kafka *Kafka) CreateESConnector(
 		return nil, err
 	}
 
-	/*
-		if kafka.Owner != nil {
-			if err := controllerutil.SetControllerReference(kafka.Owner, connector, kafka.OwnerScheme); err != nil {
-				return nil, err
-			}
-
-			labels := connector.GetLabels()
-			labels[LabelOwner] = string(kafka.Owner.GetUID())
-			connector.SetLabels(labels)
-		}
-	*/
-
 	if dryRun {
 		return connector, nil
 	}
@@ -242,18 +230,6 @@ func (kafka *Kafka) CreateDebeziumConnector(
 	if err != nil {
 		return nil, err
 	}
-
-	/*
-		if kafka.Owner != nil {
-			if err := controllerutil.SetControllerReference(kafka.Owner, connector, kafka.OwnerScheme); err != nil {
-				return nil, err
-			}
-
-			labels := connector.GetLabels()
-			labels[LabelOwner] = string(kafka.Owner.GetUID())
-			connector.SetLabels(labels)
-		}
-	*/
 	if dryRun {
 		return connector, nil
 	}
@@ -267,4 +243,28 @@ func (kafka *Kafka) DebeziumConnectorName(pipelineVersion string) string {
 
 func (kafka *Kafka) ESConnectorName(pipelineVersion string) string {
 	return fmt.Sprintf("%s.es.%s", kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
+}
+
+func (kafka *Kafka) PauseElasticSearchConnector(pipelineVersion string) error {
+	return kafka.setElasticSearchConnectorPause(pipelineVersion, true)
+}
+
+func (kafka *Kafka) ResumeElasticSearchConnector(pipelineVersion string) error {
+	return kafka.setElasticSearchConnectorPause(pipelineVersion, false)
+}
+
+func (kafka *Kafka) setElasticSearchConnectorPause(pipelineVersion string, pause bool) error {
+	connector, err := kafka.GetConnector(kafka.ESConnectorName(pipelineVersion))
+	if err != nil {
+		return err
+	}
+
+	connector.Object["spec"].(map[string]interface{})["pause"] = pause
+
+	err = kafka.Client.Update(context.TODO(), connector)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
