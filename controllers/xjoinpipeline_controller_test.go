@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
+	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/google/uuid"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	. "github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
@@ -10,10 +13,12 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"github.com/redhatinsights/xjoin-operator/test"
 	"github.com/spf13/viper"
+	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"reflect"
+	"text/template"
 	"time"
 
 	//"k8s.io/apimachinery/pkg/runtime/schema"
@@ -95,6 +100,63 @@ func getParameters() (Parameters, map[string]interface{}) {
 	Expect(err).ToNot(HaveOccurred())
 
 	return xjoinConfiguration, parametersToMap(xjoinConfiguration)
+}
+
+func (i *TestIteration) DeleteAllHosts() {
+	rows, err := i.DbClient.RunQuery("DELETE FROM hosts;")
+	Expect(err).ToNot(HaveOccurred())
+	rows.Close()
+}
+
+func (i *TestIteration) IndexDocument(pipelineVersion string, id string) {
+	esDocumentFile, err := ioutil.ReadFile("./test/es.document.json")
+	Expect(err).ToNot(HaveOccurred())
+
+	tmpl, err := template.New("esDocumentTemplate").Parse(string(esDocumentFile))
+	Expect(err).ToNot(HaveOccurred())
+
+	m := make(map[string]interface{})
+	m["ID"] = id
+
+	var templateBuffer bytes.Buffer
+	err = tmpl.Execute(&templateBuffer, m)
+	Expect(err).ToNot(HaveOccurred())
+	templateParsed := templateBuffer.String()
+
+	// Set up the request object.
+	req := esapi.IndexRequest{
+		Index:      i.EsClient.ESIndexName(pipelineVersion),
+		DocumentID: id,
+		Body:       strings.NewReader(strings.ReplaceAll(templateParsed, "\n", "")),
+		Refresh:    "true",
+	}
+
+	// Perform the request with the client.
+	res, err := req.Do(context.Background(), i.EsClient.Client)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = res.Body.Close()
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func (i *TestIteration) InsertHost(id string) {
+	hbiHostFile, err := ioutil.ReadFile("./test/hbi.host.sql")
+	Expect(err).ToNot(HaveOccurred())
+
+	tmpl, err := template.New("hbiHostTemplate").Parse(string(hbiHostFile))
+	Expect(err).ToNot(HaveOccurred())
+
+	m := make(map[string]interface{})
+	m["ID"] = id
+
+	var templateBuffer bytes.Buffer
+	err = tmpl.Execute(&templateBuffer, m)
+	Expect(err).ToNot(HaveOccurred())
+	query := strings.ReplaceAll(templateBuffer.String(), "\n", "")
+
+	rows, err := i.DbClient.RunQuery(query)
+	Expect(err).ToNot(HaveOccurred())
+	rows.Close()
 }
 
 func (i *TestIteration) CreateConfigMap(name string, data map[string]string) {
@@ -217,18 +279,18 @@ func NewTestIteration() *TestIteration {
 	return &testIteration
 }
 
-func (i *TestIteration) ReconcileXJoin() (result ctrl.Result) {
+func (i *TestIteration) ReconcileXJoin() *xjoin.XJoinPipeline {
 	result, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(result.Requeue).To(BeFalse())
-	return
+	return i.GetPipeline()
 }
 
-func (i *TestIteration) ReconcileValidation() (result ctrl.Result) {
+func (i *TestIteration) ReconcileValidation() *xjoin.XJoinPipeline {
 	result, err := i.ValidationReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(result.Requeue).To(BeFalse())
-	return
+	return i.GetPipeline()
 }
 
 func (i *TestIteration) WaitForPipelineToBeValid() *xjoin.XJoinPipeline {
@@ -319,6 +381,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			err = i.EsClient.DeleteIndex(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
+			i.DeleteAllHosts()
 			if pipeline.DeletionTimestamp == nil {
 				pipeline.ObjectMeta.Finalizers = nil
 				err = i.XJoinReconciler.Client.Update(context.Background(), pipeline)
@@ -590,16 +653,18 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Removes stale replication slots", func() {
+			slot1 := resourceNamePrefix + "_1"
+			slot2 := resourceNamePrefix + "_2"
 			err := i.DbClient.RemoveReplicationSlotsForPrefix(resourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
-			err = i.DbClient.CreateReplicationSlot(resourceNamePrefix + "_1")
+			err = i.DbClient.CreateReplicationSlot(slot1)
 			Expect(err).ToNot(HaveOccurred())
-			err = i.DbClient.CreateReplicationSlot(resourceNamePrefix + "_2")
+			err = i.DbClient.CreateReplicationSlot(slot2)
 			Expect(err).ToNot(HaveOccurred())
 
 			slots, err := i.DbClient.ListReplicationSlots(resourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(slots)).To(Equal(2))
+			Expect(slots).To(ContainElements(slot1, slot2))
 
 			i.CreatePipeline()
 			i.ReconcileXJoin()
@@ -607,8 +672,7 @@ var _ = Describe("Pipeline operations", func() {
 			slots, err = i.DbClient.ListReplicationSlots(resourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
 
-			//It takes a few seconds for the new slot to be created so this will be 0
-			Expect(len(slots)).To(Equal(0))
+			Expect(slots).ToNot(ContainElements(slot1, slot2))
 		})
 	})
 
@@ -621,7 +685,8 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
 
-			pipeline = i.WaitForPipelineToBeValid()
+			i.ReconcileValidation()
+			pipeline = i.ReconcileXJoin()
 
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
 			Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
@@ -629,6 +694,57 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Triggers refresh if pipeline fails to become valid for too long", func() {
+			hostId, err := uuid.NewUUID()
+			Expect(err).ToNot(HaveOccurred())
+
+			i.CreatePipeline()
+
+			cm := map[string]string{
+				"init.validation.attempts.threshold": "2",
+			}
+
+			i.CreateConfigMap("xjoin", cm)
+			i.ReconcileXJoin()
+			pipeline := i.GetPipeline()
+			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
+			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
+			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
+
+			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
+			i.InsertHost(hostId.String())
+
+			i.ReconcileValidation()
+			pipeline = i.ReconcileXJoin()
+			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
+			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
+			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
+
+			i.ReconcileValidation()
+			pipeline = i.ReconcileXJoin()
+			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_NEW))
+			Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
+			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
+			Expect(pipeline.Status.PipelineVersion).To(Equal(""))
+
+			i.ReconcileValidation()
+			pipeline = i.ReconcileXJoin()
+			//err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			//Expect(err).ToNot(HaveOccurred())
+			Expect(pipeline.Status.PipelineVersion).ToNot(Equal(""))
+			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
+			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
+			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
+
+			i.IndexDocument(pipeline.Status.PipelineVersion, hostId.String())
+
+			//time.Sleep(1 * time.Second) //give ES a second to index the host
+
+			i.ReconcileValidation()
+			pipeline = i.ReconcileXJoin()
+			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
+			Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
+			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
 		})
 	})
 

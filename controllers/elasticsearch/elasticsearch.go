@@ -17,7 +17,7 @@ import (
 )
 
 type ElasticSearch struct {
-	client             *elasticsearch.Client
+	Client             *elasticsearch.Client
 	resourceNamePrefix string
 }
 
@@ -35,7 +35,7 @@ func NewElasticSearch(url string, username string, password string, resourceName
 		},
 	}
 	client, err := elasticsearch.NewClient(cfg)
-	es.client = client
+	es.Client = client
 	if err != nil {
 		return es, err
 	}
@@ -44,7 +44,7 @@ func NewElasticSearch(url string, username string, password string, resourceName
 }
 
 func (es *ElasticSearch) IndexExists(pipelineVersion string) (bool, error) {
-	res, err := es.client.Indices.Exists([]string{es.ESIndexName(pipelineVersion)})
+	res, err := es.Client.Indices.Exists([]string{es.ESIndexName(pipelineVersion)})
 	if err != nil {
 		return false, err
 	}
@@ -60,7 +60,7 @@ func (es *ElasticSearch) IndexExists(pipelineVersion string) (bool, error) {
 }
 
 func (es *ElasticSearch) CreateIndex(pipelineVersion string) error {
-	res, err := es.client.Indices.Create(es.ESIndexName(pipelineVersion))
+	res, err := es.Client.Indices.Create(es.ESIndexName(pipelineVersion))
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func (es *ElasticSearch) CreateIndex(pipelineVersion string) error {
 }
 
 func (es *ElasticSearch) DeleteIndexByFullName(index string) error {
-	res, err := es.client.Indices.Delete([]string{index})
+	res, err := es.Client.Indices.Delete([]string{index})
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func (es *ElasticSearch) UpdateAliasByFullIndexName(alias string, index string) 
 	req.Actions = actions
 
 	reqJSON, err := json.Marshal(req)
-	res, err := es.client.Indices.UpdateAliases(bytes.NewReader(reqJSON))
+	res, err := es.Client.Indices.UpdateAliases(bytes.NewReader(reqJSON))
 
 	if err != nil {
 		return err
@@ -137,7 +137,7 @@ func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, erro
 		Name:   []string{name},
 		Format: "JSON",
 	}
-	res, err := req.Do(context.Background(), es.client)
+	res, err := req.Do(context.Background(), es.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +164,7 @@ func (es *ElasticSearch) ListIndices() ([]string, error) {
 		Index:  []string{es.resourceNamePrefix + ".*"},
 		H:      []string{"index"},
 	}
-	res, err := req.Do(context.Background(), es.client)
+	res, err := req.Do(context.Background(), es.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (es *ElasticSearch) CountIndex(index string) (int, error) {
 		Index:  []string{index},
 	}
 
-	res, err := req.Do(context.Background(), es.client)
+	res, err := req.Do(context.Background(), es.Client)
 	if err != nil {
 		return -1, err
 	}
@@ -225,7 +225,7 @@ func (es *ElasticSearch) GetHostIDs(index string) ([]string, error) {
 		Sort:   []string{"_doc"},
 	}
 
-	searchRes, err := searchReq.Do(context.Background(), es.client)
+	searchRes, err := searchReq.Do(context.Background(), es.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +248,7 @@ func (es *ElasticSearch) GetHostIDs(index string) ([]string, error) {
 			ScrollID: scrollID,
 		}
 
-		scrollRes, err := scrollReq.Do(context.Background(), es.client)
+		scrollRes, err := scrollReq.Do(context.Background(), es.Client)
 		if err != nil {
 			return nil, err
 		}
