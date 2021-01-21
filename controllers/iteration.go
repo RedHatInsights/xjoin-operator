@@ -74,6 +74,19 @@ func (i *ReconcileIteration) debug(message string, keysAndValues ...interface{})
 }
 
 func (i *ReconcileIteration) updateStatusAndRequeue() (reconcile.Result, error) {
+	// Update Status.ActiveIndexName to reflect the active index regardless of what happened in this Reconcile() invocation
+	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(i.parameters.ResourceNamePrefix.String())
+	if err != nil {
+		i.Log.Error(err, "Unable to get current index with alias")
+		return reconcile.Result{}, err
+	}
+
+	if len(currentIndices) == 0 {
+		i.Instance.Status.ActiveIndexName = ""
+	} else {
+		i.Instance.Status.ActiveIndexName = currentIndices[0]
+	}
+
 	// Only issue status update if Reconcile actually modified Status
 	// This prevents write conflicts between the controllers
 	if !cmp.Equal(i.Instance.Status, i.OriginalInstance.Status) {

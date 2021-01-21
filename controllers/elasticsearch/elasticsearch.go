@@ -269,7 +269,11 @@ func (es *ElasticSearch) GetHostIDs(index string) ([]string, error) {
 }
 
 func (es *ElasticSearch) ESIndexName(pipelineVersion string) string {
-	return es.resourceNamePrefix + "." + pipelineVersion + ".public.hosts"
+	return ESIndexName(es.resourceNamePrefix, pipelineVersion)
+}
+
+func ESIndexName(resourceNamePrefix string, pipelineVersion string) string {
+	return resourceNamePrefix + "." + pipelineVersion + ".public.hosts"
 }
 
 func parseSearchResponse(scrollRes *esapi.Response) ([]string, SearchIDsResponse, error) {

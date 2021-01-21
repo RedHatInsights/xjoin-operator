@@ -729,16 +729,12 @@ var _ = Describe("Pipeline operations", func() {
 
 			i.ReconcileValidation()
 			pipeline = i.ReconcileXJoin()
-			//err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
-			//Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.PipelineVersion).ToNot(Equal(""))
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
 			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
 
 			i.IndexDocument(pipeline.Status.PipelineVersion, hostId.String())
-
-			//time.Sleep(1 * time.Second) //give ES a second to index the host
 
 			i.ReconcileValidation()
 			pipeline = i.ReconcileXJoin()

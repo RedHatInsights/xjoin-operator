@@ -226,7 +226,7 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 		i.Instance.Status.XJoinConfigVersion = i.parameters.ConfigMapVersion.String()
 
 		pipelineVersion := fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
-		if err := i.Instance.TransitionToInitialSync(pipelineVersion); err != nil {
+		if err := i.Instance.TransitionToInitialSync(i.parameters.ResourceNamePrefix.String(), pipelineVersion); err != nil {
 			i.error(err, "Error transitioning to Initial Sync")
 			return reconcile.Result{}, err
 		}
