@@ -77,9 +77,16 @@ func (i *ReconcileIteration) debug(message string, keysAndValues ...interface{})
 	i.Log.Debug(message, keysAndValues...)
 }
 
+func (i *ReconcileIteration) setActiveResources() {
+	i.Instance.Status.ActiveAliasName = i.parameters.ResourceNamePrefix.String()
+	i.Instance.Status.ActiveDebeziumConnectorName = i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion)
+	i.Instance.Status.ActiveESConnectorName = i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion)
+	i.Instance.Status.ActiveTopicName = i.Kafka.TopicName(i.Instance.Status.PipelineVersion)
+}
+
 func (i *ReconcileIteration) updateStatusAndRequeue() (reconcile.Result, error) {
 	// Update Status.ActiveIndexName to reflect the active index regardless of what happened in this Reconcile() invocation
-	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(i.parameters.ResourceNamePrefix.String())
+	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(i.Instance.Status.ActiveAliasName)
 	if err != nil {
 		i.Log.Error(err, "Unable to get current index with alias")
 		return reconcile.Result{}, err
@@ -170,7 +177,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 			database.ReplicationSlotName(resourceNamePrefix, i.Instance.Status.PipelineVersion))
 	}
 
-	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(resourceNamePrefix)
+	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(i.Instance.Status.ActiveAliasName)
 	if err != nil {
 		errors = append(errors, err)
 	} else if currentIndices != nil && i.Instance.GetState() != xjoin.STATE_REMOVED {
@@ -246,16 +253,8 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	return
 }
 
-func (i *ReconcileIteration) createESIndex(pipelineVersion string) error {
-	err := i.ESClient.CreateIndex(pipelineVersion)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (i *ReconcileIteration) recreateAliasIfNeeded() (bool, error) {
-	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(i.parameters.ResourceNamePrefix.String())
+	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(i.Instance.Status.ActiveAliasName)
 	if err != nil {
 		return false, err
 	}
@@ -280,7 +279,7 @@ func (i *ReconcileIteration) recreateAliasIfNeeded() (bool, error) {
  * None of these options a good one - this is about picking lesser evil
  */
 func (i *ReconcileIteration) updateAliasIfHealthier() error {
-	indices, err := i.ESClient.GetCurrentIndicesWithAlias(i.parameters.ResourceNamePrefix.String())
+	indices, err := i.ESClient.GetCurrentIndicesWithAlias(i.Instance.Status.ActiveAliasName)
 
 	if err != nil {
 		return fmt.Errorf("Failed to determine active index %w", err)
@@ -333,6 +332,7 @@ func (i *ReconcileIteration) updateAliasIfHealthier() error {
 }
 
 func (i *ReconcileIteration) checkForDeviation() (problem error, err error) {
+	//Configmap/secrets
 	if i.Instance.Status.XJoinConfigVersion != i.parameters.ConfigMapVersion.String() {
 		return fmt.Errorf("configMap changed. New version is %s",
 			i.parameters.ConfigMapVersion.String()), nil
@@ -359,15 +359,16 @@ func (i *ReconcileIteration) checkForDeviation() (problem error, err error) {
 			i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)), nil
 	}
 
+	//Connectors
 	esConnectorName := i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion)
 	problem, err = i.checkConnectorDeviation(esConnectorName, "es")
-	if err != nil {
+	if err != nil || problem != nil {
 		return problem, err
 	}
 
 	debeziumConnectorName := i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion)
 	problem, err = i.checkConnectorDeviation(debeziumConnectorName, "debezium")
-	if err != nil {
+	if err != nil || problem != nil {
 		return problem, err
 	}
 	return nil, nil
