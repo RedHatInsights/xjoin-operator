@@ -52,10 +52,6 @@ type XJoinPipelineSpec struct {
 	ValidationThreshold *int64 `json:"validationThreshold,omitempty"`
 
 	// +optional
-	// +kubebuilder:validation:Min:=0
-	MaxAge *int64 `json:"maxAge,omitempty"`
-
-	// +optional
 	// +kubebuilder:validation:MinLength:=1
 	HBIDBSecretName *string `json:"hbiDBSecretName,omitempty"`
 
@@ -67,17 +63,21 @@ type XJoinPipelineSpec struct {
 // XJoinPipelineStatus defines the observed state of XJoinPipeline
 type XJoinPipelineStatus struct {
 	// +kubebuilder:validation:Minimum:=0
-	ValidationFailedCount      int                `json:"validationFailedCount"`
-	PipelineVersion            string             `json:"pipelineVersion"`
-	XJoinConfigVersion         string             `json:"xjoinConfigVersion"`
-	ElasticSearchSecretVersion string             `json:"elasticsearchSecretVersion"`
-	HBIDBSecretVersion         string             `json:"hbiDBSecretVersion"`
-	InitialSyncInProgress      bool               `json:"initialSyncInProgress"`
-	Conditions                 []metav1.Condition `json:"conditions"`
-	ActiveIndexName            string             `json:"activeIndexName"`
-	IndexName                  string             `json:"indexName"`
-	ElasticSearchSecretName    string             `json:"elasticsearchSecretNameName"`
-	HBIDBSecretName            string             `json:"hbiDBSecretName"`
+	ValidationFailedCount       int                `json:"validationFailedCount"`
+	PipelineVersion             string             `json:"pipelineVersion"`
+	XJoinConfigVersion          string             `json:"xjoinConfigVersion"`
+	ElasticSearchSecretVersion  string             `json:"elasticsearchSecretVersion"`
+	HBIDBSecretVersion          string             `json:"hbiDBSecretVersion"`
+	InitialSyncInProgress       bool               `json:"initialSyncInProgress"`
+	Conditions                  []metav1.Condition `json:"conditions"`
+	ActiveIndexName             string             `json:"activeIndexName"`
+	ActiveESConnectorName       string             `json:"activeESConnectorName"`
+	ActiveDebeziumConnectorName string             `json:"activeDebeziumConnectorName"`
+	ActiveAliasName             string             `json:"activeAliasName"`
+	ActiveTopicName             string             `json:"activeTopicName"`
+	IndexName                   string             `json:"indexName"`
+	ElasticSearchSecretName     string             `json:"elasticsearchSecretNameName"`
+	HBIDBSecretName             string             `json:"hbiDBSecretName"`
 }
 
 // +kubebuilder:object:root=true

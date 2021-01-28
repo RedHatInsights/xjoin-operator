@@ -122,11 +122,6 @@ func (in *XJoinPipelineSpec) DeepCopyInto(out *XJoinPipelineSpec) {
 		*out = new(int64)
 		**out = **in
 	}
-	if in.MaxAge != nil {
-		in, out := &in.MaxAge, &out.MaxAge
-		*out = new(int64)
-		**out = **in
-	}
 	if in.HBIDBSecretName != nil {
 		in, out := &in.HBIDBSecretName, &out.HBIDBSecretName
 		*out = new(string)

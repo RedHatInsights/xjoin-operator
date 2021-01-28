@@ -791,6 +791,17 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
 		})
+
+		It("Sets active resource names for a valid pipeline", func() {
+			pipeline := i.CreateValidPipeline()
+			Expect(pipeline.Status.ActiveIndexName).To(Equal(i.EsClient.ESIndexName(pipeline.Status.PipelineVersion)))
+			Expect(pipeline.Status.ActiveTopicName).To(Equal(i.KafkaClient.TopicName(pipeline.Status.PipelineVersion)))
+			Expect(pipeline.Status.ActiveAliasName).To(Equal(resourceNamePrefix))
+			Expect(pipeline.Status.ActiveDebeziumConnectorName).To(
+				Equal(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion)))
+			Expect(pipeline.Status.ActiveESConnectorName).To(
+				Equal(i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion)))
+		})
 	})
 
 	Describe("Invalid -> New", func() {
@@ -831,6 +842,35 @@ var _ = Describe("Pipeline operations", func() {
 	})
 
 	Describe("Valid -> New", func() {
+		FIt("Preserves active resource names during refresh", func() {
+			pipeline := i.CreateValidPipeline()
+			activeIndexName := i.EsClient.ESIndexName(pipeline.Status.PipelineVersion)
+			activeTopicName := i.KafkaClient.TopicName(pipeline.Status.PipelineVersion)
+			activeAliasName := resourceNamePrefix
+			activeDebeziumConnectorName := i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion)
+			activeESConnectorName := i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion)
+
+			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndexName))
+			Expect(pipeline.Status.ActiveTopicName).To(Equal(activeTopicName))
+			Expect(pipeline.Status.ActiveAliasName).To(Equal(activeAliasName))
+			Expect(pipeline.Status.ActiveDebeziumConnectorName).To(Equal(activeDebeziumConnectorName))
+			Expect(pipeline.Status.ActiveESConnectorName).To(Equal(activeESConnectorName))
+
+			//trigger refresh with a new configmap
+			clusterName := "invalid.cluster"
+			cm := map[string]string{
+				"connect.cluster": clusterName,
+			}
+			i.CreateConfigMap("xjoin", cm)
+
+			pipeline = i.ExpectInitSyncReconcile()
+			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndexName))
+			Expect(pipeline.Status.ActiveTopicName).To(Equal(activeTopicName))
+			Expect(pipeline.Status.ActiveAliasName).To(Equal(activeAliasName))
+			Expect(pipeline.Status.ActiveDebeziumConnectorName).To(Equal(activeDebeziumConnectorName))
+			Expect(pipeline.Status.ActiveESConnectorName).To(Equal(activeESConnectorName))
+		})
+
 		It("Triggers refresh if configmap is created", func() {
 			pipeline := i.CreateValidPipeline()
 			activeIndex := pipeline.Status.ActiveIndexName
@@ -899,7 +939,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(connectorConfig["database.password"]).To(Equal(tempPassword))
 		})
 
-		FIt("Triggers refresh if elasticsearch secret changes", func() {
+		It("Triggers refresh if elasticsearch secret changes", func() {
 			pipeline := i.CreateValidPipeline()
 			activeIndex := pipeline.Status.ActiveIndexName
 
@@ -923,24 +963,54 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Triggers refresh if index disappears", func() {
+			pipeline := i.CreateValidPipeline()
+			err := i.EsClient.DeleteIndex(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline = i.ExpectInitSyncReconcile()
+			Expect(pipeline.Status.ActiveIndexName).To(Equal("")) //index was removed so there's no active index
+			pipeline = i.ExpectValidReconcile()
+			Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(""))
 		})
 
 		It("Triggers refresh if elasticsearch connector disappears", func() {
+			pipeline := i.CreateValidPipeline()
+			activeIndex := pipeline.Status.ActiveIndexName
+			err := i.KafkaClient.DeleteConnector(i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion))
+			Expect(err).ToNot(HaveOccurred())
+			pipeline = i.ExpectInitSyncReconcile()
+			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+			pipeline = i.ExpectValidReconcile()
+			Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
 		})
 
 		It("Triggers refresh if database connector disappears", func() {
+			pipeline := i.CreateValidPipeline()
+			activeIndex := pipeline.Status.ActiveIndexName
+			err := i.KafkaClient.DeleteConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
+			Expect(err).ToNot(HaveOccurred())
+			pipeline = i.ExpectInitSyncReconcile()
+			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+			pipeline = i.ExpectValidReconcile()
+			Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
 		})
+	})
 
-		It("Triggers refresh if database connector configuration disagrees", func() {
-		})
+	Describe("Spec changed", func() {
+		It("Triggers refresh if resource name prefix changes", func() {
+			pipeline := i.CreateValidPipeline()
+			activeIndex := pipeline.Status.ActiveIndexName
+			newPrefix := "xjointestupdated"
+			pipeline.Spec.ResourceNamePrefix = &newPrefix
+			err := test.Client.Update(context.TODO(), pipeline)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline = i.ExpectInitSyncReconcile()
+			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+			pipeline = i.ExpectValidReconcile()
+			Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
 
-		It("Triggers refresh if elasticsearch connector configuration disagrees", func() {
-		})
-
-		It("Triggers refresh if connect cluster changes", func() {
-		})
-
-		It("Triggers refresh if MaxAge changes", func() {
+			//cleanup
+			err = i.EsClient.DeleteIndex(pipeline.Status.ActiveIndexName)
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 

@@ -262,6 +262,7 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 
 	// STATE_VALID
 	if i.Instance.GetState() == xjoin.STATE_VALID {
+		i.setActiveResources()
 		if updated, err := i.recreateAliasIfNeeded(); err != nil {
 			i.error(err, "Error updating hosts view")
 			return reconcile.Result{}, err
@@ -271,7 +272,6 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 				"Pipeline became valid. xjoin.inventory.hosts alias now points to %s",
 				i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
 		}
-
 		return i.updateStatusAndRequeue()
 	}
 
