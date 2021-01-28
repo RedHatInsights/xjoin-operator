@@ -141,6 +141,14 @@ spec:
                 - type
                 type: object
               type: array
+            elasticsearchSecretNameName:
+              type: string
+            elasticsearchSecretVersion:
+              type: string
+            hbiDBSecretName:
+              type: string
+            hbiDBSecretVersion:
+              type: string
             indexName:
               type: string
             initialSyncInProgress:
@@ -155,6 +163,10 @@ spec:
           required:
           - activeIndexName
           - conditions
+          - elasticsearchSecretNameName
+          - elasticsearchSecretVersion
+          - hbiDBSecretName
+          - hbiDBSecretVersion
           - indexName
           - initialSyncInProgress
           - pipelineVersion

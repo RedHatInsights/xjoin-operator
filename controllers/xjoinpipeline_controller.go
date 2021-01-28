@@ -18,10 +18,8 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/go-logr/logr"
-	"github.com/google/go-cmp/cmp"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
@@ -30,17 +28,18 @@ import (
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	v1 "k8s.io/api/core/v1"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -224,6 +223,8 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 		}
 
 		i.Instance.Status.XJoinConfigVersion = i.parameters.ConfigMapVersion.String()
+		i.Instance.Status.ElasticSearchSecretVersion = i.parameters.ElasticSearchSecretVersion.String()
+		i.Instance.Status.HBIDBSecretVersion = i.parameters.HBIDBSecretVersion.String()
 
 		pipelineVersion := fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
 		if err := i.Instance.TransitionToInitialSync(i.parameters.ResourceNamePrefix.String(), pipelineVersion); err != nil {
@@ -296,297 +297,72 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 }
 
 func (r *XJoinPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("xjoin-controller").
 		For(&xjoin.XJoinPipeline{}).
+		Owns(kafka.EmptyConnector()).
+		// trigger Reconcile if ConfigMap changes
+		Watches(&source.Kind{Type: &v1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
+
+			ToRequests: handler.ToRequestsFunc(
+				func(configMap handler.MapObject) []reconcile.Request {
+					var requests []reconcile.Request
+
+					if configMap.Meta.GetName() != "xjoin" {
+						return requests
+					}
+
+					pipelines, err := utils.FetchXJoinPipelines(r.Client)
+					if err != nil {
+						r.Log.Error(err, "Failed to fetch XJoinPipelines")
+						return requests
+					}
+
+					for _, pipeline := range pipelines.Items {
+						requests = append(requests, reconcile.Request{
+							NamespacedName: types.NamespacedName{
+								Namespace: configMap.Meta.GetNamespace(),
+								Name:      pipeline.GetName(),
+							},
+						})
+					}
+
+					r.Log.Info("XJoin ConfigMap changed. Reconciling XJoinPipelines",
+						"namespace", configMap.Meta.GetNamespace(), "pipelines", requests)
+					return requests
+				}),
+		}).
+		Watches(&source.Kind{Type: &v1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
+			ToRequests: handler.ToRequestsFunc(
+				func(secret handler.MapObject) []reconcile.Request {
+					var requests []reconcile.Request
+
+					secretName := secret.Meta.GetName()
+
+					pipelines, err := utils.FetchXJoinPipelines(r.Client)
+					if err != nil {
+						r.Log.Error(err, "Failed to fetch XJoinPipelines")
+						return requests
+					}
+
+					for _, pipeline := range pipelines.Items {
+						if pipeline.Status.HBIDBSecretName == secretName || pipeline.Status.ElasticSearchSecretName == secretName {
+							requests = append(requests, reconcile.Request{
+								NamespacedName: types.NamespacedName{
+									Namespace: pipeline.GetNamespace(),
+									Name:      pipeline.GetName(),
+								},
+							})
+						}
+					}
+
+					r.Log.Info("XJoin secret changed. Reconciling XJoinPipelines",
+						"namespace", secret.Meta.GetNamespace(), "name", secret.Meta.GetName(), "pipelines", requests)
+					return requests
+				}),
+		}).
 		Complete(r)
-}
-
-func (i *ReconcileIteration) addFinalizer() error {
-	if !utils.ContainsString(i.Instance.GetFinalizers(), xjoinpipelineFinalizer) {
-		controllerutil.AddFinalizer(i.Instance, xjoinpipelineFinalizer)
-		return i.Client.Update(context.TODO(), i.Instance)
-	}
-
-	return nil
-}
-
-func (i *ReconcileIteration) removeFinalizer() error {
-	controllerutil.RemoveFinalizer(i.Instance, xjoinpipelineFinalizer)
-	return i.Client.Update(context.TODO(), i.Instance)
-}
-
-func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
-	var (
-		connectorsToKeep       []string
-		esIndicesToKeep        []string
-		topicsToKeep           []string
-		replicationSlotsToKeep []string
-	)
-
-	resourceNamePrefix := i.parameters.ResourceNamePrefix.String()
-
-	if i.Instance.GetState() != xjoin.STATE_REMOVED && i.Instance.Status.PipelineVersion != "" {
-		connectorsToKeep = append(connectorsToKeep, i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion))
-		connectorsToKeep = append(connectorsToKeep, i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion))
-		esIndicesToKeep = append(esIndicesToKeep, i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
-		topicsToKeep = append(topicsToKeep, i.Kafka.TopicName(i.Instance.Status.PipelineVersion))
-		replicationSlotsToKeep = append(
-			replicationSlotsToKeep,
-			database.ReplicationSlotName(resourceNamePrefix, i.Instance.Status.PipelineVersion))
-	}
-
-	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(resourceNamePrefix)
-	if err != nil {
-		errors = append(errors, err)
-	} else if currentIndices != nil && i.Instance.GetState() != xjoin.STATE_REMOVED {
-		version := currentIndices[0][len("xjoin.inventory.hosts"):len(currentIndices[0])]
-		connectorsToKeep = append(connectorsToKeep, i.Kafka.DebeziumConnectorName(version))
-		connectorsToKeep = append(connectorsToKeep, i.Kafka.ESConnectorName(version))
-		esIndicesToKeep = append(esIndicesToKeep, currentIndices...)
-		topicsToKeep = append(topicsToKeep, i.Kafka.TopicName(version))
-		replicationSlotsToKeep = append(
-			replicationSlotsToKeep, database.ReplicationSlotName(resourceNamePrefix, version))
-	}
-
-	//delete stale Kafka Connectors
-	connectors, err := i.Kafka.ListConnectors()
-	if err != nil {
-		errors = append(errors, err)
-	} else {
-		for _, connector := range connectors.Items {
-			if !utils.ContainsString(connectorsToKeep, connector.GetName()) {
-				i.Log.Info("Removing stale connector", "connector", connector.GetName())
-				if err = i.Kafka.DeleteConnector(connector.GetName()); err != nil {
-					errors = append(errors, err)
-				}
-			}
-		}
-	}
-
-	//delete stale ES indices
-	indices, err := i.ESClient.ListIndices()
-	if err != nil {
-		errors = append(errors, err)
-	} else {
-		for _, index := range indices {
-			if !utils.ContainsString(esIndicesToKeep, index) {
-				i.Log.Info("Removing stale index", "index", index)
-				if err = i.ESClient.DeleteIndexByFullName(index); err != nil {
-					errors = append(errors, err)
-				}
-			}
-		}
-	}
-
-	//delete stale Kafka Topics
-	topics, err := i.Kafka.ListTopicNames()
-	if err != nil {
-		errors = append(errors, err)
-	} else {
-		for _, topic := range topics {
-			if !utils.ContainsString(topicsToKeep, topic) && strings.Index(topic, resourceNamePrefix) == 0 {
-				i.Log.Info("Removing stale topic", "topic", topic)
-				if err = i.Kafka.DeleteTopic(topic); err != nil {
-					errors = append(errors, err)
-				}
-			}
-		}
-	}
-
-	//delete stale replication slots
-	slots, err := i.InventoryDb.ListReplicationSlots(resourceNamePrefix)
-	if err != nil {
-		errors = append(errors, err)
-	} else {
-		for _, slot := range slots {
-			if !utils.ContainsString(replicationSlotsToKeep, slot) {
-				i.Log.Info("Removing stale replication slot", "slot", slot)
-				if err = i.InventoryDb.RemoveReplicationSlot(slot); err != nil {
-					errors = append(errors, err)
-				}
-			}
-		}
-	}
-
-	return
-}
-
-func (i *ReconcileIteration) createESIndex(pipelineVersion string) error {
-	err := i.ESClient.CreateIndex(pipelineVersion)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (i *ReconcileIteration) recreateAliasIfNeeded() (bool, error) {
-	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(i.parameters.ResourceNamePrefix.String())
-	if err != nil {
-		return false, err
-	}
-
-	validIndex := i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)
-	if currentIndices == nil || !utils.ContainsString(currentIndices, validIndex) {
-		i.Log.Info("Updating alias", "index", validIndex)
-		if err = i.ESClient.UpdateAliasByFullIndexName(i.parameters.ResourceNamePrefix.String(), validIndex); err != nil {
-			return false, err
-		}
-
-		return true, nil
-	}
-
-	return false, nil
-}
-
-/*
- * Should be called when a refreshed pipeline failed to become valid.
- * This method will either keep the old invalid ES index "active" (i.e. used by the alias)
- * or update the alias to the new (also invalid) table.
- * None of these options a good one - this is about picking lesser evil
- */
-func (i *ReconcileIteration) updateAliasIfHealthier() error {
-	indices, err := i.ESClient.GetCurrentIndicesWithAlias(i.parameters.ResourceNamePrefix.String())
-
-	if err != nil {
-		return fmt.Errorf("Failed to determine active index %w", err)
-	}
-
-	if indices != nil {
-		if len(indices) == 1 && indices[0] == i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion) {
-			return nil // index is already active, nothing to do
-		}
-
-		// no need to close this as that's done in ReconcileIteration.Close()
-		i.InventoryDb = database.NewDatabase(database.DBParams{
-			Host:     i.parameters.HBIDBHost.String(),
-			User:     i.parameters.HBIDBUser.String(),
-			Name:     i.parameters.HBIDBName.String(),
-			Port:     i.parameters.HBIDBPort.String(),
-			Password: i.parameters.HBIDBPassword.String(),
-		})
-
-		if err = i.InventoryDb.Connect(); err != nil {
-			return err
-		}
-
-		hbiHostCount, err := i.InventoryDb.CountHosts()
-		if err != nil {
-			return fmt.Errorf("failed to get host count from inventory %w", err)
-		}
-
-		activeCount, err := i.ESClient.CountIndex("xjoin.inventory.hosts")
-		if err != nil {
-			return fmt.Errorf("failed to get host count from active index %w", err)
-		}
-		latestCount, err := i.ESClient.CountIndex(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
-		if err != nil {
-			return fmt.Errorf("failed to get host count from latest index %w", err)
-		}
-
-		if utils.Abs(hbiHostCount-latestCount) > utils.Abs(hbiHostCount-activeCount) {
-			return nil // the active table is healthier; do not update anything
-		}
-	}
-
-	if err = i.ESClient.UpdateAliasByFullIndexName(
-		i.parameters.ResourceNamePrefix.String(),
-		i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (i *ReconcileIteration) checkForDeviation() (problem error, err error) {
-	if i.Instance.Status.XJoinConfigVersion != i.parameters.ConfigMapVersion.String() {
-		return fmt.Errorf("configMap changed. New version is %s", i.parameters.ConfigMapVersion), nil
-	}
-
-	//ES Index
-	indexExists, err := i.ESClient.IndexExists(i.Instance.Status.PipelineVersion)
-
-	if err != nil {
-		return nil, err
-	} else if indexExists == false {
-		return fmt.Errorf(
-			"elasticsearch index %s not found",
-			i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)), nil
-	}
-
-	esConnectorName := i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion)
-	problem, err = i.checkConnectorDeviation(esConnectorName, "es")
-	if err != nil {
-		return problem, err
-	}
-
-	debeziumConnectorName := i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion)
-	problem, err = i.checkConnectorDeviation(debeziumConnectorName, "debezium")
-	if err != nil {
-		return problem, err
-	}
-	return nil, nil
-}
-
-func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, connectorType string) (problem error, err error) {
-	connector, err := i.Kafka.GetConnector(connectorName)
-	if err != nil {
-		if k8errors.IsNotFound(err) {
-			return fmt.Errorf(
-				"connector %s not found in %s", connectorName, i.Instance.Namespace), nil
-		}
-
-		return nil, err
-
-	}
-
-	if kafka.IsFailed(connector) {
-		return fmt.Errorf("connector %s is in the FAILED state", connectorName), nil
-	}
-
-	if connector.GetLabels()[kafka.LabelStrimziCluster] != i.parameters.ConnectCluster.String() {
-		return fmt.Errorf(
-			"connectCluster changed from %s to %s",
-			connector.GetLabels()[kafka.LabelStrimziCluster],
-			i.parameters.ConnectCluster.String()), nil
-	}
-
-	/*
-		if connector.GetLabels()[connect.LabelMaxAge] != strconv.FormatInt(i.parameters.ConnectorMaxAge, 10) {
-			return fmt.Errorf(
-				"maxAge changed from %s to %d",
-				connector.GetLabels()[connect.LabelMaxAge],
-				i.parameters.ConnectorMaxAge), nil
-		}
-	*/
-
-	// compares the spec of the existing connector with the spec we would create if we were creating a new connector now
-	newConnector, err := i.createDryConnectorByType(connectorType)
-	if err != nil {
-		return nil, err
-	}
-
-	currentConnectorConfig, _, err1 := unstructured.NestedMap(connector.UnstructuredContent(), "spec", "parameters")
-	newConnectorConfig, _, err2 := unstructured.NestedMap(newConnector.UnstructuredContent(), "spec", "parameters")
-
-	if err1 == nil && err2 == nil {
-		diff := cmp.Diff(currentConnectorConfig, newConnectorConfig, NumberNormalizer)
-
-		if len(diff) > 0 {
-			return fmt.Errorf("connector configuration has changed: %s", diff), nil
-		}
-	}
-
-	return nil, nil
-}
-
-func (i *ReconcileIteration) createDryConnectorByType(conType string) (*unstructured.Unstructured, error) {
-	if conType == "es" {
-		return i.Kafka.CreateESConnector(i.Instance.Status.PipelineVersion, true)
-	} else if conType == "debezium" {
-		return i.Kafka.CreateDebeziumConnector(i.Instance.Status.PipelineVersion, true)
-	} else {
-		return nil, errors.New("invalid param. Must be one of [es, debezium]")
-	}
 }
 
 func NewXJoinReconciler(

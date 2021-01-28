@@ -144,6 +144,12 @@ func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, erro
 
 	byteValue, _ := ioutil.ReadAll(res.Body)
 
+	if res.StatusCode != 200 {
+		return nil, errors.New(fmt.Sprintf(
+			"invalid response from ElasticSearch. StatusCode: %s, Body: %s",
+			strconv.Itoa(res.StatusCode), string(byteValue)))
+	}
+
 	var aliasesResponse []CatAliasResponse
 	err = json.Unmarshal(byteValue, &aliasesResponse)
 	if err != nil {

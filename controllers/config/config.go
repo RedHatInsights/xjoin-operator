@@ -38,18 +38,20 @@ func NewConfig(instance *xjoin.XJoinPipeline, client client.Client) (*Config, er
 	if err != nil {
 		return &config, err
 	}
-	hbiDBSecretNameParam := hbiDBSecretNameVal.Interface().(Parameter)
-
-	config.hbiDBSecret, err = utils.FetchSecret(client, instance.Namespace, hbiDBSecretNameParam.String())
+	hbiDBSecretName := hbiDBSecretNameVal.Interface().(Parameter)
+	instance.Status.HBIDBSecretName = hbiDBSecretName.String()
+	config.hbiDBSecret, err = utils.FetchSecret(client, instance.Namespace, hbiDBSecretName.String())
 	if err != nil {
 		return &config, err
 	}
+
 	elasticSearchSecretVal, err := config.parameterValue(config.Parameters.ElasticSearchSecretName)
 	if err != nil {
 		return &config, err
 	}
-	elasticSearchSecretNameParam := elasticSearchSecretVal.Interface().(Parameter)
-	config.elasticSearchSecret, err = utils.FetchSecret(client, instance.Namespace, elasticSearchSecretNameParam.String())
+	elasticSearchSecretName := elasticSearchSecretVal.Interface().(Parameter)
+	instance.Status.ElasticSearchSecretName = elasticSearchSecretName.String()
+	config.elasticSearchSecret, err = utils.FetchSecret(client, instance.Namespace, elasticSearchSecretName.String())
 	if err != nil {
 		return &config, err
 	}
@@ -148,8 +150,25 @@ func (config *Config) buildXJoinConfig() error {
 	if err != nil {
 		return err
 	}
-
 	err = config.Parameters.ConfigMapVersion.SetValue(configMapHash)
+	if err != nil {
+		return err
+	}
+
+	dbSecretHash, err := utils.SecretHash(config.hbiDBSecret)
+	if err != nil {
+		return err
+	}
+	err = config.Parameters.HBIDBSecretVersion.SetValue(dbSecretHash)
+	if err != nil {
+		return err
+	}
+
+	esSecretHash, err := utils.SecretHash(config.elasticSearchSecret)
+	if err != nil {
+		return err
+	}
+	err = config.Parameters.ElasticSearchSecretVersion.SetValue(esSecretHash)
 	if err != nil {
 		return err
 	}

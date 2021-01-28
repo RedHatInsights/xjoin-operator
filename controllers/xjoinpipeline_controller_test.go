@@ -3,6 +3,7 @@ package controllers
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/google/uuid"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -73,8 +74,8 @@ func getParameters() (Parameters, map[string]interface{}) {
 	options.SetDefault("ElasticSearchPassword", "test1337")
 	options.SetDefault("HBIDBHost", "inventory-db")
 	options.SetDefault("HBIDBPort", "5432")
-	options.SetDefault("HBIDBUser", "insights")
-	options.SetDefault("HBIDBPassword", "insights")
+	options.SetDefault("HBIDBUser", "postgres")
+	options.SetDefault("HBIDBPassword", "postgres")
 	options.SetDefault("HBIDBName", "test")
 	options.SetDefault("ResourceNamePrefix", resourceNamePrefix)
 	options.AutomaticEnv()
@@ -208,6 +209,54 @@ func (i *TestIteration) CreateDbSecret(name string) {
 
 	err := test.Client.Create(context.TODO(), secret)
 	Expect(err).ToNot(HaveOccurred())
+}
+
+func (i *TestIteration) ExpectValidReconcile() *xjoin.XJoinPipeline {
+	i.ReconcileValidation()
+	pipeline := i.ReconcileXJoin()
+	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
+	Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
+	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
+	return pipeline
+}
+
+func (i *TestIteration) ExpectNewReconcile() *xjoin.XJoinPipeline {
+	i.ReconcileValidation()
+	pipeline := i.ReconcileXJoin()
+	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_NEW))
+	Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
+	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
+	return pipeline
+}
+
+func (i *TestIteration) ExpectInitSyncReconcile() *xjoin.XJoinPipeline {
+	i.ReconcileValidation()
+	pipeline := i.ReconcileXJoin()
+	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
+	Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
+	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
+	return pipeline
+}
+
+func (i *TestIteration) ExpectInvalidReconcile() *xjoin.XJoinPipeline {
+	i.ReconcileValidation()
+	pipeline := i.ReconcileXJoin()
+	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
+	Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
+	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
+	return pipeline
+}
+
+func (i *TestIteration) CreateValidPipeline() *xjoin.XJoinPipeline {
+	i.CreatePipeline()
+	i.ReconcileXJoin()
+	i.ReconcileValidation()
+	pipeline := i.ReconcileXJoin()
+	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
+	Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
+	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
+
+	return pipeline
 }
 
 func (i *TestIteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) {
@@ -423,10 +472,10 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(dbConnectorSpec["pause"]).To(Equal(false))
 			dbConnectorConfig := dbConnectorSpec["config"].(map[string]interface{})
 			Expect(dbConnectorConfig["database.dbname"]).To(Equal("test"))
-			Expect(dbConnectorConfig["database.password"]).To(Equal("insights"))
+			Expect(dbConnectorConfig["database.password"]).To(Equal("postgres"))
 			Expect(dbConnectorConfig["database.port"]).To(Equal("5432"))
 			Expect(dbConnectorConfig["tasks.max"]).To(Equal("1"))
-			Expect(dbConnectorConfig["database.user"]).To(Equal("insights"))
+			Expect(dbConnectorConfig["database.user"]).To(Equal("postgres"))
 			Expect(dbConnectorConfig["max.batch.size"]).To(Equal(int64(10)))
 			Expect(dbConnectorConfig["plugin.name"]).To(Equal("pgoutput"))
 			Expect(dbConnectorConfig["transforms"]).To(Equal("unwrap"))
@@ -750,55 +799,32 @@ var _ = Describe("Pipeline operations", func() {
 				hostId, err := uuid.NewUUID()
 				Expect(err).ToNot(HaveOccurred())
 
-				i.CreatePipeline()
-
 				cm := map[string]string{
 					"validation.attempts.threshold": "2",
 				}
-
 				i.CreateConfigMap("xjoin", cm)
-				i.ReconcileXJoin()
-				i.ReconcileValidation()
-				pipeline := i.ReconcileXJoin()
+
+				pipeline := i.CreateValidPipeline()
 				activeIndex := pipeline.Status.ActiveIndexName
-				Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
-				Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
-				Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
 
 				err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 				Expect(err).ToNot(HaveOccurred())
 				i.InsertHost(hostId.String())
 
-				i.ReconcileValidation()
-				pipeline = i.ReconcileXJoin()
-				Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
-				Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
-				Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
+				pipeline = i.ExpectInvalidReconcile()
 				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
-				i.ReconcileValidation()
-				pipeline = i.ReconcileXJoin()
-				Expect(pipeline.GetState()).To(Equal(xjoin.STATE_NEW))
-				Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
-				Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
+				pipeline = i.ExpectNewReconcile()
 				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
 				i.InsertHost(hostId.String())
 
-				i.ReconcileValidation()
-				pipeline = i.ReconcileXJoin()
-				Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
-				Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
-				Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
+				pipeline = i.ExpectInitSyncReconcile()
 				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
 				i.IndexDocument(pipeline.Status.PipelineVersion, hostId.String())
 
-				i.ReconcileValidation()
-				pipeline = i.ReconcileXJoin()
-				Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
-				Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
-				Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
+				pipeline = i.ExpectValidReconcile()
 				Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
 			})
 		})
@@ -806,22 +832,109 @@ var _ = Describe("Pipeline operations", func() {
 
 	Describe("Valid -> New", func() {
 		It("Triggers refresh if configmap is created", func() {
+			pipeline := i.CreateValidPipeline()
+			activeIndex := pipeline.Status.ActiveIndexName
 
+			clusterName := "invalid.cluster"
+			cm := map[string]string{
+				"connect.cluster": clusterName,
+			}
+			i.CreateConfigMap("xjoin", cm)
+
+			pipeline = i.ExpectInitSyncReconcile()
+			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+
+			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(connector.GetLabels()["strimzi.io/cluster"]).To(Equal(clusterName))
 		})
 
 		It("Triggers refresh if configmap changes", func() {
+			cm := map[string]string{
+				"connect.cluster": i.Parameters.ConnectCluster.String(),
+			}
+			i.CreateConfigMap("xjoin", cm)
+			pipeline := i.CreateValidPipeline()
+			activeIndex := pipeline.Status.ActiveIndexName
+
+			configMap, err := utils.FetchConfigMap(test.Client, i.NamespacedName.Namespace, "xjoin")
+			Expect(err).ToNot(HaveOccurred())
+			updatedClusterName := "invalid.cluster"
+			cm["connect.cluster"] = updatedClusterName
+			configMap.Data = cm
+			err = test.Client.Update(context.TODO(), configMap)
+			Expect(err).ToNot(HaveOccurred())
+
+			pipeline = i.ExpectInitSyncReconcile()
+			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+
+			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(connector.GetLabels()["strimzi.io/cluster"]).To(Equal(updatedClusterName))
 		})
 
 		It("Triggers refresh if database secret changes", func() {
+			pipeline := i.CreateValidPipeline()
+			activeIndex := pipeline.Status.ActiveIndexName
+
+			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
+			Expect(err).ToNot(HaveOccurred())
+
+			tempUser := "tempuser"
+			tempPassword := "temppassword"
+			_, _ = i.DbClient.Exec( //allow this to fail when the user already exists
+				fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s' IN ROLE insights;", tempUser, tempPassword))
+			secret.Data["db.user"] = []byte(tempUser)
+			secret.Data["db.password"] = []byte(tempPassword)
+			err = test.Client.Update(context.TODO(), secret)
+
+			pipeline = i.ExpectInitSyncReconcile()
+			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+
+			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
+			Expect(err).ToNot(HaveOccurred())
+			connectorSpec := connector.Object["spec"].(map[string]interface{})
+			connectorConfig := connectorSpec["config"].(map[string]interface{})
+			Expect(connectorConfig["database.user"]).To(Equal(tempUser))
+			Expect(connectorConfig["database.password"]).To(Equal(tempPassword))
 		})
 
-		It("Triggers refresh if table disappears", func() {
+		FIt("Triggers refresh if elasticsearch secret changes", func() {
+			pipeline := i.CreateValidPipeline()
+			activeIndex := pipeline.Status.ActiveIndexName
+
+			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
+			Expect(err).ToNot(HaveOccurred())
+
+			//change the secret hash by adding a new field
+			secret.Data["newfield"] = []byte("value")
+			err = test.Client.Update(context.TODO(), secret)
+
+			pipeline = i.ExpectInitSyncReconcile()
+			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+
+			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion))
+			Expect(err).ToNot(HaveOccurred())
+			connectorSpec := connector.Object["spec"].(map[string]interface{})
+			connectorConfig := connectorSpec["config"].(map[string]interface{})
+			Expect(connectorConfig["connection.username"]).To(Equal("test"))
+			Expect(connectorConfig["connection.password"]).To(Equal("test1337"))
+			Expect(connectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-http:9200"))
 		})
 
-		It("Triggers refresh if connector disappears", func() {
+		It("Triggers refresh if index disappears", func() {
 		})
 
-		It("Triggers refresh if connector configuration disagrees", func() {
+		It("Triggers refresh if elasticsearch connector disappears", func() {
+		})
+
+		It("Triggers refresh if database connector disappears", func() {
+		})
+
+		It("Triggers refresh if database connector configuration disagrees", func() {
+		})
+
+		It("Triggers refresh if elasticsearch connector configuration disagrees", func() {
 		})
 
 		It("Triggers refresh if connect cluster changes", func() {
@@ -829,7 +942,6 @@ var _ = Describe("Pipeline operations", func() {
 
 		It("Triggers refresh if MaxAge changes", func() {
 		})
-
 	})
 
 	Describe("-> Removed", func() {
