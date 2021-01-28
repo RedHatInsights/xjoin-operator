@@ -38,6 +38,8 @@ type Parameters struct {
 	ElasticSearchBatchSize            Parameter
 	ElasticSearchMaxBufferedRecords   Parameter
 	ElasticSearchLingerMS             Parameter
+	ElasticSearchSecretName           Parameter
+	ElasticSearchSecretVersion        Parameter
 	DebeziumTemplate                  Parameter
 	DebeziumTasksMax                  Parameter
 	DebeziumMaxBatchSize              Parameter
@@ -50,7 +52,7 @@ type Parameters struct {
 	HBIDBUser                         Parameter
 	HBIDBPassword                     Parameter
 	HBIDBSecretName                   Parameter
-	ElasticSearchSecretName           Parameter
+	HBIDBSecretVersion                Parameter
 	KafkaTopicPartitions              Parameter
 	KafkaTopicReplicas                Parameter
 }
@@ -114,7 +116,7 @@ func NewXJoinConfiguration() Parameters {
 		},
 		ValidationAttemptsThreshold: Parameter{
 			ConfigMapKey: "validation.attempts.threshold",
-			DefaultValue: 3,
+			DefaultValue: 1,
 			Type:         reflect.Int,
 		},
 		ValidationPercentageThreshold: Parameter{
@@ -129,13 +131,17 @@ func NewXJoinConfiguration() Parameters {
 		},
 		ValidationInitAttemptsThreshold: Parameter{
 			ConfigMapKey: "init.validation.attempts.threshold",
-			DefaultValue: 30,
+			DefaultValue: 1,
 			Type:         reflect.Int,
 		},
 		ValidationInitPercentageThreshold: Parameter{
 			ConfigMapKey: "init.validation.percentage.threshold",
 			DefaultValue: 5,
 			Type:         reflect.Int,
+		},
+		ElasticSearchSecretVersion: Parameter{
+			DefaultValue: "",
+			Type:         reflect.String,
 		},
 		ElasticSearchConnectorTemplate: Parameter{
 			Type:         reflect.String,
@@ -289,6 +295,10 @@ func NewXJoinConfiguration() Parameters {
 			Type:         reflect.Bool,
 			ConfigMapKey: "debezium.connector.errors.log.enable",
 			DefaultValue: true,
+		},
+		HBIDBSecretVersion: Parameter{
+			DefaultValue: "",
+			Type:         reflect.String,
 		},
 		HBIDBName: Parameter{
 			Type:         reflect.String,

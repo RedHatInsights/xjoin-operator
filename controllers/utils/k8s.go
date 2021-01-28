@@ -22,6 +22,12 @@ func FetchXJoinPipeline(c client.Client, namespacedName types.NamespacedName) (*
 	return instance, err
 }
 
+func FetchXJoinPipelines(c client.Client) (*xjoin.XJoinPipelineList, error) {
+	list := &xjoin.XJoinPipelineList{}
+	err := c.List(context.TODO(), list)
+	return list, err
+}
+
 func FetchConfigMap(c client.Client, namespace string, name string) (*corev1.ConfigMap, error) {
 	nameField := client.MatchingFields{
 		"metadata.name":      name,
@@ -36,6 +42,22 @@ func FetchConfigMap(c client.Client, namespace string, name string) (*corev1.Con
 	} else {
 		return &configMaps.Items[0], err
 	}
+}
+
+func SecretHash(secret *corev1.Secret) (string, error) {
+	if secret == nil {
+		return "-1", nil
+	}
+
+	jsonVal, err := json.Marshal(secret.Data)
+
+	if err != nil {
+		return "-2", nil
+	}
+
+	algorithm := fnv.New32a()
+	_, err = algorithm.Write(jsonVal)
+	return fmt.Sprint(algorithm.Sum32()), err
 }
 
 func ConfigMapHash(cm *corev1.ConfigMap, ignoredKeys ...string) (string, error) {
