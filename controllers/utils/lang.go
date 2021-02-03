@@ -1,6 +1,8 @@
 package utils
 
-import "reflect"
+import (
+	"reflect"
+)
 
 /*
  * Returns a copy of the given map with the given keys left out

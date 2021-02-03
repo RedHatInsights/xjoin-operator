@@ -76,7 +76,7 @@ func (config *Config) parameterValue(param Parameter) (reflect.Value, error) {
 		}
 	}
 
-	if param.Secret == secretTypes.elasticSearch && config.elasticSearchSecret != nil {
+	if param.Secret == secretTypes.elasticSearch && config.elasticSearchSecret != nil && param.value == nil {
 		value, err := config.readSecretValue(config.elasticSearchSecret, param.SecretKey)
 		if err != nil {
 			return emptyValue, err
@@ -88,7 +88,7 @@ func (config *Config) parameterValue(param Parameter) (reflect.Value, error) {
 		}
 	}
 
-	if param.Secret == secretTypes.hbiDB && config.hbiDBSecret != nil {
+	if param.Secret == secretTypes.hbiDB && config.hbiDBSecret != nil && param.value == nil {
 		value, err := config.readSecretValue(config.hbiDBSecret, param.SecretKey)
 		if err != nil {
 			return emptyValue, err

@@ -2,7 +2,6 @@ package v1alpha1
 
 import (
 	"fmt"
-	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -82,7 +81,6 @@ func (instance *XJoinPipeline) TransitionToInitialSync(resourceNamePrefix string
 	instance.ResetValid()
 	instance.Status.InitialSyncInProgress = true
 	instance.Status.PipelineVersion = pipelineVersion
-	instance.Status.IndexName = elasticsearch.ESIndexName(resourceNamePrefix, pipelineVersion)
 
 	return nil
 }

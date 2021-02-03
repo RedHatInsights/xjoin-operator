@@ -43,8 +43,8 @@ func NewElasticSearch(url string, username string, password string, resourceName
 	return es, nil
 }
 
-func (es *ElasticSearch) IndexExists(pipelineVersion string) (bool, error) {
-	res, err := es.Client.Indices.Exists([]string{es.ESIndexName(pipelineVersion)})
+func (es *ElasticSearch) IndexExists(indexName string) (bool, error) {
+	res, err := es.Client.Indices.Exists([]string{indexName})
 	if err != nil {
 		return false, err
 	}
@@ -133,6 +133,10 @@ func (es *ElasticSearch) UpdateAlias(alias string, version string) error {
 }
 
 func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, error) {
+	if name == "" {
+		return nil, nil
+	}
+
 	req := esapi.CatAliasesRequest{
 		Name:   []string{name},
 		Format: "JSON",

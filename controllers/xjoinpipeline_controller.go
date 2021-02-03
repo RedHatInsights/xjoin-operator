@@ -233,7 +233,7 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 		}
 		i.probeStartingInitialSync()
 
-		err := i.Kafka.CreateTopic(pipelineVersion)
+		_, err := i.Kafka.CreateTopic(pipelineVersion, false)
 		if err != nil {
 			i.error(err, "Error creating Kafka topic")
 			return reconcile.Result{}, err
