@@ -121,29 +121,6 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 	return i, nil
 }
 
-func (r *XJoinPipelineReconciler) Finalize(i ReconcileIteration) error {
-	err := i.Kafka.DeleteConnectorsForPipelineVersion(i.Instance.Status.PipelineVersion)
-	if err != nil {
-		return err
-	}
-
-	err = i.InventoryDb.RemoveReplicationSlotsForPipelineVersion(i.Instance.Status.PipelineVersion)
-	if err != nil {
-		return err
-	}
-
-	err = i.Kafka.DeleteTopicByPipelineVersion(i.Instance.Status.PipelineVersion)
-	if err != nil {
-		return err
-	}
-
-	err = i.ESClient.DeleteIndex(i.Instance.Status.PipelineVersion)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // +kubebuilder:rbac:groups=xjoin.cloud.redhat.com,resources=xjoinpipelines;xjoinpipelines/status;xjoinpipelines/finalizers,verbs=*
 // +kubebuilder:rbac:groups=kafka.strimzi.io,resources=kafkaconnectors;kafkaconnectors/finalizers,verbs=*
 // +kubebuilder:rbac:groups="",resources=configmaps;secrets,verbs=get;list;watch
@@ -180,27 +157,9 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 			return reconcile.Result{}, xjoinErrors[0]
 		}
 
-		err = i.Kafka.DeleteConnectorsForPipelineVersion(i.Instance.Status.PipelineVersion)
+		err = i.DeleteResourceForPipeline(i.Instance.Status.PipelineVersion)
+		err = i.DeleteResourceForPipeline(i.Instance.Status.ActivePipelineVersion)
 		if err != nil {
-			i.error(err, "Error deleting connectors")
-			return reconcile.Result{}, err
-		}
-
-		err = i.InventoryDb.RemoveReplicationSlotsForPipelineVersion(i.Instance.Status.PipelineVersion)
-		if err != nil {
-			i.error(err, "Error removing replication slots")
-			return reconcile.Result{}, err
-		}
-
-		err = i.ESClient.DeleteIndex(i.Instance.Status.PipelineVersion)
-		if err != nil {
-			i.error(err, "Error removing ES indices")
-			return reconcile.Result{}, err
-		}
-
-		err = i.Kafka.DeleteConnectorsForPipelineVersion(i.Instance.Status.PipelineVersion)
-		if err != nil {
-			i.error(err, "Error deleting connectors")
 			return reconcile.Result{}, err
 		}
 

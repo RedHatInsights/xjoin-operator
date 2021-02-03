@@ -22,6 +22,17 @@ func FetchXJoinPipeline(c client.Client, namespacedName types.NamespacedName) (*
 	return instance, err
 }
 
+func FetchXJoinPipelinesByNamespacedName(c client.Client, name string, namespace string) (*xjoin.XJoinPipelineList, error) {
+	nameField := client.MatchingFields{
+		"metadata.name":      name,
+		"metadata.namespace": namespace,
+	}
+
+	list := &xjoin.XJoinPipelineList{}
+	err := c.List(context.TODO(), list, nameField)
+	return list, err
+}
+
 func FetchXJoinPipelines(c client.Client) (*xjoin.XJoinPipelineList, error) {
 	list := &xjoin.XJoinPipelineList{}
 	err := c.List(context.TODO(), list)
