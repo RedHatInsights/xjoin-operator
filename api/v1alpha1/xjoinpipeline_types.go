@@ -66,9 +66,10 @@ type XJoinPipelineStatus struct {
 	ActiveDebeziumConnectorName string             `json:"activeDebeziumConnectorName"`
 	ActiveAliasName             string             `json:"activeAliasName"`
 	ActiveTopicName             string             `json:"activeTopicName"`
-	ActiveReplicationSlotName string `json:"activeReplicationSlotName"`
-	ElasticSearchSecretName   string `json:"elasticsearchSecretNameName"`
-	HBIDBSecretName           string `json:"hbiDBSecretName"`
+	ActiveReplicationSlotName   string             `json:"activeReplicationSlotName"`
+	ActivePipelineVersion       string             `json:"activePipelineVersion"`
+	ElasticSearchSecretName     string             `json:"elasticsearchSecretNameName"`
+	HBIDBSecretName             string             `json:"hbiDBSecretName"`
 }
 
 // +kubebuilder:object:root=true

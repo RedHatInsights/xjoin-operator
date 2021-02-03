@@ -230,6 +230,24 @@ func (i *TestIteration) CreateDbSecret(name string) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
+func (i *TestIteration) ExpectPipelineVersionToBeRemoved(pipelineVersion string) {
+	exists, err := i.EsClient.IndexExists(i.EsClient.ESIndexName(pipelineVersion))
+	Expect(err).ToNot(HaveOccurred())
+	Expect(exists).To(Equal(false))
+
+	slots, err := i.DbClient.ListReplicationSlots(resourceNamePrefix)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(len(slots)).To(Equal(0))
+
+	versions, err := i.KafkaClient.ListTopicNamesForPipelineVersion(pipelineVersion)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(len(versions)).To(Equal(0))
+
+	connectors, err := i.KafkaClient.ListConnectorNamesForPipelineVersion(pipelineVersion)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(len(connectors)).To(Equal(0))
+}
+
 func (i *TestIteration) ExpectValidReconcile() *xjoin.XJoinPipeline {
 	i.ReconcileValidation()
 	pipeline := i.ReconcileXJoin()
@@ -276,6 +294,13 @@ func (i *TestIteration) CreateValidPipeline() *xjoin.XJoinPipeline {
 	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
 
 	return pipeline
+}
+
+func (i *TestIteration) DeletePipeline(pipeline *xjoin.XJoinPipeline) {
+	err := test.Client.Delete(context.Background(), pipeline)
+	Expect(err).ToNot(HaveOccurred())
+	i.ReconcileValidationForDeletedPipeline()
+	i.ReconcileXJoinForDeletedPipeline()
 }
 
 func (i *TestIteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) {
@@ -347,11 +372,23 @@ func NewTestIteration() *TestIteration {
 	return &testIteration
 }
 
+func (i *TestIteration) ReconcileXJoinForDeletedPipeline() {
+	result, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(result.Requeue).To(BeFalse())
+}
+
 func (i *TestIteration) ReconcileXJoin() *xjoin.XJoinPipeline {
 	result, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(result.Requeue).To(BeFalse())
 	return i.GetPipeline()
+}
+
+func (i *TestIteration) ReconcileValidationForDeletedPipeline() {
+	result, err := i.ValidationReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(result.Requeue).To(BeFalse())
 }
 
 func (i *TestIteration) ReconcileValidation() *xjoin.XJoinPipeline {
@@ -441,22 +478,25 @@ var _ = Describe("Pipeline operations", func() {
 
 		//remove finalizers from leftover pipelines so the project can be deleted
 		for _, p := range i.Pipelines {
-			pipeline, err :=
-				utils.FetchXJoinPipeline(test.Client, types.NamespacedName{Name: p.Name, Namespace: p.Namespace})
+			pipelines, err :=
+				utils.FetchXJoinPipelinesByNamespacedName(test.Client, p.Name, p.Namespace)
 			Expect(err).ToNot(HaveOccurred())
-			err = i.KafkaClient.DeleteConnectorsForPipelineVersion(pipeline.Status.PipelineVersion)
-			Expect(err).ToNot(HaveOccurred())
-			err = i.KafkaClient.DeleteTopicByPipelineVersion(pipeline.Status.PipelineVersion)
-			Expect(err).ToNot(HaveOccurred())
-			err = i.DbClient.RemoveReplicationSlotsForPipelineVersion(pipeline.Status.PipelineVersion)
-			Expect(err).ToNot(HaveOccurred())
-			err = i.EsClient.DeleteIndex(pipeline.Status.PipelineVersion)
-			Expect(err).ToNot(HaveOccurred())
-			i.DeleteAllHosts()
-			if pipeline.DeletionTimestamp == nil {
-				pipeline.ObjectMeta.Finalizers = nil
-				err = i.XJoinReconciler.Client.Update(context.Background(), pipeline)
+			if len(pipelines.Items) != 0 {
+				pipeline := pipelines.Items[0]
+				err = i.KafkaClient.DeleteConnectorsForPipelineVersion(pipeline.Status.PipelineVersion)
 				Expect(err).ToNot(HaveOccurred())
+				err = i.KafkaClient.DeleteTopicByPipelineVersion(pipeline.Status.PipelineVersion)
+				Expect(err).ToNot(HaveOccurred())
+				err = i.DbClient.RemoveReplicationSlotsForPipelineVersion(pipeline.Status.PipelineVersion)
+				Expect(err).ToNot(HaveOccurred())
+				err = i.EsClient.DeleteIndex(pipeline.Status.PipelineVersion)
+				Expect(err).ToNot(HaveOccurred())
+				i.DeleteAllHosts()
+				if pipeline.DeletionTimestamp == nil {
+					pipeline.ObjectMeta.Finalizers = nil
+					err = i.XJoinReconciler.Client.Update(context.Background(), &pipeline)
+					Expect(err).ToNot(HaveOccurred())
+				}
 			}
 		}
 
@@ -1047,9 +1087,42 @@ var _ = Describe("Pipeline operations", func() {
 
 	Describe("-> Removed", func() {
 		It("Artifacts removed when initializing pipeline is removed", func() {
+			i.CreatePipeline()
+			pipeline := i.ExpectInitSyncReconcile()
+			i.DeletePipeline(pipeline)
+			i.ExpectPipelineVersionToBeRemoved(pipeline.Status.PipelineVersion)
+		})
+
+		It("Artifacts removed when new pipeline is removed", func() {
+			i.CreatePipeline()
+			pipeline := i.ExpectInitSyncReconcile()
+			i.DeletePipeline(pipeline)
+			i.ExpectPipelineVersionToBeRemoved(pipeline.Status.PipelineVersion)
 		})
 
 		It("Artifacts removed when valid pipeline is removed", func() {
+			pipeline := i.CreateValidPipeline()
+			i.DeletePipeline(pipeline)
+			i.ExpectPipelineVersionToBeRemoved(pipeline.Status.PipelineVersion)
+		})
+
+		It("Artifacts removed when refreshing pipeline is removed", func() {
+			pipeline := i.CreateValidPipeline()
+			activeIndex := pipeline.Status.ActiveIndexName
+			firstVersion := pipeline.Status.PipelineVersion
+
+			//trigger refresh so there is an active and initializing pipeline
+			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
+			Expect(err).ToNot(HaveOccurred())
+			secret.Data["newfield"] = []byte("value")
+			err = test.Client.Update(context.TODO(), secret)
+			pipeline = i.ExpectInitSyncReconcile()
+			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+			secondVersion := pipeline.Status.PipelineVersion
+
+			i.DeletePipeline(pipeline)
+			i.ExpectPipelineVersionToBeRemoved(firstVersion)
+			i.ExpectPipelineVersionToBeRemoved(secondVersion)
 		})
 	})
 

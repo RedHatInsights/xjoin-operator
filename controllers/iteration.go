@@ -77,6 +77,7 @@ func (i *ReconcileIteration) debug(message string, keysAndValues ...interface{})
 }
 
 func (i *ReconcileIteration) setActiveResources() {
+	i.Instance.Status.ActivePipelineVersion = i.Instance.Status.PipelineVersion
 	i.Instance.Status.ActiveAliasName = i.parameters.ResourceNamePrefix.String()
 	i.Instance.Status.ActiveDebeziumConnectorName = i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion)
 	i.Instance.Status.ActiveESConnectorName = i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion)
@@ -482,4 +483,32 @@ func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, conne
 	}
 
 	return nil, nil
+}
+
+func (i *ReconcileIteration) DeleteResourceForPipeline(version string) error {
+	err := i.Kafka.DeleteConnectorsForPipelineVersion(version)
+	if err != nil {
+		i.error(err, "Error deleting connectors")
+		return err
+	}
+
+	err = i.InventoryDb.RemoveReplicationSlotsForPipelineVersion(version)
+	if err != nil {
+		i.error(err, "Error removing replication slots")
+		return err
+	}
+
+	err = i.ESClient.DeleteIndex(version)
+	if err != nil {
+		i.error(err, "Error removing ES indices")
+		return err
+	}
+
+	err = i.Kafka.DeleteTopicByPipelineVersion(version)
+	if err != nil {
+		i.error(err, "Error deleting topic")
+		return err
+	}
+
+	return nil
 }
