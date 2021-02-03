@@ -1,4 +1,6 @@
 #!/bin/bash
+oc project default
+
 oc get projects -o custom-columns=name:metadata.name | grep xjointest | while read project ; do
     echo $project
     oc project $project && kubectl get XJoinPipeline test-pipeline-01 -o=json | jq '.metadata.finalizers = null' | kubectl apply -f -

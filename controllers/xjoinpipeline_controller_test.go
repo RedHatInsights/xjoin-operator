@@ -21,7 +21,6 @@ import (
 	"reflect"
 	"text/template"
 	"time"
-
 	//"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -101,6 +100,26 @@ func getParameters() (Parameters, map[string]interface{}) {
 	Expect(err).ToNot(HaveOccurred())
 
 	return xjoinConfiguration, parametersToMap(xjoinConfiguration)
+}
+
+func (i *TestIteration) TestSpecFieldChanged(fieldName string, fieldValue interface{}, valueType reflect.Kind) {
+	pipeline := i.CreateValidPipeline()
+	activeIndex := pipeline.Status.ActiveIndexName
+
+	s := reflect.ValueOf(&pipeline.Spec).Elem()
+	field := s.FieldByName(fieldName)
+	if valueType == reflect.String {
+		val := fieldValue.(string)
+		field.Set(reflect.ValueOf(&val))
+	} else if valueType == reflect.Int {
+		val := fieldValue.(int)
+		field.Set(reflect.ValueOf(&val))
+	}
+
+	err := test.Client.Update(context.TODO(), pipeline)
+	Expect(err).ToNot(HaveOccurred())
+	pipeline = i.ExpectInitSyncReconcile()
+	Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 }
 
 func (i *TestIteration) DeleteAllHosts() {
@@ -399,6 +418,9 @@ var _ = Describe("Pipeline operations", func() {
 
 		err = i.DbClient.Connect()
 		Expect(err).ToNot(HaveOccurred())
+
+		_, err = i.DbClient.Exec("DELETE FROM hosts")
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -540,7 +562,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["transforms.flattenListString.mode"]).To(Equal("join"))
 			Expect(esConnectorConfig["max.in.flight.requests"]).To(Equal(int64(1)))
 
-			exists, err := i.EsClient.IndexExists(pipeline.Status.PipelineVersion)
+			exists, err := i.EsClient.IndexExists(i.EsClient.ESIndexName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exists).To(BeTrue())
 
@@ -684,9 +706,9 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Removes stale topics", func() {
-			err := i.KafkaClient.CreateTopic("1")
+			_, err := i.KafkaClient.CreateTopic("1", false)
 			Expect(err).ToNot(HaveOccurred())
-			err = i.KafkaClient.CreateTopic("2")
+			_, err = i.KafkaClient.CreateTopic("2", false)
 			Expect(err).ToNot(HaveOccurred())
 
 			topics, err := i.KafkaClient.ListTopicNames()
@@ -828,8 +850,6 @@ var _ = Describe("Pipeline operations", func() {
 				pipeline = i.ExpectNewReconcile()
 				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
-				i.InsertHost(hostId.String())
-
 				pipeline = i.ExpectInitSyncReconcile()
 				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
@@ -842,7 +862,7 @@ var _ = Describe("Pipeline operations", func() {
 	})
 
 	Describe("Valid -> New", func() {
-		FIt("Preserves active resource names during refresh", func() {
+		It("Preserves active resource names during refresh", func() {
 			pipeline := i.CreateValidPipeline()
 			activeIndexName := i.EsClient.ESIndexName(pipeline.Status.PipelineVersion)
 			activeTopicName := i.KafkaClient.TopicName(pipeline.Status.PipelineVersion)
@@ -997,20 +1017,31 @@ var _ = Describe("Pipeline operations", func() {
 
 	Describe("Spec changed", func() {
 		It("Triggers refresh if resource name prefix changes", func() {
-			pipeline := i.CreateValidPipeline()
-			activeIndex := pipeline.Status.ActiveIndexName
-			newPrefix := "xjointestupdated"
-			pipeline.Spec.ResourceNamePrefix = &newPrefix
-			err := test.Client.Update(context.TODO(), pipeline)
-			Expect(err).ToNot(HaveOccurred())
-			pipeline = i.ExpectInitSyncReconcile()
-			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
-			pipeline = i.ExpectValidReconcile()
-			Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
+			i.TestSpecFieldChanged("ResourceNamePrefix", "xjointestupdated", reflect.String)
+		})
 
-			//cleanup
-			err = i.EsClient.DeleteIndex(pipeline.Status.ActiveIndexName)
-			Expect(err).ToNot(HaveOccurred())
+		It("Triggers refresh if KafkaCluster changes", func() {
+			i.TestSpecFieldChanged("KafkaCluster", "newCluster", reflect.String)
+		})
+
+		It("Triggers refresh if KafkaClusterNamespace changes", func() {
+			i.TestSpecFieldChanged("KafkaClusterNamespace", "kafka", reflect.String)
+		})
+
+		It("Triggers refresh if ConnectCluster changes", func() {
+			i.TestSpecFieldChanged("ConnectCluster", "newCluster", reflect.String)
+		})
+
+		It("Triggers refresh if ConnectClusterNamespace changes", func() {
+			i.TestSpecFieldChanged("ConnectClusterNamespace", i.NamespacedName.Namespace, reflect.String)
+		})
+
+		It("Triggers refresh if HBIDBSecretName changes", func() {
+			i.TestSpecFieldChanged("HBIDBSecretName", "newSecret", reflect.String)
+		})
+
+		It("Triggers refresh if ElasticSearchSecretName changes", func() {
+			i.TestSpecFieldChanged("ElasticSearchSecretName", "newSecret", reflect.String)
 		})
 	})
 

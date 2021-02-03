@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"strings"
 	"text/template"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,7 +40,7 @@ func (kafka *Kafka) CheckIfConnectorExists(name string) (bool, error) {
 		return false, nil
 	}
 
-	if _, err := kafka.GetConnector(name); err != nil && errors.IsNotFound(err) {
+	if _, err := kafka.GetConnector(name); err != nil && k8errors.IsNotFound(err) {
 		return false, nil
 	} else if err == nil {
 		return true, nil
@@ -177,7 +178,7 @@ func (kafka *Kafka) DeleteConnector(name string) error {
 	connector.SetNamespace(kafka.Parameters.ConnectClusterNamespace.String())
 	connector.SetGroupVersionKind(connectorGVK)
 
-	if err := kafka.Client.Delete(context.TODO(), connector); err != nil && !errors.IsNotFound(err) {
+	if err := kafka.Client.Delete(context.TODO(), connector); err != nil && !k8errors.IsNotFound(err) {
 		return err
 	}
 
@@ -267,4 +268,14 @@ func (kafka *Kafka) setElasticSearchConnectorPause(pipelineVersion string, pause
 	}
 
 	return nil
+}
+
+func (kafka *Kafka) CreateDryConnectorByType(conType string, version string) (*unstructured.Unstructured, error) {
+	if conType == "es" {
+		return kafka.CreateESConnector(version, true)
+	} else if conType == "debezium" {
+		return kafka.CreateDebeziumConnector(version, true)
+	} else {
+		return nil, errors.New("invalid param. Must be one of [es, debezium]")
+	}
 }

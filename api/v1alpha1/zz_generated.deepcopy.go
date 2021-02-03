@@ -112,16 +112,6 @@ func (in *XJoinPipelineSpec) DeepCopyInto(out *XJoinPipelineSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.ElasticSearchSecret != nil {
-		in, out := &in.ElasticSearchSecret, &out.ElasticSearchSecret
-		*out = new(string)
-		**out = **in
-	}
-	if in.ValidationThreshold != nil {
-		in, out := &in.ValidationThreshold, &out.ValidationThreshold
-		*out = new(int64)
-		**out = **in
-	}
 	if in.HBIDBSecretName != nil {
 		in, out := &in.HBIDBSecretName, &out.HBIDBSecretName
 		*out = new(string)

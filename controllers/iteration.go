@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -82,6 +81,8 @@ func (i *ReconcileIteration) setActiveResources() {
 	i.Instance.Status.ActiveDebeziumConnectorName = i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion)
 	i.Instance.Status.ActiveESConnectorName = i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion)
 	i.Instance.Status.ActiveTopicName = i.Kafka.TopicName(i.Instance.Status.PipelineVersion)
+	i.Instance.Status.ActiveReplicationSlotName =
+		database.ReplicationSlotName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion)
 }
 
 func (i *ReconcileIteration) updateStatusAndRequeue() (reconcile.Result, error) {
@@ -167,27 +168,20 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 
 	resourceNamePrefix := i.parameters.ResourceNamePrefix.String()
 
+	connectorsToKeep = append(connectorsToKeep, i.Instance.Status.ActiveDebeziumConnectorName)
+	connectorsToKeep = append(connectorsToKeep, i.Instance.Status.ActiveESConnectorName)
+	esIndicesToKeep = append(esIndicesToKeep, i.Instance.Status.ActiveIndexName)
+	topicsToKeep = append(topicsToKeep, i.Instance.Status.ActiveTopicName)
+	replicationSlotsToKeep = append(replicationSlotsToKeep, i.Instance.Status.ActiveReplicationSlotName)
+
+	//keep the in progress pipeline's resources and the active resources
 	if i.Instance.GetState() != xjoin.STATE_REMOVED && i.Instance.Status.PipelineVersion != "" {
 		connectorsToKeep = append(connectorsToKeep, i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion))
 		connectorsToKeep = append(connectorsToKeep, i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion))
 		esIndicesToKeep = append(esIndicesToKeep, i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
 		topicsToKeep = append(topicsToKeep, i.Kafka.TopicName(i.Instance.Status.PipelineVersion))
-		replicationSlotsToKeep = append(
-			replicationSlotsToKeep,
-			database.ReplicationSlotName(resourceNamePrefix, i.Instance.Status.PipelineVersion))
-	}
-
-	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(i.Instance.Status.ActiveAliasName)
-	if err != nil {
-		errors = append(errors, err)
-	} else if currentIndices != nil && i.Instance.GetState() != xjoin.STATE_REMOVED {
-		version := currentIndices[0][len("xjoin.inventory.hosts"):len(currentIndices[0])]
-		connectorsToKeep = append(connectorsToKeep, i.Kafka.DebeziumConnectorName(version))
-		connectorsToKeep = append(connectorsToKeep, i.Kafka.ESConnectorName(version))
-		esIndicesToKeep = append(esIndicesToKeep, currentIndices...)
-		topicsToKeep = append(topicsToKeep, i.Kafka.TopicName(version))
-		replicationSlotsToKeep = append(
-			replicationSlotsToKeep, database.ReplicationSlotName(resourceNamePrefix, version))
+		replicationSlotsToKeep = append(replicationSlotsToKeep, database.ReplicationSlotName(
+			resourceNamePrefix, i.Instance.Status.PipelineVersion))
 	}
 
 	//delete stale Kafka Connectors
@@ -259,10 +253,10 @@ func (i *ReconcileIteration) recreateAliasIfNeeded() (bool, error) {
 		return false, err
 	}
 
-	validIndex := i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)
-	if currentIndices == nil || !utils.ContainsString(currentIndices, validIndex) {
-		i.Log.Info("Updating alias", "index", validIndex)
-		if err = i.ESClient.UpdateAliasByFullIndexName(i.parameters.ResourceNamePrefix.String(), validIndex); err != nil {
+	newIndex := i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)
+	if currentIndices == nil || !utils.ContainsString(currentIndices, newIndex) {
+		i.Log.Info("Updating alias", "index", newIndex)
+		if err = i.ESClient.UpdateAliasByFullIndexName(i.parameters.ResourceNamePrefix.String(), newIndex); err != nil {
 			return false, err
 		}
 
@@ -286,7 +280,7 @@ func (i *ReconcileIteration) updateAliasIfHealthier() error {
 	}
 
 	if indices != nil {
-		if len(indices) == 1 && indices[0] == i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion) {
+		if len(indices) == 1 && indices[0] == i.Instance.Status.ActiveIndexName {
 			return nil // index is already active, nothing to do
 		}
 
@@ -308,7 +302,7 @@ func (i *ReconcileIteration) updateAliasIfHealthier() error {
 			return fmt.Errorf("failed to get host count from inventory %w", err)
 		}
 
-		activeCount, err := i.ESClient.CountIndex("xjoin.inventory.hosts")
+		activeCount, err := i.ESClient.CountIndex(i.Instance.Status.ActiveIndexName)
 		if err != nil {
 			return fmt.Errorf("failed to get host count from active index %w", err)
 		}
@@ -349,41 +343,114 @@ func (i *ReconcileIteration) checkForDeviation() (problem error, err error) {
 	}
 
 	//ES Index
-	indexExists, err := i.ESClient.IndexExists(i.Instance.Status.PipelineVersion)
+	problem, err = i.checkESIndexDeviation()
+	if err != nil || problem != nil {
+		return problem, err
+	}
+
+	//Connectors
+	problem, err = i.checkConnectorDeviation(
+		i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion), "es")
+	if err != nil || problem != nil {
+		return problem, err
+	}
+
+	problem, err = i.checkConnectorDeviation(
+		i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion), "debezium")
+	if err != nil || problem != nil {
+		return problem, err
+	}
+
+	//Topic
+	problem, err = i.checkTopicDeviation()
+	if err != nil || problem != nil {
+		return problem, err
+	}
+
+	return nil, nil
+}
+
+func (i *ReconcileIteration) checkESIndexDeviation() (problem error, err error) {
+	if i.Instance.Status.PipelineVersion == "" {
+		return nil, nil
+	}
+
+	indexName := i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)
+	indexExists, err := i.ESClient.IndexExists(indexName)
 
 	if err != nil {
 		return nil, err
 	} else if indexExists == false {
 		return fmt.Errorf(
 			"elasticsearch index %s not found",
-			i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)), nil
+			indexName), nil
 	}
 
-	//Connectors
-	esConnectorName := i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion)
-	problem, err = i.checkConnectorDeviation(esConnectorName, "es")
-	if err != nil || problem != nil {
-		return problem, err
+	return nil, nil
+}
+
+func (i *ReconcileIteration) checkTopicDeviation() (problem error, err error) {
+	if i.Instance.Status.PipelineVersion == "" {
+		return nil, nil
 	}
 
-	debeziumConnectorName := i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion)
-	problem, err = i.checkConnectorDeviation(debeziumConnectorName, "debezium")
-	if err != nil || problem != nil {
-		return problem, err
+	topicName := i.Kafka.TopicName(i.Instance.Status.PipelineVersion)
+	topic, err := i.Kafka.GetTopic(topicName)
+	if err != nil || topic == nil {
+		if k8errors.IsNotFound(err) {
+			return fmt.Errorf(
+				"topic %s not found in %s",
+				topicName, i.parameters.KafkaClusterNamespace), nil
+		}
+		return nil, err
 	}
+
+	if topic.GetLabels()[kafka.LabelStrimziCluster] != i.parameters.KafkaCluster.String() {
+		return fmt.Errorf(
+			"kafkaCluster changed from %s to %s",
+			topic.GetLabels()[kafka.LabelStrimziCluster],
+			i.parameters.ConnectCluster.String()), nil
+	}
+
+	newTopic, err := i.Kafka.CreateTopic(i.Instance.Status.PipelineVersion, true)
+	if err != nil {
+		return nil, err
+	}
+
+	topicUnstructured := topic.UnstructuredContent()
+	newTopicUnstructured := newTopic.UnstructuredContent()
+
+	specDiff := cmp.Diff(
+		topicUnstructured["spec"].(map[string]interface{}),
+		newTopicUnstructured["spec"].(map[string]interface{}),
+		NumberNormalizer)
+
+	if len(specDiff) > 0 {
+		return fmt.Errorf("topic spec has changed: %s", specDiff), nil
+	}
+
+	if topic.GetNamespace() != newTopic.GetNamespace() {
+		return fmt.Errorf(
+			"topic namespace has changed from: %s to %s",
+			topic.GetNamespace(),
+			newTopic.GetNamespace()), nil
+	}
+
 	return nil, nil
 }
 
 func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, connectorType string) (problem error, err error) {
+	if connectorName == "" {
+		return nil, nil
+	}
+
 	connector, err := i.Kafka.GetConnector(connectorName)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			return fmt.Errorf(
 				"connector %s not found in %s", connectorName, i.Instance.Namespace), nil
 		}
-
 		return nil, err
-
 	}
 
 	if kafka.IsFailed(connector) {
@@ -398,13 +465,13 @@ func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, conne
 	}
 
 	// compares the spec of the existing connector with the spec we would create if we were creating a new connector now
-	newConnector, err := i.createDryConnectorByType(connectorType)
+	newConnector, err := i.Kafka.CreateDryConnectorByType(connectorType, i.Instance.Status.PipelineVersion)
 	if err != nil {
 		return nil, err
 	}
 
-	currentConnectorConfig, _, err1 := unstructured.NestedMap(connector.UnstructuredContent(), "spec", "parameters")
-	newConnectorConfig, _, err2 := unstructured.NestedMap(newConnector.UnstructuredContent(), "spec", "parameters")
+	currentConnectorConfig, _, err1 := unstructured.NestedMap(connector.UnstructuredContent(), "spec", "config")
+	newConnectorConfig, _, err2 := unstructured.NestedMap(newConnector.UnstructuredContent(), "spec", "config")
 
 	if err1 == nil && err2 == nil {
 		diff := cmp.Diff(currentConnectorConfig, newConnectorConfig, NumberNormalizer)
@@ -415,14 +482,4 @@ func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, conne
 	}
 
 	return nil, nil
-}
-
-func (i *ReconcileIteration) createDryConnectorByType(conType string) (*unstructured.Unstructured, error) {
-	if conType == "es" {
-		return i.Kafka.CreateESConnector(i.Instance.Status.PipelineVersion, true)
-	} else if conType == "debezium" {
-		return i.Kafka.CreateDebeziumConnector(i.Instance.Status.PipelineVersion, true)
-	} else {
-		return nil, errors.New("invalid param. Must be one of [es, debezium]")
-	}
 }

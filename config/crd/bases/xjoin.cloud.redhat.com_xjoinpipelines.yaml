@@ -45,9 +45,6 @@ spec:
             elasticSearchSecretName:
               minLength: 1
               type: string
-            elasticSearchURL:
-              minLength: 1
-              type: string
             hbiDBSecretName:
               minLength: 1
               type: string
@@ -60,9 +57,6 @@ spec:
             resourceNamePrefix:
               minLength: 3
               type: string
-            validationThreshold:
-              format: int64
-              type: integer
           type: object
         status:
           description: XJoinPipelineStatus defines the observed state of XJoinPipeline
@@ -74,6 +68,10 @@ spec:
             activeESConnectorName:
               type: string
             activeIndexName:
+              type: string
+            activePipelineVersion:
+              type: string
+            activeReplicationSlotName:
               type: string
             activeTopicName:
               type: string
@@ -154,8 +152,6 @@ spec:
               type: string
             hbiDBSecretVersion:
               type: string
-            indexName:
-              type: string
             initialSyncInProgress:
               type: boolean
             pipelineVersion:
@@ -170,13 +166,13 @@ spec:
           - activeDebeziumConnectorName
           - activeESConnectorName
           - activeIndexName
+          - activeReplicationSlotName
           - activeTopicName
           - conditions
           - elasticsearchSecretNameName
           - elasticsearchSecretVersion
           - hbiDBSecretName
           - hbiDBSecretVersion
-          - indexName
           - initialSyncInProgress
           - pipelineVersion
           - validationFailedCount

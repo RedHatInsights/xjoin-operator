@@ -44,15 +44,6 @@ type XJoinPipelineSpec struct {
 
 	// +optional
 	// +kubebuilder:validation:MinLength:=1
-	ElasticSearchSecret *string `json:"elasticSearchURL,omitempty"`
-
-	// +optional
-	// +kubebuilder:validation:Min:=0
-	// +kubebuilder:validation:Max:=100
-	ValidationThreshold *int64 `json:"validationThreshold,omitempty"`
-
-	// +optional
-	// +kubebuilder:validation:MinLength:=1
 	HBIDBSecretName *string `json:"hbiDBSecretName,omitempty"`
 
 	// +optional
@@ -75,9 +66,9 @@ type XJoinPipelineStatus struct {
 	ActiveDebeziumConnectorName string             `json:"activeDebeziumConnectorName"`
 	ActiveAliasName             string             `json:"activeAliasName"`
 	ActiveTopicName             string             `json:"activeTopicName"`
-	IndexName                   string             `json:"indexName"`
-	ElasticSearchSecretName     string             `json:"elasticsearchSecretNameName"`
-	HBIDBSecretName             string             `json:"hbiDBSecretName"`
+	ActiveReplicationSlotName string `json:"activeReplicationSlotName"`
+	ElasticSearchSecretName   string `json:"elasticsearchSecretNameName"`
+	HBIDBSecretName           string `json:"hbiDBSecretName"`
 }
 
 // +kubebuilder:object:root=true

@@ -26,7 +26,7 @@ func (kafka *Kafka) TopicName(pipelineVersion string) string {
 	return fmt.Sprintf(kafka.Parameters.ResourceNamePrefix.String() + "." + pipelineVersion + ".public.hosts")
 }
 
-func (kafka *Kafka) CreateTopic(pipelineVersion string) error {
+func (kafka *Kafka) CreateTopic(pipelineVersion string, dryRun bool) (*unstructured.Unstructured, error) {
 	topic := &unstructured.Unstructured{}
 	topic.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
@@ -45,7 +45,11 @@ func (kafka *Kafka) CreateTopic(pipelineVersion string) error {
 
 	topic.SetGroupVersionKind(topicGroupVersionKind)
 
-	return kafka.Client.Create(context.TODO(), topic)
+	if dryRun {
+		return topic, nil
+	}
+
+	return topic, kafka.Client.Create(context.TODO(), topic)
 }
 
 func (kafka *Kafka) DeleteTopicByPipelineVersion(pipelineVersion string) error {
@@ -102,4 +106,14 @@ func (kafka *Kafka) ListTopicNamesForPipelineVersion(pipelineVersion string) ([]
 	}
 
 	return response, err
+}
+
+func (kafka *Kafka) GetTopic(topicName string) (*unstructured.Unstructured, error) {
+	topic := &unstructured.Unstructured{}
+	topic.SetGroupVersionKind(topicGroupVersionKind)
+	err := kafka.Client.Get(
+		context.TODO(),
+		client.ObjectKey{Name: topicName, Namespace: kafka.Parameters.KafkaClusterNamespace.String()},
+		topic)
+	return topic, err
 }
