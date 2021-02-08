@@ -73,13 +73,12 @@ sleep 3
 psql -U postgres -h inventory-db -p 5432 -d insights -c "ALTER ROLE insights REPLICATION LOGIN;"
 psql -U postgres -h inventory-db -p 5432 -d insights -c "CREATE PUBLICATION dbz_publication FOR TABLE hosts;"
 psql -U postgres -h inventory-db -p 5432 -d insights -c "ALTER SYSTEM SET wal_level = logical;"
+psql -U postgres -h inventory-db -p 5432 -d insights -c "CREATE DATABASE test WITH TEMPLATE insights;"
 oc scale --replicas=0 deployment/inventory-db
 sleep 1
 oc scale --replicas=1 deployment/inventory-db
 echo "Waiting for inventory-db to be ready"
 oc wait deployment/inventory-db --for=condition=Available --timeout=150s -n $PROJECT_NAME
-
-psql -U postgres -h inventory-db -p 5432 -d insights -c "CREATE DATABASE test WITH TEMPLATE insights;"
 
 #elasticsearch
 oc apply -f elasticsearch.secret.yml -n $PROJECT_NAME

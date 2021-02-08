@@ -166,7 +166,6 @@ spec:
           - activeDebeziumConnectorName
           - activeESConnectorName
           - activeIndexName
-          - activePipelineVersion
           - activeReplicationSlotName
           - activeTopicName
           - conditions

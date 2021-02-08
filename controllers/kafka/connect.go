@@ -139,6 +139,22 @@ func (kafka *Kafka) DeleteConnectorsForPipelineVersion(pipelineVersion string) e
 	return nil
 }
 
+func (kafka *Kafka) ListConnectorNamesForPrefix(prefix string) ([]string, error) {
+	connectors, err := kafka.ListConnectors()
+	if err != nil {
+		return nil, err
+	}
+
+	var names []string
+	for _, connector := range connectors.Items {
+		if strings.Index(connector.GetName(), prefix) == 0 {
+			names = append(names, connector.GetName())
+		}
+	}
+
+	return names, err
+}
+
 func (kafka *Kafka) ListConnectorNamesForPipelineVersion(pipelineVersion string) ([]string, error) {
 	connectors, err := kafka.ListConnectors()
 	if err != nil {

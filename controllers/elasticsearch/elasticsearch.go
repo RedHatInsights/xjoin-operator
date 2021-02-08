@@ -49,7 +49,7 @@ func (es *ElasticSearch) IndexExists(indexName string) (bool, error) {
 		return false, err
 	}
 
-	responseCode, err := parseResponse(res)
+	responseCode, _, err := parseResponse(res)
 	if err != nil && responseCode != 404 {
 		return false, err
 	} else if responseCode == 404 {
@@ -65,7 +65,7 @@ func (es *ElasticSearch) CreateIndex(pipelineVersion string) error {
 		return err
 	}
 
-	_, err = parseResponse(res)
+	_, _, err = parseResponse(res)
 	return err
 }
 
@@ -75,7 +75,7 @@ func (es *ElasticSearch) DeleteIndexByFullName(index string) error {
 		return err
 	}
 
-	responseCode, err := parseResponse(res)
+	responseCode, _, err := parseResponse(res)
 	if err != nil && responseCode != 404 {
 		return err
 	}
@@ -124,7 +124,7 @@ func (es *ElasticSearch) UpdateAliasByFullIndexName(alias string, index string) 
 		return err
 	}
 
-	_, err = parseResponse(res)
+	_, _, err = parseResponse(res)
 	return err
 }
 
@@ -303,18 +303,26 @@ func parseSearchResponse(scrollRes *esapi.Response) ([]string, SearchIDsResponse
 	return ids, searchJSON, nil
 }
 
-func parseResponse(res *esapi.Response) (int, error) {
+func parseResponse(res *esapi.Response) (int, string, error) {
 	_, err := io.Copy(ioutil.Discard, res.Body)
 	if err != nil {
-		return -1, err
+		return -1, "", err
 	}
 	//TODO: handle error here
 	defer res.Body.Close()
 
 	if res.IsError() {
-		return res.StatusCode, errors.New(
+		return res.StatusCode, "", errors.New(
 			fmt.Sprintf("Elasticsearch API error: %s, %s", strconv.Itoa(res.StatusCode), res.Body))
 	}
 
-	return res.StatusCode, nil
+	content, err := ioutil.ReadAll(res.Body)
+
+	//var body map[string]interface{}
+	//err = json.NewDecoder(content).Decode(&body)
+	//if err != nil {
+	//	return -1, nil, err
+	//}
+
+	return res.StatusCode, string(content), nil
 }
