@@ -70,7 +70,7 @@ func (kafka *Kafka) DeleteTopic(topicName string) error {
 	return nil
 }
 
-func (kafka *Kafka) ListTopicNames() ([]string, error) {
+func (kafka *Kafka) ListTopicNamesForPrefix(resourceNamePrefix string) ([]string, error) {
 	topics := &unstructured.UnstructuredList{}
 	topics.SetGroupVersionKind(topicsGroupVersionKind)
 
@@ -80,7 +80,7 @@ func (kafka *Kafka) ListTopicNames() ([]string, error) {
 	var response []string
 	if topics.Items != nil {
 		for _, topic := range topics.Items {
-			if strings.Index(topic.GetName(), kafka.Parameters.ResourceNamePrefix.String()) == 0 {
+			if strings.Index(topic.GetName(), resourceNamePrefix) == 0 {
 				response = append(response, topic.GetName())
 			}
 		}

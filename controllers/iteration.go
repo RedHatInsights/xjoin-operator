@@ -216,7 +216,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	}
 
 	//delete stale Kafka Topics
-	topics, err := i.Kafka.ListTopicNames()
+	topics, err := i.Kafka.ListTopicNamesForPrefix(resourceNamePrefix)
 	if err != nil {
 		errors = append(errors, err)
 	} else {

@@ -12,3 +12,9 @@ oc get projects -o custom-columns=name:metadata.name | grep test | while read pr
     oc project $project && kubectl get CyndiPipeline integration-test-pipeline -o=json | jq '.metadata.finalizers = null' | kubectl apply -f -
     oc delete project $project
 done
+
+oc project xjoin-operator-project
+
+oc get KafkaTopic -o custom-columns=name:metadata.name | grep test | while read topic ; do
+    oc delete KafkaTopic $topic
+done

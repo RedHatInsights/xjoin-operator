@@ -102,6 +102,19 @@ func getParameters() (Parameters, map[string]interface{}) {
 	return xjoinConfiguration, parametersToMap(xjoinConfiguration)
 }
 
+func (i *TestIteration) EditESConnectorToBeInvalid(pipelineVersion string) {
+	connector, err := i.KafkaClient.GetConnector(i.KafkaClient.ESConnectorName(pipelineVersion))
+	Expect(err).ToNot(HaveOccurred())
+
+	obj := connector.Object
+	spec := obj["spec"].(map[string]interface{})
+	config := spec["config"].(map[string]interface{})
+	config["connection.url"] = "invalid"
+
+	err = i.KafkaClient.Client.Update(context.Background(), connector)
+	Expect(err).ToNot(HaveOccurred())
+}
+
 func (i *TestIteration) TestSpecFieldChanged(fieldName string, fieldValue interface{}, valueType reflect.Kind) {
 	pipeline := i.CreateValidPipeline()
 	activeIndex := pipeline.Status.ActiveIndexName
@@ -313,7 +326,9 @@ func (i *TestIteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) {
 
 	if len(specs) == 1 {
 		spec = specs[0]
-		specs[0].ResourceNamePrefix = &resourceNamePrefix
+		if specs[0].ResourceNamePrefix == nil {
+			specs[0].ResourceNamePrefix = &resourceNamePrefix
+		}
 	} else {
 		spec = &xjoin.XJoinPipelineSpec{
 			ResourceNamePrefix: &resourceNamePrefix,
@@ -376,6 +391,18 @@ func (i *TestIteration) ReconcileXJoinForDeletedPipeline() {
 	result, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(result.Requeue).To(BeFalse())
+}
+
+func (i *TestIteration) ReconcileValidationWithError() error {
+	_, err := i.ValidationReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	Expect(err).To(HaveOccurred())
+	return err
+}
+
+func (i *TestIteration) ReconcileXJoinWithError() error {
+	_, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	Expect(err).To(HaveOccurred())
+	return err
 }
 
 func (i *TestIteration) ReconcileXJoin() *xjoin.XJoinPipeline {
@@ -751,14 +778,14 @@ var _ = Describe("Pipeline operations", func() {
 			_, err = i.KafkaClient.CreateTopic("2", false)
 			Expect(err).ToNot(HaveOccurred())
 
-			topics, err := i.KafkaClient.ListTopicNames()
+			topics, err := i.KafkaClient.ListTopicNamesForPrefix(resourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(topics)).To(Equal(2))
 
 			i.CreatePipeline()
 			i.ReconcileXJoin()
 
-			topics, err = i.KafkaClient.ListTopicNames()
+			topics, err = i.KafkaClient.ListTopicNamesForPrefix(resourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(topics)).To(Equal(1))
 		})
@@ -1124,23 +1151,116 @@ var _ = Describe("Pipeline operations", func() {
 			i.ExpectPipelineVersionToBeRemoved(firstVersion)
 			i.ExpectPipelineVersionToBeRemoved(secondVersion)
 		})
+
+		It("Artificats removed when an error occurs during initial setup", func() {
+			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
+			Expect(err).ToNot(HaveOccurred())
+			secret.Data["db.host"] = []byte("invalidurl")
+			err = test.Client.Update(context.TODO(), secret)
+
+			//this will fail due to incorrect secret
+			i.CreatePipeline()
+			err = i.ReconcileXJoinWithError()
+
+			exists, err := i.EsClient.IndexExists(resourceNamePrefix)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(Equal(false))
+
+			slots, err := i.DbClient.ListReplicationSlots(resourceNamePrefix)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(slots)).To(Equal(0))
+
+			versions, err := i.KafkaClient.ListTopicNamesForPrefix(resourceNamePrefix)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(versions)).To(Equal(0))
+
+			connectors, err := i.KafkaClient.ListConnectorNamesForPrefix(resourceNamePrefix)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(connectors)).To(Equal(0))
+		})
 	})
 
 	Describe("Failures", func() {
-		It("Fails if App DB secret is missing", func() {
+		It("Fails if ElasticSearch secret is misconfigured", func() {
+			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
+			Expect(err).ToNot(HaveOccurred())
+			secret.Data["url"] = []byte("invalidurl")
+			err = test.Client.Update(context.TODO(), secret)
+
+			i.CreatePipeline()
+			err = i.ReconcileXJoinWithError()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(HavePrefix(`unsupported protocol scheme`))
+
+			recorder, _ := i.XJoinReconciler.Recorder.(*record.FakeRecorder)
+			Expect(recorder.Events).To(HaveLen(2))
 		})
 
-		It("Fails if App DB secret is misconfigured", func() {
+		It("Fails if HBI DB secret is misconfigured", func() {
+			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
+			Expect(err).ToNot(HaveOccurred())
+			secret.Data["db.host"] = []byte("invalidurl")
+			err = test.Client.Update(context.TODO(), secret)
+
+			i.CreatePipeline()
+			err = i.ReconcileXJoinWithError()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(HavePrefix(`Error connecting to invalidurl`))
+
+			recorder, _ := i.XJoinReconciler.Recorder.(*record.FakeRecorder)
+			Expect(recorder.Events).To(HaveLen(1))
 		})
 
-		It("Fails if the configmap is misconfigured", func() {
+		It("Fails if the unable to create Kafka Topic", func() {
+			cm := map[string]string{
+				"kafka.cluster.namespace": "invalid",
+			}
+			i.CreateConfigMap("xjoin", cm)
+			i.CreatePipeline()
+			err := i.ReconcileXJoinWithError()
+			Expect(err.Error()).To(HavePrefix(`namespaces "invalid" not found`))
 
+			recorder, _ := i.XJoinReconciler.Recorder.(*record.FakeRecorder)
+			Expect(recorder.Events).To(HaveLen(1))
 		})
 
-		It("Fails if DB table cannot be created", func() {
+		It("Fails if the unable to create Elasticsearch Connector", func() {
+			cm := map[string]string{
+				"elasticsearch.connector.config": "invalid",
+			}
+			i.CreateConfigMap("xjoin", cm)
+			i.CreatePipeline()
+			err := i.ReconcileXJoinWithError()
+			Expect(err.Error()).To(HavePrefix(`invalid character 'i' looking for beginning of value`))
+
+			recorder, _ := i.XJoinReconciler.Recorder.(*record.FakeRecorder)
+			Expect(recorder.Events).To(HaveLen(1))
 		})
 
-		It("Fails if inventory.hosts view cannot be created", func() {
+		It("Fails if the unable to create Debezium Connector", func() {
+			cm := map[string]string{
+				"debezium.connector.config": "invalid",
+			}
+			i.CreateConfigMap("xjoin", cm)
+			i.CreatePipeline()
+			err := i.ReconcileXJoinWithError()
+			Expect(err.Error()).To(HavePrefix(`invalid character 'i' looking for beginning of value`))
+
+			recorder, _ := i.XJoinReconciler.Recorder.(*record.FakeRecorder)
+			Expect(recorder.Events).To(HaveLen(1))
+		})
+
+		It("Fails if ES Index cannot be created", func() {
+			invalidPrefix := "invalidPrefix"
+			spec := &xjoin.XJoinPipelineSpec{
+				ResourceNamePrefix: &invalidPrefix,
+			}
+			i.CreatePipeline(spec)
+			err := i.ReconcileXJoinWithError()
+			Expect(err).To(HaveOccurred())
+
+			recorder, _ := i.XJoinReconciler.Recorder.(*record.FakeRecorder)
+			Expect(recorder.Events).To(HaveLen(1))
 		})
 	})
 })
