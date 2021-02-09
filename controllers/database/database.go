@@ -70,11 +70,10 @@ func ReplicationSlotName(resourceNamePrefix string, pipelineVersion string) stri
 }
 
 func (db *Database) CreateReplicationSlot(slot string) error {
-	rows, err := db.RunQuery(fmt.Sprintf("SELECT pg_create_physical_replication_slot('%s')", slot))
+	_, err := db.Exec(fmt.Sprintf("SELECT pg_create_physical_replication_slot('%s')", slot))
 	if err != nil {
 		return err
 	}
-	rows.Close()
 	return nil
 }
 
@@ -101,16 +100,14 @@ func (db *Database) ListReplicationSlots(resourceNamePrefix string) ([]string, e
 }
 
 func (db *Database) RemoveReplicationSlot(slot string) error {
-	rows, err := db.RunQuery(fmt.Sprintf(`SELECT pg_drop_replication_slot('%s')`, slot))
+	_, err := db.Exec(fmt.Sprintf(`SELECT pg_drop_replication_slot('%s')`, slot))
 	if err != nil {
 		return err
 	}
-	rows.Close()
 	return nil
 }
 
 func (db *Database) RemoveReplicationSlotsForPrefix(resourceNamePrefix string) error {
-
 	rows, err := db.RunQuery(
 		fmt.Sprintf("SELECT slot_name from pg_catalog.pg_replication_slots WHERE slot_name LIKE '%s%%'", resourceNamePrefix))
 	if err != nil {
@@ -129,11 +126,10 @@ func (db *Database) RemoveReplicationSlotsForPrefix(resourceNamePrefix string) e
 	rows.Close()
 
 	for _, slot := range slots {
-		dropRows, err := db.RunQuery(fmt.Sprintf(`SELECT pg_drop_replication_slot('%s')`, slot))
+		_, err = db.Exec(fmt.Sprintf(`SELECT pg_drop_replication_slot('%s')`, slot))
 		if err != nil {
 			return err
 		}
-		dropRows.Close()
 	}
 
 	return nil
@@ -158,11 +154,10 @@ func (db *Database) RemoveReplicationSlotsForPipelineVersion(pipelineVersion str
 	rows.Close()
 
 	for _, slot := range slots {
-		dropRows, err := db.RunQuery(fmt.Sprintf(`SELECT pg_drop_replication_slot('%s')`, slot))
+		_, err := db.Exec(fmt.Sprintf(`SELECT pg_drop_replication_slot('%s')`, slot))
 		if err != nil {
 			return err
 		}
-		dropRows.Close()
 	}
 
 	return nil
