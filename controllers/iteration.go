@@ -81,6 +81,7 @@ func (i *ReconcileIteration) setActiveResources() {
 	i.Instance.Status.ActiveAliasName = i.parameters.ResourceNamePrefix.String()
 	i.Instance.Status.ActiveDebeziumConnectorName = i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion)
 	i.Instance.Status.ActiveESConnectorName = i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion)
+	i.Instance.Status.ActiveESPipelineName = i.ESClient.ESPipelineName(i.Instance.Status.PipelineVersion)
 	i.Instance.Status.ActiveTopicName = i.Kafka.TopicName(i.Instance.Status.PipelineVersion)
 	i.Instance.Status.ActiveReplicationSlotName =
 		database.ReplicationSlotName(i.parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion)
@@ -165,12 +166,14 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		esIndicesToKeep        []string
 		topicsToKeep           []string
 		replicationSlotsToKeep []string
+		esPipelinesToKeep      []string
 	)
 
 	resourceNamePrefix := i.parameters.ResourceNamePrefix.String()
 
 	connectorsToKeep = append(connectorsToKeep, i.Instance.Status.ActiveDebeziumConnectorName)
 	connectorsToKeep = append(connectorsToKeep, i.Instance.Status.ActiveESConnectorName)
+	esPipelinesToKeep = append(esPipelinesToKeep, i.Instance.Status.ActiveESPipelineName)
 	esIndicesToKeep = append(esIndicesToKeep, i.Instance.Status.ActiveIndexName)
 	topicsToKeep = append(topicsToKeep, i.Instance.Status.ActiveTopicName)
 	replicationSlotsToKeep = append(replicationSlotsToKeep, i.Instance.Status.ActiveReplicationSlotName)
@@ -179,6 +182,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	if i.Instance.GetState() != xjoin.STATE_REMOVED && i.Instance.Status.PipelineVersion != "" {
 		connectorsToKeep = append(connectorsToKeep, i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion))
 		connectorsToKeep = append(connectorsToKeep, i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion))
+		esPipelinesToKeep = append(esPipelinesToKeep, i.ESClient.ESPipelineName(i.Instance.Status.PipelineVersion))
 		esIndicesToKeep = append(esIndicesToKeep, i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
 		topicsToKeep = append(topicsToKeep, i.Kafka.TopicName(i.Instance.Status.PipelineVersion))
 		replicationSlotsToKeep = append(replicationSlotsToKeep, database.ReplicationSlotName(
@@ -194,6 +198,21 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 			if !utils.ContainsString(connectorsToKeep, connector.GetName()) {
 				i.Log.Info("Removing stale connector", "connector", connector.GetName())
 				if err = i.Kafka.DeleteConnector(connector.GetName()); err != nil {
+					errors = append(errors, err)
+				}
+			}
+		}
+	}
+
+	//delete stale ES pipelines
+	esPipelines, err := i.ESClient.ListESPipelines()
+	if err != nil {
+		errors = append(errors, err)
+	} else {
+		for _, esPipeline := range esPipelines {
+			if !utils.ContainsString(esPipelinesToKeep, esPipeline) {
+				i.Log.Info("Removing stale es pipeline", "esPipeline", esPipeline)
+				if err = i.ESClient.DeleteESPipelineByFullName(esPipeline); err != nil {
 					errors = append(errors, err)
 				}
 			}
@@ -349,6 +368,12 @@ func (i *ReconcileIteration) checkForDeviation() (problem error, err error) {
 		return problem, err
 	}
 
+	//ES Pipeline
+	problem, err = i.checkESPipelineDeviation()
+	if err != nil || problem != nil {
+		return problem, err
+	}
+
 	//Connectors
 	problem, err = i.checkConnectorDeviation(
 		i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion), "es")
@@ -366,6 +391,23 @@ func (i *ReconcileIteration) checkForDeviation() (problem error, err error) {
 	problem, err = i.checkTopicDeviation()
 	if err != nil || problem != nil {
 		return problem, err
+	}
+
+	return nil, nil
+}
+
+func (i *ReconcileIteration) checkESPipelineDeviation() (problem error, err error) {
+	if i.Instance.Status.PipelineVersion == "" {
+		return nil, nil
+	}
+
+	pipelineName := i.ESClient.ESPipelineName(i.Instance.Status.PipelineVersion)
+	esPipelineExists, err := i.ESClient.ESPipelineExists(i.Instance.Status.PipelineVersion)
+
+	if err != nil {
+		return nil, err
+	} else if esPipelineExists == false {
+		return fmt.Errorf("elasticsearch pipeline %s not found", pipelineName), nil
 	}
 
 	return nil, nil
@@ -501,6 +543,12 @@ func (i *ReconcileIteration) DeleteResourceForPipeline(version string) error {
 	err = i.ESClient.DeleteIndex(version)
 	if err != nil {
 		i.error(err, "Error removing ES indices")
+		return err
+	}
+
+	err = i.ESClient.DeleteESPipelineByVersion(version)
+	if err != nil {
+		i.error(err, "Error deleting ES pipeline")
 		return err
 	}
 

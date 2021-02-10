@@ -92,7 +92,9 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		i.parameters.ElasticSearchURL.String(),
 		i.parameters.ElasticSearchUsername.String(),
 		i.parameters.ElasticSearchPassword.String(),
-		i.parameters.ResourceNamePrefix.String())
+		i.parameters.ResourceNamePrefix.String(),
+		i.parameters.ElasticSearchPipelineTemplate.String(),
+		xjoinConfig.ParametersMap)
 
 	if err != nil {
 		return i, err
@@ -147,7 +149,7 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 	// if we're shutting down this removes all dependencies
 	xjoinErrors := i.deleteStaleDependencies()
 
-	for _, err := range xjoinErrors {
+	for _, err = range xjoinErrors {
 		i.error(err, "Error deleting stale dependency")
 	}
 
@@ -176,7 +178,7 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 
 	// STATE_NEW
 	if i.Instance.GetState() == xjoin.STATE_NEW {
-		if err := i.addFinalizer(); err != nil {
+		if err = i.addFinalizer(); err != nil {
 			i.error(err, "Error adding finalizer")
 			return reconcile.Result{}, err
 		}
@@ -186,15 +188,21 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 		i.Instance.Status.HBIDBSecretVersion = i.parameters.HBIDBSecretVersion.String()
 
 		pipelineVersion := fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
-		if err := i.Instance.TransitionToInitialSync(i.parameters.ResourceNamePrefix.String(), pipelineVersion); err != nil {
+		if err = i.Instance.TransitionToInitialSync(i.parameters.ResourceNamePrefix.String(), pipelineVersion); err != nil {
 			i.error(err, "Error transitioning to Initial Sync")
 			return reconcile.Result{}, err
 		}
 		i.probeStartingInitialSync()
 
-		_, err := i.Kafka.CreateTopic(pipelineVersion, false)
+		_, err = i.Kafka.CreateTopic(pipelineVersion, false)
 		if err != nil {
 			i.error(err, "Error creating Kafka topic")
+			return reconcile.Result{}, err
+		}
+
+		err = i.ESClient.CreateESPipeline(pipelineVersion)
+		if err != nil {
+			i.error(err, "Error creating ElasticSearch pipeline")
 			return reconcile.Result{}, err
 		}
 
