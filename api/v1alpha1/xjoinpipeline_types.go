@@ -63,6 +63,7 @@ type XJoinPipelineStatus struct {
 	Conditions                  []metav1.Condition `json:"conditions"`
 	ActiveIndexName             string             `json:"activeIndexName"`
 	ActiveESConnectorName       string             `json:"activeESConnectorName"`
+	ActiveESPipelineName        string             `json:"activeESPipelineName"`
 	ActiveDebeziumConnectorName string             `json:"activeDebeziumConnectorName"`
 	ActiveAliasName             string             `json:"activeAliasName"`
 	ActiveTopicName             string             `json:"activeTopicName"`

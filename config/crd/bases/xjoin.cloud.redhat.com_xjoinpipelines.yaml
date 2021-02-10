@@ -67,6 +67,8 @@ spec:
               type: string
             activeESConnectorName:
               type: string
+            activeESPipelineName:
+              type: string
             activeIndexName:
               type: string
             activePipelineVersion:
@@ -165,6 +167,7 @@ spec:
           - activeAliasName
           - activeDebeziumConnectorName
           - activeESConnectorName
+          - activeESPipelineName
           - activeIndexName
           - activePipelineVersion
           - activeReplicationSlotName

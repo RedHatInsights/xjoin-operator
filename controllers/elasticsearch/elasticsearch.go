@@ -9,21 +9,37 @@ import (
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
+	"text/template"
 	"time"
 )
+
+var log = logger.NewLogger("elasticsearch")
 
 type ElasticSearch struct {
 	Client             *elasticsearch.Client
 	resourceNamePrefix string
+	pipelineTemplate   string
+	parametersMap      map[string]interface{}
 }
 
-func NewElasticSearch(url string, username string, password string, resourceNamePrefix string) (*ElasticSearch, error) {
+func NewElasticSearch(
+	url string,
+	username string,
+	password string,
+	resourceNamePrefix string,
+	pipelineTemplate string,
+	parametersMap map[string]interface{}) (*ElasticSearch, error) {
+
 	es := new(ElasticSearch)
 	es.resourceNamePrefix = resourceNamePrefix
+	es.pipelineTemplate = pipelineTemplate
+	es.parametersMap = parametersMap
 	cfg := elasticsearch.Config{
 		Addresses: []string{url},
 		Username:  username,
@@ -67,6 +83,120 @@ func (es *ElasticSearch) CreateIndex(pipelineVersion string) error {
 
 	_, _, err = parseResponse(res)
 	return err
+}
+
+func (es *ElasticSearch) ESPipelineName(pipelineVersion string) string {
+	return es.resourceNamePrefix + "." + pipelineVersion
+}
+
+func (es *ElasticSearch) ESPipelineExists(pipelineVersion string) (bool, error) {
+	req := esapi.IngestGetPipelineRequest{
+		DocumentID: es.ESPipelineName(pipelineVersion),
+	}
+
+	res, err := req.Do(context.Background(), es.Client)
+	if err != nil {
+		return false, err
+	}
+
+	resCode, _, err := parseResponse(res)
+	if resCode == 404 {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	} else {
+		return true, nil
+	}
+}
+
+func (es *ElasticSearch) GetESPipeline(pipelineVersion string) (map[string]interface{}, error) {
+	req := esapi.IngestGetPipelineRequest{
+		DocumentID: es.ESPipelineName(pipelineVersion),
+	}
+
+	res, err := req.Do(context.Background(), es.Client)
+	if err != nil {
+		return nil, err
+	}
+	resCode, body, err := parseResponse(res)
+
+	if resCode != 200 {
+		return nil, errors.New(fmt.Sprintf(
+			"invalid response from ElasticSearch. StatusCode: %s, Body: %s",
+			strconv.Itoa(res.StatusCode), body))
+	}
+
+	return body, err
+}
+
+func (es *ElasticSearch) CreateESPipeline(pipelineVersion string) error {
+	tmpl, err := template.New("pipelineTemplate").Parse(es.pipelineTemplate)
+	if err != nil {
+		return err
+	}
+
+	var pipelineTemplateBuffer bytes.Buffer
+	err = tmpl.Execute(&pipelineTemplateBuffer, es.parametersMap)
+	if err != nil {
+		return err
+	}
+	pipelineTemplateParsed := pipelineTemplateBuffer.String()
+	pipelineTemplateParsed = strings.ReplaceAll(pipelineTemplateParsed, "\n", "")
+	pipelineTemplateParsed = strings.ReplaceAll(pipelineTemplateParsed, "\t", "")
+
+	res, err := es.Client.Ingest.PutPipeline(
+		es.ESPipelineName(pipelineVersion), strings.NewReader(pipelineTemplateParsed))
+	if err != nil {
+		return err
+	}
+
+	statusCode, _, err := parseResponse(res)
+	if err != nil || statusCode != 200 {
+		return err
+	}
+
+	return nil
+}
+
+func (es *ElasticSearch) ListESPipelines(pipelineIds ...string) ([]string, error) {
+	req := esapi.IngestGetPipelineRequest{}
+
+	if pipelineIds != nil {
+		req.DocumentID = "*" + pipelineIds[0] + "*"
+	}
+
+	res, err := req.Do(context.Background(), es.Client)
+	if err != nil {
+		return nil, err
+	}
+	resCode, body, err := parseResponse(res)
+	var esPipelines []string
+
+	if resCode == 404 {
+		return esPipelines, nil
+	} else if resCode != 200 {
+		return nil, errors.New(fmt.Sprintf(
+			"Unable to list es pipelines. StatusCode: %s, Body: %s",
+			strconv.Itoa(res.StatusCode), body))
+	}
+
+	for esPipelineName, _ := range body {
+		esPipelines = append(esPipelines, esPipelineName)
+	}
+
+	return esPipelines, err
+}
+
+func (es *ElasticSearch) DeleteESPipelineByVersion(version string) error {
+	return es.DeleteESPipelineByFullName(es.ESPipelineName(version))
+}
+
+func (es *ElasticSearch) DeleteESPipelineByFullName(esPipeline string) error {
+	_, err := es.Client.Ingest.DeletePipeline(esPipeline)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (es *ElasticSearch) DeleteIndexByFullName(index string) error {
@@ -124,8 +254,12 @@ func (es *ElasticSearch) UpdateAliasByFullIndexName(alias string, index string) 
 		return err
 	}
 
-	_, _, err = parseResponse(res)
-	return err
+	statusCode, _, err := parseResponse(res)
+	if statusCode >= 300 || err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (es *ElasticSearch) UpdateAlias(alias string, version string) error {
@@ -150,7 +284,7 @@ func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, erro
 
 	if res.StatusCode != 200 {
 		return nil, errors.New(fmt.Sprintf(
-			"invalid response from ElasticSearch. StatusCode: %s, Body: %s",
+			"Unable to get current indices with alias. StatusCode: %s, Body: %s",
 			strconv.Itoa(res.StatusCode), string(byteValue)))
 	}
 
@@ -303,26 +437,33 @@ func parseSearchResponse(scrollRes *esapi.Response) ([]string, SearchIDsResponse
 	return ids, searchJSON, nil
 }
 
-func parseResponse(res *esapi.Response) (int, string, error) {
-	_, err := io.Copy(ioutil.Discard, res.Body)
-	if err != nil {
-		return -1, "", err
-	}
-	//TODO: handle error here
-	defer res.Body.Close()
-
+func parseResponse(res *esapi.Response) (int, map[string]interface{}, error) {
 	if res.IsError() {
-		return res.StatusCode, "", errors.New(
+		_, err := io.Copy(ioutil.Discard, res.Body)
+		if err != nil {
+			return -1, nil, err
+		}
+		return res.StatusCode, nil, errors.New(
 			fmt.Sprintf("Elasticsearch API error: %s, %s", strconv.Itoa(res.StatusCode), res.Body))
 	}
 
-	content, err := ioutil.ReadAll(res.Body)
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	err = res.Body.Close()
+	if err != nil {
+		return -1, nil, err
+	}
 
-	//var body map[string]interface{}
-	//err = json.NewDecoder(content).Decode(&body)
-	//if err != nil {
-	//	return -1, nil, err
-	//}
+	var bodyMap map[string]interface{}
 
-	return res.StatusCode, string(content), nil
+	if len(bodyBytes) > 0 {
+		err = json.Unmarshal(bodyBytes, &bodyMap)
+		if err != nil {
+			log.Error(err,
+				"Unable to parse ES response body to map",
+				"body", string(bodyBytes))
+			return -1, nil, err
+		}
+	}
+
+	return res.StatusCode, bodyMap, nil
 }

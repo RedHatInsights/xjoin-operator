@@ -40,6 +40,7 @@ type Parameters struct {
 	ElasticSearchLingerMS             Parameter
 	ElasticSearchSecretName           Parameter
 	ElasticSearchSecretVersion        Parameter
+	ElasticSearchPipelineTemplate     Parameter
 	DebeziumTemplate                  Parameter
 	DebeziumTasksMax                  Parameter
 	DebeziumMaxBatchSize              Parameter
@@ -246,6 +247,39 @@ func NewXJoinConfiguration() Parameters {
 			Type:         reflect.Int,
 			ConfigMapKey: "elasticsearch.connector.linger.ms",
 			DefaultValue: 100,
+		},
+		ElasticSearchPipelineTemplate: Parameter{
+			Type:         reflect.String,
+			ConfigMapKey: "elasticsearch.pipeline.template",
+			DefaultValue: `{
+				"description" : "Ingest pipeline for {{.ResourceNamePrefix}}",
+				"processors" : [{
+					"set": {
+						"field": "ingest_timestamp",
+						"value": "{{"{{"}}_ingest.timestamp{{"}}"}}"
+					},
+					"json" : {
+						"if" : "ctx.system_profile_facts != null",
+						"field" : "system_profile_facts"
+					}
+				}, {
+					"json" : {
+						"if" : "ctx.canonical_facts != null",
+						"field" : "canonical_facts"
+					}
+				}, {
+					"json" : {
+						"if" : "ctx.facts != null",
+						"field" : "facts"
+					}
+				}, {
+					"script": {
+						"lang": "painless",
+						"if": "ctx.tags_structured != null",
+						"source": "ctx.tags_search = ctx.tags_structured.stream().map(t -> { StringBuilder builder = new StringBuilder(); if (t.namespace != null && t.namespace != 'null') { builder.append(t.namespace); } builder.append('/'); builder.append(t.key); builder.append('='); if (t.value != null) { builder.append(t.value); } return builder.toString() }).collect(Collectors.toList())"
+					}
+				}]
+			}`,
 		},
 		DebeziumTemplate: Parameter{
 			Type:         reflect.String,

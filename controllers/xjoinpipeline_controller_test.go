@@ -259,6 +259,10 @@ func (i *TestIteration) ExpectPipelineVersionToBeRemoved(pipelineVersion string)
 	connectors, err := i.KafkaClient.ListConnectorNamesForPipelineVersion(pipelineVersion)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(len(connectors)).To(Equal(0))
+
+	esPipelines, err := i.EsClient.ListESPipelines(pipelineVersion)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(len(esPipelines)).To(Equal(0))
 }
 
 func (i *TestIteration) ExpectValidReconcile() *xjoin.XJoinPipeline {
@@ -456,14 +460,20 @@ var _ = Describe("Pipeline operations", func() {
 		i.XJoinReconciler = newXJoinReconciler()
 		i.ValidationReconciler = newValidationReconciler()
 
-		es, err := elasticsearch.NewElasticSearch(
-			"http://xjoin-elasticsearch-es-http:9200", "xjoin", "xjoin1337", resourceNamePrefix)
-		i.EsClient = es
-		Expect(err).ToNot(HaveOccurred())
-
 		i.Parameters, i.ParametersMap = getParameters()
 		i.CreateDbSecret("host-inventory-db")
 		i.CreateESSecret("xjoin-elasticsearch")
+
+		es, err := elasticsearch.NewElasticSearch(
+			"http://xjoin-elasticsearch-es-http:9200",
+			"xjoin",
+			"xjoin1337",
+			resourceNamePrefix,
+			i.Parameters.ElasticSearchPipelineTemplate.String(),
+			i.ParametersMap)
+
+		i.EsClient = es
+		Expect(err).ToNot(HaveOccurred())
 
 		i.KafkaClient = kafka.Kafka{
 			Namespace:     i.NamespacedName.Namespace,
@@ -639,6 +649,21 @@ var _ = Describe("Pipeline operations", func() {
 
 			topics, err := i.KafkaClient.ListTopicNamesForPipelineVersion(pipeline.Status.PipelineVersion)
 			Expect(topics).To(ContainElement(i.KafkaClient.TopicName(pipeline.Status.PipelineVersion)))
+		})
+
+		It("Creates ESPipeline for new xjoin pipeline", func() {
+			i.CreatePipeline()
+			i.ReconcileXJoin()
+
+			pipeline := i.GetPipeline()
+			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
+			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
+			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
+
+			esPipeline, err := i.EsClient.GetESPipeline(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(esPipeline).ToNot(BeEmpty())
+			Expect(esPipeline).To(HaveKey(i.EsClient.ESPipelineName(pipeline.Status.PipelineVersion)))
 		})
 
 		It("Considers configmap configuration", func() {
@@ -1080,6 +1105,17 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline = i.ExpectValidReconcile()
 			Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
 		})
+
+		It("Triggers refresh if ES pipeline disappears", func() {
+			pipeline := i.CreateValidPipeline()
+			activeIndex := pipeline.Status.ActiveIndexName
+			err := i.EsClient.DeleteESPipelineByVersion(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline = i.ExpectInitSyncReconcile()
+			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+			pipeline = i.ExpectValidReconcile()
+			Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
+		})
 	})
 
 	Describe("Spec changed", func() {
@@ -1193,7 +1229,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err.Error()).To(HavePrefix(`unsupported protocol scheme`))
 
 			recorder, _ := i.XJoinReconciler.Recorder.(*record.FakeRecorder)
-			Expect(recorder.Events).To(HaveLen(2))
+			Expect(recorder.Events).To(HaveLen(3))
 		})
 
 		It("Fails if HBI DB secret is misconfigured", func() {
@@ -1256,6 +1292,19 @@ var _ = Describe("Pipeline operations", func() {
 				ResourceNamePrefix: &invalidPrefix,
 			}
 			i.CreatePipeline(spec)
+			err := i.ReconcileXJoinWithError()
+			Expect(err).To(HaveOccurred())
+
+			recorder, _ := i.XJoinReconciler.Recorder.(*record.FakeRecorder)
+			Expect(recorder.Events).To(HaveLen(1))
+		})
+
+		It("Fails if ESPipeline cannot be created", func() {
+			cm := map[string]string{
+				"elasticsearch.pipeline.template": "invalid",
+			}
+			i.CreateConfigMap("xjoin", cm)
+			i.CreatePipeline()
 			err := i.ReconcileXJoinWithError()
 			Expect(err).To(HaveOccurred())
 
