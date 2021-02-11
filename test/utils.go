@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -18,4 +19,16 @@ func UniqueNamespace(prefix string) (namespace string) {
 	Expect(err).ToNot(HaveOccurred())
 
 	return
+}
+
+func StrToBool(str string) bool {
+	b, err := strconv.ParseBool(str)
+	Expect(err).ToNot(HaveOccurred())
+	return b
+}
+
+func StrToInt64(str string) int64 {
+	i, err := strconv.ParseInt(str, 10, 64)
+	Expect(err).ToNot(HaveOccurred())
+	return i
 }

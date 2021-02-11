@@ -44,14 +44,14 @@ import (
 )
 
 // XJoinPipelineReconciler reconciles a XJoinPipeline object
+const xjoinpipelineFinalizer = "finalizer.xjoin.cloud.redhat.com"
+
 type XJoinPipelineReconciler struct {
 	Client   client.Client
 	Log      logr.Logger
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 }
-
-const xjoinpipelineFinalizer = "finalizer.xjoin.cloud.redhat.com"
 
 func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.Request) (ReconcileIteration, error) {
 
