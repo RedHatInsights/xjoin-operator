@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"fmt"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
@@ -54,7 +53,6 @@ func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request)
 }
 
 func (r *ValidationReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
 	reqLogger := logger.NewLogger("controller_validation", "Pipeline", request.Name, "Namespace", request.Namespace)
 
 	i, err := r.setup(reqLogger, request)

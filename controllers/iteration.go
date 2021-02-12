@@ -106,7 +106,10 @@ func (i *ReconcileIteration) updateStatusAndRequeue() (reconcile.Result, error) 
 	if !cmp.Equal(i.Instance.Status, i.OriginalInstance.Status) {
 		i.debug("Updating status")
 
-		if err := i.Client.Status().Update(context.TODO(), i.Instance); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+		defer cancel()
+
+		if err := i.Client.Status().Update(ctx, i.Instance); err != nil {
 			if k8errors.IsConflict(err) {
 				i.Log.Error(err, "Status conflict")
 				return reconcile.Result{}, err
@@ -149,7 +152,10 @@ func (i *ReconcileIteration) getValidationPercentageThreshold() int {
 func (i *ReconcileIteration) addFinalizer() error {
 	if !utils.ContainsString(i.Instance.GetFinalizers(), xjoinpipelineFinalizer) {
 		controllerutil.AddFinalizer(i.Instance, xjoinpipelineFinalizer)
-		return i.Client.Update(context.TODO(), i.Instance)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+		defer cancel()
+		return i.Client.Update(ctx, i.Instance)
 	}
 
 	return nil
@@ -157,7 +163,9 @@ func (i *ReconcileIteration) addFinalizer() error {
 
 func (i *ReconcileIteration) removeFinalizer() error {
 	controllerutil.RemoveFinalizer(i.Instance, xjoinpipelineFinalizer)
-	return i.Client.Update(context.TODO(), i.Instance)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	return i.Client.Update(ctx, i.Instance)
 }
 
 func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {

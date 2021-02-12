@@ -53,7 +53,9 @@ func (i *Iteration) EditESConnectorToBeInvalid(pipelineVersion string) {
 	config := spec["config"].(map[string]interface{})
 	config["connection.url"] = "invalid"
 
-	err = i.KafkaClient.Client.Update(context.Background(), connector)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err = i.KafkaClient.Client.Update(ctx, connector)
 	Expect(err).ToNot(HaveOccurred())
 }
 
@@ -71,7 +73,9 @@ func (i *Iteration) TestSpecFieldChanged(fieldName string, fieldValue interface{
 		field.Set(reflect.ValueOf(&val))
 	}
 
-	err := test.Client.Update(context.TODO(), pipeline)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := test.Client.Update(ctx, pipeline)
 	Expect(err).ToNot(HaveOccurred())
 	pipeline = i.ExpectInitSyncUnknownReconcile()
 	Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
@@ -119,7 +123,9 @@ func (i *Iteration) IndexDocument(pipelineVersion string, id string) {
 	}
 
 	// Perform the request with the client.
-	res, err := req.Do(context.Background(), i.EsClient.Client)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	res, err := req.Do(ctx, i.EsClient.Client)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = res.Body.Close()
@@ -159,7 +165,9 @@ func (i *Iteration) CreateConfigMap(name string, data map[string]string) {
 		Data: data,
 	}
 
-	err := test.Client.Create(context.TODO(), configMap)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := test.Client.Create(ctx, configMap)
 	Expect(err).ToNot(HaveOccurred())
 }
 
@@ -177,7 +185,9 @@ func (i *Iteration) CreateESSecret(name string) {
 		},
 	}
 
-	err := test.Client.Create(context.TODO(), secret)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := test.Client.Create(ctx, secret)
 	Expect(err).ToNot(HaveOccurred())
 }
 
@@ -197,7 +207,9 @@ func (i *Iteration) CreateDbSecret(name string) {
 		},
 	}
 
-	err := test.Client.Create(context.TODO(), secret)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := test.Client.Create(ctx, secret)
 	Expect(err).ToNot(HaveOccurred())
 }
 
@@ -281,17 +293,16 @@ func (i *Iteration) CreateValidPipeline() *xjoin.XJoinPipeline {
 }
 
 func (i *Iteration) DeletePipeline(pipeline *xjoin.XJoinPipeline) {
-	err := test.Client.Delete(context.Background(), pipeline)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := test.Client.Delete(ctx, pipeline)
 	Expect(err).ToNot(HaveOccurred())
 	i.ReconcileValidationForDeletedPipeline()
 	i.ReconcileXJoinForDeletedPipeline()
 }
 
 func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) {
-	var (
-		ctx  = context.Background()
-		spec *xjoin.XJoinPipelineSpec
-	)
+	var spec *xjoin.XJoinPipelineSpec
 
 	Expect(len(specs) <= 1).To(BeTrue())
 
@@ -314,6 +325,8 @@ func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) {
 		Spec: *spec,
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
 	err := test.Client.Create(ctx, &pipeline)
 	Expect(err).ToNot(HaveOccurred())
 	i.Pipelines = append(i.Pipelines, &pipeline)
