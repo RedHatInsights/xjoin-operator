@@ -94,7 +94,9 @@ func (es *ElasticSearch) ESPipelineExists(pipelineVersion string) (bool, error) 
 		DocumentID: es.ESPipelineName(pipelineVersion),
 	}
 
-	res, err := req.Do(context.Background(), es.Client)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	res, err := req.Do(ctx, es.Client)
 	if err != nil {
 		return false, err
 	}
@@ -114,7 +116,9 @@ func (es *ElasticSearch) GetESPipeline(pipelineVersion string) (map[string]inter
 		DocumentID: es.ESPipelineName(pipelineVersion),
 	}
 
-	res, err := req.Do(context.Background(), es.Client)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	res, err := req.Do(ctx, es.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +169,9 @@ func (es *ElasticSearch) ListESPipelines(pipelineIds ...string) ([]string, error
 		req.DocumentID = "*" + pipelineIds[0] + "*"
 	}
 
-	res, err := req.Do(context.Background(), es.Client)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	res, err := req.Do(ctx, es.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +281,9 @@ func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, erro
 		Name:   []string{name},
 		Format: "JSON",
 	}
-	res, err := req.Do(context.Background(), es.Client)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	res, err := req.Do(ctx, es.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +316,9 @@ func (es *ElasticSearch) ListIndices() ([]string, error) {
 		Index:  []string{es.resourceNamePrefix + ".*"},
 		H:      []string{"index"},
 	}
-	res, err := req.Do(context.Background(), es.Client)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	res, err := req.Do(ctx, es.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +346,9 @@ func (es *ElasticSearch) CountIndex(index string) (int, error) {
 		Index:  []string{index},
 	}
 
-	res, err := req.Do(context.Background(), es.Client)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	res, err := req.Do(ctx, es.Client)
 	if err != nil {
 		return -1, err
 	}
@@ -369,7 +381,9 @@ func (es *ElasticSearch) GetHostIDs(index string) ([]string, error) {
 		Sort:   []string{"_doc"},
 	}
 
-	searchRes, err := searchReq.Do(context.Background(), es.Client)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	searchRes, err := searchReq.Do(ctx, es.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -392,7 +406,9 @@ func (es *ElasticSearch) GetHostIDs(index string) ([]string, error) {
 			ScrollID: scrollID,
 		}
 
-		scrollRes, err := scrollReq.Do(context.Background(), es.Client)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+		defer cancel()
+		scrollRes, err := scrollReq.Do(ctx, es.Client)
 		if err != nil {
 			return nil, err
 		}
@@ -429,7 +445,6 @@ func parseSearchResponse(scrollRes *esapi.Response) ([]string, SearchIDsResponse
 		return nil, searchJSON, err
 	}
 
-	//TODO: more performant way to do this? Some built in golang function?
 	for _, hit := range searchJSON.Hits.Hits {
 		ids = append(ids, hit.ID)
 	}

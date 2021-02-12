@@ -9,6 +9,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"strings"
 	"text/template"
+	"time"
 
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -119,7 +120,9 @@ func (kafka *Kafka) newConnectorResource(
 
 func (kafka *Kafka) GetConnector(name string) (*unstructured.Unstructured, error) {
 	connector := EmptyConnector()
-	err := kafka.Client.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: kafka.Parameters.ConnectClusterNamespace.String()}, connector)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := kafka.Client.Get(ctx, client.ObjectKey{Name: name, Namespace: kafka.Parameters.ConnectClusterNamespace.String()}, connector)
 	return connector, err
 }
 
@@ -175,7 +178,9 @@ func (kafka *Kafka) ListConnectors() (*unstructured.UnstructuredList, error) {
 	connectors := &unstructured.UnstructuredList{}
 	connectors.SetGroupVersionKind(connectorsGVK)
 
-	err := kafka.Client.List(context.TODO(), connectors, client.InNamespace(kafka.Parameters.ConnectClusterNamespace.String()))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := kafka.Client.List(ctx, connectors, client.InNamespace(kafka.Parameters.ConnectClusterNamespace.String()))
 	return connectors, err
 }
 
@@ -194,7 +199,9 @@ func (kafka *Kafka) DeleteConnector(name string) error {
 	connector.SetNamespace(kafka.Parameters.ConnectClusterNamespace.String())
 	connector.SetGroupVersionKind(connectorGVK)
 
-	if err := kafka.Client.Delete(context.TODO(), connector); err != nil && !k8errors.IsNotFound(err) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	if err := kafka.Client.Delete(ctx, connector); err != nil && !k8errors.IsNotFound(err) {
 		return err
 	}
 
@@ -236,7 +243,9 @@ func (kafka *Kafka) CreateESConnector(
 		return connector, nil
 	}
 
-	return connector, kafka.Client.Create(context.TODO(), connector)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	return connector, kafka.Client.Create(ctx, connector)
 }
 
 func (kafka *Kafka) CreateDebeziumConnector(
@@ -251,7 +260,9 @@ func (kafka *Kafka) CreateDebeziumConnector(
 		return connector, nil
 	}
 
-	return connector, kafka.Client.Create(context.TODO(), connector)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	return connector, kafka.Client.Create(ctx, connector)
 }
 
 func (kafka *Kafka) DebeziumConnectorName(pipelineVersion string) string {
@@ -278,7 +289,9 @@ func (kafka *Kafka) setElasticSearchConnectorPause(pipelineVersion string, pause
 
 	connector.Object["spec"].(map[string]interface{})["pause"] = pause
 
-	err = kafka.Client.Update(context.TODO(), connector)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err = kafka.Client.Update(ctx, connector)
 	if err != nil {
 		return err
 	}

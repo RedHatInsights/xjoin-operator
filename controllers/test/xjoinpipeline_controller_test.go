@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"reflect"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -215,7 +216,9 @@ var _ = Describe("Pipeline operations", func() {
 			hbiDBSecret, err := utils.FetchSecret(
 				test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
-			err = test.Client.Delete(context.TODO(), hbiDBSecret)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			defer cancel()
+			err = test.Client.Delete(ctx, hbiDBSecret)
 			Expect(err).ToNot(HaveOccurred())
 
 			secretName := "test-hbi-db-secret"
@@ -228,7 +231,9 @@ var _ = Describe("Pipeline operations", func() {
 		It("Considers es secret name configuration", func() {
 			elasticSearchSecret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
-			err = test.Client.Delete(context.TODO(), elasticSearchSecret)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			defer cancel()
+			err = test.Client.Delete(ctx, elasticSearchSecret)
 			Expect(err).ToNot(HaveOccurred())
 
 			secretName := "test-elasticsearch-secret"
@@ -487,7 +492,9 @@ var _ = Describe("Pipeline operations", func() {
 			updatedClusterName := "invalid.cluster"
 			cm["connect.cluster"] = updatedClusterName
 			configMap.Data = cm
-			err = test.Client.Update(context.TODO(), configMap)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			defer cancel()
+			err = test.Client.Update(ctx, configMap)
 			Expect(err).ToNot(HaveOccurred())
 
 			pipeline = i.ExpectInitSyncUnknownReconcile()
@@ -511,7 +518,9 @@ var _ = Describe("Pipeline operations", func() {
 				fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s' IN ROLE insights;", tempUser, tempPassword))
 			secret.Data["db.user"] = []byte(tempUser)
 			secret.Data["db.password"] = []byte(tempPassword)
-			err = test.Client.Update(context.TODO(), secret)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			defer cancel()
+			err = test.Client.Update(ctx, secret)
 
 			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
@@ -533,7 +542,9 @@ var _ = Describe("Pipeline operations", func() {
 
 			//change the secret hash by adding a new field
 			secret.Data["newfield"] = []byte("value")
-			err = test.Client.Update(context.TODO(), secret)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			defer cancel()
+			err = test.Client.Update(ctx, secret)
 
 			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
@@ -651,7 +662,9 @@ var _ = Describe("Pipeline operations", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["newfield"] = []byte("value")
-			err = test.Client.Update(context.TODO(), secret)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			defer cancel()
+			err = test.Client.Update(ctx, secret)
 			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 			secondVersion := pipeline.Status.PipelineVersion
@@ -665,7 +678,9 @@ var _ = Describe("Pipeline operations", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["db.host"] = []byte("invalidurl")
-			err = test.Client.Update(context.TODO(), secret)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			defer cancel()
+			err = test.Client.Update(ctx, secret)
 
 			//this will fail due to incorrect secret
 			i.CreatePipeline()
@@ -694,7 +709,9 @@ var _ = Describe("Pipeline operations", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["url"] = []byte("invalidurl")
-			err = test.Client.Update(context.TODO(), secret)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			defer cancel()
+			err = test.Client.Update(ctx, secret)
 
 			i.CreatePipeline()
 			err = i.ReconcileXJoinWithError()
@@ -709,7 +726,9 @@ var _ = Describe("Pipeline operations", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["db.host"] = []byte("invalidurl")
-			err = test.Client.Update(context.TODO(), secret)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			defer cancel()
+			err = test.Client.Update(ctx, secret)
 
 			i.CreatePipeline()
 			err = i.ReconcileXJoinWithError()

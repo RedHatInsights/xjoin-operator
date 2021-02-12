@@ -18,6 +18,7 @@ import (
 	"reflect"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"strings"
+	"time"
 )
 
 func newXJoinReconciler() *XJoinPipelineReconciler {
@@ -148,7 +149,9 @@ func After(i *Iteration) {
 	projects.SetKind("Namespace")
 	projects.SetAPIVersion("v1")
 
-	err = i.XJoinReconciler.Client.List(context.TODO(), projects)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err = i.XJoinReconciler.Client.List(ctx, projects)
 	Expect(err).ToNot(HaveOccurred())
 
 	//remove finalizers from leftover pipelines so the project can be deleted
@@ -169,7 +172,7 @@ func After(i *Iteration) {
 			i.DeleteAllHosts()
 			if pipeline.DeletionTimestamp == nil {
 				pipeline.ObjectMeta.Finalizers = nil
-				err = i.XJoinReconciler.Client.Update(context.Background(), &pipeline)
+				err = i.XJoinReconciler.Client.Update(ctx, &pipeline)
 				Expect(err).ToNot(HaveOccurred())
 			}
 		}
@@ -182,7 +185,7 @@ func After(i *Iteration) {
 			project.SetName(p.GetName())
 			project.SetNamespace(p.GetNamespace())
 			project.SetGroupVersionKind(p.GroupVersionKind())
-			err = i.XJoinReconciler.Client.Delete(context.TODO(), project)
+			err = i.XJoinReconciler.Client.Delete(ctx, project)
 			Expect(err).ToNot(HaveOccurred())
 			err = i.KafkaClient.DeleteConnectorsForPipelineVersion("1")
 		}

@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
+	"time"
 )
 
 var topicGroupVersionKind = schema.GroupVersionKind{
@@ -49,7 +50,9 @@ func (kafka *Kafka) CreateTopic(pipelineVersion string, dryRun bool) (*unstructu
 		return topic, nil
 	}
 
-	return topic, kafka.Client.Create(context.TODO(), topic)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	return topic, kafka.Client.Create(ctx, topic)
 }
 
 func (kafka *Kafka) DeleteTopicByPipelineVersion(pipelineVersion string) error {
@@ -63,7 +66,9 @@ func (kafka *Kafka) DeleteTopic(topicName string) error {
 	topic.SetNamespace(kafka.Parameters.KafkaClusterNamespace.String())
 	topic.SetGroupVersionKind(topicGroupVersionKind)
 
-	if err := kafka.Client.Delete(context.TODO(), topic); err != nil && !errors.IsNotFound(err) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	if err := kafka.Client.Delete(ctx, topic); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
@@ -74,8 +79,10 @@ func (kafka *Kafka) ListTopicNamesForPrefix(resourceNamePrefix string) ([]string
 	topics := &unstructured.UnstructuredList{}
 	topics.SetGroupVersionKind(topicsGroupVersionKind)
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
 	err := kafka.Client.List(
-		context.TODO(), topics, client.InNamespace(kafka.Parameters.KafkaClusterNamespace.String()))
+		ctx, topics, client.InNamespace(kafka.Parameters.KafkaClusterNamespace.String()))
 
 	var response []string
 	if topics.Items != nil {
@@ -93,8 +100,10 @@ func (kafka *Kafka) ListTopicNamesForPipelineVersion(pipelineVersion string) ([]
 	topics := &unstructured.UnstructuredList{}
 	topics.SetGroupVersionKind(topicsGroupVersionKind)
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
 	err := kafka.Client.List(
-		context.TODO(), topics, client.InNamespace(kafka.Parameters.KafkaClusterNamespace.String()))
+		ctx, topics, client.InNamespace(kafka.Parameters.KafkaClusterNamespace.String()))
 
 	var response []string
 	if topics.Items != nil {
@@ -111,8 +120,10 @@ func (kafka *Kafka) ListTopicNamesForPipelineVersion(pipelineVersion string) ([]
 func (kafka *Kafka) GetTopic(topicName string) (*unstructured.Unstructured, error) {
 	topic := &unstructured.Unstructured{}
 	topic.SetGroupVersionKind(topicGroupVersionKind)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
 	err := kafka.Client.Get(
-		context.TODO(),
+		ctx,
 		client.ObjectKey{Name: topicName, Namespace: kafka.Parameters.KafkaClusterNamespace.String()},
 		topic)
 	return topic, err

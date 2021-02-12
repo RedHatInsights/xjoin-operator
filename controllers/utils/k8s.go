@@ -12,13 +12,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
 )
 
 var log = logger.NewLogger("k8s")
 
 func FetchXJoinPipeline(c client.Client, namespacedName types.NamespacedName) (*xjoin.XJoinPipeline, error) {
 	instance := &xjoin.XJoinPipeline{}
-	err := c.Get(context.TODO(), namespacedName, instance)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := c.Get(ctx, namespacedName, instance)
 	return instance, err
 }
 
@@ -29,13 +32,17 @@ func FetchXJoinPipelinesByNamespacedName(c client.Client, name string, namespace
 	}
 
 	list := &xjoin.XJoinPipelineList{}
-	err := c.List(context.TODO(), list, nameField)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := c.List(ctx, list, nameField)
 	return list, err
 }
 
 func FetchXJoinPipelines(c client.Client) (*xjoin.XJoinPipelineList, error) {
 	list := &xjoin.XJoinPipelineList{}
-	err := c.List(context.TODO(), list)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := c.List(ctx, list)
 	return list, err
 }
 
@@ -46,7 +53,9 @@ func FetchConfigMap(c client.Client, namespace string, name string) (*corev1.Con
 	}
 
 	configMaps := &corev1.ConfigMapList{}
-	err := c.List(context.TODO(), configMaps, nameField)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := c.List(ctx, configMaps, nameField)
 	if len(configMaps.Items) == 0 {
 		emptyConfig := &corev1.ConfigMap{}
 		return emptyConfig, nil
@@ -91,7 +100,9 @@ func ConfigMapHash(cm *corev1.ConfigMap, ignoredKeys ...string) (string, error) 
 
 func FetchSecret(c client.Client, namespace string, name string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{}
-	err := c.Get(context.TODO(), client.ObjectKey{Namespace: namespace, Name: name}, secret)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, secret)
 
 	if statusError, isStatus := err.(*errors.StatusError); isStatus && statusError.Status().Reason == metav1.StatusReasonNotFound {
 		log.Info("Secret not found.", "namespace", namespace, "name", name)
