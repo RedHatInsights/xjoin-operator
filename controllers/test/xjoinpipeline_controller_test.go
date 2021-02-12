@@ -3,19 +3,12 @@ package test
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	"github.com/redhatinsights/xjoin-operator/controllers/database"
-	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
-	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"github.com/redhatinsights/xjoin-operator/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"reflect"
-	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -30,105 +23,11 @@ var _ = Describe("Pipeline operations", func() {
 	var i *Iteration
 
 	BeforeEach(func() {
-		i = NewTestIteration()
-
-		i.NamespacedName = types.NamespacedName{
-			Name:      "test-pipeline-01",
-			Namespace: test.UniqueNamespace(ResourceNamePrefix),
-		}
-
-		i.XJoinReconciler = newXJoinReconciler()
-		i.ValidationReconciler = newValidationReconciler()
-
-		i.Parameters, i.ParametersMap = getParameters()
-		i.CreateDbSecret("host-inventory-db")
-		i.CreateESSecret("xjoin-elasticsearch")
-
-		es, err := elasticsearch.NewElasticSearch(
-			"http://xjoin-elasticsearch-es-http:9200",
-			"xjoin",
-			"xjoin1337",
-			ResourceNamePrefix,
-			i.Parameters.ElasticSearchPipelineTemplate.String(),
-			i.ParametersMap)
-
-		i.EsClient = es
-		Expect(err).ToNot(HaveOccurred())
-
-		i.KafkaClient = kafka.Kafka{
-			Namespace:     i.NamespacedName.Namespace,
-			Client:        i.XJoinReconciler.Client,
-			Parameters:    i.Parameters,
-			ParametersMap: i.ParametersMap,
-		}
-
-		i.DbClient = database.NewDatabase(database.DBParams{
-			Host:     i.Parameters.HBIDBHost.String(),
-			Port:     i.Parameters.HBIDBPort.String(),
-			User:     i.Parameters.HBIDBUser.String(),
-			Password: i.Parameters.HBIDBPassword.String(),
-			Name:     i.Parameters.HBIDBName.String(),
-		})
-
-		err = i.DbClient.Connect()
-		Expect(err).ToNot(HaveOccurred())
-
-		_, err = i.DbClient.Exec("DELETE FROM hosts")
-		Expect(err).ToNot(HaveOccurred())
+		i = Before()
 	})
 
 	AfterEach(func() {
-		//Delete any leftover ES indices
-		indices, err := i.EsClient.ListIndices()
-		Expect(err).ToNot(HaveOccurred())
-		for _, index := range indices {
-			err = i.EsClient.DeleteIndexByFullName(index)
-			Expect(err).ToNot(HaveOccurred())
-		}
-
-		projects := &unstructured.UnstructuredList{}
-		projects.SetKind("Namespace")
-		projects.SetAPIVersion("v1")
-
-		err = i.XJoinReconciler.Client.List(context.TODO(), projects)
-		Expect(err).ToNot(HaveOccurred())
-
-		//remove finalizers from leftover pipelines so the project can be deleted
-		for _, p := range i.Pipelines {
-			pipelines, err :=
-				utils.FetchXJoinPipelinesByNamespacedName(test.Client, p.Name, p.Namespace)
-			Expect(err).ToNot(HaveOccurred())
-			if len(pipelines.Items) != 0 {
-				pipeline := pipelines.Items[0]
-				err = i.KafkaClient.DeleteConnectorsForPipelineVersion(pipeline.Status.PipelineVersion)
-				Expect(err).ToNot(HaveOccurred())
-				err = i.KafkaClient.DeleteTopicByPipelineVersion(pipeline.Status.PipelineVersion)
-				Expect(err).ToNot(HaveOccurred())
-				err = i.DbClient.RemoveReplicationSlotsForPipelineVersion(pipeline.Status.PipelineVersion)
-				Expect(err).ToNot(HaveOccurred())
-				err = i.EsClient.DeleteIndex(pipeline.Status.PipelineVersion)
-				Expect(err).ToNot(HaveOccurred())
-				i.DeleteAllHosts()
-				if pipeline.DeletionTimestamp == nil {
-					pipeline.ObjectMeta.Finalizers = nil
-					err = i.XJoinReconciler.Client.Update(context.Background(), &pipeline)
-					Expect(err).ToNot(HaveOccurred())
-				}
-			}
-		}
-
-		//delete leftover projects
-		for _, p := range projects.Items {
-			if strings.Index(p.GetName(), ResourceNamePrefix) == 0 && p.GetDeletionTimestamp() == nil {
-				project := &unstructured.Unstructured{}
-				project.SetName(p.GetName())
-				project.SetNamespace(p.GetNamespace())
-				project.SetGroupVersionKind(p.GroupVersionKind())
-				err = i.XJoinReconciler.Client.Delete(context.TODO(), project)
-				Expect(err).ToNot(HaveOccurred())
-				err = i.KafkaClient.DeleteConnectorsForPipelineVersion("1")
-			}
-		}
+		After(i)
 	})
 
 	Describe("New -> InitialSync", func() {
@@ -437,9 +336,6 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Triggers refresh if pipeline fails to become valid for too long", func() {
-			hostId, err := uuid.NewUUID()
-			Expect(err).ToNot(HaveOccurred())
-
 			i.CreatePipeline()
 
 			cm := map[string]string{
@@ -453,9 +349,9 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
 
-			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err := i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
-			i.InsertHost(hostId.String())
+			hostId := i.InsertHost()
 
 			i.ReconcileValidation()
 			pipeline = i.ReconcileXJoin()
@@ -477,7 +373,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
 
-			i.IndexDocument(pipeline.Status.PipelineVersion, hostId.String())
+			i.IndexDocument(pipeline.Status.PipelineVersion, hostId)
 
 			i.ReconcileValidation()
 			pipeline = i.ReconcileXJoin()
@@ -501,9 +397,6 @@ var _ = Describe("Pipeline operations", func() {
 	Describe("Invalid -> New", func() {
 		Context("In a refresh", func() {
 			It("Keeps the old table active until the new one is valid", func() {
-				hostId, err := uuid.NewUUID()
-				Expect(err).ToNot(HaveOccurred())
-
 				cm := map[string]string{
 					"validation.attempts.threshold": "2",
 				}
@@ -512,9 +405,9 @@ var _ = Describe("Pipeline operations", func() {
 				pipeline := i.CreateValidPipeline()
 				activeIndex := pipeline.Status.ActiveIndexName
 
-				err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+				err := i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 				Expect(err).ToNot(HaveOccurred())
-				i.InsertHost(hostId.String())
+				hostId := i.InsertHost()
 
 				pipeline = i.ExpectInvalidReconcile()
 				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
@@ -522,10 +415,10 @@ var _ = Describe("Pipeline operations", func() {
 				pipeline = i.ExpectNewReconcile()
 				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
-				pipeline = i.ExpectInitSyncReconcile()
+				pipeline = i.ExpectInitSyncUnknownReconcile()
 				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
-				i.IndexDocument(pipeline.Status.PipelineVersion, hostId.String())
+				i.IndexDocument(pipeline.Status.PipelineVersion, hostId)
 
 				pipeline = i.ExpectValidReconcile()
 				Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
@@ -555,7 +448,7 @@ var _ = Describe("Pipeline operations", func() {
 			}
 			i.CreateConfigMap("xjoin", cm)
 
-			pipeline = i.ExpectInitSyncReconcile()
+			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndexName))
 			Expect(pipeline.Status.ActiveTopicName).To(Equal(activeTopicName))
 			Expect(pipeline.Status.ActiveAliasName).To(Equal(activeAliasName))
@@ -573,7 +466,7 @@ var _ = Describe("Pipeline operations", func() {
 			}
 			i.CreateConfigMap("xjoin", cm)
 
-			pipeline = i.ExpectInitSyncReconcile()
+			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
 			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
@@ -597,7 +490,7 @@ var _ = Describe("Pipeline operations", func() {
 			err = test.Client.Update(context.TODO(), configMap)
 			Expect(err).ToNot(HaveOccurred())
 
-			pipeline = i.ExpectInitSyncReconcile()
+			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
 			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
@@ -620,7 +513,7 @@ var _ = Describe("Pipeline operations", func() {
 			secret.Data["db.password"] = []byte(tempPassword)
 			err = test.Client.Update(context.TODO(), secret)
 
-			pipeline = i.ExpectInitSyncReconcile()
+			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
 			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
@@ -642,7 +535,7 @@ var _ = Describe("Pipeline operations", func() {
 			secret.Data["newfield"] = []byte("value")
 			err = test.Client.Update(context.TODO(), secret)
 
-			pipeline = i.ExpectInitSyncReconcile()
+			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
 			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion))
@@ -658,7 +551,7 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline := i.CreateValidPipeline()
 			err := i.EsClient.DeleteIndex(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
-			pipeline = i.ExpectInitSyncReconcile()
+			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal("")) //index was removed so there's no active index
 			pipeline = i.ExpectValidReconcile()
 			Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(""))
@@ -669,7 +562,7 @@ var _ = Describe("Pipeline operations", func() {
 			activeIndex := pipeline.Status.ActiveIndexName
 			err := i.KafkaClient.DeleteConnector(i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
-			pipeline = i.ExpectInitSyncReconcile()
+			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 			pipeline = i.ExpectValidReconcile()
 			Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
@@ -680,7 +573,7 @@ var _ = Describe("Pipeline operations", func() {
 			activeIndex := pipeline.Status.ActiveIndexName
 			err := i.KafkaClient.DeleteConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
-			pipeline = i.ExpectInitSyncReconcile()
+			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 			pipeline = i.ExpectValidReconcile()
 			Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
@@ -691,7 +584,7 @@ var _ = Describe("Pipeline operations", func() {
 			activeIndex := pipeline.Status.ActiveIndexName
 			err := i.EsClient.DeleteESPipelineByVersion(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
-			pipeline = i.ExpectInitSyncReconcile()
+			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 			pipeline = i.ExpectValidReconcile()
 			Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
@@ -731,14 +624,14 @@ var _ = Describe("Pipeline operations", func() {
 	Describe("-> Removed", func() {
 		It("Artifacts removed when initializing pipeline is removed", func() {
 			i.CreatePipeline()
-			pipeline := i.ExpectInitSyncReconcile()
+			pipeline := i.ExpectInitSyncUnknownReconcile()
 			i.DeletePipeline(pipeline)
 			i.ExpectPipelineVersionToBeRemoved(pipeline.Status.PipelineVersion)
 		})
 
 		It("Artifacts removed when new pipeline is removed", func() {
 			i.CreatePipeline()
-			pipeline := i.ExpectInitSyncReconcile()
+			pipeline := i.ExpectInitSyncUnknownReconcile()
 			i.DeletePipeline(pipeline)
 			i.ExpectPipelineVersionToBeRemoved(pipeline.Status.PipelineVersion)
 		})
@@ -759,7 +652,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["newfield"] = []byte("value")
 			err = test.Client.Update(context.TODO(), secret)
-			pipeline = i.ExpectInitSyncReconcile()
+			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 			secondVersion := pipeline.Status.PipelineVersion
 

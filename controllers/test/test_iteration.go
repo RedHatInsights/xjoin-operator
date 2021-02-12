@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/google/uuid"
 	. "github.com/onsi/gomega"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers"
@@ -72,7 +73,7 @@ func (i *Iteration) TestSpecFieldChanged(fieldName string, fieldValue interface{
 
 	err := test.Client.Update(context.TODO(), pipeline)
 	Expect(err).ToNot(HaveOccurred())
-	pipeline = i.ExpectInitSyncReconcile()
+	pipeline = i.ExpectInitSyncUnknownReconcile()
 	Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 }
 
@@ -80,6 +81,18 @@ func (i *Iteration) DeleteAllHosts() {
 	rows, err := i.DbClient.RunQuery("DELETE FROM hosts;")
 	Expect(err).ToNot(HaveOccurred())
 	rows.Close()
+}
+
+func (i *Iteration) SyncHosts(pipelineVersion string, numHosts int) []string {
+	var ids []string
+
+	for j := 0; j < numHosts; j++ {
+		id := i.InsertHost()
+		i.IndexDocument(pipelineVersion, id)
+		ids = append(ids, id)
+	}
+
+	return ids
 }
 
 func (i *Iteration) IndexDocument(pipelineVersion string, id string) {
@@ -113,7 +126,9 @@ func (i *Iteration) IndexDocument(pipelineVersion string, id string) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func (i *Iteration) InsertHost(id string) {
+func (i *Iteration) InsertHost() string {
+	hostId, err := uuid.NewUUID()
+
 	hbiHostFile, err := ioutil.ReadFile("./test/hbi.host.sql")
 	Expect(err).ToNot(HaveOccurred())
 
@@ -121,7 +136,7 @@ func (i *Iteration) InsertHost(id string) {
 	Expect(err).ToNot(HaveOccurred())
 
 	m := make(map[string]interface{})
-	m["ID"] = id
+	m["ID"] = hostId.String()
 
 	var templateBuffer bytes.Buffer
 	err = tmpl.Execute(&templateBuffer, m)
@@ -131,6 +146,8 @@ func (i *Iteration) InsertHost(id string) {
 	rows, err := i.DbClient.RunQuery(query)
 	Expect(err).ToNot(HaveOccurred())
 	rows.Close()
+
+	return hostId.String()
 }
 
 func (i *Iteration) CreateConfigMap(name string, data map[string]string) {
@@ -224,7 +241,16 @@ func (i *Iteration) ExpectNewReconcile() *xjoin.XJoinPipeline {
 	return pipeline
 }
 
-func (i *Iteration) ExpectInitSyncReconcile() *xjoin.XJoinPipeline {
+func (i *Iteration) ExpectInitSyncInvalidReconcile() *xjoin.XJoinPipeline {
+	i.ReconcileValidation()
+	pipeline := i.ReconcileXJoin()
+	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
+	Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
+	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
+	return pipeline
+}
+
+func (i *Iteration) ExpectInitSyncUnknownReconcile() *xjoin.XJoinPipeline {
 	i.ReconcileValidation()
 	pipeline := i.ReconcileXJoin()
 	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
