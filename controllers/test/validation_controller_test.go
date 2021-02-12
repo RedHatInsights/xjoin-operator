@@ -32,7 +32,10 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esCount).To(Equal(3))
 
-			i.ExpectValidReconcile()
+			pipeline = i.ExpectValidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationSucceeded"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation succeeded - 0 hosts (0.00%) do not match"))
 		})
 
 		It("Correctly validates fully in-sync initial table", func() {
@@ -44,7 +47,11 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			i.SyncHosts(version, 3)
-			i.ExpectValidReconcile()
+			pipeline = i.ExpectValidReconcile()
+
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationSucceeded"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation succeeded - 0 hosts (0.00%) do not match"))
 		})
 
 		It("Correctly validates initial table after a few tries", func() {
@@ -64,16 +71,28 @@ var _ = Describe("Validation controller", func() {
 			id2 := i.InsertHost()
 			id3 := i.InsertHost()
 
-			i.ExpectInitSyncInvalidReconcile() // 0/3 synced
+			pipeline = i.ExpectInitSyncInvalidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 3 hosts (100.00%) do not match"))
 
-			i.IndexDocument(version, id1) // 1/3 synced
-			i.ExpectInitSyncInvalidReconcile()
+			i.IndexDocument(version, id1)
+			pipeline = i.ExpectInitSyncInvalidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 2 hosts (66.67%) do not match"))
 
-			i.IndexDocument(version, id2) // 2/3 synced
-			i.ExpectInitSyncInvalidReconcile()
+			i.IndexDocument(version, id2)
+			pipeline = i.ExpectInitSyncInvalidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 1 hosts (33.33%) do not match"))
 
-			i.IndexDocument(version, id3) // 3/3 synced
-			i.ExpectValidReconcile()
+			i.IndexDocument(version, id3)
+			pipeline = i.ExpectValidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationSucceeded"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation succeeded - 0 hosts (0.00%) do not match"))
 		})
 
 		It("Correctly validates table after a few tries", func() {
@@ -93,16 +112,28 @@ var _ = Describe("Validation controller", func() {
 			id2 := i.InsertHost()
 			id3 := i.InsertHost()
 
-			i.ExpectInvalidReconcile() // 0/3 synced
+			pipeline = i.ExpectInvalidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 3 hosts (100.00%) do not match"))
 
-			i.IndexDocument(version, id1) // 1/3 synced
-			i.ExpectInvalidReconcile()
+			i.IndexDocument(version, id1)
+			pipeline = i.ExpectInvalidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 2 hosts (66.67%) do not match"))
 
-			i.IndexDocument(version, id2) // 2/3 synced
-			i.ExpectInvalidReconcile()
+			i.IndexDocument(version, id2)
+			pipeline = i.ExpectInvalidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 1 hosts (33.33%) do not match"))
 
-			i.IndexDocument(version, id3) // 3/3 synced
-			i.ExpectValidReconcile()
+			i.IndexDocument(version, id3)
+			pipeline = i.ExpectValidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationSucceeded"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation succeeded - 0 hosts (0.00%) do not match"))
 		})
 
 		It("Correctly validates pipeline that's slightly off", func() {
@@ -128,7 +159,10 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esCount).To(Equal(5))
 
-			i.ExpectValidReconcile()
+			pipeline = i.ExpectValidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationSucceeded"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation succeeded - 1 hosts (16.67%) do not match"))
 		})
 
 		It("Correctly validates initial pipeline that's slightly off", func() {
@@ -155,7 +189,10 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esCount).To(Equal(5))
 
-			i.ExpectValidReconcile()
+			pipeline = i.ExpectValidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationSucceeded"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation succeeded - 1 hosts (16.67%) do not match"))
 		})
 	})
 
@@ -177,6 +214,9 @@ var _ = Describe("Validation controller", func() {
 			pipeline = i.ReconcileValidation()
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 3 hosts (100.00%) do not match"))
 		})
 
 		It("Correctly invalidates pipeline that's somewhat off", func() {
@@ -205,6 +245,9 @@ var _ = Describe("Validation controller", func() {
 			pipeline = i.ReconcileValidation()
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 1 hosts (20.00%) do not match"))
 		})
 
 		It("Keeps incrementing ValidationFailedCount if failures persist", func() {
@@ -220,10 +263,21 @@ var _ = Describe("Validation controller", func() {
 
 			pipeline = i.ExpectInvalidReconcile()
 			Expect(pipeline.Status.ValidationFailedCount).To(Equal(1))
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 1 hosts (100.00%) do not match"))
+
 			pipeline = i.ExpectInvalidReconcile()
 			Expect(pipeline.Status.ValidationFailedCount).To(Equal(2))
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 1 hosts (100.00%) do not match"))
+
 			pipeline = i.ExpectInvalidReconcile()
 			Expect(pipeline.Status.ValidationFailedCount).To(Equal(3))
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 1 hosts (100.00%) do not match"))
 		})
 	})
 })
