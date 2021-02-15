@@ -172,7 +172,7 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 		return reconcile.Result{}, nil
 	}
 
-	metrics.InitLabels(i.Instance)
+	metrics.InitLabels()
 
 	// STATE_NEW
 	if i.Instance.GetState() == xjoin.STATE_NEW {
