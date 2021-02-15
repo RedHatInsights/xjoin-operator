@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
@@ -41,8 +40,8 @@ var (
 type RefreshReason string
 
 const (
-	REFRESH_INVALID_PIPELINE RefreshReason = "invalid"
-	REFRESH_STATE_DEVIATION  RefreshReason = "deviation"
+	RefreshInvalidPipeline RefreshReason = "invalid"
+	RefreshStateDeviation  RefreshReason = "deviation"
 )
 
 func Init() {
@@ -51,14 +50,21 @@ func Init() {
 		inconsistencyThreshold, validationFailedCount, refreshCount)
 }
 
-func InitLabels(instance *xjoin.XJoinPipeline) {
+func InitLabels() {
+	hostCount.WithLabelValues()
+	inconsistencyThreshold.WithLabelValues()
+	inconsistencyRatio.WithLabelValues()
+	inconsistencyAbsolute.WithLabelValues()
+	validationFailedCount.WithLabelValues()
+	refreshCount.WithLabelValues(string(RefreshInvalidPipeline))
+	refreshCount.WithLabelValues(string(RefreshStateDeviation))
 }
 
-func PipelineRefreshed(instance *xjoin.XJoinPipeline, reason RefreshReason) {
+func PipelineRefreshed(reason RefreshReason) {
 	refreshCount.WithLabelValues(string(reason)).Inc()
 }
 
-func ESHostCount(instance *xjoin.XJoinPipeline, value int) {
+func ESHostCount(value int) {
 	hostCount.WithLabelValues().Set(float64(value))
 }
 

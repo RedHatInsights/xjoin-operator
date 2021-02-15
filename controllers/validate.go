@@ -20,7 +20,7 @@ func (i *ReconcileIteration) validate() (isValid bool, mismatchRatio float64, mi
 		return false, -1, -1, -1, err
 	}
 
-	metrics.ESHostCount(i.Instance, esCount)
+	metrics.ESHostCount(esCount)
 
 	countMismatch := utils.Abs(hbiHostCount - esCount)
 	countMismatchRatio := float64(countMismatch) / math.Max(float64(hbiHostCount), 1)
