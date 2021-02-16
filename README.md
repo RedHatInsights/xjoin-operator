@@ -7,10 +7,9 @@ i.e. it maintains the replication pipeline between HBI and ElasticSearch.
 Modifications will be necessary to support M3 (joining data between applications).
 
 ## Development
-
 ### Setting up the development environment
 
-1. Download and unpack [CodeReady Containers](https://developers.redhat.com/products/codeready-containers/overview)
+1. Download and unpack [CodeReady Containers](https://developers.redhat.com/products/codeready-containers/overview). Any other Kubernetes cluster should work although they haven't been tested.
 
 1. Append the following line into `/etc/hosts`
     ```
@@ -72,3 +71,13 @@ With the cluster set up it is now possible to install manifests and run the oper
     ```
     oc apply -f ../config/samples/xjoin_v1alpha1_xjoinpipeline.yaml
     ```
+
+There is also `make delve` to debug the operator. After starting the delve server process connect to it with a delve debugger.
+
+### Running tests
+
+- The tests require an initialized Kubernetes environment. See [Setting up the development environment](#development).
+- They can be executed via `make test`.
+- There is also `make delve-test` to run the tests in debug mode. Then `delve` can be used to connect to the test run.
+- The tests take a while to run. To run whitelist one or a few tests, prepend `It` with an F. e.g. change `It("Creates a connector...` to `FIt("Creates a connector...) {`
+- Sometimes when the test execution fails unexpectedly it will leave orphaned projects in kubernetes. Use `dev/cleanup.projects.sh` to remove them.
