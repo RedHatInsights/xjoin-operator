@@ -6,6 +6,32 @@ It currently manages the M2 version of XJoin,
 i.e. it maintains the replication pipeline between HBI and ElasticSearch.
 Modifications will be necessary to support M3 (joining data between applications).
 
+A XJoin pipeline is defined by the
+[XJoinPipeline custom resource](./config/crd/bases/xjoin.cloud.redhat.com_xjoinpipelines.yaml).
+It indexes the hosts table of the HBI database into an ElasticSearch index.
+A Debezium Kafka Connector is used to read from the HBI database's replication slot.
+An ElasticSearch connector is used to index the hosts.
+Kafka Connect transformations are performed on the ElasticSearch connector to prepare the host records to be indexed.
+An ElasticSearch pipeline is used to transform the JSON fields on a host prior to being indexed.
+
+The operator is responsible for:
+
+- management of an ElasticSearch index, alias, and pipeline
+- management of Debezium (source) and ElasticSearch (sink) connectors in a Kafka Connect cluster (using Strimzi)
+- management of a Kafka Topic in a Kafka cluster (using Strimzi)
+- management of the HBI replication slot. The Debezium connector should manage this. The operator ensures there are no
+  orphaned replication slots.
+- periodic validation of the indexed data
+- automated recovery (e.g. when the data becomes out-of sync)
+
+## Implementation
+
+The operator defines two controllers that reconcile a XJoinPipeline
+* [PipelineController](./controllers/xjoinpipeline_controller.go) which manages all the resources
+  (connectors, elasticsearch resources, topic, replication slots) and handles recovery
+* [ValidationController](./controllers/validation_controller.go) which periodically compares the data in the
+  ElasticSearch index with what is stored in HBI to determine whether the pipeline is valid
+
 ## Development
 ### Setting up the development environment
 
