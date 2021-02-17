@@ -14,6 +14,8 @@ An ElasticSearch connector is used to index the hosts.
 Kafka Connect transformations are performed on the ElasticSearch connector to prepare the host records to be indexed.
 An ElasticSearch pipeline is used to transform the JSON fields on a host prior to being indexed.
 
+![Architecture](./docs/architecture.png "XJoin Operator Architecture")
+
 The operator is responsible for:
 
 - management of an ElasticSearch index, alias, and pipeline
