@@ -1,0 +1,46 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+    operators.operatorframework.io/builder: operator-sdk-v1.2.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
+  name: xjoin-operator.vX.Y.Z
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: XJoinPipeline is the Schema for the xjoinpipelines API
+      displayName: XJoin Pipeline
+      kind: XJoinPipeline
+      name: xjoinpipelines.xjoin.cloud.redhat.com
+      version: v1alpha1
+  description: XJoin Operator to manage XJoin pipelines.
+  displayName: xjoin-operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - xjoin
+  links:
+  - name: Xjoin Operator
+    url: https://xjoin-operator.domain
+  maturity: alpha
+  provider:
+    name: xjoin
+  version: 0.0.0
