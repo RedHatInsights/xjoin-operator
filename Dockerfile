@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM quay.io/app-sre/golang:1.13 as builder
+FROM registry.access.redhat.com/ubi8/go-toolset:1.13.15 as builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
