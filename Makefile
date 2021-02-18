@@ -133,10 +133,23 @@ bundle: manifests kustomize
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
 
+
+
+# Generate bundle manifests and metadata, then validate generated files.
+.PHONY: bundle
+bundle: manifests
+	operator-sdk generate kustomize manifests -q
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
+ifneq ($(origin REPLACE_VERSION), undefined)
+	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(REPLACE_VERSION) $(BUNDLE_METADATA_OPTS)
+endif
+	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	operator-sdk bundle validate ./bundle
+
 # Build the bundle image.
 .PHONY: bundle-build
-bundle-build:
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+bundle-build: bundle
+	docker build -f bundle.Dockerfile -t $(BUNDLE_IMAGE):$(BUNDLE_IMAGE_TAG) .
 
 # Build the container image
 container-build:
