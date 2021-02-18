@@ -1,7 +1,6 @@
 # Current Operator version
 VERSION ?= 0.0.1
-# Default bundle image tag
-BUNDLE_IMG ?= controller-bundle:$(VERSION)
+
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
@@ -12,7 +11,8 @@ endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= quay.io/cloudservices/xjoin-operator:$(shell git rev-parse --short=7 HEAD)
+
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -21,6 +21,13 @@ ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
+endif
+
+# Get the container engine (podman/docker)
+ifneq (,$(shell which podman))
+CONTAINER_ENGINE=podman
+else
+CONTAINER_ENGINE=docker
 endif
 
 all: manager
@@ -130,3 +137,12 @@ bundle: manifests kustomize
 .PHONY: bundle-build
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+
+# Build the container image
+container-build:
+	$(CONTAINER_ENGINE) build . -t ${IMG}
+
+# Push the docker image
+container-push:
+	$(CONTAINER_ENGINE) push ${IMG}
+
