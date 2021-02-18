@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: xjoin-operator
+
+parameters:
+  - name: VALIDATION_THRESHOLD
+    value: "5"
+
+objects:
+  - apiVersion: xjoin.cloud.redhat.com/v1alpha1
+    kind: XJoinPipeline
+    metadata:
+      name: XJoinPipeline
+    spec:
+      validationThreshold: ${{VALIDATION_THRESHOLD}}
