@@ -64,7 +64,7 @@ objects:
     metadata:
       name: xjoin-operator
       labels:
-        control-plane: controller-manager
+        control-plane: xjoin-controller-manager
     spec:
       ports:
         - name: https
@@ -72,4 +72,4 @@ objects:
           port: 8080
           targetPort: 8080
       selector:
-        control-plane: controller-manager
+        control-plane: xjoin-controller-manager
