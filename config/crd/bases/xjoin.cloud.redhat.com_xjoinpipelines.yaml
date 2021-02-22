@@ -10,9 +10,13 @@ metadata:
 spec:
   group: xjoin.cloud.redhat.com
   names:
+    categories:
+    - all
     kind: XJoinPipeline
     listKind: XJoinPipelineList
     plural: xjoinpipelines
+    shortNames:
+    - xjoin
     singular: xjoinpipeline
   scope: Namespaced
   subresources:
