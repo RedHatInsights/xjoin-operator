@@ -75,6 +75,7 @@ type XJoinPipelineStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=xjoin,categories=all
 
 // XJoinPipeline is the Schema for the xjoinpipelines API
 type XJoinPipeline struct {
