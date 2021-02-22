@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: quay.io/cloudservices/xjoin-operator
-  newTag: b9c5828
+  newTag: 66018b2

@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
+  creationTimestamp: null
   labels:
     control-plane: xjoin-controller-manager
-  name: xjoin-controller-manager-metrics-service
-  namespace: system
+  name: xjoin-operator-xjoin-controller-manager-metrics-service
 spec:
   ports:
   - name: https
@@ -12,3 +12,5 @@ spec:
     targetPort: https
   selector:
     control-plane: xjoin-controller-manager
+status:
+  loadBalancer: {}

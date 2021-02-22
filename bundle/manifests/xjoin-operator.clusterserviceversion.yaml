@@ -77,17 +77,17 @@ spec:
           - create
         serviceAccountName: default
       deployments:
-      - name: xjoin-operator-controller-manager
+      - name: xjoin-operator-xjoin-controller-manager
         spec:
           replicas: 1
           selector:
             matchLabels:
-              control-plane: controller-manager
+              control-plane: xjoin-controller-manager
           strategy: {}
           template:
             metadata:
               labels:
-                control-plane: controller-manager
+                control-plane: xjoin-controller-manager
             spec:
               containers:
               - args:
@@ -106,7 +106,7 @@ spec:
                 - --enable-leader-election
                 command:
                 - /manager
-                image: quay.io/cloudservices/xjoin-operator:b9c5828
+                image: quay.io/cloudservices/xjoin-operator:66018b2
                 name: manager
                 resources:
                   limits:
