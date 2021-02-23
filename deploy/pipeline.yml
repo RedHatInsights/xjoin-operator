@@ -11,6 +11,6 @@ objects:
   - apiVersion: xjoin.cloud.redhat.com/v1alpha1
     kind: XJoinPipeline
     metadata:
-      name: XJoinPipeline
+      name: xjoinpipeline
     spec:
       validationThreshold: ${{VALIDATION_THRESHOLD}}
