@@ -106,7 +106,7 @@ spec:
                 - --enable-leader-election
                 command:
                 - /manager
-                image: quay.io/cloudservices/xjoin-operator:44c6ac5
+                image: quay.io/cloudservices/xjoin-operator:e5ad39b
                 name: manager
                 resources:
                   limits:
