@@ -41,8 +41,8 @@ spec:
   - name: Xjoin Operator
     url: https://xjoin-operator.domain
   maintainers:
-    - email: ckyrouac@redhat.com
-      name: Chris Kyrouac
+  - email: ckyrouac@redhat.com
+    name: Chris Kyrouac
   maturity: alpha
   provider:
     name: Red Hat
