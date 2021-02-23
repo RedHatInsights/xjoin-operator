@@ -40,7 +40,11 @@ spec:
   links:
   - name: Xjoin Operator
     url: https://xjoin-operator.domain
+  maintainers:
+    - email: ckyrouac@redhat.com
+      name: Chris Kyrouac
   maturity: alpha
   provider:
-    name: xjoin
+    name: Red Hat
+    url: https://github.com/redhatinsights/xjoin-operator
   version: 0.0.0
