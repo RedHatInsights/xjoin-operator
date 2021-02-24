@@ -222,9 +222,5 @@ func (config *Config) getIntValue(key string, defaultValue int) (int, error) {
 
 func (config *Config) readSecretValue(secret *corev1.Secret, key string) (string, error) {
 	value := secret.Data[key]
-	if value == nil || string(value) == "" {
-		return "", fmt.Errorf("%s missing from %s secret", key, secret.ObjectMeta.Name)
-	}
-
 	return string(value), nil
 }
