@@ -179,7 +179,7 @@ func (i *Iteration) CreateESSecret(name string) {
 			Namespace: i.NamespacedName.Namespace,
 		},
 		Data: map[string][]byte{
-			"url":      []byte(i.Parameters.ElasticSearchURL.String()),
+			"endpoint": []byte(i.Parameters.ElasticSearchURL.String()),
 			"username": []byte(i.Parameters.ElasticSearchUsername.String()),
 			"password": []byte(i.Parameters.ElasticSearchPassword.String()),
 		},
