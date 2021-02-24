@@ -193,7 +193,7 @@ func NewXJoinConfiguration() Parameters {
 		ElasticSearchURL: Parameter{
 			Type:         reflect.String,
 			Secret:       secretTypes.elasticSearch,
-			SecretKey:    "url",
+			SecretKey:    "endpoint",
 			DefaultValue: "http://localhost:9200",
 		},
 		ElasticSearchUsername: Parameter{
