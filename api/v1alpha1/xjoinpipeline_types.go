@@ -49,6 +49,9 @@ type XJoinPipelineSpec struct {
 	// +optional
 	// +kubebuilder:validation:MinLength:=1
 	ElasticSearchSecretName *string `json:"elasticSearchSecretName,omitempty"`
+
+	// +optional
+	Pause bool `json:"pause,omitempty"`
 }
 
 // XJoinPipelineStatus defines the observed state of XJoinPipeline

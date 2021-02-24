@@ -33,6 +33,10 @@ func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request)
 		return i, err
 	}
 
+	if i.Instance.Spec.Pause == true {
+		return i, nil
+	}
+
 	i.GetRequeueInterval = func(i *ReconcileIteration) int {
 		return i.getValidationInterval()
 	}
@@ -64,7 +68,11 @@ func (r *ValidationReconciler) Reconcile(request ctrl.Request) (ctrl.Result, err
 	}
 
 	// nothing to validate
-	if i.Instance == nil || i.Instance.GetState() == xjoin.STATE_REMOVED || i.Instance.GetState() == xjoin.STATE_NEW {
+	if i.Instance == nil ||
+		i.Instance.GetState() == xjoin.STATE_REMOVED ||
+		i.Instance.GetState() == xjoin.STATE_NEW ||
+		i.Instance.Spec.Pause == true {
+
 		return reconcile.Result{}, nil
 	}
 

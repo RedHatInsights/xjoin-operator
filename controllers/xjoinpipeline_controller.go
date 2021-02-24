@@ -68,6 +68,10 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		return i, err
 	}
 
+	if instance.Spec.Pause == true {
+		return i, nil
+	}
+
 	i = ReconcileIteration{
 		Instance:         instance,
 		OriginalInstance: instance.DeepCopy(),
@@ -138,8 +142,13 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 		return reconcile.Result{}, err
 	}
 
-	// Request object not found, could have been deleted after reconcile request.
+	// Request object not found, could have been deleted after reconcile request or
 	if i.Instance == nil {
+		return reconcile.Result{}, nil
+	}
+
+	//pause this pipeline. Reconcile loop is skipped until Pause is set to false or nil
+	if i.Instance.Spec.Pause == true {
 		return reconcile.Result{}, nil
 	}
 
