@@ -25,6 +25,45 @@ parameters:
     value: "xjoin-kafka-connect-strimzi"
 
 objects:
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: xjoin-operator
+
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: xjoin-operator
+    rules:
+    - apiGroups:
+        - "kafka.strimzi.io"
+      resources:
+        - "KafkaConnector"
+      verbs:
+        - "*"
+
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: xjoin-operator
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: xjoin-operator
+    subjects:
+      - kind: ServiceAccount
+        name: xjoin-operator
+        namespace: ${TARGET_NAMESPACE}
+
+  - apiVersion: operators.coreos.com/v1
+    kind: OperatorGroup
+    metadata:
+      name: xjoin-operator-group
+    spec:
+      serviceAccountName: xjoin-operator
+      targetNamespaces:
+        - ${TARGET_NAMESPACE}
+
   - apiVersion: operators.coreos.com/v1alpha1
     kind: CatalogSource
     metadata:
