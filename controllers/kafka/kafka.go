@@ -3,6 +3,7 @@ package kafka
 import (
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -12,4 +13,5 @@ type Kafka struct {
 	Client        client.Client
 	Parameters    config.Parameters
 	ParametersMap map[string]interface{}
+	Recorder      record.EventRecorder
 }

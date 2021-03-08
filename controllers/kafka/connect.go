@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
+	"io/ioutil"
+	"net/http"
 	"strings"
 	"text/template"
 	"time"
@@ -23,6 +25,7 @@ const (
 )
 
 const failed = "FAILED"
+const running = "RUNNING"
 
 var connectorGVK = schema.GroupVersionKind{
 	Group:   "kafka.strimzi.io",
@@ -118,6 +121,93 @@ func (kafka *Kafka) newConnectorResource(
 	return u, nil
 }
 
+func (kafka *Kafka) GetTaskStatus(connectorName string, taskId float64) (map[string]interface{}, error) {
+	url := fmt.Sprintf(
+		"http://%s-connect-api.%s.svc:8083/connectors/%s/tasks/%.0f/status",
+		kafka.Parameters.ConnectCluster.String(), kafka.Parameters.ConnectClusterNamespace.String(), connectorName, taskId)
+	res, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	var bodyMap map[string]interface{}
+	err = json.Unmarshal(body, &bodyMap)
+	if err != nil {
+		return nil, err
+	}
+	return bodyMap, nil
+}
+
+func (kafka *Kafka) ListConnectorTasks(connectorName string) ([]map[string]interface{}, error) {
+	connectorStatus, err := kafka.GetConnectorStatus(connectorName)
+	if err != nil {
+		return nil, err
+	}
+
+	var tasksMap []map[string]interface{}
+	tasks := connectorStatus["tasks"]
+
+	if tasks != nil {
+		tasksInterface := tasks.([]interface{})
+		for _, task := range tasksInterface {
+			taskMap := task.(map[string]interface{})
+			tasksMap = append(tasksMap, taskMap)
+		}
+	}
+	return tasksMap, nil
+}
+
+func (kafka *Kafka) verifyTaskIsRunning(task map[string]interface{}, connectorName string) (bool, error) {
+	//try to restart the task 10 times
+	for i := 0; i < 10; i++ {
+		if task["state"] == running {
+			return true, nil
+		} else {
+			//restart the failed task
+			url := fmt.Sprintf(
+				"http://%s-connect-api.%s.svc:8083/connectors/%s/tasks/%.0f/restart",
+				kafka.Parameters.ConnectCluster.String(),
+				kafka.Parameters.ConnectClusterNamespace.String(),
+				connectorName,
+				task["id"].(float64))
+			res, err := http.Post(url, "application/json", nil)
+
+			if err != nil {
+				return false, err
+			}
+
+			if res.StatusCode >= 300 {
+				return false, errors.New("invalid response from connect when restarting task")
+			}
+
+			time.Sleep(1 * time.Second)
+
+			task, err = kafka.GetTaskStatus(connectorName, task["id"].(float64))
+		}
+	}
+
+	return false, nil //restarts failed
+}
+
+func (kafka *Kafka) RestartConnector(connectorName string) error {
+	tasks, err := kafka.ListConnectorTasks(connectorName)
+	if err != nil {
+		return err
+	}
+
+	for _, task := range tasks {
+		taskIsValid, err := kafka.verifyTaskIsRunning(task, connectorName)
+		if err != nil {
+			return err
+		} else if !taskIsValid {
+			return errors.New("connector is in failed state")
+		}
+	}
+
+	return nil
+}
+
 func (kafka *Kafka) GetConnector(name string) (*unstructured.Unstructured, error) {
 	connector := EmptyConnector()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
@@ -208,20 +298,50 @@ func (kafka *Kafka) DeleteConnector(name string) error {
 	return nil
 }
 
-func IsFailed(connector *unstructured.Unstructured) bool {
-	connectorStatus, ok, err := unstructured.NestedString(connector.UnstructuredContent(), "status", "connectorStatus", "connector", "state")
-
-	if err == nil && ok && connectorStatus == failed {
-		return true
+func (kafka *Kafka) GetConnectorStatus(connectorName string) (map[string]interface{}, error) {
+	url := fmt.Sprintf(
+		"http://%s-connect-api.%s.svc:8083/connectors/%s/status",
+		kafka.Parameters.ConnectCluster.String(), kafka.Parameters.ConnectClusterNamespace.String(), connectorName)
+	res, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	var bodyMap map[string]interface{}
+	err = json.Unmarshal(body, &bodyMap)
+	if err != nil {
+		return nil, err
 	}
 
-	tasks, ok, err := unstructured.NestedSlice(connector.UnstructuredContent(), "status", "connectorStatus", "tasks")
+	return bodyMap, nil
+}
 
-	if ok && err == nil {
-		for _, task := range tasks {
-			taskMap, ok := task.(map[string]interface{})
+func (kafka *Kafka) IsFailed(connectorName string) bool {
+	connectorStatus, err := kafka.GetConnectorStatus(connectorName)
+	var connector interface{}
+	connector = connectorStatus["connector"]
+	if connector != nil {
+		connectorMap := connectorStatus["connector"].(map[string]interface{})
+		connectorState := connectorMap["state"].(string)
 
-			if ok && taskMap["state"] == failed {
+		if err == nil && connectorState == failed {
+			return true
+		}
+	}
+
+	tasks := connectorStatus["tasks"]
+	if tasks != nil {
+		tasksInterface := tasks.([]interface{})
+
+		var tasksMap []map[string]interface{}
+		for _, task := range tasksInterface {
+			taskMap := task.(map[string]interface{})
+			tasksMap = append(tasksMap, taskMap)
+		}
+
+		for _, task := range tasksMap {
+			if task["state"] == failed {
 				return true
 			}
 		}

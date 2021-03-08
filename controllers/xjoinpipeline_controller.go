@@ -109,6 +109,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		Client:        i.Client,
 		Parameters:    i.parameters,
 		ParametersMap: xjoinConfig.ParametersMap,
+		Recorder:      i.Recorder,
 	}
 
 	i.InventoryDb = database.NewDatabase(database.DBParams{
