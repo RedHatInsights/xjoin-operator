@@ -3,6 +3,8 @@ package test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/google/uuid"
 	. "github.com/onsi/gomega"
@@ -17,9 +19,14 @@ import (
 	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"net/http"
 	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 	"text/template"
 	"time"
@@ -42,6 +49,122 @@ type Iteration struct {
 func NewTestIteration() *Iteration {
 	testIteration := Iteration{}
 	return &testIteration
+}
+
+func (i *Iteration) SetESConnectorURL(esUrl string, connectorName string) {
+	configUrl := fmt.Sprintf(
+		"http://%s-connect-api.%s.svc:8083/connectors/%s/config",
+		i.Parameters.ConnectCluster.String(), i.Parameters.ConnectClusterNamespace.String(), connectorName)
+
+	res, err := http.Get(configUrl)
+	Expect(err).ToNot(HaveOccurred())
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	var bodyMap map[string]interface{}
+	err = json.Unmarshal(body, &bodyMap)
+	Expect(err).ToNot(HaveOccurred())
+
+	bodyMap["connection.url"] = esUrl
+	bodyJson, err := json.Marshal(bodyMap)
+	Expect(err).ToNot(HaveOccurred())
+
+	httpClient := &http.Client{}
+	req, err := http.NewRequest(http.MethodPut, configUrl, bytes.NewReader(bodyJson))
+	Expect(err).ToNot(HaveOccurred())
+	req.Header.Add("Content-Type", "application/json")
+	res, err = httpClient.Do(req)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(res).ToNot(BeNil())
+}
+
+func (i *Iteration) DeleteService(serviceName string) {
+	service := &corev1.Service{}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+
+	err := i.XJoinReconciler.Client.Get(
+		ctx, client.ObjectKey{Name: serviceName, Namespace: "xjoin-operator-project"}, service)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = i.XJoinReconciler.Client.Delete(ctx, service)
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func (i *Iteration) CreateService(serviceName string) {
+	service := &corev1.Service{}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+
+	err := i.XJoinReconciler.Client.Get(
+		ctx, client.ObjectKey{Name: "xjoin-elasticsearch-es-default", Namespace: "xjoin-operator-project"}, service)
+	Expect(err).ToNot(HaveOccurred())
+
+	service.Name = serviceName
+	service.Namespace = "xjoin-operator-project"
+	service.Spec.ClusterIP = ""
+	service.Spec.ClusterIPs = []string{}
+	service.ResourceVersion = ""
+	err = i.XJoinReconciler.Client.Create(ctx, service)
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func (i *Iteration) ScaleStrimziDeployment(replicas int) {
+	var deploymentGVK = schema.GroupVersionKind{
+		Group:   "apps",
+		Kind:    "Deployment",
+		Version: "v1",
+	}
+
+	//get existing strimzi deployment
+	deployment := &unstructured.Unstructured{}
+	deployment.SetGroupVersionKind(deploymentGVK)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err := i.XJoinReconciler.Client.Get(
+		ctx, client.ObjectKey{Name: "strimzi-cluster-operator", Namespace: "kafka"}, deployment)
+
+	Expect(err).ToNot(HaveOccurred())
+
+	//update deployment with replicas
+	obj := deployment.Object
+	spec := obj["spec"].(map[string]interface{})
+	spec["replicas"] = replicas
+
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err = i.KafkaClient.Client.Update(ctx, deployment)
+	Expect(err).ToNot(HaveOccurred())
+
+	//wait for deployment to be ready if replicas > 0
+	if replicas > 0 {
+		err = wait.PollImmediate(time.Second, time.Duration(60)*time.Second, func() (bool, error) {
+			pods := &corev1.PodList{}
+
+			ctx, cancel = context.WithTimeout(context.Background(), time.Second*60)
+			defer cancel()
+
+			labels := client.MatchingLabels{}
+			labels["name"] = "strimzi-cluster-operator"
+			err = i.XJoinReconciler.Client.List(ctx, pods, labels)
+
+			if len(pods.Items) == 0 {
+				return false, nil
+			}
+
+			for _, condition := range pods.Items[0].Status.Conditions {
+				if condition.Type == "Ready" {
+					if condition.Status == "True" {
+						return true, nil
+					} else {
+						return false, nil
+					}
+				}
+			}
+
+			return false, nil
+		})
+		Expect(err).ToNot(HaveOccurred())
+	}
 }
 
 func (i *Iteration) EditESConnectorToBeInvalid(pipelineVersion string) {

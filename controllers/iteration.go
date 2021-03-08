@@ -504,8 +504,11 @@ func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, conne
 		return nil, err
 	}
 
-	if kafka.IsFailed(connector) {
-		return fmt.Errorf("connector %s is in the FAILED state", connectorName), nil
+	if i.Kafka.IsFailed(connectorName) {
+		err = i.Kafka.RestartConnector(connectorName)
+		if err != nil {
+			return fmt.Errorf("connector %s is in the FAILED state", connectorName), nil
+		}
 	}
 
 	if connector.GetLabels()[kafka.LabelStrimziCluster] != i.parameters.ConnectCluster.String() {

@@ -708,7 +708,7 @@ var _ = Describe("Pipeline operations", func() {
 		It("Fails if ElasticSearch secret is misconfigured", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
-			secret.Data["url"] = []byte("invalidurl")
+			secret.Data["endpoint"] = []byte("invalidurl")
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 			defer cancel()
 			err = test.Client.Update(ctx, secret)
@@ -802,6 +802,84 @@ var _ = Describe("Pipeline operations", func() {
 
 			recorder, _ := i.XJoinReconciler.Recorder.(*record.FakeRecorder)
 			Expect(recorder.Events).To(HaveLen(1))
+		})
+	})
+
+	Describe("Deviation", func() {
+		It("Restarts failed connector task without a refresh", func() {
+			serviceName := "xjoin-elasticsearch-es-default-new"
+			defer i.ScaleStrimziDeployment(1)
+			defer i.DeleteService(serviceName)
+
+			pipeline := i.CreateValidPipeline()
+			activePipelineVersion := pipeline.Status.ActivePipelineVersion
+
+			//scale down strimzi operator deployment
+			i.ScaleStrimziDeployment(0)
+
+			//update es connector config with invalid url
+			i.SetESConnectorURL(
+				"http://"+serviceName+":9200",
+				pipeline.Status.ActiveESConnectorName)
+
+			//give the connector time to realize it can't connect
+			time.Sleep(5 * time.Second)
+
+			//validate task is failed
+			tasks, err := i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveESConnectorName)
+			Expect(err).ToNot(HaveOccurred())
+			for _, task := range tasks {
+				Expect(task["state"]).To(Equal("FAILED"))
+			}
+
+			//create service with invalid url
+			i.CreateService(serviceName)
+
+			time.Sleep(5 * time.Second)
+
+			//reconcile
+			pipeline = i.ExpectValidReconcile()
+
+			//validate task is running
+			newTasks, err := i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveESConnectorName)
+			Expect(err).ToNot(HaveOccurred())
+			for _, task := range newTasks {
+				Expect(task["state"]).To(Equal("RUNNING"))
+			}
+
+			//validate no refresh occurred
+			Expect(pipeline.Status.ActivePipelineVersion).To(Equal(activePipelineVersion))
+		})
+
+		It("Performs a refresh when unable to successfully restart failed connector task", func() {
+			serviceName := "xjoin-elasticsearch-es-default-new"
+			defer i.ScaleStrimziDeployment(1)
+
+			pipeline := i.CreateValidPipeline()
+
+			//scale down strimzi operator deployment
+			i.ScaleStrimziDeployment(0)
+
+			//update es connector config with invalid url
+			i.SetESConnectorURL(
+				"http://"+serviceName+":9200",
+				pipeline.Status.ActiveESConnectorName)
+
+			//give the connector time to realize it can't connect
+			time.Sleep(5 * time.Second)
+
+			//validate task is failed
+			tasks, err := i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveESConnectorName)
+			Expect(err).ToNot(HaveOccurred())
+			for _, task := range tasks {
+				Expect(task["state"]).To(Equal("FAILED"))
+			}
+
+			//reconcile
+			pipeline = i.ReconcileValidation()
+			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_NEW))
+			Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
+			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
 		})
 	})
 })
