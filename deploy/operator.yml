@@ -25,11 +25,6 @@ parameters:
     value: "xjoin-kafka-connect-strimzi"
 
 objects:
-  - apiVersion: v1
-    kind: ServiceAccount
-    metadata:
-      name: xjoin-operator
-
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
     metadata:
