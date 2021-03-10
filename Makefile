@@ -142,7 +142,7 @@ endif
 # Build the bundle image.
 .PHONY: bundle-build
 bundle-build: bundle
-	docker build -f bundle.Dockerfile -t xjoin-operator-bundle:latest .
+	docker build -f bundle.Dockerfile -t $(BUNDLE_IMAGE):$(BUNDLE_IMAGE_TAG) .
 
 # Build the container image
 container-build:
