@@ -30,7 +30,7 @@ objects:
     metadata:
       name: xjoin-operator-group
     spec:
-      serviceAccountName: xjoin-operator
+      serviceAccountName: xjoin-operator-sa
       targetNamespaces:
         - ${TARGET_NAMESPACE}
 
