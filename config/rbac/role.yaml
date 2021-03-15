@@ -21,7 +21,26 @@ rules:
   - kafkaconnectors
   - kafkaconnectors/finalizers
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - kafka.strimzi.io
+  resources:
+  - kafkatopics
+  - kafkatopics/finalizers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - xjoin.cloud.redhat.com
   resources:
@@ -29,4 +48,10 @@ rules:
   - xjoinpipelines/finalizers
   - xjoinpipelines/status
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
