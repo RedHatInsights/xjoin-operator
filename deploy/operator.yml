@@ -24,7 +24,7 @@ parameters:
   - name: CONNECT_CLUSTER
     value: "xjoin-kafka-connect-strimzi"
   - name: ES_CONNECTOR_TASKS_MAX
-    value: 500
+    value: "500"
 
 objects:
   - apiVersion: operators.coreos.com/v1
