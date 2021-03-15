@@ -152,8 +152,8 @@ func NewXJoinConfiguration() Parameters {
 				"topics": "{{.ResourceNamePrefix}}.{{.Version}}.public.hosts",
 				"key.ignore": "false",
 				"connection.url": "{{.ElasticSearchURL}}",
-				"connection.username": "{{.ElasticSearchUsername}}",
-				"connection.password": "{{.ElasticSearchPassword}}",
+				{{if .ElasticSearchUsername}}"connection.username": "{{.ElasticSearchUsername}}",{{end}}
+				{{if .ElasticSearchPassword}}"connection.password": "{{.ElasticSearchPassword}}",{{end}}
 				"type.name": "_doc",
 				"transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString",
 				"transforms.valueToKey.type":"org.apache.kafka.connect.transforms.ValueToKey",
