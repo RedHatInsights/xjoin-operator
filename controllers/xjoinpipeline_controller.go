@@ -50,6 +50,7 @@ type XJoinPipelineReconciler struct {
 	Log      logr.Logger
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+	Namespace string
 }
 
 func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.Request) (ReconcileIteration, error) {
@@ -285,7 +286,7 @@ func (r *XJoinPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				func(configMap handler.MapObject) []reconcile.Request {
 					var requests []reconcile.Request
 
-					if configMap.Meta.GetName() != "xjoin" {
+					if configMap.Meta.GetNamespace() != r.Namespace || configMap.Meta.GetName() != "xjoin" {
 						return requests
 					}
 
@@ -313,6 +314,10 @@ func (r *XJoinPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			ToRequests: handler.ToRequestsFunc(
 				func(secret handler.MapObject) []reconcile.Request {
 					var requests []reconcile.Request
+
+					if secret.Meta.GetNamespace() != r.Namespace {
+						return requests
+					}
 
 					secretName := secret.Meta.GetName()
 
@@ -345,12 +350,14 @@ func NewXJoinReconciler(
 	client client.Client,
 	scheme *runtime.Scheme,
 	log logr.Logger,
-	recorder record.EventRecorder) *XJoinPipelineReconciler {
+	recorder record.EventRecorder,
+	namespace string) *XJoinPipelineReconciler {
 
 	return &XJoinPipelineReconciler{
 		Client:   client,
 		Log:      log,
 		Scheme:   scheme,
 		Recorder: recorder,
+		Namespace: namespace,
 	}
 }

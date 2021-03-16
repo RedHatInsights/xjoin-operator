@@ -19,13 +19,12 @@ package main
 import (
 	"flag"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
-	"os"
-	"strings"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/client-go/tools/clientcmd"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -56,6 +55,10 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
+
+	clientCfg, _ := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+	namespace := clientCfg.Contexts[clientCfg.CurrentContext].Namespace
+	setupLog.Info("Running in namespace: " + namespace)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
@@ -94,7 +97,6 @@ func main() {
 	metrics.Init()
 
 	setupLog.Info("starting manager")
-	setupLog.Info(strings.Join(os.Environ(), "; "))
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
