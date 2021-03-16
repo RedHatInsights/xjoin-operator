@@ -21,21 +21,23 @@ import (
 	"time"
 )
 
-func newXJoinReconciler() *XJoinPipelineReconciler {
+func newXJoinReconciler(namespace string) *XJoinPipelineReconciler {
 	return NewXJoinReconciler(
 		test.Client,
 		scheme.Scheme,
 		logf.Log.WithName("test"),
-		record.NewFakeRecorder(10))
+		record.NewFakeRecorder(10),
+		namespace)
 }
 
-func newValidationReconciler() *ValidationReconciler {
+func newValidationReconciler(namespace string) *ValidationReconciler {
 	return NewValidationReconciler(
 		test.Client,
 		scheme.Scheme,
 		logf.Log.WithName("test-validation"),
 		true,
-		record.NewFakeRecorder(10))
+		record.NewFakeRecorder(10),
+		namespace)
 }
 
 func parametersToMap(parameters Parameters) map[string]interface{} {
@@ -94,8 +96,8 @@ func Before() *Iteration {
 		Namespace: test.UniqueNamespace(ResourceNamePrefix),
 	}
 
-	i.XJoinReconciler = newXJoinReconciler()
-	i.ValidationReconciler = newValidationReconciler()
+	i.XJoinReconciler = newXJoinReconciler(i.NamespacedName.Namespace)
+	i.ValidationReconciler = newValidationReconciler(i.NamespacedName.Namespace)
 
 	i.Parameters, i.ParametersMap = getParameters()
 	i.CreateDbSecret("host-inventory-db")

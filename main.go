@@ -78,6 +78,7 @@ func main() {
 		ctrl.Log.WithName("controllers").WithName("validation"),
 		true,
 		mgr.GetEventRecorderFor("validation"),
+		namespace,
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Validation")
 		os.Exit(1)

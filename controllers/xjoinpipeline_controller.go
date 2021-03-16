@@ -46,10 +46,10 @@ import (
 const xjoinpipelineFinalizer = "finalizer.xjoin.cloud.redhat.com"
 
 type XJoinPipelineReconciler struct {
-	Client   client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Client    client.Client
+	Log       logr.Logger
+	Scheme    *runtime.Scheme
+	Recorder  record.EventRecorder
 	Namespace string
 }
 
@@ -354,10 +354,10 @@ func NewXJoinReconciler(
 	namespace string) *XJoinPipelineReconciler {
 
 	return &XJoinPipelineReconciler{
-		Client:   client,
-		Log:      log,
-		Scheme:   scheme,
-		Recorder: recorder,
+		Client:    client,
+		Log:       log,
+		Scheme:    scheme,
+		Recorder:  recorder,
 		Namespace: namespace,
 	}
 }
