@@ -20,6 +20,7 @@ import (
 	"flag"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"os"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -93,6 +94,7 @@ func main() {
 	metrics.Init()
 
 	setupLog.Info("starting manager")
+	setupLog.Info(strings.Join(os.Environ(), "; "))
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
