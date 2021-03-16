@@ -100,7 +100,22 @@ With the cluster set up it is now possible to install manifests and run the oper
     oc apply -f ../config/samples/xjoin_v1alpha1_xjoinpipeline.yaml
     ```
 
-There is also `make delve` to debug the operator. After starting the delve server process connect to it with a delve debugger.
+There is also `make delve` to debug the operator. After starting the Delve server process, connect to it with a Delve debugger.
+
+### Running the operator locally via OLM
+
+This is useful when testing deployment related changes. It's a little cumbersome for everyday development because an 
+image needs to be built and pushed to the cluster for each change.
+
+- To deploy the operator via locally OLM run
+```bash
+./dev/install.operator.locally.sh
+```
+
+- To uninstall the OLM deployed operator run
+```bash
+./dev/uninstall.operator.locally.sh
+```
 
 ### Running tests
 
