@@ -11,7 +11,8 @@ endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Image URL to use all building/pushing image targets
-IMG ?= quay.io/cloudservices/xjoin-operator:$(shell git rev-parse --short=7 HEAD)
+QUAY_NAMESPACE ?= cloudservices
+IMG ?= quay.io/$(QUAY_NAMESPACE)/xjoin-operator:$(shell git rev-parse --short=7 HEAD)
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
@@ -89,7 +90,7 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # Build the docker image
-docker-build: tests
+docker-build:
 	docker build . -t ${IMG}
 
 # Push the docker image
