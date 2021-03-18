@@ -142,6 +142,7 @@ endif
 # Build the bundle image.
 .PHONY: bundle-build
 bundle-build: bundle
+	echo $(BUNDLE_IMAGE):$(BUNDLE_IMAGE_TAG)
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMAGE):$(BUNDLE_IMAGE_TAG) .
 
 # Build the container image

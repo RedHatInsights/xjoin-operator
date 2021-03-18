@@ -105,7 +105,7 @@ There is also `make delve` to debug the operator. After starting the Delve serve
 ### Running the operator locally via OLM
 
 This is useful when testing deployment related changes. It's a little cumbersome for everyday development because an 
-image needs to be built and pushed to the cluster for each change.
+image needs to be built by app-interface and pushed to the cluster for each change.
 
 - To deploy the operator via locally OLM run
 ```bash
@@ -116,6 +116,21 @@ image needs to be built and pushed to the cluster for each change.
 ```bash
 ./dev/uninstall.operator.locally.sh
 ```
+
+### Running the operator locally via OLM using operator-sdk run bundle
+
+This is more convenient than using the app-interface build because the build is done locally then pushed to quay.io.
+
+```bash
+make bundle-build -e BUNDLE_IMAGE=xjoin-operator BUNDLE_IMAGE_TAG=latest
+docker login -u=$QUAY_USERNAME -p $QUAY_PASSWORD
+docker tag xjoin-operator:latest quay.io/$QUAY_USERNAME/xjoin-operator:latest
+docker push quay.io/$QUAY_USERNAME/xjoin-operator:latest
+oc create ns xjoin-operator-olm
+operator-sdk run bundle quay.io/$QUAY_USERNAME/xjoin-operator:latest --namespace xjoin-operator-olm --install-mode AllNamespaces --verbose
+```
+
+Run `operator-sdk cleanup xjoin-operator` to uninstall. If that doesn't work use `oc delete ns xjoin-operator-olm`.
 
 ### Running tests
 
