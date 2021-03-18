@@ -23,7 +23,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -56,9 +55,10 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
-	clientCfg, _ := clientcmd.NewDefaultClientConfigLoadingRules().Load()
-	namespace := clientCfg.Contexts[clientCfg.CurrentContext].Namespace
-	setupLog.Info("Running in namespace: " + namespace)
+	//clientCfg, _ := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+	//namespace := clientCfg.Contexts[clientCfg.CurrentContext].Namespace
+	namespace := "olm-test"
+	//setupLog.Info("Running in namespace: " + namespace)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
