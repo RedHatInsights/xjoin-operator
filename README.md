@@ -122,12 +122,14 @@ image needs to be built by app-interface and pushed to the cluster for each chan
 This is more convenient than using the app-interface build because the build is done locally then pushed to quay.io.
 
 ```bash
-make bundle-build -e BUNDLE_IMAGE=xjoin-operator BUNDLE_IMAGE_TAG=latest
-docker login -u=$QUAY_USERNAME -p $QUAY_PASSWORD
-docker tag xjoin-operator:latest quay.io/$QUAY_USERNAME/xjoin-operator:latest
+make docker-build -e QUAY_NAMESPACE=$QUAY_USERNAME
 docker push quay.io/$QUAY_USERNAME/xjoin-operator:latest
+make bundle-build -e BUNDLE_IMAGE=xjoin-operator-bundle BUNDLE_IMAGE_TAG=latest -e QUAY_NAMESPACE=$QUAY_USERNAME
+docker login -u=$QUAY_USERNAME -p $QUAY_PASSWORD
+docker tag xjoin-operator-bundle:latest quay.io/$QUAY_USERNAME/xjoin-operator-bundle:latest
+docker push quay.io/$QUAY_USERNAME/xjoin-operator-bundle:latest
 oc create ns xjoin-operator-olm
-operator-sdk run bundle quay.io/$QUAY_USERNAME/xjoin-operator:latest --namespace xjoin-operator-olm --install-mode AllNamespaces --verbose
+operator-sdk run bundle quay.io/$QUAY_USERNAME/xjoin-operator-bundle:latest --namespace xjoin-operator-olm --install-mode AllNamespaces --verbose
 ```
 
 Run `operator-sdk cleanup xjoin-operator` to uninstall. If that doesn't work use `oc delete ns xjoin-operator-olm`.
