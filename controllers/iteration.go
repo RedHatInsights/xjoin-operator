@@ -203,7 +203,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		errors = append(errors, err)
 	} else {
 		for _, connector := range connectors.Items {
-			if !utils.ContainsString(connectorsToKeep, connector.GetName()) {
+			if !utils.ContainsString(connectorsToKeep, connector.GetName()) && strings.Index(connector.GetName(), "xjoin") == 0 {
 				i.Log.Info("Removing stale connector", "connector", connector.GetName())
 				if err = i.Kafka.DeleteConnector(connector.GetName()); err != nil {
 					errors = append(errors, err)
@@ -263,7 +263,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		errors = append(errors, err)
 	} else {
 		for _, slot := range slots {
-			if !utils.ContainsString(replicationSlotsToKeep, slot) {
+			if !utils.ContainsString(replicationSlotsToKeep, slot) && strings.Index(slot, "xjoin") == 0 {
 				i.Log.Info("Removing stale replication slot", "slot", slot)
 				if err = i.InventoryDb.RemoveReplicationSlot(slot); err != nil {
 					errors = append(errors, err)
