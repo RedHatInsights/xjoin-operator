@@ -12,7 +12,7 @@ fi
 QUAY_USERNAME=$1
 
 make docker-build -e QUAY_NAMESPACE=$QUAY_USERNAME
-docker push quay.io/$QUAY_USERNAME/xjoin-operator:$TAG
+docker push -a quay.io/$QUAY_USERNAME/xjoin-operator
 make bundle-build -e BUNDLE_IMAGE=xjoin-operator-bundle BUNDLE_IMAGE_TAG=latest -e QUAY_NAMESPACE=$QUAY_USERNAME
 docker tag xjoin-operator-bundle:latest quay.io/$QUAY_USERNAME/xjoin-operator-bundle:latest
 docker push quay.io/$QUAY_USERNAME/xjoin-operator-bundle:latest
