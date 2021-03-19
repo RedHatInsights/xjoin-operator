@@ -26,4 +26,4 @@ objects:
       connectClusterNamespace: ${{CONNECT_CLUSTER_NAMESPACE}}
       connectCluster: ${{CONNECT_CLUSTER}}
       kafkaCluster: ${{KAFKA_CLUSTER}}
-      pause: true
+      pause: false
