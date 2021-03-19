@@ -23,3 +23,6 @@ __debug_bin
 *.swp
 *.swo
 *~
+
+# generated bundle stuff
+bundle/manifests/xjoin.clusterserviceversion.yaml
