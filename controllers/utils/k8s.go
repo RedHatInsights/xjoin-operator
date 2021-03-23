@@ -47,21 +47,16 @@ func FetchXJoinPipelines(c client.Client) (*xjoin.XJoinPipelineList, error) {
 }
 
 func FetchConfigMap(c client.Client, namespace string, name string) (*corev1.ConfigMap, error) {
-	nameField := client.MatchingFields{
-		"metadata.name":      name,
-		"metadata.namespace": namespace,
-	}
-
-	configMaps := &corev1.ConfigMapList{}
+	configMap := &corev1.ConfigMap{}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
-	err := c.List(ctx, configMaps, nameField)
-	if len(configMaps.Items) == 0 {
-		emptyConfig := &corev1.ConfigMap{}
-		return emptyConfig, nil
-	} else {
-		return &configMaps.Items[0], err
+
+	err := c.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, configMap)
+	if err != nil {
+		return nil, err
 	}
+
+	return configMap, nil
 }
 
 func SecretHash(secret *corev1.Secret) (string, error) {

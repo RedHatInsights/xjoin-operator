@@ -113,7 +113,7 @@ curl -X POST -u "elastic:$ES_PASSWORD" -k "http://elasticsearch:9200/_security/u
 ./forward-ports.sh
 
 cd ../
-oc apply -f examples/xjoin.configmap.yaml
+oc apply -f dev/xjoin.configmap.yaml
 make install
 oc apply -f config/samples/xjoin_v1alpha1_xjoinpipeline.yaml
 

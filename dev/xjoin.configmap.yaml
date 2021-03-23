@@ -1,15 +1,15 @@
 apiVersion: v1
 data:
   standard.interval: '120'
-  validation.interval: '5'
-  validation.attempts.threshold: '3'
+  validation.interval: '1800'
+  validation.attempts.threshold: '2'
   validation.percentage.threshold: '5'
-  init.validation.interval: '10'
-  init.validation.attempts.threshold: '10'
+  init.validation.interval: '60'
+  init.validation.attempts.threshold: '30'
   init.validation.percentage.threshold: '5'
   connect.cluster: xjoin-kafka-connect-strimzi
   kafka.cluster: xjoin-kafka-cluster
-  connector.tasks.max: '1'
+  elasticsearch.connector.tasks.max: '5'
 kind: ConfigMap
 metadata:
   name: xjoin
