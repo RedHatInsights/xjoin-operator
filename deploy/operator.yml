@@ -69,18 +69,18 @@ objects:
       init.validation.percentage.threshold: ${VALIDATION_PERCENTAGE_THRESHOLD_INIT}
       connect.cluster: ${CONNECT_CLUSTER}
       elasticsearch.connector.tasks.max: ${ES_CONNECTOR_TASKS_MAX}
-      elasticsearch.connector.max.in.flight.requests: 1
-      elasticsearch.connector.max.retries: 8
-      elasticsearch.connector.retry.backoff.ms: 100
-      elasticsearch.connector.batch.size: 100
-      elasticsearch.connector.max.buffered.records: 500
-      elasticsearch.connector.linger.ms: 100
-      debezium.connector.tasks.max: 1
-      debezium.connector.max.batch.size: 10
-      debezium.connector.max.queue.size: 1000
-      debezium.connector.poll.interval.ms: 100
-      kafka.topic.partitions: 500
-      kafka.topic.replicas: 2
+      elasticsearch.connector.max.in.flight.requests: "1"
+      elasticsearch.connector.max.retries: "8"
+      elasticsearch.connector.retry.backoff.ms: "100"
+      elasticsearch.connector.batch.size: "100"
+      elasticsearch.connector.max.buffered.records: "500"
+      elasticsearch.connector.linger.ms: "100"
+      debezium.connector.tasks.max: "1"
+      debezium.connector.max.batch.size: "10"
+      debezium.connector.max.queue.size: "1000"
+      debezium.connector.poll.interval.ms: "100"
+      kafka.topic.partitions: "500"
+      kafka.topic.replicas: "2"
 
 
   # TODO: move this into the bundle itself
