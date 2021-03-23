@@ -218,7 +218,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		errors = append(errors, err)
 	} else {
 		for _, esPipeline := range esPipelines {
-			if !utils.ContainsString(esPipelinesToKeep, esPipeline) {
+			if !utils.ContainsString(esPipelinesToKeep, esPipeline) && strings.Index(esPipeline, "xjoin") == 0 {
 				i.Log.Info("Removing stale es pipeline", "esPipeline", esPipeline)
 				if err = i.ESClient.DeleteESPipelineByFullName(esPipeline); err != nil {
 					errors = append(errors, err)
@@ -233,7 +233,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		errors = append(errors, err)
 	} else {
 		for _, index := range indices {
-			if !utils.ContainsString(esIndicesToKeep, index) {
+			if !utils.ContainsString(esIndicesToKeep, index) && strings.Index(index, "xjoin") == 0 {
 				i.Log.Info("Removing stale index", "index", index)
 				if err = i.ESClient.DeleteIndexByFullName(index); err != nil {
 					errors = append(errors, err)

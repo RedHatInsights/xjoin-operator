@@ -3,12 +3,15 @@ package config
 import (
 	"fmt"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	corev1 "k8s.io/api/core/v1"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 )
+
+var log = logger.NewLogger("config")
 
 // These keys are excluded when computing a configMap hash.
 // Therefore, if they change that won't trigger a pipeline refresh
@@ -209,12 +212,16 @@ func (config *Config) getIntValue(key string, defaultValue int) (int, error) {
 		return defaultValue, nil
 	}
 
-	if value, ok := config.configMap.Data[key]; ok {
+	value, ok := config.configMap.Data[key]
+
+	if ok {
 		if parsed, err := strconv.ParseInt(value, 10, 64); err != nil {
 			return -1, fmt.Errorf(`"%s" is not a valid value for "%s"`, value, key)
 		} else {
 			return int(parsed), nil
 		}
+	} else {
+		log.Debug("Key missing from configmap, falling back to default value", "key", key)
 	}
 
 	return defaultValue, nil

@@ -67,6 +67,10 @@ func (r *ValidationReconciler) Reconcile(request ctrl.Request) (ctrl.Result, err
 		return reconcile.Result{}, err
 	}
 
+	if i.Instance != nil {
+		reqLogger.Debug("Instance State", "state", i.Instance.GetState())
+	}
+
 	// nothing to validate
 	if i.Instance == nil ||
 		i.Instance.GetState() == xjoin.STATE_REMOVED ||

@@ -3,11 +3,8 @@ package config
 import (
 	"errors"
 	"fmt"
-	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"reflect"
 )
-
-var log = logger.NewLogger("parameter")
 
 type Parameter struct {
 	SpecKey      string
