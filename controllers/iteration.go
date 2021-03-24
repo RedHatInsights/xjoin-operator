@@ -78,7 +78,7 @@ func (i *ReconcileIteration) debug(message string, keysAndValues ...interface{})
 
 func (i *ReconcileIteration) setActiveResources() {
 	i.Instance.Status.ActivePipelineVersion = i.Instance.Status.PipelineVersion
-	i.Instance.Status.ActiveAliasName = i.parameters.ResourceNamePrefix.String()
+	i.Instance.Status.ActiveAliasName = i.ESClient.AliasName()
 	i.Instance.Status.ActiveDebeziumConnectorName = i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion)
 	i.Instance.Status.ActiveESConnectorName = i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion)
 	i.Instance.Status.ActiveESPipelineName = i.ESClient.ESPipelineName(i.Instance.Status.PipelineVersion)
@@ -312,7 +312,7 @@ func (i *ReconcileIteration) recreateAliasIfNeeded() (bool, error) {
 	newIndex := i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)
 	if currentIndices == nil || !utils.ContainsString(currentIndices, newIndex) {
 		i.Log.Info("Updating alias", "index", newIndex)
-		if err = i.ESClient.UpdateAliasByFullIndexName(i.parameters.ResourceNamePrefix.String(), newIndex); err != nil {
+		if err = i.ESClient.UpdateAliasByFullIndexName(i.ESClient.AliasName(), newIndex); err != nil {
 			return false, err
 		}
 
@@ -373,7 +373,7 @@ func (i *ReconcileIteration) updateAliasIfHealthier() error {
 	}
 
 	if err = i.ESClient.UpdateAliasByFullIndexName(
-		i.parameters.ResourceNamePrefix.String(),
+		i.ESClient.AliasName(),
 		i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)); err != nil {
 		return err
 	}

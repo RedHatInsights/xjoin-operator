@@ -272,8 +272,8 @@ func (es *ElasticSearch) UpdateAliasByFullIndexName(alias string, index string) 
 	return nil
 }
 
-func (es *ElasticSearch) UpdateAlias(alias string, version string) error {
-	return es.UpdateAliasByFullIndexName(alias, es.ESIndexName(version))
+func (es *ElasticSearch) AliasName() string {
+	return es.resourceNamePrefix + ".hosts"
 }
 
 func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, error) {

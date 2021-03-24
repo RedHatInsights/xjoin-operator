@@ -403,8 +403,8 @@ func (i *Iteration) ExpectInvalidReconcile() *xjoin.XJoinPipeline {
 	return pipeline
 }
 
-func (i *Iteration) CreateValidPipeline() *xjoin.XJoinPipeline {
-	i.CreatePipeline()
+func (i *Iteration) CreateValidPipeline(specs ...*xjoin.XJoinPipelineSpec) *xjoin.XJoinPipeline {
+	i.CreatePipeline(specs...)
 	i.ReconcileXJoin()
 	i.ReconcileValidation()
 	pipeline := i.ReconcileXJoin()
@@ -516,18 +516,16 @@ func (i *Iteration) WaitForPipelineToBeValid() *xjoin.XJoinPipeline {
 	return pipeline
 }
 
-func (i *Iteration) resetPrefix() {
-	err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue(ResourceNamePrefix)
+func (i *Iteration) setPrefix(prefix string) {
+	err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue(prefix)
 	Expect(err).ToNot(HaveOccurred())
-	i.EsClient.SetResourceNamePrefix(ResourceNamePrefix)
+	i.EsClient.SetResourceNamePrefix(prefix)
+	err = i.Parameters.ResourceNamePrefix.SetValue(prefix)
+	Expect(err).ToNot(HaveOccurred())
 }
 
 func (i *Iteration) cleanupJenkinsResources() {
-	defer i.resetPrefix()
-
-	err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue("xjoin.inventory.hosts")
-	Expect(err).ToNot(HaveOccurred())
-	i.EsClient.SetResourceNamePrefix("xjoin.inventory.hosts")
+	i.setPrefix("xjoin.inventory.hosts")
 
 	_ = i.KafkaClient.DeleteConnector("xjoin.inventory.hosts.db.v1.1")
 	_ = i.KafkaClient.DeleteConnector("xjoin.inventory.hosts.es.v1.1")
@@ -538,14 +536,10 @@ func (i *Iteration) cleanupJenkinsResources() {
 }
 
 func (i *Iteration) createJenkinsResources() {
-	defer i.resetPrefix()
-
-	err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue("xjoin.inventory.hosts")
-	Expect(err).ToNot(HaveOccurred())
-	i.EsClient.SetResourceNamePrefix("xjoin.inventory.hosts")
+	i.setPrefix("xjoin.inventory.hosts")
 
 	//create resources to represent existing jenkins pipeline
-	_, err = i.KafkaClient.CreateDebeziumConnector("v1.1", false)
+	_, err := i.KafkaClient.CreateDebeziumConnector("v1.1", false)
 	Expect(err).ToNot(HaveOccurred())
 
 	_, err = i.KafkaClient.CreateESConnector("v1.1", false)
@@ -568,11 +562,7 @@ func (i *Iteration) createJenkinsResources() {
 }
 
 func (i *Iteration) validateJenkinsResourcesStillExist() {
-	defer i.resetPrefix()
-
-	err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue("xjoin.inventory.hosts")
-	Expect(err).ToNot(HaveOccurred())
-	i.EsClient.SetResourceNamePrefix("xjoin.inventory.hosts")
+	i.setPrefix("xjoin.inventory.hosts")
 
 	dbConnector, err := i.KafkaClient.GetConnector("xjoin.inventory.hosts.db.v1.1")
 	Expect(err).ToNot(HaveOccurred())
