@@ -391,7 +391,7 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline := i.CreateValidPipeline()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(i.EsClient.ESIndexName(pipeline.Status.PipelineVersion)))
 			Expect(pipeline.Status.ActiveTopicName).To(Equal(i.KafkaClient.TopicName(pipeline.Status.PipelineVersion)))
-			Expect(pipeline.Status.ActiveAliasName).To(Equal(ResourceNamePrefix))
+			Expect(pipeline.Status.ActiveAliasName).To(Equal(i.EsClient.AliasName()))
 			Expect(pipeline.Status.ActiveDebeziumConnectorName).To(
 				Equal(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion)))
 			Expect(pipeline.Status.ActiveESConnectorName).To(
@@ -436,7 +436,7 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline := i.CreateValidPipeline()
 			activeIndexName := i.EsClient.ESIndexName(pipeline.Status.PipelineVersion)
 			activeTopicName := i.KafkaClient.TopicName(pipeline.Status.PipelineVersion)
-			activeAliasName := ResourceNamePrefix
+			activeAliasName := i.EsClient.AliasName()
 			activeDebeziumConnectorName := i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion)
 			activeESConnectorName := i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion)
 
@@ -892,6 +892,7 @@ var _ = Describe("Pipeline operations", func() {
 	Describe("Existing Jenkins Pipeline", func() {
 		It("Leaves the existing jenkins pipeline alone during initial sync", func() {
 			defer i.cleanupJenkinsResources()
+			defer i.setPrefix("xjointest")
 			i.createJenkinsResources()
 
 			//set configmap jenkins version
@@ -903,7 +904,9 @@ var _ = Describe("Pipeline operations", func() {
 			i.CreateConfigMap("xjoin", cm)
 
 			//reconcile
-			i.CreatePipeline()
+			prefix := "xjoin.inventory"
+			i.setPrefix(prefix)
+			i.CreatePipeline(&xjoin.XJoinPipelineSpec{ResourceNamePrefix: &prefix})
 			pipeline := i.ReconcileXJoin()
 			version := pipeline.Status.PipelineVersion
 
@@ -927,9 +930,10 @@ var _ = Describe("Pipeline operations", func() {
 			i.validateJenkinsResourcesStillExist()
 		})
 
-		FIt("Updates the alias to point to the operator managed pipeline when it becomes valid", func() {
+		It("Updates the alias to point to the operator managed pipeline when it becomes valid", func() {
 			//create resources to represent existing jenkins pipeline
 			defer i.cleanupJenkinsResources()
+			defer i.setPrefix("xjointest")
 			i.createJenkinsResources()
 
 			//set configmap jenkins version
@@ -940,11 +944,9 @@ var _ = Describe("Pipeline operations", func() {
 			}
 			i.CreateConfigMap("xjoin", cm)
 
-			//reconcile valid pipeline
-			err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue("xjointest")
-			Expect(err).ToNot(HaveOccurred())
-			i.EsClient.SetResourceNamePrefix("xjointest")
-			pipeline := i.CreateValidPipeline()
+			prefix := "xjoin.inventory"
+			i.setPrefix(prefix)
+			pipeline := i.CreateValidPipeline(&xjoin.XJoinPipelineSpec{ResourceNamePrefix: &prefix})
 
 			//validate alias points to operator managed pipeline
 			indices, err := i.EsClient.GetCurrentIndicesWithAlias("xjoin.inventory.hosts")
