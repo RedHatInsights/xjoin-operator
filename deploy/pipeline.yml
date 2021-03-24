@@ -19,17 +19,6 @@ objects:
   - apiVersion: xjoin.cloud.redhat.com/v1alpha1
     kind: XJoinPipeline
     metadata:
-      name: xjoinpipeline2
-    spec:
-      validationThreshold: ${{VALIDATION_THRESHOLD}}
-      kafkaClusterNamespace: ${{KAFKA_CLUSTER_NAMESPACE}}
-      connectClusterNamespace: ${{CONNECT_CLUSTER_NAMESPACE}}
-      connectCluster: ${{CONNECT_CLUSTER}}
-      kafkaCluster: ${{KAFKA_CLUSTER}}
-      pause: false
-  - apiVersion: xjoin.cloud.redhat.com/v1alpha1
-    kind: XJoinPipeline
-    metadata:
       name: xjoinpipeline
     spec:
       validationThreshold: ${{VALIDATION_THRESHOLD}}
