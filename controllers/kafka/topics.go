@@ -27,11 +27,11 @@ func (kafka *Kafka) TopicName(pipelineVersion string) string {
 	return fmt.Sprintf(kafka.Parameters.ResourceNamePrefix.String() + "." + pipelineVersion + ".public.hosts")
 }
 
-func (kafka *Kafka) CreateTopic(pipelineVersion string, dryRun bool) (*unstructured.Unstructured, error) {
+func (kafka *Kafka) CreateTopicByFullName(topicName string, dryRun bool) (*unstructured.Unstructured, error) {
 	topic := &unstructured.Unstructured{}
 	topic.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      kafka.TopicName(pipelineVersion),
+			"name":      topicName,
 			"namespace": kafka.Parameters.KafkaClusterNamespace.String(),
 			"labels": map[string]interface{}{
 				"strimzi.io/cluster": kafka.Parameters.KafkaCluster.String(),
@@ -40,7 +40,7 @@ func (kafka *Kafka) CreateTopic(pipelineVersion string, dryRun bool) (*unstructu
 		"spec": map[string]interface{}{
 			"replicas":   kafka.Parameters.KafkaTopicReplicas.Int(),
 			"partitions": kafka.Parameters.KafkaTopicPartitions.Int(),
-			"topicName":  kafka.TopicName(pipelineVersion),
+			"topicName":  topicName,
 		},
 	}
 
@@ -53,6 +53,10 @@ func (kafka *Kafka) CreateTopic(pipelineVersion string, dryRun bool) (*unstructu
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 	return topic, kafka.Client.Create(ctx, topic)
+}
+
+func (kafka *Kafka) CreateTopic(pipelineVersion string, dryRun bool) (*unstructured.Unstructured, error) {
+	return kafka.CreateTopicByFullName(kafka.TopicName(pipelineVersion), dryRun)
 }
 
 func (kafka *Kafka) DeleteTopicByPipelineVersion(pipelineVersion string) error {

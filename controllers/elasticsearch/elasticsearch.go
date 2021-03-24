@@ -59,6 +59,10 @@ func NewElasticSearch(
 	return es, nil
 }
 
+func (es *ElasticSearch) SetResourceNamePrefix(updatedPrefix string) {
+	es.resourceNamePrefix = updatedPrefix
+}
+
 func (es *ElasticSearch) IndexExists(indexName string) (bool, error) {
 	res, err := es.Client.Indices.Exists([]string{indexName})
 	if err != nil {
@@ -433,7 +437,7 @@ func (es *ElasticSearch) ESIndexName(pipelineVersion string) string {
 }
 
 func ESIndexName(resourceNamePrefix string, pipelineVersion string) string {
-	return resourceNamePrefix + "." + pipelineVersion + ".public.hosts"
+	return resourceNamePrefix + "." + pipelineVersion
 }
 
 func parseSearchResponse(scrollRes *esapi.Response) ([]string, SearchIDsResponse, error) {

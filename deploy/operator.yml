@@ -81,6 +81,7 @@ objects:
       debezium.connector.poll.interval.ms: "100"
       kafka.topic.partitions: "500"
       kafka.topic.replicas: "2"
+      jenkins.managed.version: "v1.160"
 
 
   # TODO: move this into the bundle itself

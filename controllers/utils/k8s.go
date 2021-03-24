@@ -52,7 +52,7 @@ func FetchConfigMap(c client.Client, namespace string, name string) (*corev1.Con
 	defer cancel()
 
 	err := c.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, configMap)
-	if err != nil {
+	if client.IgnoreNotFound(err) != nil {
 		return nil, err
 	}
 

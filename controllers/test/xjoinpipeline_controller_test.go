@@ -855,6 +855,12 @@ var _ = Describe("Pipeline operations", func() {
 			serviceName := "xjoin-elasticsearch-es-default-new"
 			defer i.ScaleStrimziDeployment(1)
 
+			cm := map[string]string{
+				"init.validation.attempts.threshold": "1",
+				"validation.attempts.threshold":      "1",
+			}
+			i.CreateConfigMap("xjoin", cm)
+
 			pipeline := i.CreateValidPipeline()
 
 			//scale down strimzi operator deployment
@@ -880,6 +886,74 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_NEW))
 			Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
+		})
+	})
+
+	Describe("Existing Jenkins Pipeline", func() {
+		It("Leaves the existing jenkins pipeline alone during initial sync", func() {
+			defer i.cleanupJenkinsResources()
+			i.createJenkinsResources()
+
+			//set configmap jenkins version
+			cm := map[string]string{
+				"jenkins.managed.version":              "v1.1",
+				"init.validation.percentage.threshold": "0",
+				"init.validation.attempts.threshold":   "4",
+			}
+			i.CreateConfigMap("xjoin", cm)
+
+			//reconcile
+			i.CreatePipeline()
+			pipeline := i.ReconcileXJoin()
+			version := pipeline.Status.PipelineVersion
+
+			err := i.KafkaClient.PauseElasticSearchConnector(version)
+			Expect(err).ToNot(HaveOccurred())
+
+			_ = i.InsertHost()
+
+			pipeline = i.ExpectInitSyncInvalidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 1 hosts (100.00%) do not match"))
+
+			//validate alias points to jenkins pipeline
+			indices, err := i.EsClient.GetCurrentIndicesWithAlias("xjoin.inventory.hosts")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(indices)).To(Equal(1))
+			Expect(indices[0]).To(Equal("xjoin.inventory.hosts.v1.1"))
+
+			//validate jenkins managed resources still exist
+			i.validateJenkinsResourcesStillExist()
+		})
+
+		FIt("Updates the alias to point to the operator managed pipeline when it becomes valid", func() {
+			//create resources to represent existing jenkins pipeline
+			defer i.cleanupJenkinsResources()
+			i.createJenkinsResources()
+
+			//set configmap jenkins version
+			cm := map[string]string{
+				"jenkins.managed.version":              "v1.1",
+				"init.validation.percentage.threshold": "0",
+				"init.validation.attempts.threshold":   "4",
+			}
+			i.CreateConfigMap("xjoin", cm)
+
+			//reconcile valid pipeline
+			err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue("xjointest")
+			Expect(err).ToNot(HaveOccurred())
+			i.EsClient.SetResourceNamePrefix("xjointest")
+			pipeline := i.CreateValidPipeline()
+
+			//validate alias points to operator managed pipeline
+			indices, err := i.EsClient.GetCurrentIndicesWithAlias("xjoin.inventory.hosts")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(indices)).To(Equal(1))
+			Expect(indices[0]).To(Equal(pipeline.Status.ActiveIndexName))
+
+			//validate jenkins managed resources still exist
+			i.validateJenkinsResourcesStillExist()
 		})
 	})
 })
