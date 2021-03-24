@@ -27,6 +27,32 @@ parameters:
     value: "xjoin-kafka-connect-strimzi"
   - name: ES_CONNECTOR_TASKS_MAX
     value: "50"
+  - name: JENKINS_MANAGED_VERSION
+    value: "v1.0"
+  - name: KAFKA_TOPIC_PARTITIONS
+    value: "500"
+  - name: KAFKA_TOPIC_REPLICAS
+    value: "2"
+  - name: ES_CONNECTOR_MAX_IN_FLIGHT_REQUESTS
+    value: "1"
+  - name: ES_CONNECTOR_MAX_RETRIES
+    value: "8"
+  - name: ES_CONNECTOR_RETRY_BACKOFF_MS
+    value: "100"
+  - name: ES_CONNECTOR_BATCH_SIZE
+    value: "100"
+  - name: ES_CONNECTOR_MAX_BUFFERED_RECORDS
+    value: "500"
+  - name: ES_CONNECTOR_LINGER_MS
+    value: "100"
+  - name: DEBEZIUM_CONNECTOR_TASKS_MAX
+    value: "1"
+  - name: DEBEZIUM_CONNECTOR_MAX_BATCH_SIZE
+    value: "10"
+  - name: DEBEZIUM_CONNECTOR_MAX_QUEUE_SIZE
+    value: "1000"
+  - name: DEBEZIUM_CONNECTOR_POLL_INTERVAL_MS
+    value: "100"
 
 objects:
   - apiVersion: operators.coreos.com/v1
@@ -69,19 +95,19 @@ objects:
       init.validation.percentage.threshold: ${VALIDATION_PERCENTAGE_THRESHOLD_INIT}
       connect.cluster: ${CONNECT_CLUSTER}
       elasticsearch.connector.tasks.max: ${ES_CONNECTOR_TASKS_MAX}
-      elasticsearch.connector.max.in.flight.requests: "1"
-      elasticsearch.connector.max.retries: "8"
-      elasticsearch.connector.retry.backoff.ms: "100"
-      elasticsearch.connector.batch.size: "100"
-      elasticsearch.connector.max.buffered.records: "500"
-      elasticsearch.connector.linger.ms: "100"
-      debezium.connector.tasks.max: "1"
-      debezium.connector.max.batch.size: "10"
-      debezium.connector.max.queue.size: "1000"
-      debezium.connector.poll.interval.ms: "100"
-      kafka.topic.partitions: "500"
-      kafka.topic.replicas: "2"
-      jenkins.managed.version: "v1.160"
+      elasticsearch.connector.max.in.flight.requests: ${ES_CONNECTOR_MAX_IN_FLIGHT_REQUESTS}
+      elasticsearch.connector.max.retries: ${ES_CONNECTOR_MAX_RETRIES}
+      elasticsearch.connector.retry.backoff.ms: ${ES_CONNECTOR_RETRY_BACKOFF_MS}
+      elasticsearch.connector.batch.size: ${ES_CONNECTOR_BATCH_SIZE}
+      elasticsearch.connector.max.buffered.records: ${ES_CONNECTOR_MAX_BUFFERED_RECORDS}
+      elasticsearch.connector.linger.ms: ${ES_CONNECTOR_LINGER_MS}
+      debezium.connector.tasks.max: ${DEBEZIUM_CONNECTOR_TASKS_MAX}
+      debezium.connector.max.batch.size: ${DEBEZIUM_CONNECTOR_MAX_BATCH_SIZE}
+      debezium.connector.max.queue.size: ${DEBEZIUM_CONNECTOR_MAX_QUEUE_SIZE}
+      debezium.connector.poll.interval.ms: ${DEBEZIUM_CONNECTOR_POLL_INTERVAL_MS}
+      kafka.topic.partitions: ${KAFKA_TOPIC_PARTITIONS}
+      kafka.topic.replicas: ${KAFKA_TOPIC_REPLICAS}
+      jenkins.managed.version: ${JENKINS_MANAGED_VERSION}
 
 
   # TODO: move this into the bundle itself
