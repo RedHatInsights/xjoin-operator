@@ -515,3 +515,89 @@ func (i *Iteration) WaitForPipelineToBeValid() *xjoin.XJoinPipeline {
 
 	return pipeline
 }
+
+func (i *Iteration) resetPrefix() {
+	err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue(ResourceNamePrefix)
+	Expect(err).ToNot(HaveOccurred())
+	i.EsClient.SetResourceNamePrefix(ResourceNamePrefix)
+}
+
+func (i *Iteration) cleanupJenkinsResources() {
+	defer i.resetPrefix()
+
+	err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue("xjoin.inventory.hosts")
+	Expect(err).ToNot(HaveOccurred())
+	i.EsClient.SetResourceNamePrefix("xjoin.inventory.hosts")
+
+	_ = i.KafkaClient.DeleteConnector("xjoin.inventory.hosts.db.v1.1")
+	_ = i.KafkaClient.DeleteConnector("xjoin.inventory.hosts.es.v1.1")
+	_ = i.EsClient.DeleteIndex("v1.1")
+	_ = i.EsClient.DeleteESPipelineByFullName("xjoin.inventory.hosts.v1.1")
+	_ = i.KafkaClient.DeleteTopic("xjoin.inventory.v1.1.public.hosts")
+	_ = i.DbClient.RemoveReplicationSlot("xjoin_inventory_v1_1")
+}
+
+func (i *Iteration) createJenkinsResources() {
+	defer i.resetPrefix()
+
+	err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue("xjoin.inventory.hosts")
+	Expect(err).ToNot(HaveOccurred())
+	i.EsClient.SetResourceNamePrefix("xjoin.inventory.hosts")
+
+	//create resources to represent existing jenkins pipeline
+	_, err = i.KafkaClient.CreateDebeziumConnector("v1.1", false)
+	Expect(err).ToNot(HaveOccurred())
+
+	_, err = i.KafkaClient.CreateESConnector("v1.1", false)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = i.EsClient.CreateIndex("v1.1")
+	Expect(err).ToNot(HaveOccurred())
+
+	err = i.EsClient.CreateESPipeline("v1.1")
+	Expect(err).ToNot(HaveOccurred())
+
+	_, err = i.KafkaClient.CreateTopicByFullName("xjoin.inventory.v1.1.public.hosts", false)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = i.DbClient.CreateReplicationSlot("xjoin_inventory_v1_1")
+	Expect(err).ToNot(HaveOccurred())
+
+	err = i.EsClient.UpdateAliasByFullIndexName("xjoin.inventory.hosts", "xjoin.inventory.hosts.v1.1")
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func (i *Iteration) validateJenkinsResourcesStillExist() {
+	defer i.resetPrefix()
+
+	err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue("xjoin.inventory.hosts")
+	Expect(err).ToNot(HaveOccurred())
+	i.EsClient.SetResourceNamePrefix("xjoin.inventory.hosts")
+
+	dbConnector, err := i.KafkaClient.GetConnector("xjoin.inventory.hosts.db.v1.1")
+	Expect(err).ToNot(HaveOccurred())
+	Expect(dbConnector).ToNot(BeNil())
+	Expect(dbConnector.GetName()).ToNot(BeEmpty())
+
+	esConnector, err := i.KafkaClient.GetConnector("xjoin.inventory.hosts.es.v1.1")
+	Expect(err).ToNot(HaveOccurred())
+	Expect(esConnector).ToNot(BeNil())
+	Expect(esConnector.GetName()).ToNot(BeEmpty())
+
+	indices, err := i.EsClient.ListIndices()
+	Expect(err).ToNot(HaveOccurred())
+	Expect(indices).To(ContainElement("xjoin.inventory.hosts.v1.1"))
+
+	pipelines, err := i.EsClient.ListESPipelines()
+	Expect(err).ToNot(HaveOccurred())
+	Expect(pipelines).To(ContainElement("xjoin.inventory.hosts.v1.1"))
+
+	topic, err := i.KafkaClient.GetTopic("xjoin.inventory.v1.1.public.hosts")
+	Expect(err).ToNot(HaveOccurred())
+	Expect(topic).ToNot(BeNil())
+	Expect(topic.GetName()).ToNot(BeEmpty())
+
+	slots, err := i.DbClient.ListReplicationSlots("xjoin_inventory")
+	Expect(err).ToNot(HaveOccurred())
+	Expect(slots).To(ContainElements("xjoin_inventory_v1_1"))
+}

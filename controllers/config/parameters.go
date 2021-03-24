@@ -56,10 +56,16 @@ type Parameters struct {
 	HBIDBSecretVersion                Parameter
 	KafkaTopicPartitions              Parameter
 	KafkaTopicReplicas                Parameter
+	JenkinsManagedVersion             Parameter
 }
 
 func NewXJoinConfiguration() Parameters {
 	return Parameters{
+		JenkinsManagedVersion: Parameter{
+			DefaultValue: "v1.160",
+			Type:         reflect.String,
+			ConfigMapKey: "jenkins.managed.version",
+		},
 		ConfigMapVersion: Parameter{
 			DefaultValue: "",
 			Type:         reflect.String,
