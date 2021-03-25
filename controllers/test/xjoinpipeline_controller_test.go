@@ -957,5 +957,47 @@ var _ = Describe("Pipeline operations", func() {
 			//validate jenkins managed resources still exist
 			i.validateJenkinsResourcesStillExist()
 		})
+
+		It("Leaves the existing alias alone during failed initial sync", func() {
+			defer i.cleanupJenkinsResources()
+			defer i.setPrefix("xjointest")
+			i.createJenkinsResources()
+
+			//set configmap jenkins version
+			cm := map[string]string{
+				"jenkins.managed.version":              "v1.1",
+				"init.validation.percentage.threshold": "0",
+				"init.validation.attempts.threshold":   "2",
+			}
+			i.CreateConfigMap("xjoin", cm)
+
+			//reconcile
+			prefix := "xjoin.inventory"
+			i.setPrefix(prefix)
+			i.CreatePipeline(&xjoin.XJoinPipelineSpec{ResourceNamePrefix: &prefix})
+			pipeline := i.ReconcileXJoin()
+			version := pipeline.Status.PipelineVersion
+
+			err := i.KafkaClient.PauseElasticSearchConnector(version)
+			Expect(err).ToNot(HaveOccurred())
+
+			_ = i.InsertHost()
+
+			pipeline = i.ExpectInitSyncInvalidReconcile()
+			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
+			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
+				"Validation failed - 1 hosts (100.00%) do not match"))
+
+			i.ExpectNewReconcile()
+
+			//validate alias points to jenkins pipeline
+			indices, err := i.EsClient.GetCurrentIndicesWithAlias("xjoin.inventory.hosts")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(indices)).To(Equal(1))
+			Expect(indices[0]).To(Equal("xjoin.inventory.hosts.v1.1"))
+
+			//validate jenkins managed resources still exist
+			i.validateJenkinsResourcesStillExist()
+		})
 	})
 })
