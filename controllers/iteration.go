@@ -372,10 +372,14 @@ func (i *ReconcileIteration) updateAliasIfHealthier() error {
 		}
 	}
 
-	if err = i.ESClient.UpdateAliasByFullIndexName(
-		i.ESClient.AliasName(),
-		i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)); err != nil {
-		return err
+	//don't remove the jenkins managed alias until the operator pipeline is healthy
+	currIndices, err := i.ESClient.GetCurrentIndicesWithAlias("xjoin.inventory.hosts")
+	if !utils.ContainsString(currIndices, "xjoin.inventory.hosts."+i.parameters.JenkinsManagedVersion.String()) {
+		if err = i.ESClient.UpdateAliasByFullIndexName(
+			i.ESClient.AliasName(),
+			i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion)); err != nil {
+			return err
+		}
 	}
 
 	return nil
