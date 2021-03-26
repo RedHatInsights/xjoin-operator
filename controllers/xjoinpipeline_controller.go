@@ -98,6 +98,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		i.parameters.ElasticSearchPassword.String(),
 		i.parameters.ResourceNamePrefix.String(),
 		i.parameters.ElasticSearchPipelineTemplate.String(),
+		i.parameters.ElasticSearchIndexTemplate.String(),
 		xjoinConfig.ParametersMap)
 
 	if err != nil {

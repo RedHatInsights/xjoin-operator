@@ -109,6 +109,7 @@ func Before() *Iteration {
 		"xjoin1337",
 		ResourceNamePrefix,
 		i.Parameters.ElasticSearchPipelineTemplate.String(),
+		i.Parameters.ElasticSearchIndexTemplate.String(),
 		i.ParametersMap)
 
 	i.EsClient = es

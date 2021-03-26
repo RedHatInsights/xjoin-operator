@@ -41,6 +41,9 @@ type Parameters struct {
 	ElasticSearchSecretName           Parameter
 	ElasticSearchSecretVersion        Parameter
 	ElasticSearchPipelineTemplate     Parameter
+	ElasticSearchIndexReplicas        Parameter
+	ElasticSearchIndexShards          Parameter
+	ElasticSearchIndexTemplate        Parameter
 	DebeziumTemplate                  Parameter
 	DebeziumTasksMax                  Parameter
 	DebeziumMaxBatchSize              Parameter
@@ -149,6 +152,99 @@ func NewXJoinConfiguration() Parameters {
 		ElasticSearchSecretVersion: Parameter{
 			DefaultValue: "",
 			Type:         reflect.String,
+		},
+		ElasticSearchIndexShards: Parameter{
+			DefaultValue: 3,
+			Type:         reflect.Int,
+			ConfigMapKey: "elasticsearch.index.shards",
+		},
+		ElasticSearchIndexReplicas: Parameter{
+			DefaultValue: 1,
+			Type:         reflect.Int,
+			ConfigMapKey: "elasticsearch.index.replicas",
+		},
+		ElasticSearchIndexTemplate: Parameter{
+			DefaultValue: `{
+				"settings": {
+					"index": {
+						"number_of_shards": "{{.ElasticSearchIndexShards}}",
+						"number_of_replicas": "{{.ElasticSearchIndexReplicas}}",
+						"default_pipeline": "{{.ElasticSearchPipeline}}",
+						"max_result_window": 50000
+					},
+					"analysis": {
+						"normalizer": {
+							"case_insensitive": {
+								"filter": "lowercase"
+							}
+						}
+					}
+				},
+				"mappings": {
+					"dynamic": false,
+					"properties": {
+						"ingest_timestamp": {"type": "date"},
+						"id": { "type": "keyword" },
+						"account": { "type": "keyword" },
+						"display_name": {
+							"type": "keyword",
+							"fields": {
+								"lowercase": {
+									"type": "keyword",
+									"normalizer": "case_insensitive"
+								}
+							}
+						},
+						"created_on": { "type": "date_nanos" },
+						"modified_on": { "type": "date_nanos" },
+						"stale_timestamp": { "type": "date_nanos" },
+						"ansible_host": { "type": "keyword" },
+						"canonical_facts": {
+							"type": "object",
+							"properties": {
+								"fqdn": { "type": "keyword"},
+								"insights_id": { "type": "keyword"},
+								"satellite_id": { "type": "keyword"}
+							}
+						},
+						"system_profile_facts": {
+							"type": "object",
+							"properties": {
+								"arch": { "type": "keyword" },
+								"os_release": { "type": "keyword" },
+								"os_kernel_version": { "type": "keyword"},
+								"infrastructure_type": { "type": "keyword" },
+								"infrastructure_vendor": { "type": "keyword" },
+								"sap_system": { "type": "boolean" },
+								"sap_sids": { "type": "keyword" },
+								"owner_id": { "type": "keyword"}
+							}
+						},
+						"tags_structured": {
+							"type": "nested",
+							"properties": {
+								"namespace": {
+									"type": "keyword",
+									"null_value": "$$_XJOIN_SEARCH_NULL_VALUE"
+								},
+								"key": { "type": "keyword" },
+								"value": {
+									"type": "keyword",
+									"null_value": "$$_XJOIN_SEARCH_NULL_VALUE"
+								}
+							}
+						},
+						"tags_string": {
+							"type": "keyword"
+						},
+						"tags_search": {
+							"type": "keyword"
+						}
+					}
+				}
+			}`,
+			Type:         reflect.String,
+			ConfigMapKey: "elasticsearch.index.template",
 		},
 		ElasticSearchConnectorTemplate: Parameter{
 			Type:         reflect.String,
