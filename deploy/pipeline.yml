@@ -13,7 +13,7 @@ parameters:
   - name: CONNECT_CLUSTER
     value: "xjoin-kafka-connect-strimzi"
   - name: KAFKA_CLUSTER
-    value: "platform-mq-kafka"
+    value: "platform-mq"
 
 objects:
   - apiVersion: xjoin.cloud.redhat.com/v1alpha1
