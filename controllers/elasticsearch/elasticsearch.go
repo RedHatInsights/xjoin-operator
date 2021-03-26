@@ -26,6 +26,7 @@ type ElasticSearch struct {
 	resourceNamePrefix string
 	pipelineTemplate   string
 	parametersMap      map[string]interface{}
+	indexTemplate      string
 }
 
 func NewElasticSearch(
@@ -34,12 +35,15 @@ func NewElasticSearch(
 	password string,
 	resourceNamePrefix string,
 	pipelineTemplate string,
+	indexTemplate string,
 	parametersMap map[string]interface{}) (*ElasticSearch, error) {
 
 	es := new(ElasticSearch)
 	es.resourceNamePrefix = resourceNamePrefix
 	es.pipelineTemplate = pipelineTemplate
 	es.parametersMap = parametersMap
+	es.indexTemplate = indexTemplate
+
 	cfg := elasticsearch.Config{
 		Addresses: []string{url},
 		Username:  username,
@@ -80,7 +84,33 @@ func (es *ElasticSearch) IndexExists(indexName string) (bool, error) {
 }
 
 func (es *ElasticSearch) CreateIndex(pipelineVersion string) error {
-	res, err := es.Client.Indices.Create(es.ESIndexName(pipelineVersion))
+	tmpl, err := template.New("indexTemplate").Parse(es.indexTemplate)
+	if err != nil {
+		return err
+	}
+
+	params := es.parametersMap
+	params["ElasticSearchIndex"] = es.ESIndexName(pipelineVersion)
+	params["ElasticSearchPipeline"] = es.ESPipelineName(pipelineVersion)
+
+	var indexTemplateBuffer bytes.Buffer
+	err = tmpl.Execute(&indexTemplateBuffer, es.parametersMap)
+	if err != nil {
+		return err
+	}
+	indexTemplateParsed := indexTemplateBuffer.String()
+	indexTemplateParsed = strings.ReplaceAll(indexTemplateParsed, "\n", "")
+	indexTemplateParsed = strings.ReplaceAll(indexTemplateParsed, "\t", "")
+
+	req := &esapi.IndicesCreateRequest{
+		Index: es.ESIndexName(pipelineVersion),
+		Body:  strings.NewReader(indexTemplateParsed),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	res, err := req.Do(ctx, es.Client)
+
 	if err != nil {
 		return err
 	}
