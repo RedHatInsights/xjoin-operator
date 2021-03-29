@@ -45,6 +45,10 @@ parameters:
     value: "500"
   - name: ES_CONNECTOR_LINGER_MS
     value: "100"
+  - name: ES_INDEX_REPLICAS
+    value: "1"
+  - name: ES_INDEX_SHARDS
+    value: "3"
   - name: DEBEZIUM_CONNECTOR_TASKS_MAX
     value: "1"
   - name: DEBEZIUM_CONNECTOR_MAX_BATCH_SIZE
@@ -101,6 +105,8 @@ objects:
       elasticsearch.connector.batch.size: ${ES_CONNECTOR_BATCH_SIZE}
       elasticsearch.connector.max.buffered.records: ${ES_CONNECTOR_MAX_BUFFERED_RECORDS}
       elasticsearch.connector.linger.ms: ${ES_CONNECTOR_LINGER_MS}
+      elasticsearch.index.replicas: ${ES_INDEX_REPLICAS}
+      elasticsearch.index.shards: ${ES_INDEX_SHARDS}
       debezium.connector.tasks.max: ${DEBEZIUM_CONNECTOR_TASKS_MAX}
       debezium.connector.max.batch.size: ${DEBEZIUM_CONNECTOR_MAX_BATCH_SIZE}
       debezium.connector.max.queue.size: ${DEBEZIUM_CONNECTOR_MAX_QUEUE_SIZE}
