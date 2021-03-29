@@ -27,6 +27,7 @@ import (
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"time"
 
 	xjoinv1alpha1 "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers"
@@ -67,12 +68,17 @@ func main() {
 	}
 	setupLog.Info("Running in namespace: " + namespace)
 
+	renewDeadline := 60 * time.Second
+	leaseDuration := 90 * time.Second
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
 		LeaderElectionID:   "222b734b.cloud.redhat.com",
+		RenewDeadline:      &renewDeadline,
+		LeaseDuration:      &leaseDuration,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
