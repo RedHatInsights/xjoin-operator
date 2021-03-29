@@ -55,7 +55,8 @@ func (kafka *Kafka) CheckIfConnectorExists(name string) (bool, error) {
 
 func (kafka *Kafka) newESConnectorResource(pipelineVersion string) (*unstructured.Unstructured, error) {
 	m := kafka.ParametersMap
-	m["Version"] = pipelineVersion
+	m["Topic"] = kafka.TopicName(pipelineVersion)
+	m["RenameTopicReplacement"] = fmt.Sprintf("%s.%s", kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
 
 	return kafka.newConnectorResource(
 		kafka.ESConnectorName(pipelineVersion),

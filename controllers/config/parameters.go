@@ -251,13 +251,13 @@ func NewXJoinConfiguration() Parameters {
 			ConfigMapKey: "elasticsearch.connector.config",
 			DefaultValue: `{
 				"tasks.max": "{{.ElasticSearchTasksMax}}",
-				"topics": "{{.ResourceNamePrefix}}.{{.Version}}.public.hosts",
+				"topics": "{{.Topic}}",
 				"key.ignore": "false",
 				"connection.url": "{{.ElasticSearchURL}}",
 				{{if .ElasticSearchUsername}}"connection.username": "{{.ElasticSearchUsername}}",{{end}}
 				{{if .ElasticSearchPassword}}"connection.password": "{{.ElasticSearchPassword}}",{{end}}
 				"type.name": "_doc",
-				"transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString",
+				"transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString, renameTopic",
 				"transforms.valueToKey.type":"org.apache.kafka.connect.transforms.ValueToKey",
 				"transforms.valueToKey.fields":"id",
 				"transforms.extractKey.type":"org.apache.kafka.connect.transforms.ExtractField$Key",
@@ -278,6 +278,9 @@ func NewXJoinConfiguration() Parameters {
 				"transforms.flattenListString.mode": "join",
 				"transforms.flattenListString.delimiterJoin": "/",
 				"transforms.flattenListString.encode": true,
+				"transforms.renameTopic.type": "org.apache.kafka.connect.transforms.RegexRouter",
+				"transforms.renameTopic.regex": "{{.Topic}}",
+				"transforms.renameTopic.replacement": "{{.RenameTopicReplacement}}",
 				"behavior.on.null.values":"delete",
 				"behavior.on.malformed.documents": "warn",
 				"auto.create.indices.at.start": false,

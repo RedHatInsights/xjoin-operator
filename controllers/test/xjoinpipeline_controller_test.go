@@ -32,7 +32,7 @@ var _ = Describe("Pipeline operations", func() {
 	})
 
 	Describe("New -> InitialSync", func() {
-		It("Creates a connector, ES Index, and topic for a new pipeline", func() {
+		FIt("Creates a connector, ES Index, and topic for a new pipeline", func() {
 			i.CreatePipeline()
 			i.ReconcileXJoin()
 
@@ -97,10 +97,13 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["transforms.extractKey.field"]).To(Equal("id"))
 			Expect(esConnectorConfig["transforms.flattenListString.type"]).To(Equal("com.redhat.insights.flattenlistsmt.FlattenList$Value"))
 			Expect(esConnectorConfig["transforms.valueToKey.type"]).To(Equal("org.apache.kafka.connect.transforms.ValueToKey"))
-			Expect(esConnectorConfig["transforms"]).To(Equal("valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString"))
+			Expect(esConnectorConfig["transforms"]).To(Equal("valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString, renameTopic"))
 			Expect(esConnectorConfig["transforms.flattenList.mode"]).To(Equal("keys"))
 			Expect(esConnectorConfig["transforms.flattenListString.encode"]).To(Equal(true))
 			Expect(esConnectorConfig["transforms.flattenListString.outputField"]).To(Equal("tags_string"))
+			Expect(esConnectorConfig["transforms.renameTopic.type"]).To(Equal("org.apache.kafka.connect.transforms.RegexRouter"))
+			Expect(esConnectorConfig["transforms.renameTopic.regex"]).To(Equal(ResourceNamePrefix + "." + pipeline.Status.PipelineVersion + ".public.hosts"))
+			Expect(esConnectorConfig["transforms.renameTopic.replacement"]).To(Equal(ResourceNamePrefix + "." + pipeline.Status.PipelineVersion))
 			Expect(esConnectorConfig["type.name"]).To(Equal("_doc"))
 			Expect(esConnectorConfig["key.ignore"]).To(Equal("false"))
 			Expect(esConnectorConfig["transforms.valueToKey.fields"]).To(Equal("id"))
@@ -851,7 +854,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.ActivePipelineVersion).To(Equal(activePipelineVersion))
 		})
 
-		It("Performs a refresh when unable to successfully restart failed connector task", func() {
+		FIt("Performs a refresh when unable to successfully restart failed connector task", func() {
 			serviceName := "xjoin-elasticsearch-es-default-new"
 			defer i.ScaleStrimziDeployment(1)
 
