@@ -32,7 +32,7 @@ var _ = Describe("Pipeline operations", func() {
 	})
 
 	Describe("New -> InitialSync", func() {
-		FIt("Creates a connector, ES Index, and topic for a new pipeline", func() {
+		It("Creates a connector, ES Index, and topic for a new pipeline", func() {
 			i.CreatePipeline()
 			i.ReconcileXJoin()
 
@@ -854,7 +854,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.ActivePipelineVersion).To(Equal(activePipelineVersion))
 		})
 
-		FIt("Performs a refresh when unable to successfully restart failed connector task", func() {
+		It("Performs a refresh when unable to successfully restart failed connector task", func() {
 			serviceName := "xjoin-elasticsearch-es-default-new"
 			defer i.ScaleStrimziDeployment(1)
 
