@@ -217,7 +217,10 @@ func NewXJoinConfiguration() Parameters {
 								"infrastructure_vendor": { "type": "keyword" },
 								"sap_system": { "type": "boolean" },
 								"sap_sids": { "type": "keyword" },
-								"owner_id": { "type": "keyword"}
+								"owner_id": { "type": "keyword"},
+								"insights_client_version": { "type": "keyword" },
+								"rhc_client_id": { "type": "keyword" },
+								"is_marketplace": { "type": "boolean" }
 							}
 						},
 						"tags_structured": {
