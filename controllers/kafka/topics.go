@@ -41,6 +41,12 @@ func (kafka *Kafka) CreateTopicByFullName(topicName string, dryRun bool) (*unstr
 			"replicas":   kafka.Parameters.KafkaTopicReplicas.Int(),
 			"partitions": kafka.Parameters.KafkaTopicPartitions.Int(),
 			"topicName":  topicName,
+			"config": map[string]interface{}{
+				"cleanup.policy":        kafka.Parameters.KafkaTopicCleanupPolicy.String(),
+				"min.compaction.lag.ms": kafka.Parameters.KafkaTopicMinCompactionLagMS.String(),
+				"retention.bytes":       kafka.Parameters.KafkaTopicRetentionBytes.String(),
+				"retention.ms":          kafka.Parameters.KafkaTopicRetentionMS.String(),
+			},
 		},
 	}
 
