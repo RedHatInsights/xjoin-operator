@@ -59,6 +59,10 @@ type Parameters struct {
 	HBIDBSecretVersion                Parameter
 	KafkaTopicPartitions              Parameter
 	KafkaTopicReplicas                Parameter
+	KafkaTopicCleanupPolicy           Parameter
+	KafkaTopicMinCompactionLagMS      Parameter
+	KafkaTopicRetentionBytes          Parameter
+	KafkaTopicRetentionMS             Parameter
 	JenkinsManagedVersion             Parameter
 }
 
@@ -478,6 +482,26 @@ func NewXJoinConfiguration() Parameters {
 			Type:         reflect.Int,
 			ConfigMapKey: "kafka.topic.replicas",
 			DefaultValue: 1,
+		},
+		KafkaTopicCleanupPolicy: Parameter{
+			Type:         reflect.String,
+			ConfigMapKey: "kafka.topic.cleanup.policy",
+			DefaultValue: "compact,delete",
+		},
+		KafkaTopicMinCompactionLagMS: Parameter{
+			Type:         reflect.String,
+			ConfigMapKey: "kafka.topic.min.compaction.lag.ms",
+			DefaultValue: "3600000",
+		},
+		KafkaTopicRetentionBytes: Parameter{
+			Type:         reflect.String,
+			ConfigMapKey: "kafka.topic.retention.bytes",
+			DefaultValue: "5368709120",
+		},
+		KafkaTopicRetentionMS: Parameter{
+			Type:         reflect.String,
+			ConfigMapKey: "kafka.topic.retention.ms",
+			DefaultValue: "2678400000",
 		},
 	}
 }
