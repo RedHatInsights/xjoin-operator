@@ -213,8 +213,30 @@ func (kafka *Kafka) GetConnector(name string) (*unstructured.Unstructured, error
 	connector := EmptyConnector()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
-	err := kafka.Client.Get(ctx, client.ObjectKey{Name: name, Namespace: kafka.Parameters.ConnectClusterNamespace.String()}, connector)
+	err := kafka.Client.Get(
+		ctx,
+		client.ObjectKey{Name: name, Namespace: kafka.Parameters.ConnectClusterNamespace.String()},
+		connector)
 	return connector, err
+}
+
+func (kafka *Kafka) CheckConnectorExistsViaREST(name string) (bool, error) {
+	url := fmt.Sprintf(
+		"http://%s-connect-api.%s.svc:8083/connectors/%s",
+		kafka.Parameters.ConnectCluster.String(), kafka.Parameters.ConnectClusterNamespace.String(), name)
+	res, err := http.Get(url)
+	if err != nil {
+		return false, err
+	}
+
+	if res.StatusCode == 404 {
+		return false, nil
+	} else if res.StatusCode < 500 {
+		return true, nil
+	} else {
+		return false, errors.New(fmt.Sprintf(
+			"invalid response code (%s) when checking if connector %v exists", name, res.StatusCode))
+	}
 }
 
 func (kafka *Kafka) DeleteConnectorsForPipelineVersion(pipelineVersion string) error {
@@ -281,19 +303,42 @@ func EmptyConnector() *unstructured.Unstructured {
 	return connector
 }
 
-/*
- * Delete the given connector. This operation is idempotent i.e. it silently ignores if the connector does not exist.
- */
 func (kafka *Kafka) DeleteConnector(name string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	defer cancel()
+
 	connector := &unstructured.Unstructured{}
 	connector.SetName(name)
 	connector.SetNamespace(kafka.Parameters.ConnectClusterNamespace.String())
 	connector.SetGroupVersionKind(connectorGVK)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
-	defer cancel()
-	if err := kafka.Client.Delete(ctx, connector); err != nil && !k8errors.IsNotFound(err) {
-		return err
+	//check the Connect REST API every second for 10 seconds to see if the connector is really deleted.
+	//This is necessary because there is a race condition Kafka Connect where if a connector
+	//and topic is deleted in rapid succession, the Kafka Connect tasks get stuck trying to connect to a topic
+	//that doesn't exist.
+	delay := time.Millisecond * 50
+	attempts := 200
+	connectorIsDeleted := false
+	for i := 0; i < attempts; i++ {
+		if err := kafka.Client.Delete(ctx, connector); err != nil && !k8errors.IsNotFound(err) {
+			return err
+		}
+
+		connectorExists, err := kafka.CheckConnectorExistsViaREST(name)
+		if err != nil {
+			return err
+		}
+
+		if !connectorExists {
+			connectorIsDeleted = true
+			break
+		} else {
+			time.Sleep(delay)
+		}
+	}
+
+	if !connectorIsDeleted {
+		return errors.New(fmt.Sprintf("connector %s wasn't deleted after 10 seconds", name))
 	}
 
 	return nil
