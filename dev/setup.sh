@@ -50,9 +50,6 @@ sleep 10
 
 oc project $PROJECT_NAME
 
-#kafkacat
-oc apply -f kafkacat.yml -n $PROJECT_NAME
-
 #inventory
 oc apply -f inventory-db.secret.yml -n $PROJECT_NAME
 oc apply -f inventory-db.yaml -n $PROJECT_NAME
