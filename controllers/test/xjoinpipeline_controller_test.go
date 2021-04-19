@@ -51,10 +51,10 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(dbConnectorSpec["pause"]).To(Equal(false))
 			dbConnectorConfig := dbConnectorSpec["config"].(map[string]interface{})
 			Expect(dbConnectorConfig["database.dbname"]).To(Equal("test"))
-			Expect(dbConnectorConfig["database.password"]).To(Equal("postgres"))
+			Expect(dbConnectorConfig["database.password"]).To(Equal("insights"))
 			Expect(dbConnectorConfig["database.port"]).To(Equal("5432"))
 			Expect(dbConnectorConfig["tasks.max"]).To(Equal("1"))
-			Expect(dbConnectorConfig["database.user"]).To(Equal("postgres"))
+			Expect(dbConnectorConfig["database.user"]).To(Equal("insights"))
 			Expect(dbConnectorConfig["max.batch.size"]).To(Equal(int64(10)))
 			Expect(dbConnectorConfig["plugin.name"]).To(Equal("pgoutput"))
 			Expect(dbConnectorConfig["transforms"]).To(Equal("unwrap"))
@@ -736,7 +736,7 @@ var _ = Describe("Pipeline operations", func() {
 			i.CreatePipeline()
 			err = i.ReconcileXJoinWithError()
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(HavePrefix(`Error connecting to invalidurl`))
+			Expect(err.Error()).To(HavePrefix(`error connecting to invalidurl`))
 
 			recorder, _ := i.XJoinReconciler.Recorder.(*record.FakeRecorder)
 			Expect(recorder.Events).To(HaveLen(1))
@@ -809,16 +809,16 @@ var _ = Describe("Pipeline operations", func() {
 	})
 
 	Describe("Deviation", func() {
-		It("Restarts failed connector task without a refresh", func() {
+		It("Restarts failed ES connector task without a refresh", func() {
 			serviceName := "xjoin-elasticsearch-es-default-new"
-			defer i.ScaleStrimziDeployment(1)
+			defer i.ScaleDeployment("strimzi-cluster-operator", "kafka", 1)
 			defer i.DeleteService(serviceName)
 
 			pipeline := i.CreateValidPipeline()
 			activePipelineVersion := pipeline.Status.ActivePipelineVersion
 
 			//scale down strimzi operator deployment
-			i.ScaleStrimziDeployment(0)
+			i.ScaleDeployment("strimzi-cluster-operator", "kafka", 0)
 
 			//update es connector config with invalid url
 			i.SetESConnectorURL(
@@ -826,7 +826,7 @@ var _ = Describe("Pipeline operations", func() {
 				pipeline.Status.ActiveESConnectorName)
 
 			//give the connector time to realize it can't connect
-			time.Sleep(5 * time.Second)
+			time.Sleep(10 * time.Second)
 
 			//validate task is failed
 			tasks, err := i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveESConnectorName)
@@ -836,7 +836,7 @@ var _ = Describe("Pipeline operations", func() {
 			}
 
 			//create service with invalid url
-			i.CreateService(serviceName)
+			i.CreateESService(serviceName)
 
 			time.Sleep(5 * time.Second)
 
@@ -854,9 +854,56 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.ActivePipelineVersion).To(Equal(activePipelineVersion))
 		})
 
+		It("Restarts failed DB connector task without a refresh", func() {
+			defer i.ScaleDeployment("inventory-db", "xjoin-operator-project", 1)
+			defer test.ForwardPorts()
+
+			pipeline := i.CreateValidPipeline()
+			activePipelineVersion := pipeline.Status.ActivePipelineVersion
+
+			//scale down strimzi operator deployment
+			i.ScaleDeployment("inventory-db", "xjoin-operator-project", 0)
+
+			//restart task to trigger failure
+			tasks, err := i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveDebeziumConnectorName)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(tasks)).To(BeNumerically(">", 0))
+			for _, task := range tasks {
+				err = i.KafkaClient.RestartTaskForConnector(pipeline.Status.ActiveDebeziumConnectorName, task["id"].(float64))
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			//give connect time to realize the task is failed
+			time.Sleep(15 * time.Second)
+
+			//validate task is failed
+			tasks, err = i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveDebeziumConnectorName)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(tasks)).To(BeNumerically(">", 0))
+			for _, task := range tasks {
+				Expect(task["state"]).To(Equal("FAILED"))
+			}
+
+			i.ScaleDeployment("inventory-db", "xjoin-operator-project", 1)
+			test.ForwardPorts()
+
+			//reconcile
+			pipeline = i.ExpectValidReconcile()
+
+			//validate task is running
+			newTasks, err := i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveDebeziumConnectorName)
+			Expect(err).ToNot(HaveOccurred())
+			for _, task := range newTasks {
+				Expect(task["state"]).To(Equal("RUNNING"))
+			}
+
+			//validate no refresh occurred
+			Expect(pipeline.Status.ActivePipelineVersion).To(Equal(activePipelineVersion))
+		})
+
 		It("Performs a refresh when unable to successfully restart failed connector task", func() {
 			serviceName := "xjoin-elasticsearch-es-default-new"
-			defer i.ScaleStrimziDeployment(1)
+			defer i.ScaleDeployment("strimzi-cluster-operator", "kafka", 1)
 
 			cm := map[string]string{
 				"init.validation.attempts.threshold": "1",
@@ -867,7 +914,7 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline := i.CreateValidPipeline()
 
 			//scale down strimzi operator deployment
-			i.ScaleStrimziDeployment(0)
+			i.ScaleDeployment("strimzi-cluster-operator", "kafka", 0)
 
 			//update es connector config with invalid url
 			i.SetESConnectorURL(

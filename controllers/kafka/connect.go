@@ -159,27 +159,36 @@ func (kafka *Kafka) ListConnectorTasks(connectorName string) ([]map[string]inter
 	return tasksMap, nil
 }
 
+func (kafka *Kafka) RestartTaskForConnector(connectorName string, taskId float64) error {
+	url := fmt.Sprintf(
+		"http://%s-connect-api.%s.svc:8083/connectors/%s/tasks/%.0f/restart",
+		kafka.Parameters.ConnectCluster.String(),
+		kafka.Parameters.ConnectClusterNamespace.String(),
+		connectorName,
+		taskId)
+	res, err := http.Post(url, "application/json", nil)
+
+	if err != nil {
+		return err
+	}
+
+	if res.StatusCode >= 300 {
+		return errors.New("invalid response from connect when restarting task")
+	}
+
+	return nil
+}
+
 func (kafka *Kafka) verifyTaskIsRunning(task map[string]interface{}, connectorName string) (bool, error) {
 	//try to restart the task 10 times
 	for i := 0; i < 10; i++ {
 		if task["state"] == running {
 			return true, nil
 		} else {
-			//restart the failed task
-			url := fmt.Sprintf(
-				"http://%s-connect-api.%s.svc:8083/connectors/%s/tasks/%.0f/restart",
-				kafka.Parameters.ConnectCluster.String(),
-				kafka.Parameters.ConnectClusterNamespace.String(),
-				connectorName,
-				task["id"].(float64))
-			res, err := http.Post(url, "application/json", nil)
+			err := kafka.RestartTaskForConnector(connectorName, task["id"].(float64))
 
 			if err != nil {
 				return false, err
-			}
-
-			if res.StatusCode >= 300 {
-				return false, errors.New("invalid response from connect when restarting task")
 			}
 
 			time.Sleep(1 * time.Second)

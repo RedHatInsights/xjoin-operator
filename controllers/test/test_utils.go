@@ -59,8 +59,8 @@ func getParameters() (Parameters, map[string]interface{}) {
 	options.SetDefault("ElasticSearchPassword", "test1337")
 	options.SetDefault("HBIDBHost", "inventory-db")
 	options.SetDefault("HBIDBPort", "5432")
-	options.SetDefault("HBIDBUser", "postgres")
-	options.SetDefault("HBIDBPassword", "postgres")
+	options.SetDefault("HBIDBUser", "insights")
+	options.SetDefault("HBIDBPassword", "insights")
 	options.SetDefault("HBIDBName", "test")
 	options.SetDefault("ResourceNamePrefix", ResourceNamePrefix)
 	options.AutomaticEnv()
@@ -125,8 +125,8 @@ func Before() *Iteration {
 	i.DbClient = database.NewDatabase(database.DBParams{
 		Host:     i.Parameters.HBIDBHost.String(),
 		Port:     i.Parameters.HBIDBPort.String(),
-		User:     i.Parameters.HBIDBUser.String(),
-		Password: i.Parameters.HBIDBPassword.String(),
+		User:     "postgres",
+		Password: "postgres",
 		Name:     i.Parameters.HBIDBName.String(),
 	})
 
@@ -140,6 +140,9 @@ func Before() *Iteration {
 }
 
 func After(i *Iteration) {
+	err := i.DbClient.Connect()
+	Expect(err).ToNot(HaveOccurred())
+
 	//Delete any leftover ES indices
 	indices, err := i.EsClient.ListIndices()
 	Expect(err).ToNot(HaveOccurred())

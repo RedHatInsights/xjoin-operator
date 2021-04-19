@@ -3,10 +3,13 @@ package test
 import (
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
+	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 
@@ -32,6 +35,15 @@ func getRootDir() string {
 	return filepath.Dir(d)
 }
 
+func ForwardPorts() {
+	cwd, err := os.Getwd()
+	Expect(err).ToNot(HaveOccurred())
+	cmd := exec.Command(cwd + "/dev/forward-ports.sh")
+	err = cmd.Run()
+	Expect(err).ToNot(HaveOccurred())
+	time.Sleep(time.Millisecond * 1000)
+}
+
 /*
  * Sets up Before/After hooks that initialize testEnv.
  * Registers CRDs.
@@ -40,6 +52,8 @@ func getRootDir() string {
 func Setup(t *testing.T, suiteName string) {
 
 	var _ = BeforeSuite(func(done Done) {
+		ForwardPorts()
+
 		logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
 		useExistingCluster := true
 

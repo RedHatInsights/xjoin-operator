@@ -27,7 +27,7 @@ func NewDatabase(config DBParams) *Database {
 
 func (db *Database) Connect() (err error) {
 	if db.connection, err = db.GetConnection(); err != nil {
-		return fmt.Errorf("Error connecting to %s:%s/%s as %s : %s", db.Config.Host, db.Config.Port, db.Config.Name, db.Config.User, err)
+		return fmt.Errorf("error connecting to %s:%s/%s as %s : %s", db.Config.Host, db.Config.Port, db.Config.Name, db.Config.User, err)
 	}
 
 	return nil
@@ -45,7 +45,7 @@ func (db *Database) RunQuery(query string) (*pgx.Rows, error) {
 	rows, err := db.connection.Query(query)
 
 	if err != nil {
-		return nil, fmt.Errorf("Error executing query %s, %w", query, err)
+		return nil, fmt.Errorf("error executing query (%s) : %w", query, err)
 	}
 
 	return rows, nil
@@ -55,7 +55,7 @@ func (db *Database) Exec(query string) (result pgx.CommandTag, err error) {
 	result, err = db.connection.Exec(query)
 
 	if err != nil {
-		return result, fmt.Errorf("Error executing query %s, %w", query, err)
+		return result, fmt.Errorf("error executing query (%s) : %w", query, err)
 	}
 
 	return result, nil

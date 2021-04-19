@@ -67,6 +67,7 @@ oc wait deployment/insights-inventory --for=condition=Available --timeout=150s -
 pkill -f "oc port-forward svc/inventory-db"
 oc port-forward svc/inventory-db 5432:5432 -n xjoin-operator-project &
 sleep 3
+psql -U postgres -h inventory-db -p 5432 -d insights -c "ALTER ROLE postgres REPLICATION LOGIN;"
 psql -U postgres -h inventory-db -p 5432 -d insights -c "ALTER ROLE insights REPLICATION LOGIN;"
 psql -U postgres -h inventory-db -p 5432 -d insights -c "CREATE PUBLICATION dbz_publication FOR TABLE hosts;"
 psql -U postgres -h inventory-db -p 5432 -d insights -c "ALTER SYSTEM SET wal_level = logical;"
