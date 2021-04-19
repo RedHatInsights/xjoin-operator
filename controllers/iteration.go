@@ -191,6 +191,8 @@ func (i *ReconcileIteration) isXJoinResource(resourceName string) bool {
 		response = false
 	} else if strings.Index(resourceName, i.parameters.ResourceNamePrefix.String()) == 0 {
 		response = true
+	} else if strings.Index(resourceName, database.ReplicationSlotPrefix(i.parameters.ResourceNamePrefix.String())) == 0 {
+		response = true
 	}
 
 	return response

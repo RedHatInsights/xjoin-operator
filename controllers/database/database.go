@@ -66,7 +66,11 @@ func (db *Database) hostCountQuery() string {
 }
 
 func ReplicationSlotName(resourceNamePrefix string, pipelineVersion string) string {
-	return strings.ReplaceAll(resourceNamePrefix, ".", "_") + "_" + pipelineVersion
+	return ReplicationSlotPrefix(resourceNamePrefix) + "_" + pipelineVersion
+}
+
+func ReplicationSlotPrefix(resourceNamePrefix string) string {
+	return strings.ReplaceAll(resourceNamePrefix, ".", "_")
 }
 
 func (db *Database) CreateReplicationSlot(slot string) error {
@@ -92,7 +96,7 @@ func (db *Database) ListReplicationSlots(resourceNamePrefix string) ([]string, e
 		if err != nil {
 			return slots, err
 		}
-		if strings.Index(slot, resourceNamePrefix) == 0 {
+		if strings.Index(slot, ReplicationSlotPrefix(resourceNamePrefix)) == 0 {
 			slots = append(slots, slot)
 		}
 	}
