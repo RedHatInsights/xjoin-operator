@@ -51,6 +51,13 @@ func NewTestIteration() *Iteration {
 	return &testIteration
 }
 
+func (i *Iteration) CloseDB() {
+	if i.DbClient != nil {
+		err := i.DbClient.Close()
+		Expect(err).ToNot(HaveOccurred())
+	}
+}
+
 func (i *Iteration) SetESConnectorURL(esUrl string, connectorName string) {
 	configUrl := fmt.Sprintf(
 		"http://%s-connect-api.%s.svc:8083/connectors/%s/config",
@@ -90,7 +97,25 @@ func (i *Iteration) DeleteService(serviceName string) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func (i *Iteration) CreateService(serviceName string) {
+func (i *Iteration) CreateDBService(serviceName string) {
+	service := &corev1.Service{}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+
+	err := i.XJoinReconciler.Client.Get(
+		ctx, client.ObjectKey{Name: "inventory-db", Namespace: "xjoin-operator-project"}, service)
+	Expect(err).ToNot(HaveOccurred())
+
+	service.Name = serviceName
+	service.Namespace = "xjoin-operator-project"
+	service.Spec.ClusterIP = ""
+	service.Spec.ClusterIPs = []string{}
+	service.ResourceVersion = ""
+	err = i.XJoinReconciler.Client.Create(ctx, service)
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func (i *Iteration) CreateESService(serviceName string) {
 	service := &corev1.Service{}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
@@ -108,7 +133,7 @@ func (i *Iteration) CreateService(serviceName string) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func (i *Iteration) ScaleStrimziDeployment(replicas int) {
+func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int) {
 	var deploymentGVK = schema.GroupVersionKind{
 		Group:   "apps",
 		Kind:    "Deployment",
@@ -121,7 +146,7 @@ func (i *Iteration) ScaleStrimziDeployment(replicas int) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 	err := i.XJoinReconciler.Client.Get(
-		ctx, client.ObjectKey{Name: "strimzi-cluster-operator", Namespace: "kafka"}, deployment)
+		ctx, client.ObjectKey{Name: name, Namespace: namespace}, deployment)
 
 	Expect(err).ToNot(HaveOccurred())
 
@@ -144,7 +169,7 @@ func (i *Iteration) ScaleStrimziDeployment(replicas int) {
 			defer cancel()
 
 			labels := client.MatchingLabels{}
-			labels["name"] = "strimzi-cluster-operator"
+			labels["name"] = name
 			err = i.XJoinReconciler.Client.List(ctx, pods, labels)
 
 			if len(pods.Items) == 0 {
@@ -162,6 +187,24 @@ func (i *Iteration) ScaleStrimziDeployment(replicas int) {
 			}
 
 			return false, nil
+		})
+		Expect(err).ToNot(HaveOccurred())
+	} else {
+		err = wait.PollImmediate(time.Second, time.Duration(60)*time.Second, func() (bool, error) {
+			pods := &corev1.PodList{}
+
+			ctx, cancel = context.WithTimeout(context.Background(), time.Second*60)
+			defer cancel()
+
+			labels := client.MatchingLabels{}
+			labels["name"] = name
+			err = i.XJoinReconciler.Client.List(ctx, pods, labels)
+
+			if len(pods.Items) > 0 {
+				return false, nil
+			} else {
+				return true, nil
+			}
 		})
 		Expect(err).ToNot(HaveOccurred())
 	}
