@@ -41,7 +41,7 @@ func ForwardPorts() {
 	cmd := exec.Command(cwd + "/dev/forward-ports.sh")
 	err = cmd.Run()
 	Expect(err).ToNot(HaveOccurred())
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Second * 2)
 }
 
 /*
