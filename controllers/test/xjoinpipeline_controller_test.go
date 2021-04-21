@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"github.com/redhatinsights/xjoin-operator/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -303,23 +304,24 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Removes stale replication slots", func() {
-			slot1 := ResourceNamePrefix + "_1"
-			slot2 := ResourceNamePrefix + "_2"
-			err := i.DbClient.RemoveReplicationSlotsForPrefix(ResourceNamePrefix)
+			prefix := ResourceNamePrefix + ".withadot"
+			slot1 := database.ReplicationSlotPrefix(prefix) + "_1"
+			slot2 := database.ReplicationSlotPrefix(prefix) + "_2"
+			err := i.DbClient.RemoveReplicationSlotsForPrefix(prefix)
 			Expect(err).ToNot(HaveOccurred())
 			err = i.DbClient.CreateReplicationSlot(slot1)
 			Expect(err).ToNot(HaveOccurred())
 			err = i.DbClient.CreateReplicationSlot(slot2)
 			Expect(err).ToNot(HaveOccurred())
 
-			slots, err := i.DbClient.ListReplicationSlots(ResourceNamePrefix)
+			slots, err := i.DbClient.ListReplicationSlots(prefix)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(slots).To(ContainElements(slot1, slot2))
 
-			i.CreatePipeline()
+			i.CreatePipeline(&xjoin.XJoinPipelineSpec{ResourceNamePrefix: &prefix})
 			i.ReconcileXJoin()
 
-			slots, err = i.DbClient.ListReplicationSlots(ResourceNamePrefix)
+			slots, err = i.DbClient.ListReplicationSlots(prefix)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(slots).ToNot(ContainElements(slot1, slot2))
@@ -677,7 +679,7 @@ var _ = Describe("Pipeline operations", func() {
 			i.ExpectPipelineVersionToBeRemoved(secondVersion)
 		})
 
-		It("Artificats removed when an error occurs during initial setup", func() {
+		It("Artifacts removed when an error occurs during initial setup", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["db.host"] = []byte("invalidurl")

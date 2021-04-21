@@ -112,8 +112,9 @@ func (db *Database) RemoveReplicationSlot(slot string) error {
 }
 
 func (db *Database) RemoveReplicationSlotsForPrefix(resourceNamePrefix string) error {
+	prefix := ReplicationSlotPrefix(resourceNamePrefix)
 	rows, err := db.RunQuery(
-		fmt.Sprintf("SELECT slot_name from pg_catalog.pg_replication_slots WHERE slot_name LIKE '%s%%'", resourceNamePrefix))
+		fmt.Sprintf("SELECT slot_name from pg_catalog.pg_replication_slots WHERE slot_name LIKE '%s%%'", prefix))
 	if err != nil {
 		return err
 	}
