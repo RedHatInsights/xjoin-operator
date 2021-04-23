@@ -266,7 +266,7 @@ func (i *Iteration) SyncHosts(pipelineVersion string, numHosts int) []string {
 }
 
 func (i *Iteration) IndexDocument(pipelineVersion string, id string) {
-	esDocumentFile, err := ioutil.ReadFile("./test/es.document.json")
+	esDocumentFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/es.document.json")
 	Expect(err).ToNot(HaveOccurred())
 
 	tmpl, err := template.New("esDocumentTemplate").Parse(string(esDocumentFile))
@@ -301,7 +301,7 @@ func (i *Iteration) IndexDocument(pipelineVersion string, id string) {
 func (i *Iteration) InsertHost() string {
 	hostId, err := uuid.NewUUID()
 
-	hbiHostFile, err := ioutil.ReadFile("./test/hbi.host.sql")
+	hbiHostFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/hbi.host.sql")
 	Expect(err).ToNot(HaveOccurred())
 
 	tmpl, err := template.New("hbiHostTemplate").Parse(string(hbiHostFile))

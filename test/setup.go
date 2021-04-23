@@ -3,7 +3,6 @@ package test
 import (
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
-	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -29,17 +28,15 @@ var Client client.Client
 var testEnv *envtest.Environment
 var cfg *rest.Config
 
-func getRootDir() string {
+func GetRootDir() string {
 	_, b, _, _ := runtime.Caller(0)
 	d := path.Join(path.Dir(b))
 	return filepath.Dir(d)
 }
 
 func ForwardPorts() {
-	cwd, err := os.Getwd()
-	Expect(err).ToNot(HaveOccurred())
-	cmd := exec.Command(cwd + "/dev/forward-ports.sh")
-	err = cmd.Run()
+	cmd := exec.Command(GetRootDir() + "/dev/forward-ports.sh")
+	err := cmd.Run()
 	Expect(err).ToNot(HaveOccurred())
 	time.Sleep(time.Second * 2)
 }
@@ -59,7 +56,7 @@ func Setup(t *testing.T, suiteName string) {
 
 		By("bootstrapping test environment")
 		testEnv = &envtest.Environment{
-			CRDDirectoryPaths:  []string{filepath.Join(getRootDir(), "config", "crd", "bases"), filepath.Join(getRootDir(), "dev", "cluster-operator", "crd")},
+			CRDDirectoryPaths:  []string{filepath.Join(GetRootDir(), "config", "crd", "bases"), filepath.Join(GetRootDir(), "dev", "cluster-operator", "crd")},
 			UseExistingCluster: &useExistingCluster,
 		}
 
