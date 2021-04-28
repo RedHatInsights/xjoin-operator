@@ -78,15 +78,16 @@ func Setup(t *testing.T, suiteName string) {
 			User:     "insights",
 			Password: "insights",
 			Name:     "test",
+			SSL:      "disable",
 		})
 
 		err = dbClient.Connect()
 		Expect(err).ToNot(HaveOccurred())
+		defer dbClient.Close()
 
 		err = dbClient.RemoveReplicationSlotsForPrefix("xjointest")
 		Expect(err).ToNot(HaveOccurred())
-
-		err = dbClient.Close()
+		err = dbClient.RemoveReplicationSlotsForPrefix("xjointestupdated")
 		Expect(err).ToNot(HaveOccurred())
 
 		close(done)

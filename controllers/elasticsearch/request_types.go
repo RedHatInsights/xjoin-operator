@@ -18,3 +18,11 @@ type UpdateAliasIndex struct {
 	Alias        string `json:"alias,omitempty"`
 	IsWriteIndex bool   `json:"is_write_index,omitempty"`
 }
+
+type QueryHostsById struct {
+	Query struct {
+		IDs struct {
+			Values []string `json:"values"`
+		} `json:"ids"`
+	} `json:"query"`
+}

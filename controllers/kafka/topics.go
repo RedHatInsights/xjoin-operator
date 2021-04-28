@@ -71,6 +71,10 @@ func (kafka *Kafka) DeleteTopicByPipelineVersion(pipelineVersion string) error {
 }
 
 func (kafka *Kafka) DeleteTopic(topicName string) error {
+	if topicName == "" {
+		return nil
+	}
+
 	topic := &unstructured.Unstructured{}
 	topic.SetName(topicName)
 	topic.SetNamespace(kafka.Parameters.KafkaClusterNamespace.String())

@@ -120,6 +120,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		Name:     i.parameters.HBIDBName.String(),
 		Port:     i.parameters.HBIDBPort.String(),
 		Password: i.parameters.HBIDBPassword.String(),
+		SSL:      i.parameters.HBIDBSSL.String(),
 	})
 
 	if err = i.InventoryDb.Connect(); err != nil {

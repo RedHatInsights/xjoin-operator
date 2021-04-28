@@ -8,6 +8,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"github.com/redhatinsights/xjoin-operator/test"
 	"github.com/spf13/viper"
@@ -20,6 +21,8 @@ import (
 	"strings"
 	"time"
 )
+
+var log = logger.NewLogger("test_utils")
 
 func newXJoinReconciler(namespace string) *XJoinPipelineReconciler {
 	return NewXJoinReconciler(
@@ -96,6 +99,8 @@ func Before() *Iteration {
 		Namespace: test.UniqueNamespace(ResourceNamePrefix),
 	}
 
+	log.Info("Namespace: " + i.NamespacedName.Namespace)
+
 	i.XJoinReconciler = newXJoinReconciler(i.NamespacedName.Namespace)
 	i.ValidationReconciler = newValidationReconciler(i.NamespacedName.Namespace)
 
@@ -128,12 +133,14 @@ func Before() *Iteration {
 		User:     "postgres",
 		Password: "postgres",
 		Name:     i.Parameters.HBIDBName.String(),
+		SSL:      "disable",
 	})
 
 	err = i.DbClient.Connect()
 	Expect(err).ToNot(HaveOccurred())
+	i.DbClient.SetMaxConnections(1000)
 
-	_, err = i.DbClient.Exec("DELETE FROM hosts")
+	_, err = i.DbClient.ExecQuery("DELETE FROM hosts")
 	Expect(err).ToNot(HaveOccurred())
 
 	return i
@@ -142,6 +149,7 @@ func Before() *Iteration {
 func After(i *Iteration) {
 	err := i.DbClient.Connect()
 	Expect(err).ToNot(HaveOccurred())
+	defer i.CloseDB()
 
 	//Delete any leftover ES indices
 	indices, err := i.EsClient.ListIndices()
@@ -167,14 +175,19 @@ func After(i *Iteration) {
 		Expect(err).ToNot(HaveOccurred())
 		if len(pipelines.Items) != 0 {
 			pipeline := pipelines.Items[0]
-			err = i.KafkaClient.DeleteConnectorsForPipelineVersion(pipeline.Status.PipelineVersion)
-			Expect(err).ToNot(HaveOccurred())
-			err = i.KafkaClient.DeleteTopicByPipelineVersion(pipeline.Status.PipelineVersion)
-			Expect(err).ToNot(HaveOccurred())
-			err = i.DbClient.RemoveReplicationSlotsForPipelineVersion(pipeline.Status.PipelineVersion)
-			Expect(err).ToNot(HaveOccurred())
-			err = i.EsClient.DeleteIndex(pipeline.Status.PipelineVersion)
-			Expect(err).ToNot(HaveOccurred())
+			_ = i.KafkaClient.DeleteConnectorsForPipelineVersion(pipeline.Status.PipelineVersion)
+			_ = i.KafkaClient.DeleteTopicByPipelineVersion(pipeline.Status.PipelineVersion)
+			_ = i.DbClient.RemoveReplicationSlotsForPipelineVersion(pipeline.Status.PipelineVersion)
+			_ = i.EsClient.DeleteIndex(pipeline.Status.PipelineVersion)
+			_ = i.EsClient.DeleteESPipelineByVersion(pipeline.Status.PipelineVersion)
+
+			_ = i.KafkaClient.DeleteConnector(pipeline.Status.ActiveDebeziumConnectorName)
+			_ = i.KafkaClient.DeleteConnector(pipeline.Status.ActiveESConnectorName)
+			_ = i.KafkaClient.DeleteTopic(pipeline.Status.ActiveTopicName)
+			_ = i.DbClient.RemoveReplicationSlot(pipeline.Status.ActiveReplicationSlotName)
+			_ = i.EsClient.DeleteIndexByFullName(pipeline.Status.ActiveIndexName)
+			_ = i.EsClient.DeleteESPipelineByFullName(pipeline.Status.ActiveESPipelineName)
+
 			i.DeleteAllHosts()
 			if pipeline.DeletionTimestamp == nil {
 				pipeline.ObjectMeta.Finalizers = nil
@@ -196,4 +209,6 @@ func After(i *Iteration) {
 			err = i.KafkaClient.DeleteConnectorsForPipelineVersion("1")
 		}
 	}
+
+	i.DbClient.Close()
 }

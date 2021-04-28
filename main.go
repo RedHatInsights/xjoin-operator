@@ -19,12 +19,15 @@ package main
 import (
 	"flag"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
-	"k8s.io/apimachinery/pkg/runtime"
+	k8runtime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/clientcmd"
+	"log"
 	"os"
+	"os/signal"
+	"runtime/pprof"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"time"
@@ -32,10 +35,11 @@ import (
 	xjoinv1alpha1 "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers"
 	// +kubebuilder:scaffold:imports
+	_ "net/http/pprof"
 )
 
 var (
-	scheme   = runtime.NewScheme()
+	scheme   = k8runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
 
@@ -46,7 +50,27 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
+func SetupCloseHandler() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		sigchan := make(chan os.Signal)
+		signal.Notify(sigchan, os.Interrupt)
+		<-sigchan
+		log.Println("CTRL-C Detected. Cleaning up.")
+		pprof.StopCPUProfile()
+		os.Exit(0)
+	}()
+}
+
 func main() {
+	//SetupCloseHandler()
+	//
+	//go func() {
+	//	runtime.SetBlockProfileRate(1)
+	//	log.Println(http.ListenAndServe("localhost:6060", nil))
+	//}()
+
 	var metricsAddr string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")

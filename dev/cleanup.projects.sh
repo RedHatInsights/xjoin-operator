@@ -26,6 +26,7 @@ oc get projects -o custom-columns=name:metadata.name | grep test | while read pr
 done
 
 oc project xjoin-operator-project
+oc delete KafkaConnector --all
 
 #oc get KafkaTopic -o custom-columns=name:metadata.name | grep test | while read topic ; do
 #    oc delete KafkaTopic $topic

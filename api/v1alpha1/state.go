@@ -36,7 +36,7 @@ func (instance *XJoinPipeline) GetState() PipelineState {
 	}
 }
 
-func (instance *XJoinPipeline) SetValid(status metav1.ConditionStatus, reason string, message string, hostCount int) {
+func (instance *XJoinPipeline) SetValid(status metav1.ConditionStatus, reason string, message string) {
 	meta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:    validConditionType,
 		Status:  status,
@@ -56,7 +56,7 @@ func (instance *XJoinPipeline) SetValid(status metav1.ConditionStatus, reason st
 }
 
 func (instance *XJoinPipeline) ResetValid() {
-	instance.SetValid(metav1.ConditionUnknown, "New", "Validation not yet run", -1)
+	instance.SetValid(metav1.ConditionUnknown, "New", "Validation not yet run")
 }
 
 func (instance *XJoinPipeline) IsValid() bool {

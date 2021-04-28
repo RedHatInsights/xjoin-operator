@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/tools/record"
 	"net/http"
 	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -63,6 +64,7 @@ func (i *Iteration) SetESConnectorURL(esUrl string, connectorName string) {
 		"http://%s-connect-api.%s.svc:8083/connectors/%s/config",
 		i.Parameters.ConnectCluster.String(), i.Parameters.ConnectClusterNamespace.String(), connectorName)
 
+	//GET current config from Kafka Connect REST API
 	res, err := http.Get(configUrl)
 	Expect(err).ToNot(HaveOccurred())
 	defer res.Body.Close()
@@ -71,10 +73,12 @@ func (i *Iteration) SetESConnectorURL(esUrl string, connectorName string) {
 	err = json.Unmarshal(body, &bodyMap)
 	Expect(err).ToNot(HaveOccurred())
 
+	//update config with new URL
 	bodyMap["connection.url"] = esUrl
 	bodyJson, err := json.Marshal(bodyMap)
 	Expect(err).ToNot(HaveOccurred())
 
+	//PUT updated config
 	httpClient := &http.Client{}
 	req, err := http.NewRequest(http.MethodPut, configUrl, bytes.NewReader(bodyJson))
 	Expect(err).ToNot(HaveOccurred())
@@ -82,6 +86,7 @@ func (i *Iteration) SetESConnectorURL(esUrl string, connectorName string) {
 	res, err = httpClient.Do(req)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(res).ToNot(BeNil())
+	defer res.Body.Close()
 }
 
 func (i *Iteration) DeleteService(serviceName string) {
@@ -258,15 +263,15 @@ func (i *Iteration) SyncHosts(pipelineVersion string, numHosts int) []string {
 
 	for j := 0; j < numHosts; j++ {
 		id := i.InsertHost()
-		i.IndexDocument(pipelineVersion, id)
+		i.IndexDocument(pipelineVersion, id, "es.document.1")
 		ids = append(ids, id)
 	}
 
 	return ids
 }
 
-func (i *Iteration) IndexDocument(pipelineVersion string, id string) {
-	esDocumentFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/es.document.json")
+func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename string) {
+	esDocumentFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/" + filename + ".json")
 	Expect(err).ToNot(HaveOccurred())
 
 	tmpl, err := template.New("esDocumentTemplate").Parse(string(esDocumentFile))
@@ -540,6 +545,14 @@ func (i *Iteration) ReconcileValidation() *xjoin.XJoinPipeline {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(result.Requeue).To(BeFalse())
 	return i.GetPipeline()
+}
+
+func (i *Iteration) AssertValidationEvents(numHosts int) {
+	recorder, _ := i.ValidationReconciler.Recorder.(*record.FakeRecorder)
+	Expect(recorder.Events).To(HaveLen(3))
+	Expect(<-recorder.Events).To(Equal(fmt.Sprintf("Normal CountValidationPassed Results: mismatchRatio: 0, esCount: %v, hbiCount: %v", numHosts, numHosts)))
+	Expect(<-recorder.Events).To(Equal("Normal IDValidationPassed 0 hosts ids do not match"))
+	Expect(<-recorder.Events).To(Equal(fmt.Sprintf("Normal FullValidationPassed 0 hosts do not match. %v hosts validated.", numHosts)))
 }
 
 func (i *Iteration) WaitForPipelineToBeValid() *xjoin.XJoinPipeline {

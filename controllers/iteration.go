@@ -349,6 +349,7 @@ func (i *ReconcileIteration) updateAliasIfHealthier() error {
 			Name:     i.parameters.HBIDBName.String(),
 			Port:     i.parameters.HBIDBPort.String(),
 			Password: i.parameters.HBIDBPassword.String(),
+			SSL:      i.parameters.HBIDBSSL.String(),
 		})
 
 		if err = i.InventoryDb.Connect(); err != nil {
@@ -573,7 +574,13 @@ func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, conne
 }
 
 func (i *ReconcileIteration) DeleteResourceForPipeline(version string) error {
-	err := i.Kafka.DeleteConnectorsForPipelineVersion(version)
+	err := i.Kafka.DeleteTopicByPipelineVersion(version)
+	if err != nil {
+		i.error(err, "Error deleting topic")
+		return err
+	}
+
+	err = i.Kafka.DeleteConnectorsForPipelineVersion(version)
 	if err != nil {
 		i.error(err, "Error deleting connectors")
 		return err
@@ -594,12 +601,6 @@ func (i *ReconcileIteration) DeleteResourceForPipeline(version string) error {
 	err = i.ESClient.DeleteESPipelineByVersion(version)
 	if err != nil {
 		i.error(err, "Error deleting ES pipeline")
-		return err
-	}
-
-	err = i.Kafka.DeleteTopicByPipelineVersion(version)
-	if err != nil {
-		i.error(err, "Error deleting topic")
 		return err
 	}
 

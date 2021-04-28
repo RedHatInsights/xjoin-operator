@@ -383,7 +383,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
 
-			i.IndexDocument(pipeline.Status.PipelineVersion, hostId)
+			i.IndexDocument(pipeline.Status.PipelineVersion, hostId, "es.document.1")
 
 			i.ReconcileValidation()
 			pipeline = i.ReconcileXJoin()
@@ -428,7 +428,7 @@ var _ = Describe("Pipeline operations", func() {
 				pipeline = i.ExpectInitSyncUnknownReconcile()
 				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
-				i.IndexDocument(pipeline.Status.PipelineVersion, hostId)
+				i.IndexDocument(pipeline.Status.PipelineVersion, hostId, "es.document.1")
 
 				pipeline = i.ExpectValidReconcile()
 				Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
@@ -517,9 +517,10 @@ var _ = Describe("Pipeline operations", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 
+			//update the secret with new username/password
 			tempUser := "tempuser"
 			tempPassword := "temppassword"
-			_, _ = i.DbClient.Exec( //allow this to fail when the user already exists
+			_, _ = i.DbClient.ExecQuery( //allow this to fail when the user already exists
 				fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s' IN ROLE insights;", tempUser, tempPassword))
 			secret.Data["db.user"] = []byte(tempUser)
 			secret.Data["db.password"] = []byte(tempPassword)
@@ -527,9 +528,11 @@ var _ = Describe("Pipeline operations", func() {
 			defer cancel()
 			err = test.Client.Update(ctx, secret)
 
+			//run a reconcile
 			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
+			//the new pipeline should use the updated username/password from the HBI DB secret
 			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			connectorSpec := connector.Object["spec"].(map[string]interface{})
@@ -673,6 +676,9 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline = i.ExpectInitSyncUnknownReconcile()
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 			secondVersion := pipeline.Status.PipelineVersion
+
+			//give connect time to create resources
+			time.Sleep(5 * time.Second)
 
 			i.DeletePipeline(pipeline)
 			i.ExpectPipelineVersionToBeRemoved(firstVersion)
@@ -915,8 +921,14 @@ var _ = Describe("Pipeline operations", func() {
 
 			pipeline := i.CreateValidPipeline()
 
+			//give connect time to create the connectors
+			time.Sleep(5 * time.Second)
+
 			//scale down strimzi operator deployment
 			i.ScaleDeployment("strimzi-cluster-operator", "kafka", 0)
+
+			//give strimzi time to scale down
+			time.Sleep(5 * time.Second)
 
 			//update es connector config with invalid url
 			i.SetESConnectorURL(
@@ -929,6 +941,7 @@ var _ = Describe("Pipeline operations", func() {
 			//validate task is failed
 			tasks, err := i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveESConnectorName)
 			Expect(err).ToNot(HaveOccurred())
+			Expect(len(tasks)).To(BeNumerically(">", 0))
 			for _, task := range tasks {
 				Expect(task["state"]).To(Equal("FAILED"))
 			}
@@ -970,7 +983,7 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline = i.ExpectInitSyncInvalidReconcile()
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
-				"Validation failed - 1 hosts (100.00%) do not match"))
+				"Count validation failed - 1 hosts (100.00%) do not match"))
 
 			//validate alias points to jenkins pipeline
 			indices, err := i.EsClient.GetCurrentIndicesWithAlias("xjoin.inventory.hosts")
@@ -1038,7 +1051,7 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline = i.ExpectInitSyncInvalidReconcile()
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
-				"Validation failed - 1 hosts (100.00%) do not match"))
+				"Count validation failed - 1 hosts (100.00%) do not match"))
 
 			i.ExpectNewReconcile()
 

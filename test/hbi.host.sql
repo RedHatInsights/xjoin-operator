@@ -19,6 +19,6 @@ VALUES (
     '{"test1": "test1a"}',
     '{"test2": "test2a"}',
     '{"test3": "test3a", "test4": ["asdf", "jkl;"], "test5": {"a": {"1": "123"}}, "test6": [{"1": "23"}, {"2": {"3": "345"}}]}',
-    '{}',
+    '{"test-system-profile": "testing"}',
     '2017-01-01 00:00:00',
     'me')

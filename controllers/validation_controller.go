@@ -1,15 +1,11 @@
 package controllers
 
 import (
-	"fmt"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"k8s.io/client-go/tools/record"
 
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,18 +37,6 @@ func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request)
 		return i.getValidationInterval()
 	}
 
-	i.InventoryDb = database.NewDatabase(database.DBParams{
-		Host:     i.parameters.HBIDBHost.String(),
-		User:     i.parameters.HBIDBUser.String(),
-		Name:     i.parameters.HBIDBName.String(),
-		Port:     i.parameters.HBIDBPort.String(),
-		Password: i.parameters.HBIDBPassword.String(),
-	})
-
-	if err = i.InventoryDb.Connect(); err != nil {
-		return i, err
-	}
-
 	return i, err
 }
 
@@ -80,7 +64,7 @@ func (r *ValidationReconciler) Reconcile(request ctrl.Request) (ctrl.Result, err
 		return reconcile.Result{}, nil
 	}
 
-	reqLogger.Info("Validating XJoinPipeline")
+	reqLogger.Info("Checking for resource deviation")
 
 	if r.CheckResourceDeviation {
 		problem, err := i.checkForDeviation()
@@ -94,7 +78,9 @@ func (r *ValidationReconciler) Reconcile(request ctrl.Request) (ctrl.Result, err
 		}
 	}
 
-	isValid, mismatchRatio, mismatchCount, hostCount, err := i.validate()
+	reqLogger.Info("Validating XJoinPipeline")
+
+	isValid, err := i.validate()
 	if err != nil {
 		i.error(err, "Error validating pipeline")
 		return reconcile.Result{}, err
@@ -103,28 +89,9 @@ func (r *ValidationReconciler) Reconcile(request ctrl.Request) (ctrl.Result, err
 	reqLogger.Info("Validation finished", "isValid", isValid)
 
 	if isValid {
-		msg := fmt.Sprintf("%v hosts (%.2f%%) do not match", mismatchCount, mismatchRatio*100)
-
 		if i.Instance.GetState() == xjoin.STATE_INVALID {
 			i.eventNormal("Valid", "Pipeline is valid again")
 		}
-
-		i.Instance.SetValid(
-			metav1.ConditionTrue,
-			"ValidationSucceeded",
-			fmt.Sprintf("Validation succeeded - %s", msg),
-			hostCount,
-		)
-	} else {
-		msg := fmt.Sprintf("Validation failed - %v hosts (%.2f%%) do not match", mismatchCount, mismatchRatio*100)
-
-		i.Recorder.Event(i.Instance, corev1.EventTypeWarning, "ValidationFailed", msg)
-		i.Instance.SetValid(
-			metav1.ConditionFalse,
-			"ValidationFailed",
-			msg,
-			hostCount,
-		)
 	}
 
 	return i.updateStatusAndRequeue()

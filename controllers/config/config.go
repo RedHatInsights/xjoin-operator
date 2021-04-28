@@ -221,7 +221,7 @@ func (config *Config) getIntValue(key string, defaultValue int) (int, error) {
 			return int(parsed), nil
 		}
 	} else {
-		log.Debug("Key missing from configmap, falling back to default value", "key", key)
+		//log.Debug("Key missing from configmap, falling back to default value", "key", key)
 	}
 
 	return defaultValue, nil
