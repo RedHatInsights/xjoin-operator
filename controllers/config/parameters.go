@@ -55,6 +55,7 @@ type Parameters struct {
 	HBIDBPort                         Parameter
 	HBIDBUser                         Parameter
 	HBIDBPassword                     Parameter
+	HBIDBSSL                          Parameter
 	HBIDBSecretName                   Parameter
 	HBIDBSecretVersion                Parameter
 	KafkaTopicPartitions              Parameter
@@ -64,6 +65,8 @@ type Parameters struct {
 	KafkaTopicRetentionBytes          Parameter
 	KafkaTopicRetentionMS             Parameter
 	JenkinsManagedVersion             Parameter
+	FullValidationNumThreads          Parameter
+	FullValidationChunkSize           Parameter
 }
 
 func NewXJoinConfiguration() Parameters {
@@ -473,6 +476,11 @@ func NewXJoinConfiguration() Parameters {
 			SecretKey:    "db.password",
 			DefaultValue: "insights",
 		},
+		HBIDBSSL: Parameter{
+			Type:         reflect.String,
+			DefaultValue: "disable",
+			ConfigMapKey: "hbi.db.ssl",
+		},
 		KafkaTopicPartitions: Parameter{
 			Type:         reflect.Int,
 			ConfigMapKey: "kafka.topic.partitions",
@@ -502,6 +510,16 @@ func NewXJoinConfiguration() Parameters {
 			Type:         reflect.String,
 			ConfigMapKey: "kafka.topic.retention.ms",
 			DefaultValue: "2678400000",
+		},
+		FullValidationChunkSize: Parameter{
+			Type:         reflect.Int,
+			ConfigMapKey: "full.validation.chunk.size",
+			DefaultValue: 2000,
+		},
+		FullValidationNumThreads: Parameter{
+			Type:         reflect.Int,
+			ConfigMapKey: "full.validation.num.threads",
+			DefaultValue: 50,
 		},
 	}
 }

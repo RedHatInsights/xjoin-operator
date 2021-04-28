@@ -313,6 +313,10 @@ func EmptyConnector() *unstructured.Unstructured {
 }
 
 func (kafka *Kafka) DeleteConnector(name string) error {
+	if name == "" {
+		return nil
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
 	defer cancel()
 
@@ -322,7 +326,7 @@ func (kafka *Kafka) DeleteConnector(name string) error {
 	connector.SetGroupVersionKind(connectorGVK)
 
 	//check the Connect REST API every second for 10 seconds to see if the connector is really deleted.
-	//This is necessary because there is a race condition Kafka Connect where if a connector
+	//This is necessary because there is a race condition in Kafka Connect. If a connector
 	//and topic is deleted in rapid succession, the Kafka Connect tasks get stuck trying to connect to a topic
 	//that doesn't exist.
 	delay := time.Millisecond * 50
@@ -349,6 +353,8 @@ func (kafka *Kafka) DeleteConnector(name string) error {
 	if !connectorIsDeleted {
 		return errors.New(fmt.Sprintf("connector %s wasn't deleted after 10 seconds", name))
 	}
+
+	time.Sleep(1 * time.Second)
 
 	return nil
 }

@@ -1,3 +1,4 @@
+---
 apiVersion: apps.openshift.io/v1
 kind: DeploymentConfig
 metadata:
@@ -110,3 +111,42 @@ spec:
   test: false
   triggers:
   - type: ConfigChange
+
+---
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaTopic
+metadata:
+  labels:
+    strimzi.io/cluster: xjoin-kafka-cluster
+  name: platform.inventory.host-ingress
+  namespace: xjoin-operator-project
+spec:
+  partitions: 1
+  replicas: 1
+  topicName: platform.inventory.host-ingress
+
+---
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaTopic
+metadata:
+  labels:
+    strimzi.io/cluster: xjoin-kafka-cluster
+  name: platform.inventory.events
+  namespace: xjoin-operator-project
+spec:
+  partitions: 1
+  replicas: 1
+  topicName: platform.inventory.events
+
+---
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaTopic
+metadata:
+  labels:
+    strimzi.io/cluster: xjoin-kafka-cluster
+  name: platform.system-profile
+  namespace: xjoin-operator-project
+spec:
+  partitions: 1
+  replicas: 1
+  topicName: platform.system-profile

@@ -11,14 +11,34 @@ var (
 		Help: "Total number of hosts in the given ElasticSearch Index",
 	}, []string{})
 
-	inconsistencyRatio = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "xjoin_inconsistency_ratio",
-		Help: "The ratio of inconsistency of data between the source database and the application replica",
+	countInconsistencyRatio = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "xjoin_count_inconsistency_ratio",
+		Help: "The ratio of missing hosts between HBI and ElasticSearch",
 	}, []string{})
 
-	inconsistencyAbsolute = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "xjoin_inconsistency_total",
-		Help: "The total number of hosts that are not consistent with the origin",
+	countInconsistencyAbsolute = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "xjoin_count_inconsistency_total",
+		Help: "The total number of hosts that are missing in ElasticSearch",
+	}, []string{})
+
+	idInconsistencyRatio = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "xjoin_id_inconsistency_ratio",
+		Help: "The ratio of inconsistent host IDs between HBI and ElasticSearch",
+	}, []string{})
+
+	idInconsistencyAbsolute = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "xjoin_id_inconsistency_total",
+		Help: "The total number of host IDs that are inconsistent between HBI and ElasticSearch",
+	}, []string{})
+
+	fullInconsistencyRatio = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "xjoin_full_inconsistency_ratio",
+		Help: "The ratio of hosts with invalid data between HBI and ElasticSearch",
+	}, []string{})
+
+	fullInconsistencyAbsolute = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "xjoin_full_inconsistency_total",
+		Help: "The total number hosts with invalid data between HBI and ElasticSearch",
 	}, []string{})
 
 	inconsistencyThreshold = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -46,15 +66,27 @@ const (
 
 func Init() {
 	metrics.Registry.MustRegister(
-		hostCount, inconsistencyRatio, inconsistencyAbsolute,
-		inconsistencyThreshold, validationFailedCount, refreshCount)
+		hostCount,
+		countInconsistencyRatio,
+		countInconsistencyAbsolute,
+		idInconsistencyRatio,
+		idInconsistencyAbsolute,
+		fullInconsistencyRatio,
+		fullInconsistencyAbsolute,
+		inconsistencyThreshold,
+		validationFailedCount,
+		refreshCount)
 }
 
 func InitLabels() {
 	hostCount.WithLabelValues()
 	inconsistencyThreshold.WithLabelValues()
-	inconsistencyRatio.WithLabelValues()
-	inconsistencyAbsolute.WithLabelValues()
+	countInconsistencyRatio.WithLabelValues()
+	countInconsistencyAbsolute.WithLabelValues()
+	idInconsistencyRatio.WithLabelValues()
+	idInconsistencyAbsolute.WithLabelValues()
+	fullInconsistencyRatio.WithLabelValues()
+	fullInconsistencyAbsolute.WithLabelValues()
 	validationFailedCount.WithLabelValues()
 	refreshCount.WithLabelValues(string(RefreshInvalidPipeline))
 	refreshCount.WithLabelValues(string(RefreshStateDeviation))
@@ -68,11 +100,25 @@ func ESHostCount(value int) {
 	hostCount.WithLabelValues().Set(float64(value))
 }
 
-func ValidationFinished(threshold int, ratio float64, inconsistentTotal int, isValid bool) {
+func FullValidationFinished(threshold int, ratio float64, inconsistentTotal int) {
 	inconsistencyThreshold.WithLabelValues().Set(float64(threshold) / 100)
-	inconsistencyRatio.WithLabelValues().Set(ratio)
-	inconsistencyAbsolute.WithLabelValues().Set(float64(inconsistentTotal))
+	fullInconsistencyRatio.WithLabelValues().Set(ratio)
+	fullInconsistencyAbsolute.WithLabelValues().Set(float64(inconsistentTotal))
+}
 
+func IDValidationFinished(threshold int, ratio float64, inconsistentTotal int) {
+	inconsistencyThreshold.WithLabelValues().Set(float64(threshold) / 100)
+	idInconsistencyRatio.WithLabelValues().Set(ratio)
+	idInconsistencyAbsolute.WithLabelValues().Set(float64(inconsistentTotal))
+}
+
+func CountValidationFinished(threshold int, ratio float64, inconsistentTotal int) {
+	inconsistencyThreshold.WithLabelValues().Set(float64(threshold) / 100)
+	countInconsistencyRatio.WithLabelValues().Set(ratio)
+	countInconsistencyAbsolute.WithLabelValues().Set(float64(inconsistentTotal))
+}
+
+func ValidationFinished(isValid bool) {
 	if !isValid {
 		validationFailedCount.WithLabelValues().Inc()
 	}

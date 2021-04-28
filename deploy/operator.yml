@@ -57,6 +57,8 @@ parameters:
     value: "1000"
   - name: DEBEZIUM_CONNECTOR_POLL_INTERVAL_MS
     value: "100"
+  - name: HBI_DB_SSL
+    value: "verify-full"
 
 objects:
   - apiVersion: operators.coreos.com/v1
@@ -125,6 +127,7 @@ objects:
       kafka.topic.partitions: ${KAFKA_TOPIC_PARTITIONS}
       kafka.topic.replicas: ${KAFKA_TOPIC_REPLICAS}
       jenkins.managed.version: ${JENKINS_MANAGED_VERSION}
+      hbi.db.ssl: ${HBI_DB_SSL}
 
 
   # TODO: move this into the bundle itself

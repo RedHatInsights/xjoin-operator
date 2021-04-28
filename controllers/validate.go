@@ -1,50 +1,115 @@
 package controllers
 
 import (
+	"fmt"
+	"github.com/go-test/deep"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"math"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
 
 const countMismatchThreshold = 0.5
 const idDiffMaxLength = 50
 
-func (i *ReconcileIteration) validate() (isValid bool, mismatchRatio float64, mismatchCount int, hostCount int, err error) {
-	hbiHostCount, err := i.InventoryDb.CountHosts()
+func (i *ReconcileIteration) validate() (isValid bool, err error) {
+	isValid, countMismatchCount, countMismatchRatio, err := i.countValidation()
+	if err != nil || !isValid {
+		metrics.ValidationFinished(isValid)
+		i.Instance.SetValid(
+			metav1.ConditionFalse,
+			"ValidationFailed",
+			fmt.Sprintf("Count validation failed - %v hosts (%.2f%%) do not match", countMismatchCount, countMismatchRatio*100))
+		return
+	}
+
+	isValid, idMismatchCount, idMismatchRatio, hbiIds, err := i.idValidation()
+	if err != nil || !isValid {
+		metrics.ValidationFinished(isValid)
+		i.Instance.SetValid(
+			metav1.ConditionFalse,
+			"ValidationFailed",
+			fmt.Sprintf("ID validation failed - %v hosts (%.2f%%) do not match", idMismatchCount, idMismatchRatio*100))
+		return
+	}
+
+	isValid, fullMismatchCount, fullMismatchRatio, err := i.fullValidation(hbiIds)
+	if err != nil || !isValid {
+		metrics.ValidationFinished(isValid)
+		i.Instance.SetValid(
+			metav1.ConditionFalse,
+			"ValidationFailed",
+			fmt.Sprintf("Full validation failed - %v hosts (%.2f%%) do not match", fullMismatchCount, fullMismatchRatio*100))
+		return
+	}
+
+	i.Instance.SetValid(
+		metav1.ConditionTrue,
+		"ValidationSucceeded",
+		fmt.Sprintf("Validation succeeded - %v hosts IDs (%.2f%%) do not match, and %v (%.2f%%) hosts have inconsistent data.",
+			idMismatchCount, idMismatchRatio*100, fullMismatchCount, fullMismatchRatio*100))
+
+	return
+}
+
+func (i *ReconcileIteration) countValidation() (isValid bool, mismatchCount int, mismatchRatio float64, err error) {
+	isValid = false
+
+	hostCount, err := i.InventoryDb.CountHosts()
 	if err != nil {
-		return false, -1, -1, -1, err
+		return
 	}
 
 	esCount, err := i.ESClient.CountIndex(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
 	if err != nil {
-		return false, -1, -1, -1, err
+		return
 	}
 
 	metrics.ESHostCount(esCount)
 
-	countMismatch := utils.Abs(hbiHostCount - esCount)
-	countMismatchRatio := float64(countMismatch) / math.Max(float64(hbiHostCount), 1)
+	mismatchCount = utils.Abs(hostCount - esCount)
+	mismatchRatio = float64(mismatchCount) / math.Max(float64(hostCount), 1)
 
-	i.Log.Info("Fetched host counts", "hbi", hbiHostCount,
-		"es", esCount, "countMismatchRatio", countMismatchRatio)
+	i.Log.Info("Fetched host counts", "hbi", hostCount,
+		"es", esCount, "mismatchRatio", mismatchRatio)
 
-	// if the counts are way off don't even bother comparing ids
-	if countMismatchRatio > countMismatchThreshold {
-		i.Log.Info("Count mismatch ratio is above threshold, exiting early",
-			"countMismatchRatio", countMismatchRatio)
-		metrics.ValidationFinished(
-			i.getValidationPercentageThreshold(), countMismatchRatio, countMismatch, false)
-		return false, countMismatchRatio, countMismatch, esCount, nil
+	if mismatchRatio < countMismatchThreshold {
+		isValid = true
 	}
 
-	hbiIds, err := i.InventoryDb.GetHostIds()
+	msg := fmt.Sprintf(
+		"Results: mismatchRatio: %v, esCount: %v, hbiCount: %v",
+		mismatchRatio,
+		esCount,
+		hostCount)
+	if !isValid {
+		i.eventNormal("CountValidationFailed", msg)
+	} else {
+		i.eventNormal("CountValidationPassed", msg)
+	}
+
+	metrics.CountValidationFinished(
+		i.getValidationPercentageThreshold(), mismatchRatio, mismatchCount)
+
+	return
+}
+
+func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mismatchRatio float64, hbiIds []string, err error) {
+
+	isValid = false
+
+	hbiIds, err = i.InventoryDb.GetHostIds()
 	if err != nil {
-		return false, -1, -1, -1, err
+		return
 	}
 
 	esIds, err := i.ESClient.GetHostIDs(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
 	if err != nil {
-		return false, -1, -1, -1, err
+		return
 	}
 
 	i.Log.Info("Fetched host ids")
@@ -54,17 +119,139 @@ func (i *ReconcileIteration) validate() (isValid bool, mismatchRatio float64, mi
 
 	validationThresholdPercent := i.getValidationPercentageThreshold()
 
-	idMismatchRatio := float64(mismatchCount) / math.Max(float64(len(hbiIds)), 1)
-	result := (idMismatchRatio * 100) <= float64(validationThresholdPercent)
+	mismatchRatio = float64(mismatchCount) / math.Max(float64(len(hbiIds)), 1)
+	isValid = (mismatchRatio * 100) <= float64(validationThresholdPercent)
 
-	metrics.ValidationFinished(i.getValidationPercentageThreshold(), idMismatchRatio, mismatchCount, result)
+	msg := fmt.Sprintf("%v hosts ids do not match", mismatchCount)
+	if !isValid {
+		i.eventNormal("IDValidationFailed", msg)
+	} else {
+		i.eventNormal("IDValidationPassed", msg)
+	}
+
 	i.Log.Info(
-		"Validation results",
-		"validationThresholdPercent", validationThresholdPercent,
-		"idMismatchRatio", idMismatchRatio,
+		"ID Validation results",
+		"validationThresholdPercent", i.getValidationPercentageThreshold(),
+		"mismatchRatio", mismatchRatio,
 		// if the list is too long truncate it to first 50 ids to avoid log pollution
 		"inHbiOnly", inHbiOnly[:utils.Min(idDiffMaxLength, len(inHbiOnly))],
 		"inAppOnly", inAppOnly[:utils.Min(idDiffMaxLength, len(inAppOnly))],
 	)
-	return result, idMismatchRatio, mismatchCount, esCount, nil
+
+	metrics.IDValidationFinished(
+		i.getValidationPercentageThreshold(), mismatchRatio, mismatchCount)
+
+	return
+}
+
+type idDiff struct {
+	id   string
+	diff string
+}
+
+func (i *ReconcileIteration) validateChunk(chunk []string, allIdDiffs chan idDiff, errors chan error, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	//retrieve hosts from db and es
+	esHosts, err := i.ESClient.GetHostsByIds(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), chunk)
+	if err != nil {
+		errors <- err
+		return
+	}
+
+	hbiHosts, err := i.InventoryDb.GetHostsByIds(chunk)
+	if err != nil {
+		errors <- err
+		return
+	}
+
+	deep.MaxDiff = 100
+	diffs := deep.Equal(esHosts, hbiHosts)
+
+	//build the change object for logging
+	for _, diff := range diffs {
+		idxStr := diff[strings.Index(diff, "[")+1 : strings.Index(diff, "]")]
+
+		idx, err := strconv.ParseInt(idxStr, 10, 64)
+		if err != nil {
+			errors <- err
+			return
+		}
+		id := chunk[idx]
+		allIdDiffs <- idDiff{id: id, diff: diff}
+	}
+
+	return
+}
+
+func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatchCount int, mismatchRatio float64, err error) {
+	allIdDiffs := make(chan idDiff, len(ids)*100)
+	errors := make(chan error, len(ids))
+	numThreads := 0
+	wg := new(sync.WaitGroup)
+
+	chunkSize := i.parameters.FullValidationChunkSize.Int()
+	var numChunks = int(math.Ceil(float64(len(ids)) / float64(chunkSize)))
+
+	i.Log.Info("START: " + time.Now().String())
+
+	for j := 0; j < numChunks; j++ {
+		//determine which chunk of systems to validate
+		start := j * chunkSize
+		var end int
+		if j == numChunks-1 && len(ids)%chunkSize > 0 {
+			end = start + (len(ids) % chunkSize)
+		} else {
+			end = start + chunkSize
+		}
+		chunk := ids[start:end]
+
+		//validate chunks in parallel
+		wg.Add(1)
+		numThreads += 1
+		go i.validateChunk(chunk, allIdDiffs, errors, wg)
+
+		if numThreads == i.parameters.FullValidationNumThreads.Int() || j == numChunks-1 {
+			wg.Wait()
+			numThreads = 0
+		}
+	}
+
+	i.Log.Info("END: " + time.Now().String())
+
+	close(allIdDiffs)
+	close(errors)
+
+	//group diffs by id for counting mismatched systems
+	diffsById := make(map[string][]string)
+	for d := range allIdDiffs {
+		diffsById[d.id] = append(diffsById[d.id], d.diff)
+	}
+
+	//determine if the data is valid within the threshold
+	mismatchCount = len(diffsById)
+	mismatchRatio = float64(mismatchCount) / math.Max(float64(len(ids)), 1)
+	isValid = (mismatchRatio * 100) <= float64(i.getValidationPercentageThreshold())
+	msg := fmt.Sprintf("%v hosts do not match. %v hosts validated.", mismatchCount, len(ids))
+
+	if !isValid {
+		isValid = false
+		i.eventNormal("FullValidationFailed", msg)
+	} else {
+		i.eventNormal("FullValidationPassed", msg)
+		isValid = true
+	}
+
+	i.Log.Info(
+		"Full Validation results",
+		"validationThresholdPercent", i.getValidationPercentageThreshold(),
+		"mismatchRatio", mismatchRatio,
+		"mismatchCount", mismatchCount,
+		"mismatchedHosts", allIdDiffs,
+	)
+
+	metrics.FullValidationFinished(
+		i.getValidationPercentageThreshold(), mismatchRatio, mismatchCount)
+
+	return
 }

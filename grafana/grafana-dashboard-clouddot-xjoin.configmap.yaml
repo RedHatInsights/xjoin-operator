@@ -67,7 +67,7 @@ data:
               "steppedLine": false,
               "targets": [
                 {
-                  "expr": "sum(xjoin_inconsistency_total)",
+                  "expr": "sum(xjoin_id_inconsistency_total)",
                   "format": "time_series",
                   "intervalFactor": 1,
                   "legendFormat": "{{app}}",
@@ -78,7 +78,7 @@ data:
               "timeFrom": null,
               "timeRegions": [],
               "timeShift": null,
-              "title": "Inconsistency (absolute)",
+              "title": "ID Inconsistency (absolute)",
               "tooltip": {
                 "shared": true,
                 "sort": 0,
