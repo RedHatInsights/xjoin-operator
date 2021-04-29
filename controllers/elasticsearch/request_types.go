@@ -26,3 +26,14 @@ type QueryHostsById struct {
 		} `json:"ids"`
 	} `json:"query"`
 }
+
+type QueryHostIDsRange struct {
+	Query struct {
+		Range struct {
+			ModifiedOn struct {
+				Lt string `json:"lt"`
+				Gt string `json:"gt"`
+			} `json:"modified_on"`
+		} `json:"range"`
+	} `json:"query"`
+}

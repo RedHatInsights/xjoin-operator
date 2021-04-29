@@ -67,6 +67,8 @@ type Parameters struct {
 	JenkinsManagedVersion             Parameter
 	FullValidationNumThreads          Parameter
 	FullValidationChunkSize           Parameter
+	ValidationPeriodMinutes           Parameter
+	ValidationLagCompensationSeconds  Parameter
 }
 
 func NewXJoinConfiguration() Parameters {
@@ -520,6 +522,16 @@ func NewXJoinConfiguration() Parameters {
 			Type:         reflect.Int,
 			ConfigMapKey: "full.validation.num.threads",
 			DefaultValue: 50,
+		},
+		ValidationPeriodMinutes: Parameter{
+			Type:         reflect.Int,
+			ConfigMapKey: "validation.period.minutes",
+			DefaultValue: 60,
+		},
+		ValidationLagCompensationSeconds: Parameter{
+			Type:         reflect.Int,
+			ConfigMapKey: "validation.lag.compensation.seconds",
+			DefaultValue: 120,
 		},
 	}
 }
