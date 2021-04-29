@@ -21,10 +21,9 @@ func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.H
 
 	searchReq := esapi.SearchRequest{
 		Index: []string{index},
-		//Source: []string{"id"},
-		Size: &requestSize,
-		Sort: []string{"_id"},
-		Body: bytes.NewReader(reqJSON),
+		Size:  &requestSize,
+		Sort:  []string{"_id"},
+		Body:  bytes.NewReader(reqJSON),
 	}
 
 	searchRes, err := searchReq.Do(ctx, es.Client)
@@ -40,13 +39,19 @@ func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.H
 	return hosts, nil
 }
 
-func (es *ElasticSearch) GetHostIDs(index string) ([]string, error) {
+func (es *ElasticSearch) GetHostIDs(index string, start time.Time, end time.Time) ([]string, error) {
 	size := new(int)
 	*size = 10000
+
+	var query QueryHostIDsRange
+	query.Query.Range.ModifiedOn.Lt = end.Format(time.RFC3339)
+	query.Query.Range.ModifiedOn.Gt = start.Format(time.RFC3339)
+	reqJSON, err := json.Marshal(query)
+
 	searchReq := esapi.SearchRequest{
 		Index:  []string{index},
 		Scroll: time.Duration(1) * time.Minute,
-		Query:  "*",
+		Body:   bytes.NewReader(reqJSON),
 		Source: []string{"id"},
 		Size:   size,
 		Sort:   []string{"_doc"},

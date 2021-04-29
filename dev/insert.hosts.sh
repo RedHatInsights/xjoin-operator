@@ -1,11 +1,15 @@
 #!/bin/bash
 
 NUM_HOSTS=$1
+MODIFIED_ON_AGE=$2 #time in seconds to subtract from NOW for modified on field
+
 CHUNK_SIZE=5000
 NUM_CHUNKS=$((NUM_HOSTS/CHUNK_SIZE))
 EXTRA_HOSTS=$((NUM_HOSTS%CHUNK_SIZE))
 
 trap ctrl_c INT
+
+NOW=$(date --date="-$MODIFIED_ON_AGE seconds" --utc "+%F %T")
 
 function ctrl_c() {
   rm /tmp/insert.hosts.*.sql
@@ -28,7 +32,7 @@ function add_host() {
   '5',
   'test',
   '2017-01-01 00:00:00',
-  '2017-01-01 00:00:00',
+  '$NOW',
   '{\"test1\": \"test1a\"}',
   '{\"NS1\": {\"key3\": [\"val3\"]}, \"NS3\": {\"key3\": [\"val3\"]}, \"Sat\": {\"prod\": []}, \"SPECIAL\": {\"key\": [\"val\"]}}',
   '{\"fqdn\": \"ad7125.foo.redhat.com\", \"bios_uuid\": \"5308151c-3d6f-46a0-87c8-36ca4a03e148\"}',

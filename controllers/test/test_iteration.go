@@ -45,10 +45,12 @@ type Iteration struct {
 	ParametersMap        map[string]interface{}
 	DbClient             *database.Database
 	Pipelines            []*xjoin.XJoinPipeline
+	Now                  time.Time
 }
 
 func NewTestIteration() *Iteration {
 	testIteration := Iteration{}
+	testIteration.Now = time.Now()
 	return &testIteration
 }
 
@@ -279,6 +281,7 @@ func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename st
 
 	m := make(map[string]interface{})
 	m["ID"] = id
+	m["ModifiedOn"] = i.Now.Format(time.RFC3339)
 
 	var templateBuffer bytes.Buffer
 	err = tmpl.Execute(&templateBuffer, m)
@@ -314,6 +317,7 @@ func (i *Iteration) InsertHost() string {
 
 	m := make(map[string]interface{})
 	m["ID"] = hostId.String()
+	m["ModifiedOn"] = i.Now.Format(time.RFC3339)
 
 	var templateBuffer bytes.Buffer
 	err = tmpl.Execute(&templateBuffer, m)

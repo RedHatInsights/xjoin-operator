@@ -11,6 +11,7 @@ import (
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"strings"
 	"text/template"
+	"time"
 )
 
 var log = logger.NewLogger("database")
@@ -242,14 +243,11 @@ func (db *Database) CountHosts() (int, error) {
 	return response, err
 }
 
-func (db *Database) hostIdQuery() string {
-	return fmt.Sprintf(`SELECT id FROM hosts ORDER BY id`)
-}
-
-func (db *Database) GetHostIds() ([]string, error) {
-	// TODO: add modified_on filter
-	// waiting on https://issues.redhat.com/browse/RHCLOUD-9545
-	rows, err := db.RunQuery(db.hostIdQuery())
+func (db *Database) GetHostIds(start time.Time, end time.Time) ([]string, error) {
+	query := fmt.Sprintf(
+		`SELECT id FROM hosts WHERE modified_on > '%s' AND modified_on < '%s' ORDER BY id `,
+		start.Format(time.RFC3339), end.Format(time.RFC3339))
+	rows, err := db.RunQuery(query)
 	defer closeRows(rows)
 
 	var ids []string

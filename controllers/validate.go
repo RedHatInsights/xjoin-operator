@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"github.com/go-test/deep"
+	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -99,15 +100,26 @@ func (i *ReconcileIteration) countValidation() (isValid bool, mismatchCount int,
 }
 
 func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mismatchRatio float64, hbiIds []string, err error) {
-
 	isValid = false
 
-	hbiIds, err = i.InventoryDb.GetHostIds()
+	now := time.Now().UTC()
+	validationPeriod := i.parameters.ValidationPeriodMinutes.Int()
+	validationLagComp := i.parameters.ValidationLagCompensationSeconds.Int()
+
+	var startTime time.Time
+	if i.Instance.GetState() == xjoin.STATE_INITIAL_SYNC {
+		startTime = time.Unix(0, 0)
+	} else {
+		startTime = now.Add(-time.Duration(validationPeriod) * time.Minute)
+	}
+	endTime := now.Add(-time.Duration(validationLagComp) * time.Second)
+
+	hbiIds, err = i.InventoryDb.GetHostIds(startTime, endTime)
 	if err != nil {
 		return
 	}
 
-	esIds, err := i.ESClient.GetHostIDs(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
+	esIds, err := i.ESClient.GetHostIDs(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), startTime, endTime)
 	if err != nil {
 		return
 	}

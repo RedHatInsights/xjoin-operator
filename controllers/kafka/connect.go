@@ -354,8 +354,6 @@ func (kafka *Kafka) DeleteConnector(name string) error {
 		return errors.New(fmt.Sprintf("connector %s wasn't deleted after 10 seconds", name))
 	}
 
-	time.Sleep(1 * time.Second)
-
 	return nil
 }
 
