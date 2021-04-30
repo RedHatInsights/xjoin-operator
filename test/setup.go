@@ -19,8 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var Client client.Client
@@ -51,7 +49,6 @@ func Setup(t *testing.T, suiteName string) {
 	var _ = BeforeSuite(func(done Done) {
 		ForwardPorts()
 
-		logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
 		useExistingCluster := true
 
 		By("bootstrapping test environment")
@@ -60,8 +57,7 @@ func Setup(t *testing.T, suiteName string) {
 			UseExistingCluster: &useExistingCluster,
 		}
 
-		var err error
-		cfg, err = testEnv.Start()
+		cfg, err := testEnv.Start()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(cfg).ToNot(BeNil())
 
