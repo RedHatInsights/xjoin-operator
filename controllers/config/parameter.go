@@ -49,7 +49,7 @@ func (p *Parameter) Value() interface{} {
 }
 
 func (p *Parameter) SetValue(value interface{}) error {
-	log.Trace(fmt.Sprintf(
+	log.Debug(fmt.Sprintf(
 		"Setting value to: %s for parameter: \nCM key: %s \nSpec key: %s \nSecret key: %s%s",
 		value, p.ConfigMapKey, p.SpecKey, p.Secret, p.SecretKey))
 
