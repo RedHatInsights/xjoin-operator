@@ -85,6 +85,9 @@ objects:
       source: xjoin-operator-source
       sourceNamespace: ${TARGET_NAMESPACE}
       config:
+        env:
+          - name: LOG_LEVEL
+            value: ${LOG_LEVEL}
         resources:
           limits:
             cpu: 1
