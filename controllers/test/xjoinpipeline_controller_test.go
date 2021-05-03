@@ -361,7 +361,7 @@ var _ = Describe("Pipeline operations", func() {
 
 			err := i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
-			hostId := i.InsertHost()
+			hostId := i.InsertSimpleHost()
 
 			i.ReconcileValidation()
 			pipeline = i.ReconcileXJoin()
@@ -383,7 +383,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
 
-			i.IndexDocument(pipeline.Status.PipelineVersion, hostId, "es.document.1")
+			i.IndexSimpleDocument(pipeline.Status.PipelineVersion, hostId)
 
 			i.ReconcileValidation()
 			pipeline = i.ReconcileXJoin()
@@ -417,7 +417,7 @@ var _ = Describe("Pipeline operations", func() {
 
 				err := i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 				Expect(err).ToNot(HaveOccurred())
-				hostId := i.InsertHost()
+				hostId := i.InsertSimpleHost()
 
 				pipeline = i.ExpectInvalidReconcile()
 				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
@@ -428,7 +428,7 @@ var _ = Describe("Pipeline operations", func() {
 				pipeline = i.ExpectInitSyncUnknownReconcile()
 				Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
-				i.IndexDocument(pipeline.Status.PipelineVersion, hostId, "es.document.1")
+				i.IndexSimpleDocument(pipeline.Status.PipelineVersion, hostId)
 
 				pipeline = i.ExpectValidReconcile()
 				Expect(pipeline.Status.ActiveIndexName).ToNot(Equal(activeIndex))
@@ -978,7 +978,7 @@ var _ = Describe("Pipeline operations", func() {
 			err := i.KafkaClient.PauseElasticSearchConnector(version)
 			Expect(err).ToNot(HaveOccurred())
 
-			_ = i.InsertHost()
+			_ = i.InsertSimpleHost()
 
 			pipeline = i.ExpectInitSyncInvalidReconcile()
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
@@ -1046,7 +1046,7 @@ var _ = Describe("Pipeline operations", func() {
 			err := i.KafkaClient.PauseElasticSearchConnector(version)
 			Expect(err).ToNot(HaveOccurred())
 
-			_ = i.InsertHost()
+			_ = i.InsertSimpleHost()
 
 			pipeline = i.ExpectInitSyncInvalidReconcile()
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))

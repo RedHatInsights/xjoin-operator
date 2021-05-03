@@ -59,6 +59,8 @@ parameters:
     value: "100"
   - name: HBI_DB_SSL
     value: "verify-full"
+  - name: LOG_LEVEL
+    value: "info"
 
 objects:
   - apiVersion: operators.coreos.com/v1
