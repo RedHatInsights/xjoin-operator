@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/google/uuid"
@@ -28,6 +29,7 @@ import (
 	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -50,7 +52,9 @@ type Iteration struct {
 
 func NewTestIteration() *Iteration {
 	testIteration := Iteration{}
-	testIteration.Now = time.Now()
+	now := time.Now().UTC()
+	now = now.Add(-time.Duration(600) * time.Second)
+	testIteration.Now = now
 	return &testIteration
 }
 
@@ -264,16 +268,24 @@ func (i *Iteration) SyncHosts(pipelineVersion string, numHosts int) []string {
 	var ids []string
 
 	for j := 0; j < numHosts; j++ {
-		id := i.InsertHost()
-		i.IndexDocument(pipelineVersion, id, "es.document.1")
+		id := i.InsertSimpleHost()
+		i.IndexSimpleDocument(pipelineVersion, id)
 		ids = append(ids, id)
 	}
 
 	return ids
 }
 
-func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename string) {
-	esDocumentFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/" + filename + ".json")
+func (i *Iteration) IndexSimpleDocument(pipelineVersion string, id string) {
+	i.IndexDocument(pipelineVersion, id, "simple", i.Now)
+}
+
+func (i *Iteration) IndexDocumentNow(pipelineVersion string, id string, filename string) {
+	i.IndexDocument(pipelineVersion, id, filename, i.Now)
+}
+
+func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename string, modifiedOn time.Time) {
+	esDocumentFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/hosts/es/" + filename + ".json")
 	Expect(err).ToNot(HaveOccurred())
 
 	tmpl, err := template.New("esDocumentTemplate").Parse(string(esDocumentFile))
@@ -281,7 +293,7 @@ func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename st
 
 	m := make(map[string]interface{})
 	m["ID"] = id
-	m["ModifiedOn"] = i.Now.Format(time.RFC3339)
+	m["ModifiedOn"] = modifiedOn.Format(time.RFC3339)
 
 	var templateBuffer bytes.Buffer
 	err = tmpl.Execute(&templateBuffer, m)
@@ -302,14 +314,31 @@ func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename st
 	res, err := req.Do(ctx, i.EsClient.Client)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = res.Body.Close()
-	Expect(err).ToNot(HaveOccurred())
+	if res.IsError() {
+
+		bodyBytes, err := ioutil.ReadAll(res.Body)
+		err = res.Body.Close()
+		Expect(err).ToNot(HaveOccurred())
+
+		log.Error(
+			errors.New(fmt.Sprintf("elasticsearch API error: %s, %s", strconv.Itoa(res.StatusCode), bodyBytes)),
+			"error indexing document")
+		Expect(res.IsError()).To(BeFalse())
+	}
 }
 
-func (i *Iteration) InsertHost() string {
+func (i *Iteration) InsertSimpleHost() string {
+	return i.InsertHost("simple", i.Now)
+}
+
+func (i *Iteration) InsertHostNow(filename string) string {
+	return i.InsertHost(filename, i.Now)
+}
+
+func (i *Iteration) InsertHost(filename string, modifiedOn time.Time) string {
 	hostId, err := uuid.NewUUID()
 
-	hbiHostFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/hbi.host.sql")
+	hbiHostFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/hosts/hbi/" + filename + ".sql")
 	Expect(err).ToNot(HaveOccurred())
 
 	tmpl, err := template.New("hbiHostTemplate").Parse(string(hbiHostFile))
@@ -317,16 +346,15 @@ func (i *Iteration) InsertHost() string {
 
 	m := make(map[string]interface{})
 	m["ID"] = hostId.String()
-	m["ModifiedOn"] = i.Now.Format(time.RFC3339)
+	m["ModifiedOn"] = modifiedOn.Format(time.RFC3339)
 
 	var templateBuffer bytes.Buffer
 	err = tmpl.Execute(&templateBuffer, m)
 	Expect(err).ToNot(HaveOccurred())
 	query := strings.ReplaceAll(templateBuffer.String(), "\n", "")
 
-	rows, err := i.DbClient.RunQuery(query)
+	_, err = i.DbClient.ExecQuery(query)
 	Expect(err).ToNot(HaveOccurred())
-	rows.Close()
 
 	return hostId.String()
 }
@@ -555,8 +583,9 @@ func (i *Iteration) AssertValidationEvents(numHosts int) {
 	recorder, _ := i.ValidationReconciler.Recorder.(*record.FakeRecorder)
 	Expect(recorder.Events).To(HaveLen(3))
 	Expect(<-recorder.Events).To(Equal(fmt.Sprintf("Normal CountValidationPassed Results: mismatchRatio: 0, esCount: %v, hbiCount: %v", numHosts, numHosts)))
-	Expect(<-recorder.Events).To(Equal("Normal IDValidationPassed 0 hosts ids do not match"))
-	Expect(<-recorder.Events).To(Equal(fmt.Sprintf("Normal FullValidationPassed 0 hosts do not match. %v hosts validated.", numHosts)))
+	Expect(<-recorder.Events).To(Equal(fmt.Sprintf("Normal IDValidationPassed 0 hosts ids do not match. Number of hosts IDs retrieved: HBI: %v, ES: %v", numHosts, numHosts)))
+	msg := <-recorder.Events
+	Expect(msg).To(Equal(fmt.Sprintf("Normal FullValidationPassed 0 hosts do not match. %v hosts validated.", numHosts)))
 }
 
 func (i *Iteration) WaitForPipelineToBeValid() *xjoin.XJoinPipeline {
@@ -650,4 +679,28 @@ func (i *Iteration) validateJenkinsResourcesStillExist() {
 	slots, err := i.DbClient.ListReplicationSlots("xjoin_inventory")
 	Expect(err).ToNot(HaveOccurred())
 	Expect(slots).To(ContainElements("xjoin_inventory_v1_1"))
+}
+
+func (i *Iteration) fullValidationFailureTest(hbiFileName string, esFileName string) {
+	pipeline := i.CreateValidPipeline()
+	i.AssertValidationEvents(0)
+
+	i.SyncHosts(pipeline.Status.PipelineVersion, 3)
+
+	hostId := i.InsertHostNow(hbiFileName)
+	i.IndexDocumentNow(pipeline.Status.PipelineVersion, hostId, esFileName)
+
+	pipeline = i.ReconcileValidation()
+	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
+	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
+
+	recorder, _ := i.ValidationReconciler.Recorder.(*record.FakeRecorder)
+	Expect(recorder.Events).To(HaveLen(3))
+
+	msg := <-recorder.Events
+	Expect(msg).To(Equal("Normal CountValidationPassed Results: mismatchRatio: 0, esCount: 4, hbiCount: 4"))
+	msg = <-recorder.Events
+	Expect(msg).To(Equal("Normal IDValidationPassed 0 hosts ids do not match. Number of hosts IDs retrieved: HBI: 4, ES: 4"))
+	msg = <-recorder.Events
+	Expect(msg).To(Equal("Normal FullValidationFailed 1 hosts do not match. 4 hosts validated."))
 }

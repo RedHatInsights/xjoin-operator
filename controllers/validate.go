@@ -134,7 +134,7 @@ func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mi
 	mismatchRatio = float64(mismatchCount) / math.Max(float64(len(hbiIds)), 1)
 	isValid = (mismatchRatio * 100) <= float64(validationThresholdPercent)
 
-	msg := fmt.Sprintf("%v hosts ids do not match", mismatchCount)
+	msg := fmt.Sprintf("%v hosts ids do not match. Number of hosts IDs retrieved: HBI: %v, ES: %v", mismatchCount, len(hbiIds), len(esIds))
 	if !isValid {
 		i.eventNormal("IDValidationFailed", msg)
 	} else {
@@ -177,8 +177,8 @@ func (i *ReconcileIteration) validateChunk(chunk []string, allIdDiffs chan idDif
 		return
 	}
 
-	deep.MaxDiff = 100
-	diffs := deep.Equal(esHosts, hbiHosts)
+	deep.MaxDiff = len(chunk) * 100
+	diffs := deep.Equal(hbiHosts, esHosts)
 
 	//build the change object for logging
 	for _, diff := range diffs {
@@ -205,7 +205,7 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 	chunkSize := i.parameters.FullValidationChunkSize.Int()
 	var numChunks = int(math.Ceil(float64(len(ids)) / float64(chunkSize)))
 
-	i.Log.Info("START: " + time.Now().String())
+	i.Log.Info("Full Validation Start: " + time.Now().String())
 
 	for j := 0; j < numChunks; j++ {
 		//determine which chunk of systems to validate
@@ -229,7 +229,7 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 		}
 	}
 
-	i.Log.Info("END: " + time.Now().String())
+	i.Log.Info("Full Validation End: " + time.Now().String())
 
 	close(allIdDiffs)
 	close(errors)
@@ -254,12 +254,23 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 		isValid = true
 	}
 
+	//log at most 50 invalid systems
+	diffsToLog := make(map[string][]string)
+	idx := 0
+	for key, val := range diffsById {
+		if idx > 50 {
+			break
+		}
+		diffsToLog[key] = val
+		idx++
+	}
+
 	i.Log.Info(
 		"Full Validation results",
 		"validationThresholdPercent", i.getValidationPercentageThreshold(),
 		"mismatchRatio", mismatchRatio,
 		"mismatchCount", mismatchCount,
-		"mismatchedHosts", allIdDiffs,
+		"mismatchedHosts", diffsToLog,
 	)
 
 	metrics.FullValidationFinished(
