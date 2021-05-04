@@ -99,8 +99,8 @@ objects:
             cpu: 4
             memory: 8Gi
           requests:
-            cpu: 2
-            memory: 2Gi
+            cpu: 1
+            memory: 1Gi
 
   - apiVersion: v1
     kind: ConfigMap
