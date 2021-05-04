@@ -91,7 +91,7 @@ objects:
       config:
         env:
           - name: LOG_LEVEL
-            value: ${LOG_LEVEL}
+            value: "${LOG_LEVEL}"
         resources:
           limits:
             cpu: 1
