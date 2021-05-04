@@ -521,7 +521,7 @@ func NewXJoinConfiguration() Parameters {
 		FullValidationNumThreads: Parameter{
 			Type:         reflect.Int,
 			ConfigMapKey: "full.validation.num.threads",
-			DefaultValue: 21,
+			DefaultValue: 20,
 		},
 		ValidationPeriodMinutes: Parameter{
 			Type:         reflect.Int,
