@@ -63,6 +63,10 @@ parameters:
     value: "info"
   - name: KAFKA_TOPIC_RETENTION_BYTES
     value: "256000000"
+  - name: FULL_VALIDATION_NUM_THREADS
+    value: "10"
+  - name: FULL_VALIDATION_CHUNK_SIZE
+    value: "500"
 
 objects:
   - apiVersion: operators.coreos.com/v1
@@ -133,6 +137,8 @@ objects:
       jenkins.managed.version: ${JENKINS_MANAGED_VERSION}
       hbi.db.ssl: ${HBI_DB_SSL}
       kafka.topic.retention.bytes: ${KAFKA_TOPIC_RETENTION_BYTES}
+      full.validation.num.threads: ${FULL_VALIDATION_NUM_THREADS}
+      full.validation.chunk.size: ${FULL_VALIDATION_CHUNK_SIZE}
 
 
   # TODO: move this into the bundle itself
