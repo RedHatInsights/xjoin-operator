@@ -61,6 +61,8 @@ parameters:
     value: "verify-full"
   - name: LOG_LEVEL
     value: "info"
+  - name: KAFKA_TOPIC_RETENTION_BYTES
+    value: "256000000"
 
 objects:
   - apiVersion: operators.coreos.com/v1
@@ -130,6 +132,7 @@ objects:
       kafka.topic.replicas: ${KAFKA_TOPIC_REPLICAS}
       jenkins.managed.version: ${JENKINS_MANAGED_VERSION}
       hbi.db.ssl: ${HBI_DB_SSL}
+      kafka.topic.retention.bytes: ${KAFKA_TOPIC_RETENTION_BYTES}
 
 
   # TODO: move this into the bundle itself
