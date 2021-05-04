@@ -96,11 +96,11 @@ objects:
             value: "${LOG_LEVEL}"
         resources:
           limits:
-            cpu: 1
-            memory: 2Gi
+            cpu: 4
+            memory: 8Gi
           requests:
-            cpu: 100m
-            memory: 512Mi
+            cpu: 2
+            memory: 2Gi
 
   - apiVersion: v1
     kind: ConfigMap
