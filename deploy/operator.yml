@@ -58,7 +58,7 @@ parameters:
   - name: DEBEZIUM_CONNECTOR_POLL_INTERVAL_MS
     value: "100"
   - name: HBI_DB_SSL
-    value: "verify-full"
+    value: "disable"
   - name: LOG_LEVEL
     value: "info"
   - name: KAFKA_TOPIC_RETENTION_BYTES
