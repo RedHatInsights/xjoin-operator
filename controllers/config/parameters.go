@@ -511,7 +511,7 @@ func NewXJoinConfiguration() Parameters {
 		KafkaTopicRetentionMS: Parameter{
 			Type:         reflect.String,
 			ConfigMapKey: "kafka.topic.retention.ms",
-			DefaultValue: "2678400000",
+			DefaultValue: "2678400001",
 		},
 		FullValidationChunkSize: Parameter{
 			Type:         reflect.Int,
