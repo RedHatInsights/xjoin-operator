@@ -12,17 +12,17 @@ parameters:
   - name: RECONCILE_INTERVAL
     value: "120"
   - name: VALIDATION_INTERVAL
-    value: "1800"
+    value: "600"
   - name: VALIDATION_INTERVAL_INIT
-    value: "60"
+    value: "120"
   - name: VALIDATION_PERCENTAGE_THRESHOLD
     value: "5"
   - name: VALIDATION_PERCENTAGE_THRESHOLD_INIT
     value: "5"
   - name: VALIDATION_ATTEMPTS_THRESHOLD
-    value: "3"
+    value: "10"
   - name: VALIDATION_ATTEMPTS_THRESHOLD_INIT
-    value: "30"
+    value: "60"
   - name: CONNECT_CLUSTER
     value: "xjoin-kafka-connect-strimzi"
   - name: ES_CONNECTOR_TASKS_MAX
