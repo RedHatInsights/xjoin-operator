@@ -199,6 +199,8 @@ func (i *ReconcileIteration) isXJoinResource(resourceName string) bool {
 }
 
 func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
+	i.Log.Debug("Deleting stale dependencies")
+
 	var (
 		connectorsToKeep       []string
 		esIndicesToKeep        []string
@@ -227,11 +229,18 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 			resourceNamePrefix, i.Instance.Status.PipelineVersion))
 	}
 
+	i.Log.Debug("ConnectorsToKeep", "connectors", connectorsToKeep)
+	i.Log.Debug("ESPipelinesToKeep", "pipelines", esPipelinesToKeep)
+	i.Log.Debug("ESIndicesToKeep", "indices", esIndicesToKeep)
+	i.Log.Debug("TopicsToKeep", "topics", topicsToKeep)
+	i.Log.Debug("ReplicationSlotsToKeep", "slots", replicationSlotsToKeep)
+
 	//delete stale Kafka Connectors
 	connectors, err := i.Kafka.ListConnectors()
 	if err != nil {
 		errors = append(errors, err)
 	} else {
+		i.Log.Debug("AllConnectors", "connectors", connectors)
 		for _, connector := range connectors.Items {
 			if !utils.ContainsString(connectorsToKeep, connector.GetName()) && i.isXJoinResource(connector.GetName()) {
 				i.Log.Info("Removing stale connector", "connector", connector.GetName())
@@ -247,6 +256,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	if err != nil {
 		errors = append(errors, err)
 	} else {
+		i.Log.Debug("AllESPipelines", "pipelines", esPipelines)
 		for _, esPipeline := range esPipelines {
 			if !utils.ContainsString(esPipelinesToKeep, esPipeline) && i.isXJoinResource(esPipeline) {
 				i.Log.Info("Removing stale es pipeline", "esPipeline", esPipeline)
@@ -262,6 +272,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	if err != nil {
 		errors = append(errors, err)
 	} else {
+		i.Log.Debug("AllIndices", "indices", indices)
 		for _, index := range indices {
 			if !utils.ContainsString(esIndicesToKeep, index) && i.isXJoinResource(index) {
 				i.Log.Info("Removing stale index", "index", index)
@@ -277,6 +288,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	if err != nil {
 		errors = append(errors, err)
 	} else {
+		i.Log.Debug("AllTopics", "topics", topics)
 		for _, topic := range topics {
 			if !utils.ContainsString(topicsToKeep, topic) && i.isXJoinResource(topic) {
 				i.Log.Info("Removing stale topic", "topic", topic)
@@ -292,6 +304,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	if err != nil {
 		errors = append(errors, err)
 	} else {
+		i.Log.Debug("AllReplicationSlots", "slots", slots)
 		for _, slot := range slots {
 			if !utils.ContainsString(replicationSlotsToKeep, slot) && i.isXJoinResource(slot) {
 				i.Log.Info("Removing stale replication slot", "slot", slot)
