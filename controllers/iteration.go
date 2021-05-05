@@ -168,36 +168,6 @@ func (i *ReconcileIteration) removeFinalizer() error {
 	return i.Client.Update(ctx, i.Instance)
 }
 
-func (i *ReconcileIteration) isXJoinResource(resourceName string) bool {
-	var response bool
-	jenkinsManagedVersion := i.parameters.JenkinsManagedVersion.String()
-
-	currentResources := []string{
-		fmt.Sprintf("xjoin.inventory.hosts.es.%s", jenkinsManagedVersion),                      //es connector
-		fmt.Sprintf("xjoin.inventory.hosts.db.%s", jenkinsManagedVersion),                      //db connector
-		fmt.Sprintf("xjoin.inventory.hosts.%s", jenkinsManagedVersion),                         //index
-		fmt.Sprintf("xjoin.inventory.hosts.%s", jenkinsManagedVersion),                         //pipeline
-		fmt.Sprintf("xjoin.inventory.%s.public.hosts", jenkinsManagedVersion),                  //topic
-		fmt.Sprintf("xjoin_inventory_%s", strings.ReplaceAll(jenkinsManagedVersion, ".", "_")), //replication slot
-	}
-
-	if utils.ContainsString(currentResources, resourceName) {
-		response = false
-	} else if strings.Index(resourceName, "xjoin-connect-config") == 0 {
-		response = false
-	} else if strings.Index(resourceName, "xjoin-connect-offsets") == 0 {
-		response = false
-	} else if strings.Index(resourceName, "xjoin-connect-status") == 0 {
-		response = false
-	} else if strings.Index(resourceName, i.parameters.ResourceNamePrefix.String()) == 0 {
-		response = true
-	} else if strings.Index(resourceName, database.ReplicationSlotPrefix(i.parameters.ResourceNamePrefix.String())) == 0 {
-		response = true
-	}
-
-	return response
-}
-
 func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	i.Log.Debug("Deleting stale dependencies")
 
@@ -242,7 +212,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	} else {
 		i.Log.Debug("AllConnectors", "connectors", connectors)
 		for _, connector := range connectors.Items {
-			if !utils.ContainsString(connectorsToKeep, connector.GetName()) && i.isXJoinResource(connector.GetName()) {
+			if !utils.ContainsString(connectorsToKeep, connector.GetName()) {
 				i.Log.Info("Removing stale connector", "connector", connector.GetName())
 				if err = i.Kafka.DeleteConnector(connector.GetName()); err != nil {
 					errors = append(errors, err)
@@ -258,7 +228,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	} else {
 		i.Log.Debug("AllESPipelines", "pipelines", esPipelines)
 		for _, esPipeline := range esPipelines {
-			if !utils.ContainsString(esPipelinesToKeep, esPipeline) && i.isXJoinResource(esPipeline) {
+			if !utils.ContainsString(esPipelinesToKeep, esPipeline) {
 				i.Log.Info("Removing stale es pipeline", "esPipeline", esPipeline)
 				if err = i.ESClient.DeleteESPipelineByFullName(esPipeline); err != nil {
 					errors = append(errors, err)
@@ -274,7 +244,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	} else {
 		i.Log.Debug("AllIndices", "indices", indices)
 		for _, index := range indices {
-			if !utils.ContainsString(esIndicesToKeep, index) && i.isXJoinResource(index) {
+			if !utils.ContainsString(esIndicesToKeep, index) {
 				i.Log.Info("Removing stale index", "index", index)
 				if err = i.ESClient.DeleteIndexByFullName(index); err != nil {
 					errors = append(errors, err)
@@ -290,7 +260,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	} else {
 		i.Log.Debug("AllTopics", "topics", topics)
 		for _, topic := range topics {
-			if !utils.ContainsString(topicsToKeep, topic) && i.isXJoinResource(topic) {
+			if !utils.ContainsString(topicsToKeep, topic) {
 				i.Log.Info("Removing stale topic", "topic", topic)
 				if err = i.Kafka.DeleteTopic(topic); err != nil {
 					errors = append(errors, err)
@@ -306,7 +276,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	} else {
 		i.Log.Debug("AllReplicationSlots", "slots", slots)
 		for _, slot := range slots {
-			if !utils.ContainsString(replicationSlotsToKeep, slot) && i.isXJoinResource(slot) {
+			if !utils.ContainsString(replicationSlotsToKeep, slot) {
 				i.Log.Info("Removing stale replication slot", "slot", slot)
 				if err = i.InventoryDb.RemoveReplicationSlot(slot); err != nil {
 					errors = append(errors, err)
