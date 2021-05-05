@@ -46,6 +46,7 @@ func (kafka *Kafka) CreateTopicByFullName(topicName string, dryRun bool) (*unstr
 				"min.compaction.lag.ms": kafka.Parameters.KafkaTopicMinCompactionLagMS.String(),
 				"retention.bytes":       kafka.Parameters.KafkaTopicRetentionBytes.String(),
 				"retention.ms":          kafka.Parameters.KafkaTopicRetentionMS.String(),
+				"max.message.bytes":      kafka.Parameters.KafkaTopicMessageBytes.String(),
 			},
 		},
 	}
