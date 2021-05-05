@@ -59,16 +59,17 @@ type Parameters struct {
 	HBIDBSecretName                   Parameter
 	HBIDBSecretVersion                Parameter
 	KafkaTopicPartitions              Parameter
-	KafkaTopicReplicas                Parameter
-	KafkaTopicCleanupPolicy           Parameter
-	KafkaTopicMinCompactionLagMS      Parameter
-	KafkaTopicRetentionBytes          Parameter
-	KafkaTopicRetentionMS             Parameter
-	JenkinsManagedVersion             Parameter
-	FullValidationNumThreads          Parameter
-	FullValidationChunkSize           Parameter
-	ValidationPeriodMinutes           Parameter
-	ValidationLagCompensationSeconds  Parameter
+	KafkaTopicReplicas               Parameter
+	KafkaTopicCleanupPolicy          Parameter
+	KafkaTopicMinCompactionLagMS     Parameter
+	KafkaTopicRetentionBytes         Parameter
+	KafkaTopicRetentionMS            Parameter
+	JenkinsManagedVersion            Parameter
+	FullValidationNumThreads         Parameter
+	FullValidationChunkSize          Parameter
+	ValidationPeriodMinutes          Parameter
+	ValidationLagCompensationSeconds Parameter
+	KafkaTopicMessageBytes           Parameter
 }
 
 func NewXJoinConfiguration() Parameters {
@@ -513,6 +514,11 @@ func NewXJoinConfiguration() Parameters {
 			Type:         reflect.String,
 			ConfigMapKey: "kafka.topic.retention.ms",
 			DefaultValue: "2678400001",
+		},
+		KafkaTopicMessageBytes: Parameter{
+			Type: reflect.String,
+			ConfigMapKey: "kafka.topic.max.message.bytes",
+			DefaultValue: "2097176",
 		},
 		FullValidationChunkSize: Parameter{
 			Type:         reflect.Int,
