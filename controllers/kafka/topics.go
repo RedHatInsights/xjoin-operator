@@ -2,10 +2,12 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 	"time"
@@ -46,7 +48,7 @@ func (kafka *Kafka) CreateTopicByFullName(topicName string, dryRun bool) (*unstr
 				"min.compaction.lag.ms": kafka.Parameters.KafkaTopicMinCompactionLagMS.String(),
 				"retention.bytes":       kafka.Parameters.KafkaTopicRetentionBytes.String(),
 				"retention.ms":          kafka.Parameters.KafkaTopicRetentionMS.String(),
-				"max.message.bytes":      kafka.Parameters.KafkaTopicMessageBytes.String(),
+				"max.message.bytes":     kafka.Parameters.KafkaTopicMessageBytes.String(),
 			},
 		},
 	}
@@ -57,9 +59,60 @@ func (kafka *Kafka) CreateTopicByFullName(topicName string, dryRun bool) (*unstr
 		return topic, nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
 	defer cancel()
-	return topic, kafka.Client.Create(ctx, topic)
+	err := kafka.Client.Create(ctx, topic)
+	if err != nil {
+		return nil, err
+	}
+
+	if !kafka.Test {
+		log.Info("Waiting for topic to be created.", "topic", topicName)
+
+		//wait for the topic to be created in Kafka (condition.status == ready)
+		err = wait.PollImmediate(time.Second, time.Duration(kafka.Parameters.KafkaTopicCreationTimeout.Int())*time.Second, func() (bool, error) {
+			topics := &unstructured.UnstructuredList{}
+			topics.SetGroupVersionKind(topicsGroupVersionKind)
+
+			fields := client.MatchingFields{}
+			fields["metadata.name"] = topicName
+			labels := client.MatchingLabels{}
+			labels["name"] = topicName
+			err = kafka.Client.List(ctx, topics, fields)
+			if err != nil {
+				return false, err
+			}
+
+			if len(topics.Items) == 0 {
+				return false, nil
+			}
+
+			item := topics.Items[0]
+			if item.Object["status"] == nil {
+				return false, nil
+			}
+			status := item.Object["status"].(map[string]interface{})
+			conditions := status["conditions"].([]interface{})
+			for _, condition := range conditions {
+				conditionMap := condition.(map[string]interface{})
+				if conditionMap["type"] == "Ready" {
+					if conditionMap["status"] == "True" {
+						return true, nil
+					} else {
+						return false, nil
+					}
+				}
+			}
+
+			return false, nil
+		})
+
+		if err != nil {
+			return nil, errors.New(fmt.Sprintf("timed out waiting for Kafka Topic %s to be created", topicName))
+		}
+	}
+
+	return topic, nil
 }
 
 func (kafka *Kafka) CreateTopic(pipelineVersion string, dryRun bool) (*unstructured.Unstructured, error) {
@@ -83,7 +136,7 @@ func (kafka *Kafka) DeleteTopic(topicName string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
-	if err := kafka.Client.Delete(ctx, topic); err != nil && !errors.IsNotFound(err) {
+	if err := kafka.Client.Delete(ctx, topic); err != nil && !k8errors.IsNotFound(err) {
 		return err
 	}
 

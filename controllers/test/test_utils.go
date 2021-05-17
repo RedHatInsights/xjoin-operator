@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
+	"os/exec"
 	"reflect"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"strings"
@@ -24,13 +25,14 @@ import (
 
 var log = logger.NewLogger("test_utils")
 
-func newXJoinReconciler(namespace string) *XJoinPipelineReconciler {
+func newXJoinReconciler(namespace string, isTest bool) *XJoinPipelineReconciler {
 	return NewXJoinReconciler(
 		test.Client,
 		scheme.Scheme,
 		logf.Log.WithName("test"),
 		record.NewFakeRecorder(10),
-		namespace)
+		namespace,
+		isTest)
 }
 
 func newValidationReconciler(namespace string) *ValidationReconciler {
@@ -40,7 +42,8 @@ func newValidationReconciler(namespace string) *ValidationReconciler {
 		logf.Log.WithName("test-validation"),
 		true,
 		record.NewFakeRecorder(10),
-		namespace)
+		namespace,
+		true)
 }
 
 func parametersToMap(parameters Parameters) map[string]interface{} {
@@ -101,7 +104,7 @@ func Before() *Iteration {
 
 	log.Info("Namespace: " + i.NamespacedName.Namespace)
 
-	i.XJoinReconciler = newXJoinReconciler(i.NamespacedName.Namespace)
+	i.XJoinReconciler = newXJoinReconciler(i.NamespacedName.Namespace, true)
 	i.ValidationReconciler = newValidationReconciler(i.NamespacedName.Namespace)
 
 	i.Parameters, i.ParametersMap = getParameters()
@@ -211,4 +214,8 @@ func After(i *Iteration) {
 	}
 
 	i.DbClient.Close()
+
+	cmd := exec.Command(test.GetRootDir() + "/dev/cleanup.projects.sh")
+	err = cmd.Run()
+	Expect(err).ToNot(HaveOccurred())
 }

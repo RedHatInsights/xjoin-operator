@@ -466,7 +466,7 @@ var _ = Describe("Validation controller", func() {
 			i.fullValidationFailureTest("simple", "systemprofile-array-of-objects-missing-key")
 		})
 
-		It("Fails when an array of objects has a value changed in an object", func() {
+		FIt("Fails when an array of objects has a value changed in an object", func() {
 			i.fullValidationFailureTest("simple", "systemprofile-array-of-objects-value-changed")
 		})
 

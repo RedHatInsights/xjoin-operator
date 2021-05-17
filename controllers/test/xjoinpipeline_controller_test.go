@@ -155,7 +155,7 @@ var _ = Describe("Pipeline operations", func() {
 
 			cm := map[string]string{
 				"connect.cluster":                                     "test.connect.cluster",
-				"kafka.cluster":                                       "test.kafka.cluster",
+				"kafka.cluster":                                       "xjoin-kafka-cluster",
 				"debezium.connector.tasks.max":                        "-1",
 				"debezium.connector.max.batch.size":                   "-2",
 				"debezium.connector.max.queue.size":                   "-3",
@@ -954,115 +954,28 @@ var _ = Describe("Pipeline operations", func() {
 		})
 	})
 
-	Describe("Existing Jenkins Pipeline", func() {
-		It("Leaves the existing jenkins pipeline alone during initial sync", func() {
-			defer i.cleanupJenkinsResources()
-			defer i.setPrefix("xjointest")
-			i.createJenkinsResources()
-
-			//set configmap jenkins version
-			cm := map[string]string{
-				"jenkins.managed.version":              "v1.1",
-				"init.validation.percentage.threshold": "0",
-				"init.validation.attempts.threshold":   "4",
-			}
-			i.CreateConfigMap("xjoin", cm)
-
-			//reconcile
-			prefix := "xjoin.inventory"
-			i.setPrefix(prefix)
-			i.CreatePipeline(&xjoin.XJoinPipelineSpec{ResourceNamePrefix: &prefix})
-			pipeline := i.ReconcileXJoin()
-			version := pipeline.Status.PipelineVersion
-
-			err := i.KafkaClient.PauseElasticSearchConnector(version)
+	Describe("Kafka Topic", func() {
+		It("Waits for the Kafka topic to be ready before creating connectors", func() {
+			i.CreatePipeline()
+			pipeline := i.ReconcileXJoinNonTest()
+			topic, err := i.KafkaClient.GetTopic(i.KafkaClient.TopicName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
-
-			_ = i.InsertSimpleHost()
-
-			pipeline = i.ExpectInitSyncInvalidReconcile()
-			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
-			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
-				"Count validation failed - 1 hosts (100.00%) do not match"))
-
-			//validate alias points to jenkins pipeline
-			indices, err := i.EsClient.GetCurrentIndicesWithAlias("xjoin.inventory.hosts")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(indices)).To(Equal(1))
-			Expect(indices[0]).To(Equal("xjoin.inventory.hosts.v1.1"))
-
-			//validate jenkins managed resources still exist
-			i.validateJenkinsResourcesStillExist()
+			status := topic.Object["status"].(map[string]interface{})
+			conditions := status["conditions"].([]interface{})
+			readyCondition := conditions[0].(map[string]interface{})
+			Expect(readyCondition["status"]).To(Equal("True"))
 		})
 
-		It("Updates the alias to point to the operator managed pipeline when it becomes valid", func() {
-			//create resources to represent existing jenkins pipeline
-			defer i.cleanupJenkinsResources()
-			defer i.setPrefix("xjointest")
-			i.createJenkinsResources()
-
-			//set configmap jenkins version
+		It("Fails if topic is not ready before timeout", func() {
 			cm := map[string]string{
-				"jenkins.managed.version":              "v1.1",
-				"init.validation.percentage.threshold": "0",
-				"init.validation.attempts.threshold":   "4",
+				"kafka.cluster":                "invalid.cluster",
+				"kafka.topic.creation.timeout": "1",
 			}
 			i.CreateConfigMap("xjoin", cm)
-
-			prefix := "xjoin.inventory"
-			i.setPrefix(prefix)
-			pipeline := i.CreateValidPipeline(&xjoin.XJoinPipelineSpec{ResourceNamePrefix: &prefix})
-
-			//validate alias points to operator managed pipeline
-			indices, err := i.EsClient.GetCurrentIndicesWithAlias("xjoin.inventory.hosts")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(indices)).To(Equal(1))
-			Expect(indices[0]).To(Equal(pipeline.Status.ActiveIndexName))
-
-			//validate jenkins managed resources still exist
-			i.validateJenkinsResourcesStillExist()
-		})
-
-		It("Leaves the existing alias alone during failed initial sync", func() {
-			defer i.cleanupJenkinsResources()
-			defer i.setPrefix("xjointest")
-			i.createJenkinsResources()
-
-			//set configmap jenkins version
-			cm := map[string]string{
-				"jenkins.managed.version":              "v1.1",
-				"init.validation.percentage.threshold": "0",
-				"init.validation.attempts.threshold":   "2",
-			}
-			i.CreateConfigMap("xjoin", cm)
-
-			//reconcile
-			prefix := "xjoin.inventory"
-			i.setPrefix(prefix)
-			i.CreatePipeline(&xjoin.XJoinPipelineSpec{ResourceNamePrefix: &prefix})
-			pipeline := i.ReconcileXJoin()
-			version := pipeline.Status.PipelineVersion
-
-			err := i.KafkaClient.PauseElasticSearchConnector(version)
-			Expect(err).ToNot(HaveOccurred())
-
-			_ = i.InsertSimpleHost()
-
-			pipeline = i.ExpectInitSyncInvalidReconcile()
-			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
-			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
-				"Count validation failed - 1 hosts (100.00%) do not match"))
-
-			i.ExpectNewReconcile()
-
-			//validate alias points to jenkins pipeline
-			indices, err := i.EsClient.GetCurrentIndicesWithAlias("xjoin.inventory.hosts")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(indices)).To(Equal(1))
-			Expect(indices[0]).To(Equal("xjoin.inventory.hosts.v1.1"))
-
-			//validate jenkins managed resources still exist
-			i.validateJenkinsResourcesStillExist()
+			i.CreatePipeline()
+			err := i.ReconcileXJoinNonTestWithError()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(HavePrefix(`timed out waiting for Kafka Topic`))
 		})
 	})
 })
