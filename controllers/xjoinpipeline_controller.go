@@ -51,6 +51,7 @@ type XJoinPipelineReconciler struct {
 	Scheme    *runtime.Scheme
 	Recorder  record.EventRecorder
 	Namespace string
+	Test      bool
 }
 
 func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.Request) (ReconcileIteration, error) {
@@ -112,6 +113,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		Parameters:    i.parameters,
 		ParametersMap: xjoinConfig.ParametersMap,
 		Recorder:      i.Recorder,
+		Test:          r.Test,
 	}
 
 	i.InventoryDb = database.NewDatabase(database.DBParams{
@@ -229,6 +231,7 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 			i.error(err, "Error creating debezium connector")
 			return reconcile.Result{}, err
 		}
+
 		_, err = i.Kafka.CreateESConnector(pipelineVersion, false)
 		if err != nil {
 			i.error(err, "Error creating ES connector")
@@ -353,7 +356,8 @@ func NewXJoinReconciler(
 	scheme *runtime.Scheme,
 	log logr.Logger,
 	recorder record.EventRecorder,
-	namespace string) *XJoinPipelineReconciler {
+	namespace string,
+	isTest bool) *XJoinPipelineReconciler {
 
 	return &XJoinPipelineReconciler{
 		Client:    client,
@@ -361,5 +365,6 @@ func NewXJoinReconciler(
 		Scheme:    scheme,
 		Recorder:  recorder,
 		Namespace: namespace,
+		Test:      isTest,
 	}
 }

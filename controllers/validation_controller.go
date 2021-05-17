@@ -130,10 +130,11 @@ func NewValidationReconciler(
 	log logr.Logger,
 	checkResourceDeviation bool,
 	recorder record.EventRecorder,
-	namespace string) *ValidationReconciler {
+	namespace string,
+	isTest bool) *ValidationReconciler {
 
 	return &ValidationReconciler{
-		XJoinPipelineReconciler: *NewXJoinReconciler(client, scheme, log, recorder, namespace),
+		XJoinPipelineReconciler: *NewXJoinReconciler(client, scheme, log, recorder, namespace, isTest),
 		CheckResourceDeviation:  checkResourceDeviation,
 	}
 }

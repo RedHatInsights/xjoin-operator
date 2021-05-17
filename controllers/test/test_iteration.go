@@ -559,6 +559,21 @@ func (i *Iteration) ReconcileXJoinWithError() error {
 	return err
 }
 
+func (i *Iteration) ReconcileXJoinNonTestWithError() error {
+	xJoinReconciler := newXJoinReconciler(i.NamespacedName.Namespace, false)
+	_, err := xJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	Expect(err).To(HaveOccurred())
+	return err
+}
+
+func (i *Iteration) ReconcileXJoinNonTest() *xjoin.XJoinPipeline {
+	xJoinReconciler := newXJoinReconciler(i.NamespacedName.Namespace, false)
+	result, err := xJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(result.Requeue).To(BeFalse())
+	return i.GetPipeline()
+}
+
 func (i *Iteration) ReconcileXJoin() *xjoin.XJoinPipeline {
 	result, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
 	Expect(err).ToNot(HaveOccurred())
