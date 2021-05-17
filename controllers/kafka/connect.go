@@ -240,7 +240,12 @@ func (kafka *Kafka) CheckIfConnectIsResponding() (bool, error) {
 		url := fmt.Sprintf(
 			"http://%s-connect-api.%s.svc:8083/connectors",
 			kafka.Parameters.ConnectCluster.String(), kafka.Parameters.ConnectClusterNamespace.String())
-		res, _ := http.Get(url) //ignore errors and try again
+		res, err := http.Get(url)
+
+		//ignore errors and try again
+		if err != nil {
+			log.Info("Error checking if connect is responding, trying again.", "error", err)
+		}
 
 		if res != nil && res.StatusCode == 200 {
 			body, err := ioutil.ReadAll(res.Body)

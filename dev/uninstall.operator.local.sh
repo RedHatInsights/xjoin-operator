@@ -1,2 +1,2 @@
 #!/bin/bash
-oc delete ns/xjoin-operator-olm
+kubectl delete namespace xjoin-operator-olm

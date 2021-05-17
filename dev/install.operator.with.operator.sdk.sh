@@ -16,7 +16,7 @@ docker push -a quay.io/$QUAY_USERNAME/xjoin-operator
 make bundle-build -e BUNDLE_IMAGE=xjoin-operator-bundle BUNDLE_IMAGE_TAG=latest -e QUAY_NAMESPACE=$QUAY_USERNAME
 docker tag xjoin-operator-bundle:latest quay.io/$QUAY_USERNAME/xjoin-operator-bundle:latest
 docker push quay.io/$QUAY_USERNAME/xjoin-operator-bundle:latest
-oc create ns xjoin-operator-olm
-oc apply -f dev/elasticsearch.secret.yml
-oc apply -f dev/inventory-db.secret.yml
+kubectl create namespace xjoin-operator-olm
+kubectl apply -f dev/elasticsearch.secret.yml
+kubectl apply -f dev/inventory-db.secret.yml
 operator-sdk run bundle quay.io/$QUAY_USERNAME/xjoin-operator-bundle:latest --namespace xjoin-operator-olm --install-mode OwnNamespace --verbose

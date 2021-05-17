@@ -1,10 +1,10 @@
 #!/bin/bash
 
-oc whoami || exit 1
+./dev/cleanup.projects.sh
 
-oc delete project xjoin-operator-project &
-oc delete project kafka &
-oc delete project elastic-system &
+kubectl delete namespace xjoin-operator-project &
+kubectl delete namespace kafka &
+kubectl delete namespace elastic-system &
 
 wait
 pkill -f "oc port-forward"

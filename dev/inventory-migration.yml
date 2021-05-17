@@ -1,49 +1,21 @@
 ---
-apiVersion: apps.openshift.io/v1
-kind: DeploymentConfig
+apiVersion: batch/v1
+kind: Job
 metadata:
-  labels:
-    app: inventory-mq
-  name: inventory-mq-pmin
+  name: inventory-migration
 spec:
-  replicas: 1
-  selector:
-    app: inventory-mq
-    service: inventory-mq-pmin
-  strategy:
-    activeDeadlineSeconds: 21600
-    recreateParams:
-      mid:
-        execNewPod:
-          command:
-          - /opt/app-root/bin/python
-          - manage.py
-          - db
-          - upgrade
-          containerName: inventory-mq-pmin
-          env:
-          - name: SQLALCHEMY_ENGINE_LOG_LEVEL
-            value: INFO
-        failurePolicy: Abort
-    resources: {}
-    type: Recreate
   template:
-    metadata:
-      annotations:
-        openshift.io/generated-by: OpenShiftWebConsole
-        prometheus.io/path: /
-        prometheus.io/port: '9126'
-        prometheus.io/scrape: 'true'
-      creationTimestamp: null
-      labels:
-        app: inventory-mq
-        service: inventory-mq-pmin
     spec:
+      restartPolicy: Never
       containers:
       - command:
-        - python
-        - inv_mq_service.py
+        - /opt/app-root/bin/python
+        - manage.py
+        - db
+        - upgrade
         env:
+        - name: SQLALCHEMY_ENGINE_LOG_LEVEL
+          value: INFO
         - name: INVENTORY_DB_HOST
           valueFrom:
             secretKeyRef:
@@ -79,20 +51,7 @@ spec:
           value: platform.inventory.events
         image: quay.io/cloudservices/insights-inventory:635f6d4
         imagePullPolicy: IfNotPresent
-        livenessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /
-            port: 9126
-            scheme: HTTP
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 5
-        name: inventory-mq-pmin
-        ports:
-        - containerPort: 8080
-          protocol: TCP
+        name: inventory-migration
         resources:
           limits:
             cpu: 200m
@@ -100,17 +59,6 @@ spec:
           requests:
             cpu: 200m
             memory: 256Mi
-        securityContext: {}
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-      dnsPolicy: ClusterFirst
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
-      terminationGracePeriodSeconds: 30
-  test: false
-  triggers:
-  - type: ConfigChange
 
 ---
 apiVersion: kafka.strimzi.io/v1beta1

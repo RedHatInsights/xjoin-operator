@@ -186,10 +186,19 @@ func (r *KafkaConnectReconciler) reconcileKafkaConnect() error {
 
 		//update connect object label to trigger redeploy
 		obj := connect.Object
-		metadata := obj["metadata"].(map[string]interface{})
-		connectLabels := metadata["labels"].(map[string]interface{})
+		metadata := make(map[string]interface{})
+		if obj["metadata"] != nil {
+			metadata = obj["metadata"].(map[string]interface{})
+		}
+
+		connectLabels := make(map[string]interface{})
+		if metadata["labels"] != nil {
+			connectLabels = metadata["labels"].(map[string]interface{})
+		}
 		now := strconv.Itoa(int(time.Now().Unix()))
 		connectLabels["redeploy"] = now
+		metadata["labels"] = connectLabels
+		obj["metadata"] = metadata
 
 		err = r.Client.Update(ctx, connect)
 		if err != nil {

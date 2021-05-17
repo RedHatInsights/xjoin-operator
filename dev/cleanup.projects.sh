@@ -1,37 +1,35 @@
 #!/bin/bash
-oc project xjoin-operator-project
-
 echo "Deleting topics.."
-oc get KafkaTopic -o custom-columns=name:metadata.name | grep xjointest | while read topic ; do
-    oc delete KafkaTopic $topic
+kubectl get KafkaTopic -o custom-columns=name:metadata.name | grep xjointest | while read -r topic ; do
+    kubectl delete KafkaTopic "$topic"
 done
 
 echo "Deleting connectors.."
-oc get KafkaConnector -o custom-columns=name:metadata.name | grep xjointest | while read connector ; do
-    oc delete KafkaConnector $connector
+kubectl get KafkaConnector -o custom-columns=name:metadata.name | grep xjointest | while read -r connector ; do
+    kubectl delete KafkaConnector "$connector"
 done
 
-echo "Deleting projects.."
-oc get projects -o custom-columns=name:metadata.name | grep xjointest | while read project ; do
-    echo $project
-    oc project $project && kubectl get XJoinPipeline test-pipeline-01 -o=json | jq '.metadata.finalizers = null' | kubectl apply -f -
+echo "Deleting namespaces.."
+kubectl get namespaces -o custom-columns=name:metadata.name | grep xjointest | while read -r namespace ; do
+    echo "$namespace"
+    kubectl get XJoinPipeline test-pipeline-01 -o=json -n "$namespace" | jq '.metadata.finalizers = null' | kubectl apply -f -
     
-    oc delete project $project
+    kubectl delete namespace "$namespace"
 done
 
-oc get projects -o custom-columns=name:metadata.name | grep test | while read project ; do
-    echo $project
-    oc project $project && kubectl get CyndiPipeline integration-test-pipeline -o=json | jq '.metadata.finalizers = null' | kubectl apply -f -
+kubectl get namespaces -o custom-columns=name:metadata.name | grep test | while read -r project ; do
+    echo "$project"
+    kubectl get CyndiPipeline integration-test-pipeline -o=json -n "$project" | jq '.metadata.finalizers = null' | kubectl apply -f -
 
-    oc delete KafkaTopic --all
+    kubectl delete KafkaTopic --all
     sleep 1
-    oc delete KafkaConnector --all
+    kubectl delete KafkaConnector --all
     sleep 1
 
-    oc delete project $project
+    kubectl delete project "$project"
 done
 
 echo "Deleting indices..."
-curl -u "xjoin:xjoin1337" "http://elasticsearch:9200/_cat/indices/xjointest*?h=index" | while read index ; do
-  curl -u "xjoin:xjoin1337" -X DELETE "http://elasticsearch:9200/$index"
+curl -u "xjoin:xjoin1337" "http://localhost:9200/_cat/indices/xjointest*?h=index" | while read -r index ; do
+  curl -u "xjoin:xjoin1337" -X DELETE "http://localhost:9200/$index"
 done

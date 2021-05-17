@@ -78,11 +78,11 @@ spec:
           timeoutSeconds: 1
         resources:
           limits:
-            cpu: 500m
-            memory: 512Mi
+            cpu: "2"
+            memory: 2Gi
           requests:
-            cpu: 100m
-            memory: 256Mi
+            cpu: 50m
+            memory: 128Mi
         securityContext:
           capabilities: {}
           privileged: false

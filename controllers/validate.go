@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-test/deep"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -202,10 +203,16 @@ func (i *ReconcileIteration) validateFullChunkSync(chunk []string) (allIdDiffs [
 	if err != nil {
 		return
 	}
+	if esHosts == nil {
+		esHosts = make([]data.Host, 0)
+	}
 
 	hbiHosts, err := i.InventoryDb.GetHostsByIds(chunk)
 	if err != nil {
 		return
+	}
+	if hbiHosts == nil {
+		hbiHosts = make([]data.Host, 0)
 	}
 
 	deep.MaxDiff = len(chunk) * 100

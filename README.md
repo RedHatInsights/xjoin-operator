@@ -37,40 +37,45 @@ The operator defines two controllers that reconcile a XJoinPipeline
 ## Development
 ### Setting up the development environment
 
-1. Download and unpack [CodeReady Containers](https://developers.redhat.com/products/codeready-containers/overview). Any other Kubernetes cluster should work although they haven't been tested.
+1. Set up a local Kubernetes environment. Known to work with the following:
+    - [CodeReady Containers](https://developers.redhat.com/products/codeready-containers/overview)
+    - [MiniKube](https://minikube.sigs.k8s.io/docs/start/)
 
 1. Append the following line into `/etc/hosts`
     ```
-    127.0.0.1 inventory-db xjoin-elasticsearch-es-default
+    127.0.0.1 inventory-db xjoin-elasticsearch-es-default.xjoin-operator-project.svc xjoin-kafka-connect-strimzi-connect-api.xjoin-operator-project.svc xjoin-elasticsearch-es-http
     ```
    
-1. Configure CRC to use 16G of memory
+1. Configure Kubernetes to use at least 16G of memory and 6 cpus. This is known to work although you can try with less.
     ```
     ./crc config set memory 16384
+    ./crc config set cpus 6
+    ```
+    ```
+    minikube config set cpus 6
+    minikube config set memory 16384
     ```
 
-1. Start CRC
+1. Start Kubernetes
     ```
     ./crc start
     ```
-
-1. When prompted for a pull secret paste it (you obtained pull secret on step 1 when downloading CRC)
-
-1. Log in to the cluster as kubeadmin (oc login -u kubeadmin -p ...)
-   You'll find the exact command to use in the CRC startup log
-
-1. Log in to https://quay.io/
-   From Account settings download a kubernetes secret.
-   This secret is used to pull quay.io/cloudservices images
-
-1. Run the setup script. <pull-secret-name> is the value of the `metadata.name` field in the quay.io secret file.
     ```
-    dev/setup.sh <pull-secret-name> <pull-secret-file-location>
+    minikube start
     ```
-   
-1. Forward ports to ElasticSearch, the HBI DB, and Kafka Connect:
+
+1. If using CRC
+   - When prompted for a pull secret paste it (you obtained pull secret on step 1 when downloading CRC)
+   - Log in to the cluster as kubeadmin (oc login -u kubeadmin -p ...)
+      You'll find the exact command to use in the CRC startup log
+
+1. Login to `quay.io` and `https://registry.redhat.io`
+   - `docker login -u=<quay-username> -p="password" quay.io`
+   - `docker login https://registry.redhat.io`
+
+1. Run the setup script
     ```
-    dev/forward-ports.sh
+    dev/setup.sh
     ```
    
 ### Reset the development environment
@@ -79,7 +84,7 @@ The Openshift environment can be deleted with this script:
 dev/teardown.sh
 ```
 
-Afterwards, the environment can be setup again without restarting CRC via `dev/setup.sh <pull-secret-name> <pull-secret-file-location>`.
+Afterwards, the environment can be setup again without restarting Kubernetes via `dev/setup.sh`.
    
 ### Running the operator locally
 
