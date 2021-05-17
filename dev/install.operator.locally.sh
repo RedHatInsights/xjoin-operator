@@ -1,7 +1,7 @@
 #!/bin/bash
 NAMESPACE=xjoin-operator-olm
 
-oc create ns ${NAMESPACE}
-oc project ${NAMESPACE}
-oc apply -f config/samples/hbisecret.yaml
-oc process -f ./deploy/operator.yml -p TARGET_NAMESPACE=${NAMESPACE} -o yaml | oc apply -f -
+kubectl create ns ${NAMESPACE}
+kubectl project ${NAMESPACE}
+kubectl apply -f config/samples/hbisecret.yaml
+kubectl process -f ./deploy/operator.yml -p TARGET_NAMESPACE=${NAMESPACE} -o yaml | kubectl apply -f -

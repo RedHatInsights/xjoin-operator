@@ -36,7 +36,7 @@ func ForwardPorts() {
 	cmd := exec.Command(GetRootDir() + "/dev/forward-ports.sh")
 	err := cmd.Run()
 	Expect(err).ToNot(HaveOccurred())
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 3)
 }
 
 /* Sets up Before/After hooks that initialize testEnv.

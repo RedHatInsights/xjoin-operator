@@ -959,13 +959,13 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline := i.CreateValidPipeline()
 
 			//give connect time to create the connectors
-			time.Sleep(5 * time.Second)
+			time.Sleep(10 * time.Second)
 
 			//scale down strimzi operator deployment
 			i.ScaleDeployment("strimzi-cluster-operator", "kafka", 0)
 
 			//give strimzi time to scale down
-			time.Sleep(5 * time.Second)
+			time.Sleep(10 * time.Second)
 
 			//update es connector config with invalid url
 			i.SetESConnectorURL(
@@ -973,7 +973,7 @@ var _ = Describe("Pipeline operations", func() {
 				pipeline.Status.ActiveESConnectorName)
 
 			//give the connector time to realize it can't connect
-			time.Sleep(5 * time.Second)
+			time.Sleep(10 * time.Second)
 
 			//validate task is failed
 			tasks, err := i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveESConnectorName)

@@ -16,6 +16,13 @@ spec:
     trustedCertificates:
       - secretName: xjoin-kafka-cluster-cluster-ca-cert
         certificate: ca.crt
+  resources:
+    limits:
+      cpu: 3000m
+      memory: 4Gi
+    requests:
+      cpu: 250m
+      memory: 128Mi
   config:
     group.id: connect-cluster
     offset.storage.topic: connect-cluster-offsets
@@ -24,6 +31,7 @@ spec:
     config.storage.replication.factor: 1
     status.storage.topic: connect-cluster-status
     status.storage.replication.factor: 1
+    connector.client.config.override.policy: All
   template:
     pod:
       securityContext: {}

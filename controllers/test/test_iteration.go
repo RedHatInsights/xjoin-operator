@@ -191,7 +191,7 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 
 	//wait for deployment to be ready if replicas > 0
 	if replicas > 0 {
-		err = wait.PollImmediate(time.Second, time.Duration(60)*time.Second, func() (bool, error) {
+		err = wait.PollImmediate(time.Second, time.Duration(120)*time.Second, func() (bool, error) {
 			pods := &corev1.PodList{}
 
 			ctx, cancel = context.WithTimeout(context.Background(), time.Second*60)
@@ -219,7 +219,7 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 		})
 		Expect(err).ToNot(HaveOccurred())
 	} else {
-		err = wait.PollImmediate(time.Second, time.Duration(60)*time.Second, func() (bool, error) {
+		err = wait.PollImmediate(time.Second, time.Duration(120)*time.Second, func() (bool, error) {
 			pods := &corev1.PodList{}
 
 			ctx, cancel = context.WithTimeout(context.Background(), time.Second*60)
