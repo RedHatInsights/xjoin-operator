@@ -16,6 +16,7 @@ require (
 	github.com/prometheus/client_golang v1.0.0
 	github.com/spf13/viper v1.3.2
 	go.uber.org/zap v1.13.0
+	gopkg.in/h2non/gock.v1 v1.0.16
 	k8s.io/api v0.20.1
 	k8s.io/apimachinery v0.20.1
 	k8s.io/client-go v0.20.1

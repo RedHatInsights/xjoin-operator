@@ -540,7 +540,13 @@ func (i *ReconcileIteration) checkConnectorDeviation(connectorName string, conne
 		return nil, err
 	}
 
-	if i.Kafka.IsFailed(connectorName) {
+	isFailed, err := i.Kafka.IsFailed(connectorName)
+	if err != nil {
+		return nil, err
+	}
+
+	if isFailed {
+		i.Log.Warn("Connector is failed, restarting it.", "connector", connectorName)
 		err = i.Kafka.RestartConnector(connectorName)
 		if err != nil {
 			return fmt.Errorf("connector %s is in the FAILED state", connectorName), nil

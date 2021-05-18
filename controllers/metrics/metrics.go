@@ -55,6 +55,11 @@ var (
 		Name: "xjoin_refresh_total",
 		Help: "The number of times this pipeline has been refreshed",
 	}, []string{"reason"})
+
+	connectorTaskRestartCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "xjoin_connector_task_restart_total",
+		Help: "The number of times a connector task has been restarted",
+	}, []string{})
 )
 
 type RefreshReason string
@@ -75,7 +80,8 @@ func Init() {
 		fullInconsistencyAbsolute,
 		inconsistencyThreshold,
 		validationFailedCount,
-		refreshCount)
+		refreshCount,
+		connectorTaskRestartCount)
 }
 
 func InitLabels() {
@@ -90,6 +96,11 @@ func InitLabels() {
 	validationFailedCount.WithLabelValues()
 	refreshCount.WithLabelValues(string(RefreshInvalidPipeline))
 	refreshCount.WithLabelValues(string(RefreshStateDeviation))
+	connectorTaskRestartCount.WithLabelValues()
+}
+
+func ConnectorTaskRestarted() {
+	connectorTaskRestartCount.WithLabelValues().Inc()
 }
 
 func PipelineRefreshed(reason RefreshReason) {
