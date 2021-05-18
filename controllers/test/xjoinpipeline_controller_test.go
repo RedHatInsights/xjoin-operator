@@ -7,6 +7,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"github.com/redhatinsights/xjoin-operator/test"
+	"gopkg.in/h2non/gock.v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"reflect"
@@ -624,7 +625,24 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Triggers refresh if ConnectCluster changes", func() {
-			i.TestSpecFieldChanged("ConnectCluster", "newCluster", reflect.String)
+			pipeline := i.CreateValidPipeline()
+
+			defer gock.Off()
+
+			gock.New("http://newCluster-connect-api.xjoin-operator-project.svc:8083").
+				Get("/connectors/"+pipeline.Status.ActiveESConnectorName+"/status").
+				Reply(200).
+				BodyString("{}").
+				AddHeader("Content-Type", "application/json")
+
+			gock.New("http://newCluster-connect-api.xjoin-operator-project.svc:8083").
+				Get("/connectors/"+pipeline.Status.ActiveDebeziumConnectorName+"/status").
+				Reply(200).
+				BodyString("{}").
+				AddHeader("Content-Type", "application/json")
+
+			i.TestSpecFieldChangedForPipeline(
+				pipeline, "ConnectCluster", "newCluster", reflect.String)
 		})
 
 		It("Triggers refresh if ConnectClusterNamespace changes", func() {
@@ -907,6 +925,21 @@ var _ = Describe("Pipeline operations", func() {
 
 			//validate no refresh occurred
 			Expect(pipeline.Status.ActivePipelineVersion).To(Equal(activePipelineVersion))
+		})
+
+		It("Fails if unable to get connector task status", func() {
+			defer gock.Off()
+
+			pipeline := i.CreateValidPipeline()
+
+			gock.New("http://xjoin-kafka-connect-strimzi-connect-api.xjoin-operator-project.svc:8083").
+				Get("/connectors/" + pipeline.Status.ActiveESConnectorName + "/status").
+				Reply(500)
+
+			err := i.ReconcileValidationWithError()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(HavePrefix("unable to get connector"))
+			Expect(err.Error()).To(HaveSuffix("status"))
 		})
 
 		It("Performs a refresh when unable to successfully restart failed connector task", func() {

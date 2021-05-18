@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
+	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -160,6 +161,9 @@ func (kafka *Kafka) ListConnectorTasks(connectorName string) ([]map[string]inter
 }
 
 func (kafka *Kafka) RestartTaskForConnector(connectorName string, taskId float64) error {
+	metrics.ConnectorTaskRestarted()
+	log.Warn("Restarting connector task", "connector", connectorName, "taskId", taskId)
+
 	url := fmt.Sprintf(
 		"http://%s-connect-api.%s.svc:8083/connectors/%s/tasks/%.0f/restart",
 		kafka.Parameters.ConnectCluster.String(),
@@ -366,26 +370,35 @@ func (kafka *Kafka) GetConnectorStatus(connectorName string) (map[string]interfa
 		return nil, err
 	}
 	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
+
 	var bodyMap map[string]interface{}
-	err = json.Unmarshal(body, &bodyMap)
-	if err != nil {
-		return nil, err
+	if res.StatusCode == 200 {
+		body, err := ioutil.ReadAll(res.Body)
+		err = json.Unmarshal(body, &bodyMap)
+		if err != nil {
+			return nil, err
+		}
+	} else if res.StatusCode != 404 {
+		return nil, errors.New(fmt.Sprintf("unable to get connector %s status", connectorName))
 	}
 
 	return bodyMap, nil
 }
 
-func (kafka *Kafka) IsFailed(connectorName string) bool {
+func (kafka *Kafka) IsFailed(connectorName string) (bool, error) {
 	connectorStatus, err := kafka.GetConnectorStatus(connectorName)
+	if err != nil {
+		return false, err
+	}
+
 	var connector interface{}
 	connector = connectorStatus["connector"]
 	if connector != nil {
 		connectorMap := connectorStatus["connector"].(map[string]interface{})
 		connectorState := connectorMap["state"].(string)
 
-		if err == nil && connectorState == failed {
-			return true
+		if connectorState == failed {
+			return true, nil
 		}
 	}
 
@@ -401,12 +414,12 @@ func (kafka *Kafka) IsFailed(connectorName string) bool {
 
 		for _, task := range tasksMap {
 			if task["state"] == failed {
-				return true
+				return true, nil
 			}
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 func (kafka *Kafka) CreateESConnector(

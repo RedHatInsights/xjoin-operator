@@ -236,8 +236,12 @@ func (i *Iteration) EditESConnectorToBeInvalid(pipelineVersion string) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func (i *Iteration) TestSpecFieldChanged(fieldName string, fieldValue interface{}, valueType reflect.Kind) {
-	pipeline := i.CreateValidPipeline()
+func (i *Iteration) TestSpecFieldChangedForPipeline(
+	pipeline *xjoin.XJoinPipeline,
+	fieldName string,
+	fieldValue interface{},
+	valueType reflect.Kind) {
+
 	activeIndex := pipeline.Status.ActiveIndexName
 
 	s := reflect.ValueOf(&pipeline.Spec).Elem()
@@ -256,6 +260,11 @@ func (i *Iteration) TestSpecFieldChanged(fieldName string, fieldValue interface{
 	Expect(err).ToNot(HaveOccurred())
 	pipeline = i.ExpectInitSyncUnknownReconcile()
 	Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+}
+
+func (i *Iteration) TestSpecFieldChanged(fieldName string, fieldValue interface{}, valueType reflect.Kind) {
+	pipeline := i.CreateValidPipeline()
+	i.TestSpecFieldChangedForPipeline(pipeline, fieldName, fieldValue, valueType)
 }
 
 func (i *Iteration) DeleteAllHosts() {
