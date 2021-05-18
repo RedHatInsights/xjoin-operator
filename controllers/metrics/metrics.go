@@ -60,6 +60,11 @@ var (
 		Name: "xjoin_connector_task_restart_total",
 		Help: "The number of times a connector task has been restarted",
 	}, []string{})
+
+	connectRestartCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "xjoin_connect_restart_total",
+		Help: "The number of times Kafka Connect has been restarted",
+	}, []string{})
 )
 
 type RefreshReason string
@@ -81,7 +86,8 @@ func Init() {
 		inconsistencyThreshold,
 		validationFailedCount,
 		refreshCount,
-		connectorTaskRestartCount)
+		connectorTaskRestartCount,
+		connectRestartCount)
 }
 
 func InitLabels() {
@@ -97,6 +103,11 @@ func InitLabels() {
 	refreshCount.WithLabelValues(string(RefreshInvalidPipeline))
 	refreshCount.WithLabelValues(string(RefreshStateDeviation))
 	connectorTaskRestartCount.WithLabelValues()
+	connectRestartCount.WithLabelValues()
+}
+
+func ConnectRestarted() {
+	connectRestartCount.WithLabelValues().Inc()
 }
 
 func ConnectorTaskRestarted() {

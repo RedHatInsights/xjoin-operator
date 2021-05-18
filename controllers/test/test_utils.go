@@ -46,6 +46,16 @@ func newValidationReconciler(namespace string) *ValidationReconciler {
 		true)
 }
 
+func newKafkaConnectReconciler(namespace string, isTest bool) *KafkaConnectReconciler {
+	return NewKafkaConnectReconciler(
+		test.Client,
+		scheme.Scheme,
+		logf.Log.WithName("test-kafkaconnect"),
+		record.NewFakeRecorder(10),
+		namespace,
+		isTest)
+}
+
 func parametersToMap(parameters Parameters) map[string]interface{} {
 	configReflection := reflect.ValueOf(&parameters).Elem()
 	parametersMap := make(map[string]interface{})
@@ -106,6 +116,7 @@ func Before() *Iteration {
 
 	i.XJoinReconciler = newXJoinReconciler(i.NamespacedName.Namespace, true)
 	i.ValidationReconciler = newValidationReconciler(i.NamespacedName.Namespace)
+	i.KafkaConnectReconciler = newKafkaConnectReconciler(i.NamespacedName.Namespace, true)
 
 	i.Parameters, i.ParametersMap = getParameters()
 	i.CreateDbSecret("host-inventory-db")
