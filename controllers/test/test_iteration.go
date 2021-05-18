@@ -38,16 +38,17 @@ import (
 var ResourceNamePrefix = "xjointest"
 
 type Iteration struct {
-	NamespacedName       types.NamespacedName
-	XJoinReconciler      *controllers.XJoinPipelineReconciler
-	ValidationReconciler *controllers.ValidationReconciler
-	EsClient             *elasticsearch.ElasticSearch
-	KafkaClient          kafka.Kafka
-	Parameters           xjoinconfig.Parameters
-	ParametersMap        map[string]interface{}
-	DbClient             *database.Database
-	Pipelines            []*xjoin.XJoinPipeline
-	Now                  time.Time
+	NamespacedName         types.NamespacedName
+	XJoinReconciler        *controllers.XJoinPipelineReconciler
+	ValidationReconciler   *controllers.ValidationReconciler
+	KafkaConnectReconciler *controllers.KafkaConnectReconciler
+	EsClient               *elasticsearch.ElasticSearch
+	KafkaClient            kafka.Kafka
+	Parameters             xjoinconfig.Parameters
+	ParametersMap          map[string]interface{}
+	DbClient               *database.Database
+	Pipelines              []*xjoin.XJoinPipeline
+	Now                    time.Time
 }
 
 func NewTestIteration() *Iteration {
@@ -583,6 +584,12 @@ func (i *Iteration) ReconcileXJoinNonTest() *xjoin.XJoinPipeline {
 	return i.GetPipeline()
 }
 
+func (i *Iteration) ReconcileKafkaConnect() {
+	result, err := i.KafkaConnectReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(result.Requeue).To(BeFalse())
+}
+
 func (i *Iteration) ReconcileXJoin() *xjoin.XJoinPipeline {
 	result, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
 	Expect(err).ToNot(HaveOccurred())
@@ -727,4 +734,32 @@ func (i *Iteration) fullValidationFailureTest(hbiFileName string, esFileName str
 	Expect(msg).To(Equal("Normal IDValidationPassed 0 hosts ids do not match. Number of hosts IDs retrieved: HBI: 4, ES: 4"))
 	msg = <-recorder.Events
 	Expect(msg).To(Equal("Normal FullValidationFailed 1 hosts do not match. 4 hosts validated."))
+}
+
+func (i *Iteration) getConnectPodName() (string, error) {
+	pods := &corev1.PodList{}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+
+	labels := client.MatchingLabels{}
+	labels["app.kubernetes.io/part-of"] = "strimzi-xjoin-kafka-connect-strimzi"
+	err := i.KafkaConnectReconciler.Client.List(ctx, pods, labels)
+	if err != nil {
+		return "", err
+	}
+
+	if len(pods.Items) == 0 {
+		return "", errors.New("no kafka connect pods found")
+	}
+
+	for _, pod := range pods.Items {
+		for _, condition := range pod.Status.Conditions {
+			if condition.Type == "Ready" && condition.Status == "True" {
+				return pod.Name, nil
+			}
+		}
+	}
+
+	return "", errors.New("unable to get pod name, it might not be ready yet")
 }

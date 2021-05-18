@@ -233,6 +233,47 @@ func (kafka *Kafka) GetConnector(name string) (*unstructured.Unstructured, error
 	return connector, err
 }
 
+// CheckIfConnectIsResponding
+// First validate /connectors responds. If there are existing connectors, validate one of those can be retrieved too.
+func (kafka *Kafka) CheckIfConnectIsResponding() (bool, error) {
+	for j := 0; j < 10; j++ {
+		url := fmt.Sprintf(
+			"http://%s-connect-api.%s.svc:8083/connectors",
+			kafka.Parameters.ConnectCluster.String(), kafka.Parameters.ConnectClusterNamespace.String())
+		res, _ := http.Get(url) //ignore errors and try again
+
+		if res != nil && res.StatusCode == 200 {
+			body, err := ioutil.ReadAll(res.Body)
+			err = res.Body.Close()
+			if err != nil {
+				return false, nil
+			}
+
+			var bodyArr []string
+			err = json.Unmarshal(body, &bodyArr)
+			if err != nil {
+				return false, err
+			}
+
+			//if there are connectors, make sure they can be retrieved
+			if len(bodyArr) > 0 {
+				connectorUrl := url + "/" + bodyArr[0]
+				res, _ = http.Get(connectorUrl) //ignore errors and try again
+
+				if res != nil && res.StatusCode == 200 {
+					return true, nil
+				}
+			} else {
+				//there are no connectors so signal connect is up
+				return true, nil
+			}
+		}
+	}
+
+	log.Warn("Kafka Connect is not responding")
+	return false, nil
+}
+
 func (kafka *Kafka) CheckConnectorExistsViaREST(name string) (bool, error) {
 	url := fmt.Sprintf(
 		"http://%s-connect-api.%s.svc:8083/connectors/%s",

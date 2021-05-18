@@ -109,6 +109,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = controllers.NewKafkaConnectReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		ctrl.Log.WithName("controllers").WithName("kafkaconnect"),
+		mgr.GetEventRecorderFor("kafkaconnect"),
+		namespace,
+		false,
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "KafkaConnect")
+		os.Exit(1)
+	}
+
 	if err = controllers.NewValidationReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),

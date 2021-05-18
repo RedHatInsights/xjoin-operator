@@ -453,9 +453,9 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.ActiveESConnectorName).To(Equal(activeESConnectorName))
 
 			//trigger refresh with a new configmap
-			clusterName := "invalid.cluster"
+			validationPeriodMinutes := "1"
 			cm := map[string]string{
-				"connect.cluster": clusterName,
+				"validation.period.minutes": validationPeriodMinutes,
 			}
 			i.CreateConfigMap("xjoin", cm)
 
@@ -471,9 +471,8 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline := i.CreateValidPipeline()
 			activeIndex := pipeline.Status.ActiveIndexName
 
-			clusterName := "invalid.cluster"
 			cm := map[string]string{
-				"connect.cluster": clusterName,
+				"debezium.connector.errors.log.enable": "false",
 			}
 			i.CreateConfigMap("xjoin", cm)
 
@@ -482,12 +481,14 @@ var _ = Describe("Pipeline operations", func() {
 
 			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(connector.GetLabels()["strimzi.io/cluster"]).To(Equal(clusterName))
+			spec := connector.Object["spec"].(map[string]interface{})
+			config := spec["config"].(map[string]interface{})
+			Expect(config["errors.log.enable"]).To(Equal(false))
 		})
 
 		It("Triggers refresh if configmap changes", func() {
 			cm := map[string]string{
-				"connect.cluster": i.Parameters.ConnectCluster.String(),
+				"debezium.connector.errors.log.enable": "true",
 			}
 			i.CreateConfigMap("xjoin", cm)
 			pipeline := i.CreateValidPipeline()
@@ -495,8 +496,9 @@ var _ = Describe("Pipeline operations", func() {
 
 			configMap, err := utils.FetchConfigMap(test.Client, i.NamespacedName.Namespace, "xjoin")
 			Expect(err).ToNot(HaveOccurred())
-			updatedClusterName := "invalid.cluster"
-			cm["connect.cluster"] = updatedClusterName
+
+			cm["debezium.connector.errors.log.enable"] = "false"
+
 			configMap.Data = cm
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 			defer cancel()
@@ -508,7 +510,9 @@ var _ = Describe("Pipeline operations", func() {
 
 			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(connector.GetLabels()["strimzi.io/cluster"]).To(Equal(updatedClusterName))
+			spec := connector.Object["spec"].(map[string]interface{})
+			config := spec["config"].(map[string]interface{})
+			Expect(config["errors.log.enable"]).To(Equal(false))
 		})
 
 		It("Triggers refresh if database secret changes", func() {

@@ -13,64 +13,65 @@ var secretTypes = secrets{
 }
 
 type Parameters struct {
-	ResourceNamePrefix                Parameter
-	ConnectCluster                    Parameter
-	ConnectClusterNamespace           Parameter
-	KafkaCluster                      Parameter
-	KafkaClusterNamespace             Parameter
-	ConfigMapVersion                  Parameter
-	StandardInterval                  Parameter
-	ValidationInterval                Parameter
-	ValidationAttemptsThreshold       Parameter
-	ValidationPercentageThreshold     Parameter
-	ValidationInitInterval            Parameter
-	ValidationInitAttemptsThreshold   Parameter
-	ValidationInitPercentageThreshold Parameter
-	ElasticSearchConnectorTemplate    Parameter
-	ElasticSearchURL                  Parameter
-	ElasticSearchUsername             Parameter
-	ElasticSearchPassword             Parameter
-	ElasticSearchTasksMax             Parameter
-	ElasticSearchMaxInFlightRequests  Parameter
-	ElasticSearchErrorsLogEnable      Parameter
-	ElasticSearchMaxRetries           Parameter
-	ElasticSearchRetryBackoffMS       Parameter
-	ElasticSearchBatchSize            Parameter
-	ElasticSearchMaxBufferedRecords   Parameter
-	ElasticSearchLingerMS             Parameter
-	ElasticSearchSecretName           Parameter
-	ElasticSearchSecretVersion        Parameter
-	ElasticSearchPipelineTemplate     Parameter
-	ElasticSearchIndexReplicas        Parameter
-	ElasticSearchIndexShards          Parameter
-	ElasticSearchIndexTemplate        Parameter
-	DebeziumTemplate                  Parameter
-	DebeziumTasksMax                  Parameter
-	DebeziumMaxBatchSize              Parameter
-	DebeziumQueueSize                 Parameter
-	DebeziumPollIntervalMS            Parameter
-	DebeziumErrorsLogEnable           Parameter
-	HBIDBName                         Parameter
-	HBIDBHost                         Parameter
-	HBIDBPort                         Parameter
-	HBIDBUser                         Parameter
-	HBIDBPassword                     Parameter
-	HBIDBSSL                          Parameter
-	HBIDBSecretName                   Parameter
-	HBIDBSecretVersion                Parameter
-	KafkaTopicPartitions              Parameter
-	KafkaTopicReplicas                Parameter
-	KafkaTopicCleanupPolicy           Parameter
-	KafkaTopicMinCompactionLagMS      Parameter
-	KafkaTopicRetentionBytes          Parameter
-	KafkaTopicRetentionMS             Parameter
-	JenkinsManagedVersion             Parameter
-	FullValidationNumThreads          Parameter
-	FullValidationChunkSize           Parameter
-	ValidationPeriodMinutes           Parameter
-	ValidationLagCompensationSeconds  Parameter
-	KafkaTopicMessageBytes            Parameter
-	KafkaTopicCreationTimeout         Parameter
+	ResourceNamePrefix                   Parameter
+	ConnectCluster                       Parameter
+	ConnectClusterNamespace              Parameter
+	KafkaCluster                         Parameter
+	KafkaClusterNamespace                Parameter
+	ConfigMapVersion                     Parameter
+	StandardInterval                     Parameter
+	ValidationInterval                   Parameter
+	ValidationAttemptsThreshold          Parameter
+	ValidationPercentageThreshold        Parameter
+	ValidationInitInterval               Parameter
+	ValidationInitAttemptsThreshold      Parameter
+	ValidationInitPercentageThreshold    Parameter
+	ElasticSearchConnectorTemplate       Parameter
+	ElasticSearchURL                     Parameter
+	ElasticSearchUsername                Parameter
+	ElasticSearchPassword                Parameter
+	ElasticSearchTasksMax                Parameter
+	ElasticSearchMaxInFlightRequests     Parameter
+	ElasticSearchErrorsLogEnable         Parameter
+	ElasticSearchMaxRetries              Parameter
+	ElasticSearchRetryBackoffMS          Parameter
+	ElasticSearchBatchSize               Parameter
+	ElasticSearchMaxBufferedRecords      Parameter
+	ElasticSearchLingerMS                Parameter
+	ElasticSearchSecretName              Parameter
+	ElasticSearchSecretVersion           Parameter
+	ElasticSearchPipelineTemplate        Parameter
+	ElasticSearchIndexReplicas           Parameter
+	ElasticSearchIndexShards             Parameter
+	ElasticSearchIndexTemplate           Parameter
+	DebeziumTemplate                     Parameter
+	DebeziumTasksMax                     Parameter
+	DebeziumMaxBatchSize                 Parameter
+	DebeziumQueueSize                    Parameter
+	DebeziumPollIntervalMS               Parameter
+	DebeziumErrorsLogEnable              Parameter
+	HBIDBName                            Parameter
+	HBIDBHost                            Parameter
+	HBIDBPort                            Parameter
+	HBIDBUser                            Parameter
+	HBIDBPassword                        Parameter
+	HBIDBSSL                             Parameter
+	HBIDBSecretName                      Parameter
+	HBIDBSecretVersion                   Parameter
+	KafkaTopicPartitions                 Parameter
+	KafkaTopicReplicas                   Parameter
+	KafkaTopicCleanupPolicy              Parameter
+	KafkaTopicMinCompactionLagMS         Parameter
+	KafkaTopicRetentionBytes             Parameter
+	KafkaTopicRetentionMS                Parameter
+	JenkinsManagedVersion                Parameter
+	FullValidationNumThreads             Parameter
+	FullValidationChunkSize              Parameter
+	ValidationPeriodMinutes              Parameter
+	ValidationLagCompensationSeconds     Parameter
+	KafkaTopicMessageBytes               Parameter
+	KafkaTopicCreationTimeout            Parameter
+	KafkaConnectReconcileIntervalSeconds Parameter
 }
 
 func NewXJoinConfiguration() Parameters {
@@ -545,6 +546,11 @@ func NewXJoinConfiguration() Parameters {
 			Type:         reflect.Int,
 			ConfigMapKey: "kafka.topic.creation.timeout",
 			DefaultValue: 300,
+		},
+		KafkaConnectReconcileIntervalSeconds: Parameter{
+			Type:         reflect.Int,
+			ConfigMapKey: "kafka.connect.reconcile.interval.seconds",
+			DefaultValue: 120,
 		},
 	}
 }
