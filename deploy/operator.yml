@@ -67,6 +67,14 @@ parameters:
     value: "10"
   - name: FULL_VALIDATION_CHUNK_SIZE
     value: "500"
+  - name: MANAGER_POD_CPU_REQUESTS
+    value: "250m"
+  - name: MANAGER_POD_MEM_REQUESTS
+    value: "512Mi"
+  - name: MANAGER_POD_CPU_LIMIT
+    value: "4"
+  - name: MANAGER_POD_MEM_LIMIT
+    value: "8Gi"
 
 objects:
   - apiVersion: operators.coreos.com/v1
@@ -100,11 +108,11 @@ objects:
             value: "${LOG_LEVEL}"
         resources:
           limits:
-            cpu: 4
-            memory: 8Gi
+            cpu: ${MANAGER_POD_CPU_LIMIT}
+            memory: ${MANAGER_POD_MEM_LIMIT}
           requests:
-            cpu: 1
-            memory: 1Gi
+            cpu: ${MANAGER_POD_CPU_REQUESTS}
+            memory: ${MANAGER_POD_MEM_REQUESTS}
 
   - apiVersion: v1
     kind: ConfigMap
