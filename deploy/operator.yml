@@ -220,8 +220,7 @@ objects:
                 "type": "keyword"
               }
             }
-          }
-       }
+          }}
 
   # TODO: move this into the bundle itself
   # depends on https://github.com/operator-framework/operator-sdk/pull/4137
