@@ -10,6 +10,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	corev1 "k8s.io/api/core/v1"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
@@ -206,6 +207,8 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 	topicsToKeep = append(topicsToKeep, i.Instance.Status.ActiveTopicName)
 	replicationSlotsToKeep = append(replicationSlotsToKeep, i.Instance.Status.ActiveReplicationSlotName)
 
+	var staleResources []string
+
 	//keep the in progress pipeline's resources and the active resources
 	if i.Instance.GetState() != xjoin.STATE_REMOVED && i.Instance.Status.PipelineVersion != "" {
 		connectorsToKeep = append(connectorsToKeep, i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion))
@@ -233,6 +236,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 			if !utils.ContainsString(connectorsToKeep, connector.GetName()) && i.isXJoinResource(connector.GetName()) {
 				i.Log.Info("Removing stale connector", "connector", connector.GetName())
 				if err = i.Kafka.DeleteConnector(connector.GetName()); err != nil {
+					staleResources = append(staleResources, "KafkaConnector/"+connector.GetName())
 					errors = append(errors, err)
 				}
 			}
@@ -249,6 +253,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 			if !utils.ContainsString(esPipelinesToKeep, esPipeline) && i.isXJoinResource(esPipeline) {
 				i.Log.Info("Removing stale es pipeline", "esPipeline", esPipeline)
 				if err = i.ESClient.DeleteESPipelineByFullName(esPipeline); err != nil {
+					staleResources = append(staleResources, "ESPipeline/"+esPipeline)
 					errors = append(errors, err)
 				}
 			}
@@ -265,6 +270,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 			if !utils.ContainsString(esIndicesToKeep, index) && i.isXJoinResource(index) {
 				i.Log.Info("Removing stale index", "index", index)
 				if err = i.ESClient.DeleteIndexByFullName(index); err != nil {
+					staleResources = append(staleResources, "ESIndex/"+index)
 					errors = append(errors, err)
 				}
 			}
@@ -281,6 +287,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 			if !utils.ContainsString(topicsToKeep, topic) && i.isXJoinResource(topic) {
 				i.Log.Info("Removing stale topic", "topic", topic)
 				if err = i.Kafka.DeleteTopic(topic); err != nil {
+					staleResources = append(staleResources, "KafkaTopic/"+topic)
 					errors = append(errors, err)
 				}
 			}
@@ -297,11 +304,14 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 			if !utils.ContainsString(replicationSlotsToKeep, slot) && i.isXJoinResource(slot) {
 				i.Log.Info("Removing stale replication slot", "slot", slot)
 				if err = i.InventoryDb.RemoveReplicationSlot(slot); err != nil {
+					staleResources = append(staleResources, "ReplicationSlot/"+slot)
 					errors = append(errors, err)
 				}
 			}
 		}
 	}
+
+	metrics.StaleResourceCount(len(staleResources), staleResources)
 
 	return
 }
