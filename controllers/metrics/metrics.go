@@ -3,6 +3,8 @@ package metrics
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"strconv"
+	"strings"
 )
 
 var (
@@ -59,12 +61,17 @@ var (
 	connectorTaskRestartCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "xjoin_connector_task_restart_total",
 		Help: "The number of times a connector task has been restarted",
-	}, []string{})
+	}, []string{"connector"})
 
 	connectRestartCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "xjoin_connect_restart_total",
 		Help: "The number of times Kafka Connect has been restarted",
 	}, []string{})
+
+	staleResourceCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "xjoin_stale_resource_count",
+		Help: "The number of stale resources found during each reconcile loop",
+	}, []string{"count", "resources"})
 )
 
 type RefreshReason string
@@ -87,7 +94,8 @@ func Init() {
 		validationFailedCount,
 		refreshCount,
 		connectorTaskRestartCount,
-		connectRestartCount)
+		connectRestartCount,
+		staleResourceCount)
 }
 
 func InitLabels() {
@@ -102,16 +110,23 @@ func InitLabels() {
 	validationFailedCount.WithLabelValues()
 	refreshCount.WithLabelValues(string(RefreshInvalidPipeline))
 	refreshCount.WithLabelValues(string(RefreshStateDeviation))
-	connectorTaskRestartCount.WithLabelValues()
 	connectRestartCount.WithLabelValues()
+}
+
+func StaleResourceCount(count int, resources []string) {
+	staleResourceCount.
+		With(prometheus.Labels{
+			"count":     strconv.Itoa(count),
+			"resources": strings.Join(resources, ",")}).
+		Set(float64(count))
 }
 
 func ConnectRestarted() {
 	connectRestartCount.WithLabelValues().Inc()
 }
 
-func ConnectorTaskRestarted() {
-	connectorTaskRestartCount.WithLabelValues().Inc()
+func ConnectorTaskRestarted(connector string) {
+	connectorTaskRestartCount.With(prometheus.Labels{"connector": connector}).Inc()
 }
 
 func PipelineRefreshed(reason RefreshReason) {

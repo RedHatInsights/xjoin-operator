@@ -161,7 +161,7 @@ func (kafka *Kafka) ListConnectorTasks(connectorName string) ([]map[string]inter
 }
 
 func (kafka *Kafka) RestartTaskForConnector(connectorName string, taskId float64) error {
-	metrics.ConnectorTaskRestarted()
+	metrics.ConnectorTaskRestarted(connectorName)
 	log.Warn("Restarting connector task", "connector", connectorName, "taskId", taskId)
 
 	url := fmt.Sprintf(
