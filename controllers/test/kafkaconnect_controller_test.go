@@ -32,7 +32,9 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			i.CreatePipeline()
-			i.ReconcileKafkaConnect()
+			requeue, err := i.ReconcileKafkaConnect()
+			Expect(requeue).To(BeFalse())
+			Expect(err).ToNot(HaveOccurred())
 
 			time.Sleep(time.Second * 3) //give the old connect pod time to completely go away
 
@@ -59,7 +61,8 @@ var _ = Describe("Pipeline operations", func() {
 				Get("/connectors/" + pipeline.Status.ActiveESConnectorName).
 				Reply(500)
 
-			i.ReconcileKafkaConnect()
+			requeue, _ := i.ReconcileKafkaConnect()
+			Expect(requeue).To(BeFalse())
 
 			time.Sleep(time.Second * 3) //give the old connect pod time to completely go away
 
@@ -73,7 +76,9 @@ var _ = Describe("Pipeline operations", func() {
 			originalPodName, err := i.getConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
 			i.CreatePipeline()
-			i.ReconcileKafkaConnect()
+			requeue, err := i.ReconcileKafkaConnect()
+			Expect(requeue).To(BeFalse())
+			Expect(err).ToNot(HaveOccurred())
 			newPodName, err := i.getConnectPodName()
 			Expect(originalPodName).To(Equal(newPodName))
 		})

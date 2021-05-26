@@ -29,9 +29,10 @@ type KafkaConnectReconciler struct {
 	kafka      kafka.Kafka
 	parameters config.Parameters
 	log        logger.Log
+	instance   *xjoin.XJoinPipeline
 }
 
-func (r *KafkaConnectReconciler) setup(reqLogger logger.Log, request ctrl.Request) error {
+func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Request) error {
 	instance, err := utils.FetchXJoinPipeline(r.Client, request.NamespacedName)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
@@ -43,6 +44,7 @@ func (r *KafkaConnectReconciler) setup(reqLogger logger.Log, request ctrl.Reques
 		// Error reading the object - requeue the request.
 		return err
 	}
+	r.instance = instance
 
 	xjoinConfig, err := config.NewConfig(instance, r.Client)
 	if err != nil {
@@ -64,23 +66,42 @@ func (r *KafkaConnectReconciler) setup(reqLogger logger.Log, request ctrl.Reques
 	return nil
 }
 
+// Reconcile
+// This reconciles Kafka Connect is running and each active connector is running
 func (r *KafkaConnectReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
 	reqLogger := logger.NewLogger("controller_validation", "Pipeline", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling Kafka Connect")
 
-	err := r.setup(reqLogger, request)
+	err := r.Setup(reqLogger, request)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	//make sure connect is responding
 	err = r.reconcileKafkaConnect()
 	if err != nil {
-		return reconcile.Result{}, err
+		reqLogger.Error(err, "Error while reconciling Kafka Connect")
 	}
 
-	return reconcile.Result{
-		RequeueAfter: time.Duration(r.parameters.KafkaConnectReconcileIntervalSeconds.Int()) * time.Second}, nil
+	if r.instance.Status.ActiveESConnectorName != "" {
+		err = r.reconcileKafkaConnector(r.instance.Status.ActiveESConnectorName)
+		if err != nil {
+			reqLogger.Error(err, "Error while reconciling ES connector")
+		}
+	}
+
+	if r.instance.Status.ActiveDebeziumConnectorName != "" {
+		err = r.reconcileKafkaConnector(r.instance.Status.ActiveDebeziumConnectorName)
+		if err != nil {
+			reqLogger.Error(err, "Error while reconciling Debezium connector")
+		}
+	}
+
+	if err != nil {
+		return reconcile.Result{}, err
+	} else {
+		return reconcile.Result{
+			RequeueAfter: time.Duration(r.parameters.KafkaConnectReconcileIntervalSeconds.Int()) * time.Second}, nil
+	}
 }
 
 func (r *KafkaConnectReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -102,6 +123,23 @@ func NewKafkaConnectReconciler(
 	return &KafkaConnectReconciler{
 		XJoinPipelineReconciler: *NewXJoinReconciler(client, scheme, log, recorder, namespace, isTest),
 	}
+}
+
+func (r *KafkaConnectReconciler) reconcileKafkaConnector(connectorName string) error {
+	isFailed, err := r.kafka.IsFailed(connectorName)
+	if err != nil {
+		return err
+	}
+
+	if isFailed {
+		r.log.Warn("Connector is failed, restarting it.", "connector", connectorName)
+		err = r.kafka.RestartConnector(connectorName)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *KafkaConnectReconciler) reconcileKafkaConnect() error {
