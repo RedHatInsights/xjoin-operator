@@ -584,10 +584,10 @@ func (i *Iteration) ReconcileXJoinNonTest() *xjoin.XJoinPipeline {
 	return i.GetPipeline()
 }
 
-func (i *Iteration) ReconcileKafkaConnect() {
+func (i *Iteration) ReconcileKafkaConnect() (bool, error) {
 	result, err := i.KafkaConnectReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(result.Requeue).To(BeFalse())
+	Expect(result).ToNot(BeNil())
+	return result.Requeue, err
 }
 
 func (i *Iteration) ReconcileXJoin() *xjoin.XJoinPipeline {
