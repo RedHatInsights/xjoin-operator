@@ -290,7 +290,7 @@ func parseJsonField(field []uint8) (map[string]interface{}, error) {
 
 //TODO handle this dynamically with a schema
 func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
-	cols := "id,account,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter"
+	cols := "id,account,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter,tags"
 
 	idsMap := make(map[string]interface{})
 	idsMap["IDs"] = ids
@@ -345,8 +345,71 @@ func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
 		}
 		host.Facts = factsJson
 
+		tagsJson, err := parseJsonField(host.Tags.([]uint8))
+		if err != nil {
+			return nil, err
+		}
+		host.Tags = tagsJson
+
+		host.TagsStructured, host.TagsString, host.TagsSearch = tagsStructured(tagsJson)
+
 		response = append(response, host)
 	}
 
 	return response, nil
+}
+
+/*
+"tags_structured": [
+	{
+		"namespace": "NS1",
+		"value": "val3",
+		"key": "key3"
+	}
+],
+
+"tags_string": [
+	"NS1/key3/val3",
+	"NS3/key3/val3",
+	"Sat/prod/",
+	"SPECIAL/key/val"
+],
+
+"tags_search": [
+	"NS1/key3=val3",
+	"NS3/key3=val3",
+	"Sat/prod=",
+	"SPECIAL/key=val"
+],
+*/
+func tagsStructured(tagsJson map[string]interface{}) (
+	structuredTags []map[string]interface{},
+	stringsTags []interface{},
+	searchTags []interface{}) {
+
+	for namespaceName, namespaceVal := range tagsJson {
+		namespaceMap := namespaceVal.(map[string]interface{})
+		for keyName, key := range namespaceMap {
+			keyArray := key.([]interface{})
+			for _, val := range keyArray {
+				structuredTag := make(map[string]interface{})
+				structuredTag["namespace"] = namespaceName
+				structuredTag["key"] = keyName
+				structuredTag["value"] = val.(string)
+				structuredTags = append(structuredTags, structuredTag)
+
+				stringTag := namespaceName
+				stringTag = stringTag + "/" + keyName
+				stringTag = stringTag + "/" + val.(string)
+				stringsTags = append(stringsTags, stringTag)
+
+				searchTag := namespaceName
+				searchTag = searchTag + "/" + keyName
+				searchTag = searchTag + "=" + val.(string)
+				searchTags = append(searchTags, searchTag)
+			}
+		}
+	}
+
+	return structuredTags, stringsTags, searchTags
 }
