@@ -216,7 +216,9 @@ func NewXJoinConfiguration() Parameters {
 							"properties": {
 								"fqdn": { "type": "keyword"},
 								"insights_id": { "type": "keyword"},
-								"satellite_id": { "type": "keyword"}
+								"satellite_id": { "type": "keyword"},
+								"provider_type": { "type": "keyword"},
+								"provider_id": { "type": "keyword"}
 							}
 						},
 						"system_profile_facts": {
