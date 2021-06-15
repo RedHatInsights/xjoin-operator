@@ -9,6 +9,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -383,24 +384,27 @@ func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
 ],
 */
 func tagsStructured(tagsJson map[string]interface{}) (
-	structuredTags []map[string]interface{},
-	stringsTags []interface{},
-	searchTags []interface{}) {
+	structuredTags []map[string]string,
+	stringsTags []string,
+	searchTags []string) {
+
+	tagsJson = sortMap(tagsJson)
 
 	for namespaceName, namespaceVal := range tagsJson {
-		namespaceMap := namespaceVal.(map[string]interface{})
+		namespaceMap := sortMap(namespaceVal.(map[string]interface{}))
 		for keyName, key := range namespaceMap {
 			keyArray := key.([]interface{})
 			for _, val := range keyArray {
-				structuredTag := make(map[string]interface{})
-				structuredTag["namespace"] = namespaceName
+				structuredTag := make(map[string]string)
 				structuredTag["key"] = keyName
+				structuredTag["namespace"] = namespaceName
 				structuredTag["value"] = val.(string)
 				structuredTags = append(structuredTags, structuredTag)
 
 				stringTag := namespaceName
 				stringTag = stringTag + "/" + keyName
 				stringTag = stringTag + "/" + val.(string)
+				stringTag = strings.ReplaceAll(stringTag, " ", "+")
 				stringsTags = append(stringsTags, stringTag)
 
 				searchTag := namespaceName
@@ -411,5 +415,23 @@ func tagsStructured(tagsJson map[string]interface{}) (
 		}
 	}
 
+	sort.Strings(stringsTags)
+	sort.Strings(searchTags)
+
 	return structuredTags, stringsTags, searchTags
+}
+
+func sortMap(unsortedMap map[string]interface{}) map[string]interface{} {
+	keys := make([]string, 0, len(unsortedMap))
+	for k := range unsortedMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	sortedMap := make(map[string]interface{})
+	for _, k := range keys {
+		sortedMap[k] = unsortedMap[k]
+	}
+
+	return sortedMap
 }
