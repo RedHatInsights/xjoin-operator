@@ -2,10 +2,13 @@ package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"strconv"
 	"strings"
 )
+
+var log = logger.NewLogger("metrics")
 
 var (
 	hostCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -71,7 +74,7 @@ var (
 	staleResourceCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "xjoin_stale_resource_count",
 		Help: "The number of stale resources found during each reconcile loop",
-	}, []string{"count", "resources"})
+	}, []string{"count"})
 )
 
 type RefreshReason string
@@ -116,9 +119,12 @@ func InitLabels() {
 func StaleResourceCount(count int, resources []string) {
 	staleResourceCount.
 		With(prometheus.Labels{
-			"count":     strconv.Itoa(count),
-			"resources": strings.Join(resources, ",")}).
+			"count":     strconv.Itoa(count)}).
 		Set(float64(count))
+
+	if len(resources) > 0 {
+		log.Info("Stale resources found", "resources", strings.Join(resources, ","))
+	}
 }
 
 func ConnectRestarted() {
