@@ -1,7 +1,7 @@
 XJoin (Cross Join) Operator
 ==============
 
-Openshift operator that manages the [XJoin pipeline](https://platform-docs.cloud.paas.psi.redhat.com/backend/xjoin.html).
+Openshift operator that manages the [XJoin pipeline](https://clouddot.pages.redhat.com/docs/dev/services/xjoin.html).
 It currently manages the M2 version of XJoin,
 i.e. it maintains the replication pipeline between HBI and ElasticSearch.
 Modifications will be necessary to support M3 (joining data between applications).
