@@ -539,5 +539,9 @@ var _ = Describe("Validation controller", func() {
 		It("Fails when tag string inconsistent", func() {
 			i.fullValidationFailureTest("simple", "tags-string-modified")
 		})
+
+		It("Passes with multiple unordered tags", func() {
+			i.fullValidationFailureTest("tags-multiple-unordered", "tags-multiple-unordered")
+		})
 	})
 })
