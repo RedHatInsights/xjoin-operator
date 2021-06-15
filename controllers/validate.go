@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"errors"
 	"fmt"
 	"github.com/go-test/deep"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -162,19 +161,19 @@ type idDiff struct {
 	diff string
 }
 
-func (i *ReconcileIteration) validateChunk(chunk []string, allIdDiffs chan idDiff, errorsChan chan error, wg *sync.WaitGroup) {
+func (i *ReconcileIteration) validateChunk(chunk []string, allIdDiffs chan idDiff, errors chan error, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	//retrieve hosts from db and es
 	esHosts, err := i.ESClient.GetHostsByIds(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), chunk)
 	if err != nil {
-		errorsChan <- err
+		errors <- err
 		return
 	}
 
 	hbiHosts, err := i.InventoryDb.GetHostsByIds(chunk)
 	if err != nil {
-		errorsChan <- err
+		errors <- err
 		return
 	}
 
@@ -187,7 +186,7 @@ func (i *ReconcileIteration) validateChunk(chunk []string, allIdDiffs chan idDif
 
 		idx, err := strconv.ParseInt(idxStr, 10, 64)
 		if err != nil {
-			errorsChan <- err
+			errors <- err
 			return
 		}
 		id := chunk[idx]
@@ -199,7 +198,7 @@ func (i *ReconcileIteration) validateChunk(chunk []string, allIdDiffs chan idDif
 
 func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatchCount int, mismatchRatio float64, err error) {
 	allIdDiffs := make(chan idDiff, len(ids)*100)
-	errorsChan := make(chan error, len(ids))
+	errors := make(chan error, len(ids))
 	numThreads := 0
 	wg := new(sync.WaitGroup)
 
@@ -222,7 +221,7 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 		//validate chunks in parallel
 		wg.Add(1)
 		numThreads += 1
-		go i.validateChunk(chunk, allIdDiffs, errorsChan, wg)
+		go i.validateChunk(chunk, allIdDiffs, errors, wg)
 
 		if numThreads == i.parameters.FullValidationNumThreads.Int() || j == numChunks-1 {
 			wg.Wait()
@@ -233,15 +232,7 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 	i.Log.Info("Full Validation End: " + time.Now().String())
 
 	close(allIdDiffs)
-	close(errorsChan)
-
-	if len(errorsChan) > 0 {
-		for e := range errorsChan {
-			i.Log.Error(e, "Error during full validation")
-		}
-
-		return false, -1, -1, errors.New("error during full validation")
-	}
+	close(errors)
 
 	//group diffs by id for counting mismatched systems
 	diffsById := make(map[string][]string)

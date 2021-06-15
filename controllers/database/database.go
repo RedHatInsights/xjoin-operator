@@ -9,7 +9,6 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
-	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -291,7 +290,7 @@ func parseJsonField(field []uint8) (map[string]interface{}, error) {
 
 //TODO handle this dynamically with a schema
 func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
-	cols := "id,account,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter,tags"
+	cols := "id,account,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter"
 
 	idsMap := make(map[string]interface{})
 	idsMap["IDs"] = ids
@@ -346,92 +345,8 @@ func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
 		}
 		host.Facts = factsJson
 
-		tagsJson, err := parseJsonField(host.Tags.([]uint8))
-		if err != nil {
-			return nil, err
-		}
-		host.Tags = tagsJson
-
-		host.TagsStructured, host.TagsString, host.TagsSearch = tagsStructured(tagsJson)
-
 		response = append(response, host)
 	}
 
 	return response, nil
-}
-
-/*
-"tags_structured": [
-	{
-		"namespace": "NS1",
-		"value": "val3",
-		"key": "key3"
-	}
-],
-
-"tags_string": [
-	"NS1/key3/val3",
-	"NS3/key3/val3",
-	"Sat/prod/",
-	"SPECIAL/key/val"
-],
-
-"tags_search": [
-	"NS1/key3=val3",
-	"NS3/key3=val3",
-	"Sat/prod=",
-	"SPECIAL/key=val"
-],
-*/
-func tagsStructured(tagsJson map[string]interface{}) (
-	structuredTags []map[string]string,
-	stringsTags []string,
-	searchTags []string) {
-
-	tagsJson = sortMap(tagsJson)
-
-	for namespaceName, namespaceVal := range tagsJson {
-		namespaceMap := sortMap(namespaceVal.(map[string]interface{}))
-		for keyName, key := range namespaceMap {
-			keyArray := key.([]interface{})
-			for _, val := range keyArray {
-				structuredTag := make(map[string]string)
-				structuredTag["key"] = keyName
-				structuredTag["namespace"] = namespaceName
-				structuredTag["value"] = val.(string)
-				structuredTags = append(structuredTags, structuredTag)
-
-				stringTag := namespaceName
-				stringTag = stringTag + "/" + keyName
-				stringTag = stringTag + "/" + val.(string)
-				stringTag = strings.ReplaceAll(stringTag, " ", "+")
-				stringsTags = append(stringsTags, stringTag)
-
-				searchTag := namespaceName
-				searchTag = searchTag + "/" + keyName
-				searchTag = searchTag + "=" + val.(string)
-				searchTags = append(searchTags, searchTag)
-			}
-		}
-	}
-
-	sort.Strings(stringsTags)
-	sort.Strings(searchTags)
-
-	return structuredTags, stringsTags, searchTags
-}
-
-func sortMap(unsortedMap map[string]interface{}) map[string]interface{} {
-	keys := make([]string, 0, len(unsortedMap))
-	for k := range unsortedMap {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	sortedMap := make(map[string]interface{})
-	for _, k := range keys {
-		sortedMap[k] = unsortedMap[k]
-	}
-
-	return sortedMap
 }

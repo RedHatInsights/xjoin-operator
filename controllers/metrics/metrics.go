@@ -119,7 +119,7 @@ func InitLabels() {
 func StaleResourceCount(count int, resources []string) {
 	staleResourceCount.
 		With(prometheus.Labels{
-			"count": strconv.Itoa(count)}).
+			"count":     strconv.Itoa(count)}).
 		Set(float64(count))
 
 	if len(resources) > 0 {
