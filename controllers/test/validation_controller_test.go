@@ -522,4 +522,22 @@ var _ = Describe("Validation controller", func() {
 			Expect(msg).To(Equal("Normal FullValidationFailed 1 hosts do not match. 6 hosts validated."))
 		})
 	})
+
+	Describe("Tag validation", func() {
+		It("Fails when tag structured namespace is inconsistent", func() {
+			i.fullValidationFailureTest("simple", "tags-structured-namespace-modified")
+		})
+
+		It("Fails when tag structured key is inconsistent", func() {
+			i.fullValidationFailureTest("simple", "tags-structured-key-modified")
+		})
+
+		It("Fails when tag structured value is inconsistent", func() {
+			i.fullValidationFailureTest("simple", "tags-structured-value-modified")
+		})
+
+		It("Fails when tag string inconsistent", func() {
+			i.fullValidationFailureTest("simple", "tags-string-modified")
+		})
+	})
 })

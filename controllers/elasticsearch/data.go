@@ -7,6 +7,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	"io/ioutil"
+	"sort"
 	"time"
 )
 
@@ -36,7 +37,19 @@ func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.H
 		return nil, err
 	}
 
+	hosts = sortHostFields(hosts)
+
 	return hosts, nil
+}
+
+func sortHostFields(hosts []data.Host) []data.Host {
+	for _, host := range hosts {
+		data.OrderedBy(data.NamespaceComparator, data.KeyComparator, data.ValueComparator).Sort(host.TagsStructured)
+		sort.Strings(host.TagsSearch)
+		sort.Strings(host.TagsString)
+	}
+
+	return hosts
 }
 
 func (es *ElasticSearch) GetHostIDs(index string, start time.Time, end time.Time) ([]string, error) {
