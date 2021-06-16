@@ -683,7 +683,7 @@ var _ = Describe("Pipeline operations", func() {
 			i.ExpectPipelineVersionToBeRemoved(pipeline.Status.PipelineVersion)
 		})
 
-		It("Artifacts removed when refreshing pipeline is removed", func() {
+		FIt("Artifacts removed when refreshing pipeline is removed", func() {
 			pipeline := i.CreateValidPipeline()
 			activeIndex := pipeline.Status.ActiveIndexName
 			firstVersion := pipeline.Status.PipelineVersion
@@ -707,7 +707,7 @@ var _ = Describe("Pipeline operations", func() {
 			i.ExpectPipelineVersionToBeRemoved(secondVersion)
 		})
 
-		It("Artifacts removed when an error occurs during initial setup", func() {
+		FIt("Artifacts removed when an error occurs during initial setup", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["db.host"] = []byte("invalidurl")
@@ -738,7 +738,7 @@ var _ = Describe("Pipeline operations", func() {
 	})
 
 	Describe("Failures", func() {
-		It("Fails if ElasticSearch secret is misconfigured", func() {
+		FIt("Fails if ElasticSearch secret is misconfigured", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["endpoint"] = []byte("invalidurl")

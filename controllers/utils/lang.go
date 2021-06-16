@@ -2,6 +2,7 @@ package utils
 
 import (
 	"reflect"
+	"sort"
 )
 
 /*
@@ -76,4 +77,19 @@ func Min(x, y int) int {
 	}
 
 	return y
+}
+
+func SortMap(unsortedMap map[string]interface{}) map[string]interface{} {
+	keys := make([]string, 0, len(unsortedMap))
+	for k := range unsortedMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	sortedMap := make(map[string]interface{})
+	for _, k := range keys {
+		sortedMap[k] = unsortedMap[k]
+	}
+
+	return sortedMap
 }

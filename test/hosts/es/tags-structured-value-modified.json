@@ -5,16 +5,16 @@
   "created_on": "2017-01-01T00:00:00Z",
   "modified_on": "{{.ModifiedOn}}",
   "facts": "{\"test1\": \"test1a\"}",
-  "tags": {"Sat": {"prod": ["val"]}},
   "canonical_facts": "{\"test3\": \"test3a\", \"test4\": [\"asdf\", \"jkl;\"], \"test5\": {\"a\": {\"1\": \"123\"}}, \"test6\": [{\"1\": \"23\"}, {\"2\": {\"3\": \"345\"}}]}",
-  "system_profile_facts": "{\"arch\": \"x86-64\", \"cpu_flags\": [\"flag1\", \"flag2\"], \"yum_repos\": [{\"name\": \"repo1\", \"enabled\": true, \"base_ur    l\": \"http://rpms.redhat.com\", \"gpgcheck\": true}], \"is_marketplace\": false, \"number_of_cpus\": 1,  \"number_of_sockets\": 2, \"anobject\": {\"key1\": \"value1\", \"key2\": \"value2\", \"array1\": [\"value1\", \"value2\"]}}",
+  "system_profile_facts": "{\"newkey\": \"newvaluemodified\", \"arch\": \"x86-64\", \"cpu_flags\": [\"flag1\", \"flag2\"], \"yum_repos\": [{\"name\": \"repo1\", \"enabled\": true, \"base_ur    l\": \"http://rpms.redhat.com\", \"gpgcheck\": true}], \"is_marketplace\": false, \"number_of_cpus\": 1,  \"number_of_sockets\": 2, \"anobject\": {\"key1\": \"value1\", \"key2\": \"value2\", \"array1\": [\"value1\", \"value2\"]}}",
   "ansible_host": null,
   "stale_timestamp": "2017-01-01T00:00:00Z",
   "reporter": "me",
   "__deleted": "false",
+  "tags": {"Sat": {"prod": ["val"]}},
   "tags_structured": [{
     "namespace": "Sat",
-    "key": "prod",
+    "key": "prodinvalid",
     "value": "val"
   }],
   "tags_string": ["Sat/prod/val"]
