@@ -539,5 +539,17 @@ var _ = Describe("Validation controller", func() {
 		It("Fails when tag string inconsistent", func() {
 			i.fullValidationFailureTest("simple", "tags-string-modified")
 		})
+
+		It("Validates complex, unordered tags", func() {
+			pipeline := i.CreateValidPipeline()
+			i.AssertValidationEvents(0)
+
+			hostId := i.InsertHostNow("tags-multiple-unordered")
+			i.IndexDocumentNow(pipeline.Status.PipelineVersion, hostId, "tags-multiple-unordered")
+
+			pipeline = i.ReconcileValidation()
+			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
+			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
+		})
 	})
 })
