@@ -67,6 +67,8 @@ parameters:
     value: "10"
   - name: FULL_VALIDATION_CHUNK_SIZE
     value: "500"
+  - name: FULL_VALIDATION_ENABLED
+    value: "false"
   - name: MANAGER_POD_CPU_REQUESTS
     value: "250m"
   - name: MANAGER_POD_MEM_REQUESTS
@@ -147,6 +149,7 @@ objects:
       kafka.topic.retention.bytes: ${KAFKA_TOPIC_RETENTION_BYTES}
       full.validation.num.threads: ${FULL_VALIDATION_NUM_THREADS}
       full.validation.chunk.size: ${FULL_VALIDATION_CHUNK_SIZE}
+      full.validation.enabled: ${FULL_VALIDATION_ENABLED}
       elasticsearch.index.template: >-
         {
           "settings": {
