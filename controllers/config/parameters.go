@@ -67,6 +67,7 @@ type Parameters struct {
 	JenkinsManagedVersion                Parameter
 	FullValidationNumThreads             Parameter
 	FullValidationChunkSize              Parameter
+	FullValidationEnabled                Parameter
 	ValidationPeriodMinutes              Parameter
 	ValidationLagCompensationSeconds     Parameter
 	KafkaTopicMessageBytes               Parameter
@@ -531,6 +532,11 @@ func NewXJoinConfiguration() Parameters {
 			Type:         reflect.Int,
 			ConfigMapKey: "full.validation.num.threads",
 			DefaultValue: 20,
+		},
+		FullValidationEnabled: Parameter{
+			Type:         reflect.Int,
+			ConfigMapKey: "full.validation.enabled",
+			DefaultValue: true,
 		},
 		ValidationPeriodMinutes: Parameter{
 			Type:         reflect.Int,

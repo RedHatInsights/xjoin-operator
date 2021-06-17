@@ -39,15 +39,21 @@ func (i *ReconcileIteration) validate() (isValid bool, err error) {
 		return
 	}
 
-	isValid, fullMismatchCount, fullMismatchRatio, err := i.fullValidation(hbiIds)
-	if err != nil || !isValid {
-		metrics.ValidationFinished(isValid)
-		i.Instance.SetValid(
-			metav1.ConditionFalse,
-			"ValidationFailed",
-			fmt.Sprintf("Full validation failed - %v hosts (%.2f%%) do not match", fullMismatchCount, fullMismatchRatio*100))
-		return
+	fullMismatchCount := 0
+	fullMismatchRatio := 0.0
+
+	if i.parameters.FullValidationEnabled.Bool() == true {
+		isValid, fullMismatchCount, fullMismatchRatio, err = i.fullValidation(hbiIds)
+		if err != nil || !isValid {
+			metrics.ValidationFinished(isValid)
+			i.Instance.SetValid(
+				metav1.ConditionFalse,
+				"ValidationFailed",
+				fmt.Sprintf("Full validation failed - %v hosts (%.2f%%) do not match", fullMismatchCount, fullMismatchRatio*100))
+			return
+		}
 	}
+
 
 	i.Instance.SetValid(
 		metav1.ConditionTrue,
