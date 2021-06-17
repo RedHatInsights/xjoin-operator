@@ -8,6 +8,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	"io/ioutil"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -43,7 +44,12 @@ func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.H
 }
 
 func sortHostFields(hosts []data.Host) []data.Host {
-	for _, host := range hosts {
+	for i, host := range hosts {
+		//java's encoder (used in the flattenlist SMT) doesn't encode * but the golang encoder does
+		for k := range hosts[i].TagsString {
+			hosts[i].TagsString[k] = strings.ReplaceAll(hosts[i].TagsString[k], "*", "%2A")
+		}
+
 		data.OrderedBy(data.NamespaceComparator, data.KeyComparator, data.ValueComparator).Sort(host.TagsStructured)
 		sort.Strings(host.TagsSearch)
 		sort.Strings(host.TagsString)
