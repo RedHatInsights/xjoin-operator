@@ -23,6 +23,10 @@ parameters:
     value: "10"
   - name: VALIDATION_ATTEMPTS_THRESHOLD_INIT
     value: "60"
+  - name: VALIDATION_PERIOD_MINUTES
+    value: "60"
+  - name: VALIDATION_LAG_COMPENSATION_SECONDS
+    value: "600"
   - name: CONNECT_CLUSTER
     value: "xjoin-kafka-connect-strimzi"
   - name: ES_CONNECTOR_TASKS_MAX
@@ -150,6 +154,8 @@ objects:
       full.validation.num.threads: ${FULL_VALIDATION_NUM_THREADS}
       full.validation.chunk.size: ${FULL_VALIDATION_CHUNK_SIZE}
       full.validation.enabled: ${FULL_VALIDATION_ENABLED}
+      validation.period.minutes: ${VALIDATION_PERIOD_MINUTES}
+      validation.lag.compensation.seconds: ${VALIDATION_LAG_COMPENSATION_SECONDS}
       elasticsearch.index.template: >-
         {
           "settings": {
