@@ -412,6 +412,10 @@ func tagsStructured(tagsJson map[string]interface{}) (
 				stringTag = stringTag + "/" + url.QueryEscape(val.(string))
 				stringsTags = append(stringsTags, stringTag)
 
+				if namespaceName == "null" {
+					namespaceName = ""
+				}
+
 				searchTag := namespaceName
 				searchTag = searchTag + "/" + keyName
 				searchTag = searchTag + "=" + val.(string)
