@@ -3,10 +3,11 @@ package log
 import (
 	"github.com/go-logr/logr"
 	"github.com/onsi/ginkgo"
-	zapcore "go.uber.org/zap"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"os"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	k8szap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"strings"
 )
 
@@ -20,23 +21,27 @@ func NewLogger(name string, values ...interface{}) Log {
 	l := Log{}
 	l.name = name
 	l.values = values
-	opts := func(o *zap.Options) {
-		o.StacktraceLevel = zapcore.WarnLevel
+	opts := func(o *k8szap.Options) {
+		o.StacktraceLevel = zap.WarnLevel
 
 		devMode := os.Getenv("DEV_MODE")
 		if strings.EqualFold(devMode, "true") {
 			o.Development = true
 		} else {
 			o.Development = false
+
+			encoderConfig := zap.NewProductionEncoderConfig()
+			encoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
+			o.Encoder = zapcore.NewJSONEncoder(encoderConfig)
 		}
 
 		logLvl := os.Getenv("LOG_LEVEL")
 		if strings.EqualFold(logLvl, "DEBUG") {
-			o.Level = zapcore.DebugLevel
+			o.Level = zap.DebugLevel
 		} else if strings.EqualFold(logLvl, "INFO") {
-			o.Level = zapcore.InfoLevel
+			o.Level = zap.InfoLevel
 		} else {
-			o.Level = zapcore.WarnLevel
+			o.Level = zap.WarnLevel
 		}
 
 		//suppress log spam during test runs
@@ -44,7 +49,7 @@ func NewLogger(name string, values ...interface{}) Log {
 			o.DestWritter = ginkgo.GinkgoWriter
 		}
 	}
-	logf.SetLogger(zap.New(opts))
+	logf.SetLogger(k8szap.New(opts))
 	l.logger = logf.Log.Logger
 	return l
 }

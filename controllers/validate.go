@@ -54,7 +54,6 @@ func (i *ReconcileIteration) validate() (isValid bool, err error) {
 		}
 	}
 
-
 	i.Instance.SetValid(
 		metav1.ConditionTrue,
 		"ValidationSucceeded",
