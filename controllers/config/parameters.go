@@ -534,7 +534,7 @@ func NewXJoinConfiguration() Parameters {
 			DefaultValue: 20,
 		},
 		FullValidationEnabled: Parameter{
-			Type:         reflect.Int,
+			Type:         reflect.Bool,
 			ConfigMapKey: "full.validation.enabled",
 			DefaultValue: true,
 		},
