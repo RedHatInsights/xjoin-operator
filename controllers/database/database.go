@@ -10,6 +10,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	"net/url"
 	"sort"
 	"strings"
 	"text/template"
@@ -406,10 +407,9 @@ func tagsStructured(tagsJson map[string]interface{}) (
 				structuredTag["value"] = val.(string)
 				structuredTags = append(structuredTags, structuredTag)
 
-				stringTag := namespaceName
-				stringTag = stringTag + "/" + keyName
-				stringTag = stringTag + "/" + val.(string)
-				stringTag = strings.ReplaceAll(stringTag, " ", "+")
+				stringTag := url.QueryEscape(namespaceName)
+				stringTag = stringTag + "/" + url.QueryEscape(keyName)
+				stringTag = stringTag + "/" + url.QueryEscape(val.(string))
 				stringsTags = append(stringsTags, stringTag)
 
 				searchTag := namespaceName
