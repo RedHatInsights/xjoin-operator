@@ -170,14 +170,18 @@ type idDiff struct {
 func (i *ReconcileIteration) validateChunk(chunk []string, allIdDiffs chan idDiff, errorsChan chan error, wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	now := time.Now().UTC()
+	validationLagComp := i.parameters.ValidationLagCompensationSeconds.Int()
+	endTime := now.Add(-time.Duration(validationLagComp) * time.Second)
+
 	//retrieve hosts from db and es
-	esHosts, err := i.ESClient.GetHostsByIds(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), chunk)
+	esHosts, err := i.ESClient.GetHostsByIds(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), chunk, endTime)
 	if err != nil {
 		errorsChan <- err
 		return
 	}
 
-	hbiHosts, err := i.InventoryDb.GetHostsByIds(chunk)
+	hbiHosts, err := i.InventoryDb.GetHostsByIds(chunk, endTime)
 	if err != nil {
 		errorsChan <- err
 		return

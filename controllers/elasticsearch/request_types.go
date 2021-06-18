@@ -21,9 +21,20 @@ type UpdateAliasIndex struct {
 
 type QueryHostsById struct {
 	Query struct {
-		IDs struct {
-			Values []string `json:"values"`
-		} `json:"ids"`
+		Bool struct {
+			Must struct {
+				Range struct {
+					ModifiedOn struct {
+						Lt string `json:"lt"`
+					} `json:"modified_on"`
+				} `json:"range"`
+			} `json:"must"`
+			Filter struct {
+				IDs struct {
+					Values []string `json:"values"`
+				} `json:"ids"`
+			} `json:"filter"`
+		} `json:"bool"`
 	} `json:"query"`
 }
 
