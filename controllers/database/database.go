@@ -292,7 +292,7 @@ func parseJsonField(field []uint8) (map[string]interface{}, error) {
 }
 
 //TODO handle this dynamically with a schema
-func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
+func (db *Database) GetHostsByIds(ids []string, endTime time.Time) ([]data.Host, error) {
 	cols := "id,account,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter,tags"
 
 	idsMap := make(map[string]interface{})
@@ -311,7 +311,9 @@ func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
 	idsTemplateParsed := idsTemplateBuffer.String()
 	idsTemplateParsed = idsTemplateParsed[0 : len(idsTemplateParsed)-1]
 
-	query := fmt.Sprintf("SELECT %s FROM hosts WHERE ID IN (%s) ORDER BY id", cols, idsTemplateParsed)
+	query := fmt.Sprintf(
+		"SELECT %s FROM hosts WHERE ID IN (%s) AND modified_on < '%s' ORDER BY id",
+		cols, idsTemplateParsed, endTime.Format(time.RFC3339))
 
 	rows, err := db.connection.Queryx(query)
 	defer closeRows(rows)

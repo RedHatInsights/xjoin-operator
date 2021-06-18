@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	"io/ioutil"
@@ -12,12 +14,13 @@ import (
 	"time"
 )
 
-func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.Host, error) {
+func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string, endTime time.Time) ([]data.Host, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	var query QueryHostsById
-	query.Query.IDs.Values = hostIds
+	query.Query.Bool.Filter.IDs.Values = hostIds
+	query.Query.Bool.Must.Range.ModifiedOn.Lt = endTime.Format(time.RFC3339)
 	reqJSON, err := json.Marshal(query)
 	requestSize := len(hostIds)
 
@@ -31,6 +34,13 @@ func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.H
 	searchRes, err := searchReq.Do(ctx, es.Client)
 	if err != nil {
 		return nil, err
+	}
+	if searchRes.StatusCode >= 400 {
+		bodyBytes, _ := ioutil.ReadAll(searchRes.Body)
+
+		return nil, errors.New(fmt.Sprintf(
+			"invalid response code when getting hosts by id. StatusCode: %v, Body: %s",
+			searchRes.StatusCode, bodyBytes))
 	}
 
 	hosts, err := parseSearchHostsResponse(searchRes)
