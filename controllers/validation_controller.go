@@ -1,12 +1,11 @@
 package controllers
 
 import (
+	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
-	"k8s.io/client-go/tools/record"
-
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -78,7 +77,12 @@ func (r *ValidationReconciler) Reconcile(request ctrl.Request) (ctrl.Result, err
 		}
 	}
 
-	reqLogger.Info("Validating XJoinPipeline")
+	reqLogger.Info("Validating XJoinPipeline",
+		"LagCompensationSeconds", i.parameters.ValidationLagCompensationSeconds.Int(),
+		"ValidationPeriodMinutes", i.parameters.ValidationPeriodMinutes.Int(),
+		"FullValidationEnabled", i.parameters.FullValidationEnabled.Bool(),
+		"FullValidationNumThreads", i.parameters.FullValidationNumThreads.Int(),
+		"FullValidationChunkSize", i.parameters.FullValidationChunkSize.Int())
 
 	isValid, err := i.validate()
 	if err != nil {
