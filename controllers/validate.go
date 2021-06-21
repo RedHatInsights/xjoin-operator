@@ -151,6 +151,9 @@ func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mi
 		"ID Validation results",
 		"validationThresholdPercent", i.getValidationPercentageThreshold(),
 		"mismatchRatio", mismatchRatio,
+		"mismatchCount", mismatchCount,
+		"totalHBIHostsRetrieved", len(hbiIds),
+		"totalESHostsRetrieved", len(esIds),
 		// if the list is too long truncate it to first 50 ids to avoid log pollution
 		"inHbiOnly", inHbiOnly[:utils.Min(idDiffMaxLength, len(inHbiOnly))],
 		"inAppOnly", inAppOnly[:utils.Min(idDiffMaxLength, len(inAppOnly))],

@@ -86,6 +86,8 @@ func (es *ElasticSearch) GetHostIDs(index string, start time.Time, end time.Time
 		Sort:   []string{"_doc"},
 	}
 
+	log.Info("ElasticSearch.GetHostIDsQuery", "query", searchReq, "body", query)
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 	searchRes, err := searchReq.Do(ctx, es.Client)

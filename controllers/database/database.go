@@ -250,6 +250,9 @@ func (db *Database) GetHostIds(start time.Time, end time.Time) ([]string, error)
 	query := fmt.Sprintf(
 		`SELECT id FROM hosts WHERE modified_on > '%s' AND modified_on < '%s' ORDER BY id `,
 		start.Format(time.RFC3339), end.Format(time.RFC3339))
+
+	log.Info("GetHostIdsQuery", "query", query)
+
 	rows, err := db.RunQuery(query)
 	defer closeRows(rows)
 
@@ -400,9 +403,14 @@ func tagsStructured(tagsJson map[string]interface{}) (
 
 	for namespaceName, namespaceVal := range tagsJson {
 		namespaceMap := utils.SortMap(namespaceVal.(map[string]interface{}))
-		for keyName, key := range namespaceMap {
-			keyArray := key.([]interface{})
-			for _, val := range keyArray {
+		for keyName, values := range namespaceMap {
+			valuesArray := values.([]interface{})
+
+			if len(valuesArray) == 0 {
+				valuesArray = append(valuesArray, "")
+			}
+
+			for _, val := range valuesArray {
 				structuredTag := make(map[string]string)
 				structuredTag["key"] = keyName
 				structuredTag["namespace"] = namespaceName
