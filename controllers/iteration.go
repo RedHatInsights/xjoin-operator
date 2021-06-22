@@ -311,7 +311,7 @@ func (i *ReconcileIteration) deleteStaleDependencies() (errors []error) {
 		}
 	}
 
-	metrics.StaleResourceCount(len(staleResources), staleResources)
+	metrics.StaleResourceCount(staleResources)
 
 	return
 }
