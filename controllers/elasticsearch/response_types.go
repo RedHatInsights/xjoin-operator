@@ -31,3 +31,7 @@ type CatAliasResponse struct {
 	Alias string `json:"alias"`
 	Index string `json:"index"`
 }
+
+type CountIDsResponse struct {
+	Count int `json:"count"`
+}

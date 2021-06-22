@@ -66,12 +66,15 @@ func (i *ReconcileIteration) validate() (isValid bool, err error) {
 func (i *ReconcileIteration) countValidation() (isValid bool, mismatchCount int, mismatchRatio float64, err error) {
 	isValid = false
 
-	hostCount, err := i.InventoryDb.CountHosts()
+	now := time.Now().UTC()
+	validationLagComp := i.parameters.ValidationLagCompensationSeconds.Int()
+	endTime := now.Add(-time.Duration(validationLagComp) * time.Second)
+	hostCount, err := i.InventoryDb.CountHosts(endTime)
 	if err != nil {
 		return
 	}
 
-	esCount, err := i.ESClient.CountIndex(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
+	esCount, err := i.ESClient.CountIndex(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), endTime)
 	if err != nil {
 		return
 	}
