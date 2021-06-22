@@ -367,16 +367,17 @@ func (i *ReconcileIteration) updateAliasIfHealthier() error {
 			return err
 		}
 
-		hbiHostCount, err := i.InventoryDb.CountHosts()
+		now := time.Now().UTC()
+		hbiHostCount, err := i.InventoryDb.CountHosts(now)
 		if err != nil {
 			return fmt.Errorf("failed to get host count from inventory %w", err)
 		}
 
-		activeCount, err := i.ESClient.CountIndex(i.Instance.Status.ActiveIndexName)
+		activeCount, err := i.ESClient.CountIndex(i.Instance.Status.ActiveIndexName, now)
 		if err != nil {
 			return fmt.Errorf("failed to get host count from active index %w", err)
 		}
-		latestCount, err := i.ESClient.CountIndex(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
+		latestCount, err := i.ESClient.CountIndex(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), now)
 		if err != nil {
 			return fmt.Errorf("failed to get host count from latest index %w", err)
 		}

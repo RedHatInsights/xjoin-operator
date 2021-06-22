@@ -109,8 +109,8 @@ func (db *Database) ExecQuery(query string) (result sql.Result, err error) {
 	return result, nil
 }
 
-func (db *Database) hostCountQuery() string {
-	return fmt.Sprintf(`SELECT count(*) FROM hosts`)
+func (db *Database) hostCountQuery(endTime time.Time) string {
+	return fmt.Sprintf(`SELECT count(*) FROM hosts WHERE modified_on < '%s'`, endTime.Format(time.RFC3339))
 }
 
 func ReplicationSlotName(resourceNamePrefix string, pipelineVersion string) string {
@@ -223,10 +223,8 @@ func (db *Database) RemoveReplicationSlotsForPipelineVersion(pipelineVersion str
 	return nil
 }
 
-func (db *Database) CountHosts() (int, error) {
-	// TODO: add modified_on filter
-	// waiting on https://issues.redhat.com/browse/RHCLOUD-9545
-	rows, err := db.RunQuery(db.hostCountQuery())
+func (db *Database) CountHosts(endTime time.Time) (int, error) {
+	rows, err := db.RunQuery(db.hostCountQuery(endTime))
 	defer closeRows(rows)
 
 	if err != nil {
