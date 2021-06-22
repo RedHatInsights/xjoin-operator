@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
+	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"io/ioutil"
 	"sort"
 	"strings"
@@ -20,7 +21,7 @@ func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string, endTime t
 
 	var query QueryHostsById
 	query.Query.Bool.Filter.IDs.Values = hostIds
-	query.Query.Bool.Must.Range.ModifiedOn.Lt = endTime.Format(time.RFC3339)
+	query.Query.Bool.Must.Range.ModifiedOn.Lt = endTime.Format(utils.TimeFormat())
 	reqJSON, err := json.Marshal(query)
 	requestSize := len(hostIds)
 
@@ -73,8 +74,8 @@ func (es *ElasticSearch) GetHostIDs(index string, start time.Time, end time.Time
 	*size = 10000
 
 	var query QueryHostIDsRange
-	query.Query.Range.ModifiedOn.Lt = end.Format(time.RFC3339)
-	query.Query.Range.ModifiedOn.Gt = start.Format(time.RFC3339)
+	query.Query.Range.ModifiedOn.Lt = end.Format(utils.TimeFormat())
+	query.Query.Range.ModifiedOn.Gt = start.Format(utils.TimeFormat())
 	reqJSON, err := json.Marshal(query)
 
 	searchReq := esapi.SearchRequest{
@@ -93,6 +94,14 @@ func (es *ElasticSearch) GetHostIDs(index string, start time.Time, end time.Time
 	searchRes, err := searchReq.Do(ctx, es.Client)
 	if err != nil {
 		return nil, err
+	}
+
+	if searchRes.StatusCode >= 400 {
+		bodyBytes, _ := ioutil.ReadAll(searchRes.Body)
+
+		return nil, errors.New(fmt.Sprintf(
+			"invalid response code when getting hosts ids. StatusCode: %v, Body: %s",
+			searchRes.StatusCode, bodyBytes))
 	}
 
 	ids, searchJSON, err := parseSearchIdsResponse(searchRes)

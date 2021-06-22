@@ -93,3 +93,7 @@ func SortMap(unsortedMap map[string]interface{}) map[string]interface{} {
 
 	return sortedMap
 }
+
+func TimeFormat() string {
+	return "2006-01-02T15:04:05.999999999"
+}

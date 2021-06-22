@@ -110,7 +110,7 @@ func (db *Database) ExecQuery(query string) (result sql.Result, err error) {
 }
 
 func (db *Database) hostCountQuery(endTime time.Time) string {
-	return fmt.Sprintf(`SELECT count(*) FROM hosts WHERE modified_on < '%s'`, endTime.Format(time.RFC3339))
+	return fmt.Sprintf(`SELECT count(*) FROM hosts WHERE modified_on < '%s'`, endTime.Format(utils.TimeFormat()))
 }
 
 func ReplicationSlotName(resourceNamePrefix string, pipelineVersion string) string {
@@ -247,7 +247,7 @@ func (db *Database) CountHosts(endTime time.Time) (int, error) {
 func (db *Database) GetHostIds(start time.Time, end time.Time) ([]string, error) {
 	query := fmt.Sprintf(
 		`SELECT id FROM hosts WHERE modified_on > '%s' AND modified_on < '%s' ORDER BY id `,
-		start.Format(time.RFC3339), end.Format(time.RFC3339))
+		start.Format(utils.TimeFormat()), end.Format(utils.TimeFormat()))
 
 	log.Info("GetHostIdsQuery", "query", query)
 
@@ -314,7 +314,7 @@ func (db *Database) GetHostsByIds(ids []string, endTime time.Time) ([]data.Host,
 
 	query := fmt.Sprintf(
 		"SELECT %s FROM hosts WHERE ID IN (%s) AND modified_on < '%s' ORDER BY id",
-		cols, idsTemplateParsed, endTime.Format(time.RFC3339))
+		cols, idsTemplateParsed, endTime.Format(utils.TimeFormat()))
 
 	rows, err := db.connection.Queryx(query)
 	defer closeRows(rows)

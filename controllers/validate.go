@@ -117,7 +117,7 @@ func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mi
 
 	var startTime time.Time
 	if i.Instance.GetState() == xjoin.STATE_INITIAL_SYNC {
-		startTime = time.Unix(0, 0)
+		startTime = time.Unix(86400, 0) //24 hours since epoch
 	} else {
 		startTime = now.Add(-time.Duration(validationPeriod) * time.Minute)
 	}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"io/ioutil"
 	"strings"
 	"text/template"
@@ -117,7 +118,7 @@ func (es *ElasticSearch) ListIndices() ([]string, error) {
 
 func (es *ElasticSearch) CountIndex(index string, endTime time.Time) (int, error) {
 	var query QueryCountIDs
-	query.Query.Range.ModifiedOn.Lt = endTime.Format(time.RFC3339)
+	query.Query.Range.ModifiedOn.Lt = endTime.Format(utils.TimeFormat())
 	reqJSON, err := json.Marshal(query)
 
 	req := esapi.CountRequest{
