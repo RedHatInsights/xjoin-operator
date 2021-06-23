@@ -29,3 +29,10 @@ bundle/manifests/xjoin-operator.clusterserviceversion.yaml
 bundle/manifests/xjoin-operator-xjoin-operator-metrics-reader_rbac.authorization.k8s.io_v1_clusterrole.yaml
 bundle/manifests/xjoin-operator-controller-manager-metrics-service_v1_service.yaml
 config/manager/kustomization.yaml
+
+# Node JS things for the updater script
+node_modules
+build
+npm-debug.log
+.env
+.DS_Store
