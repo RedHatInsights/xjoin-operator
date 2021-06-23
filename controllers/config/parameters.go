@@ -306,8 +306,7 @@ func NewXJoinConfiguration() Parameters {
 				"batch.size": {{.ElasticSearchBatchSize}},
 				"max.buffered.records": {{.ElasticSearchMaxBufferedRecords}},
 				"linger.ms": {{.ElasticSearchLingerMS}},
-				"elastic.security.protocol": "SSL",
-				"elastic.https.ssl.protocol": "TLS"
+				"elastic.security.protocol": "SSL"
 			}`,
 		},
 		ElasticSearchURL: Parameter{
