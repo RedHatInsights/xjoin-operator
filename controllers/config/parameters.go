@@ -305,7 +305,9 @@ func NewXJoinConfiguration() Parameters {
 				"retry.backoff.ms": {{.ElasticSearchRetryBackoffMS}},
 				"batch.size": {{.ElasticSearchBatchSize}},
 				"max.buffered.records": {{.ElasticSearchMaxBufferedRecords}},
-				"linger.ms": {{.ElasticSearchLingerMS}}
+				"linger.ms": {{.ElasticSearchLingerMS}},
+				"elastic.security.protocol": "SSL",
+				"elastic.https.ssl.protocol": "TLS"
 			}`,
 		},
 		ElasticSearchURL: Parameter{
