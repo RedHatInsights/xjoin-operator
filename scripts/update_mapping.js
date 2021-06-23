@@ -47,28 +47,14 @@ try {
 
     let schemaFileContent = fs.readFileSync(myArgs[0], 'utf8');
     let schemaData = yaml.safeLoad(schemaFileContent);
-    // let schema = schemaData["$defs"]["SystemProfile"]["properties"]
     let schema = schemaData["$defs"]["SystemProfile"]
 
     let mappingFilePath = '../deploy/operator.yml'
-    let newMappingFilePath = '../deploy/operator_new.yml'
     let mappingFileContent = fs.readFileSync(mappingFilePath, 'utf8');
     let mappingData = yaml.safeLoad(mappingFileContent);
 
-
-    
-    console.log("system profile YAML")
-    console.log(schema);
-    
-    console.log("operator YAML")
-    console.log(mappingData["objects"][3]["data"]["elasticsearch.index.template"])
-    console.log(typeof(mappingData["objects"][3]["data"]["elasticsearch.index.template"]))
     let template = JSON.parse(mappingData["objects"][3]["data"]["elasticsearch.index.template"]);
-    console.log("just the mapping part")
-    console.log(template["mappings"]["properties"]["system_profile_facts"])
-    
-    // generate the mapping properties by analizing each entry in the system profile. 
-    // This should probably be recursive
+
     
     new_mapping = buildMappingsFor("system_profile_facts", schema);
 
@@ -78,14 +64,8 @@ try {
     template["mappings"]["properties"]["system_profile_facts"]["properties"] = new_mapping["mappings"]["system_profile_facts"]["properties"];
     mappingData["objects"][3]["data"]["elasticsearch.index.template"] = JSON.stringify(template, null, 4);
     
-    fs.writeFileSync(newMappingFilePath, " >- \n" + yaml.dump(mappingData));
+    fs.writeFileSync(mappingFilePath, yaml.dump(mappingData));
 
-    //console.log("elements")
-    // for (const [key, value] of Object.entries(schema)) {
-    //     //what to do about arrays? I think they just inherit the type of their member since ES doesn't differentiat 
-    //     if (value["x-indexed"] != false)
-    //         new_mapping[key] = getEsType(key, value) }
-    // }
 } catch (e) {
     console.log(e);
 }

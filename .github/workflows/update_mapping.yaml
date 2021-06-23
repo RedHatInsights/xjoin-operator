@@ -19,10 +19,6 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Check out xjoin-config
         uses: actions/checkout@v2
-      - name: What's here?
-        run: |
-          pwd
-          ls
       - name: Check out schema repo to copy current schema from
         uses: actions/checkout@v2
         with:
