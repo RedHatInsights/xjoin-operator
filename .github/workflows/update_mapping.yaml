@@ -31,8 +31,9 @@ jobs:
           git config user.name 'ryandillinfelton' 
           git config user.email 'rfelton@redhat.com'
           git status
+          cd scripts
           npm ci
-          node scripts/update_mapping.js ./inventory-schemas/schemas/system_profile/v1.yaml
+          node update_mapping.js ./inventory-schemas/schemas/system_profile/v1.yaml
           git add -u
           git commit -m "update mapping"
       - name: remove schema submodule
