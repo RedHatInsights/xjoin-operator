@@ -39,8 +39,6 @@ func NewElasticSearch(
 	es.parametersMap = parametersMap
 	es.indexTemplate = indexTemplate
 
-	log.Info("ESUrl", "url", url)
-
 	cfg := elasticsearch.Config{
 		Addresses: []string{url},
 		Username:  username,
