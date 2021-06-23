@@ -1,0 +1,16 @@
+{
+  "name": "scripts",
+  "version": "1.0.0",
+  "description": "Just a script to update the mapping in the operator",
+  "main": "update_mapping.js",
+  "dependencies": {
+    "json-schema-to-es-mapping": "^0.3.6",
+    "js-yaml": "^3.13.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ryan Felton",
+  "license": "ISC"
+}
