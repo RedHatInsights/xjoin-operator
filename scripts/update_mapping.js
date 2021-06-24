@@ -64,7 +64,7 @@ try {
     template["mappings"]["properties"]["system_profile_facts"]["properties"] = new_mapping["mappings"]["system_profile_facts"]["properties"];
     mappingData["objects"][3]["data"]["elasticsearch.index.template"] = JSON.stringify(template, null, 4);
     
-    fs.writeFileSync(mappingFilePath, yaml.dump(mappingData));
+    fs.writeFileSync(mappingFilePath, yaml.dump(mappingData,{"quotingType": ""} ));
 
 } catch (e) {
     console.log(e);

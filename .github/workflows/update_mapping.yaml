@@ -27,10 +27,6 @@ jobs:
           path: ./inventory-schemas
       - name: update mapping from schema
         run: |
-          ls
-          git config user.name 'ryandillinfelton' 
-          git config user.email 'rfelton@redhat.com'
-          git status
           cd scripts
           npm ci
           node update_mapping.js ../inventory-schemas/schemas/system_profile/v1.yaml
@@ -42,8 +38,8 @@ jobs:
         uses: peter-evans/create-pull-request@v3
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          # commit-message: Update report
-          # committer: GitHub <noreply@github.com>
+          commit-message: Update report
+          committer: GitHub <noreply@github.com>
           author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
           signoff: false
           branch: system_profile_schema_update
