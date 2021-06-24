@@ -2,39 +2,6 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const { buildMappingsFor } = require("json-schema-to-es-mapping");
 
-const typeMap = {
-    "string": "keyword",
-    "integer": "keyword",
-    "boolean": "boolean",
-    "object": "object"
-}
-
-// function getEsType(key, value) {
-//     console.log(key);
-//     fieldType = value["type"];
-//     indexType = typeMap[fieldType];
-//     if (fieldType == "array") {
-//         console.log("array");
-//         console.log(key);
-//         console.log(value);
-//         value = value["items"];
-//         indexType = getEsType(key, value);
-//     }
-//     if (fieldType == "object") {
-//         //do something else
-//         properties = {};
-//         for (const [key, value] of Object.entries(value["properties"])) {
-            
-//         }
-//         return {
-//             "type": indexType,
-//             "properties": properties
-//         };
-//     }
-
-//     return { "type": indexType };
-// }
-
 try {
     var myArgs = process.argv.slice(2);
     schemaPath = myArgs[0];
