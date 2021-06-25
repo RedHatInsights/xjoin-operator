@@ -196,19 +196,15 @@ type idDiff struct {
 	diff string
 }
 
-func (i *ReconcileIteration) validateChunk(chunk []string, allIdDiffs chan idDiff, errorsChan chan error, wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func (i *ReconcileIteration) validateFullChunkSync(chunk []string) (allIdDiffs []idDiff, err error) {
 	//retrieve hosts from db and es
 	esHosts, err := i.ESClient.GetHostsByIds(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), chunk)
 	if err != nil {
-		errorsChan <- err
 		return
 	}
 
 	hbiHosts, err := i.InventoryDb.GetHostsByIds(chunk)
 	if err != nil {
-		errorsChan <- err
 		return
 	}
 
@@ -219,13 +215,29 @@ func (i *ReconcileIteration) validateChunk(chunk []string, allIdDiffs chan idDif
 	for _, diff := range diffs {
 		idxStr := diff[strings.Index(diff, "[")+1 : strings.Index(diff, "]")]
 
-		idx, err := strconv.ParseInt(idxStr, 10, 64)
+		var idx int64
+		idx, err = strconv.ParseInt(idxStr, 10, 64)
 		if err != nil {
-			errorsChan <- err
 			return
 		}
 		id := chunk[idx]
-		allIdDiffs <- idDiff{id: id, diff: diff}
+		allIdDiffs = append(allIdDiffs, idDiff{id: id, diff: diff})
+	}
+
+	return
+}
+
+func (i *ReconcileIteration) validateFullChunkAsync(chunk []string, allIdDiffs chan idDiff, errorsChan chan error, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	diffs, err := i.validateFullChunkSync(chunk)
+	if err != nil {
+		errorsChan <- err
+		return
+	}
+
+	for _, diff := range diffs {
+		allIdDiffs <- diff
 	}
 
 	return
@@ -256,7 +268,7 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 		//validate chunks in parallel
 		wg.Add(1)
 		numThreads += 1
-		go i.validateChunk(chunk, allIdDiffs, errorsChan, wg)
+		go i.validateFullChunkAsync(chunk, allIdDiffs, errorsChan, wg)
 
 		if numThreads == i.parameters.FullValidationNumThreads.Int() || j == numChunks-1 {
 			wg.Wait()
@@ -277,10 +289,24 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 		return false, -1, -1, errors.New("error during full validation")
 	}
 
-	//group diffs by id for counting mismatched systems
-	diffsById := make(map[string][]string)
+	//double check mismatched hosts to account for lag
+	var mismatchedIds []string
 	for d := range allIdDiffs {
-		diffsById[d.id] = append(diffsById[d.id], d.diff)
+		mismatchedIds = append(mismatchedIds, d.id)
+	}
+
+	diffsById := make(map[string][]string)
+	if len(mismatchedIds) > 0 {
+		var diffs []idDiff
+		diffs, err = i.validateFullChunkSync(mismatchedIds)
+		if err != nil {
+			return
+		}
+
+		//group diffs by id for counting mismatched systems
+		for _, d := range diffs {
+			diffsById[d.id] = append(diffsById[d.id], d.diff)
+		}
 	}
 
 	//determine if the data is valid within the threshold
