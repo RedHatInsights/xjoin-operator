@@ -30,7 +30,7 @@ jobs:
         run: |
           git config user.name 'GitHub Actions' 
           git config user.email 'actions@github.com'
-          echo "::set-output name=schema_sha::$(git ls-remote https://github.com/RedHatInsights/inventory-schemas.git master)"
+          echo "::set-output name=schema_sha::$(git ls-remote https://github.com/RedHatInsights/inventory-schemas.git master | cut -c -7)"
       - name: update mapping from schema
         run: |
           cd scripts
