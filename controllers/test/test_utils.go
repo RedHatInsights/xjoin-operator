@@ -101,15 +101,6 @@ func getParameters() (Parameters, map[string]interface{}) {
 }
 
 func Before() *Iteration {
-	//occasionally the port-forward fails during the test suite execution,
-	//so make sure they are forwarded before each test
-	//there is a slight lag between running oc port-forward and being able to access the service
-	//which is why the sleep is here
-	cmd := exec.Command(test.GetRootDir() + "/dev/forward-ports.sh")
-	err := cmd.Run()
-	Expect(err).ToNot(HaveOccurred())
-	time.Sleep(1 * time.Second)
-
 	i := NewTestIteration()
 
 	i.NamespacedName = types.NamespacedName{
@@ -155,7 +146,24 @@ func Before() *Iteration {
 		SSLMode:  "disable",
 	})
 
-	err = i.DbClient.Connect()
+	//Sometimes during the test suite execution the port forward fails.
+	//This will check each dependency and if one is not responding,
+	//the port will be forwarded again
+	for j := 0; j < 3; j++ {
+		dependenciesAreResponding := i.CheckIfDependenciesAreResponding()
+
+		if dependenciesAreResponding {
+			break
+		} else {
+			//there is a slight lag between running oc port-forward and being able to access the service
+			//which is why the sleep is here
+			cmd := exec.Command(test.GetRootDir() + "/dev/forward-ports.sh")
+			err := cmd.Run()
+			Expect(err).ToNot(HaveOccurred())
+			time.Sleep(1 * time.Second)
+		}
+	}
+
 	Expect(err).ToNot(HaveOccurred())
 	i.DbClient.SetMaxConnections(1000)
 

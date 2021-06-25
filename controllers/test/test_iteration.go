@@ -59,6 +59,23 @@ func NewTestIteration() *Iteration {
 	return &testIteration
 }
 
+func (i *Iteration) CheckIfDependenciesAreResponding() bool {
+	err := i.DbClient.Connect()
+	if err != nil {
+		return false
+	}
+	isResponding, err := i.KafkaClient.CheckIfConnectIsResponding()
+	if err != nil || !isResponding {
+		return false
+	}
+	_, err = i.EsClient.ListIndices()
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
 func (i *Iteration) CloseDB() {
 	if i.DbClient != nil {
 		err := i.DbClient.Close()
