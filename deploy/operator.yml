@@ -61,8 +61,10 @@ parameters:
     value: "1000"
   - name: DEBEZIUM_CONNECTOR_POLL_INTERVAL_MS
     value: "100"
-  - name: HBI_DB_SSL
-    value: "disable"
+  - name: HBI_DB_SSL_ROOT_CERT
+    value: "/opt/kafka/external-configuration/rds-client-ca/rds-cacert"
+  - name: HBI_DB_SSL_MODE
+    value: "verify-full"
   - name: LOG_LEVEL
     value: "info"
   - name: KAFKA_TOPIC_RETENTION_BYTES
@@ -109,6 +111,14 @@ objects:
       source: xjoin-operator-source
       sourceNamespace: ${TARGET_NAMESPACE}
       config:
+        volumes:
+          - name: rds-client-ca
+            secret:
+              secretName: rds-client-ca
+              optional: true
+        volumeMounts:
+          - mountPath: /opt/kafka/external-configuration/rds-client-ca
+            name: rds-client-ca
         env:
           - name: LOG_LEVEL
             value: "${LOG_LEVEL}"
@@ -142,6 +152,8 @@ objects:
       elasticsearch.connector.linger.ms: ${ES_CONNECTOR_LINGER_MS}
       elasticsearch.index.replicas: ${ES_INDEX_REPLICAS}
       elasticsearch.index.shards: ${ES_INDEX_SHARDS}
+      hbi.db.ssl.mode: ${HBI_DB_SSL_MODE}
+      hbi.db.ssl.root.cert: ${HBI_DB_SSL_ROOT_CERT}
       debezium.connector.tasks.max: ${DEBEZIUM_CONNECTOR_TASKS_MAX}
       debezium.connector.max.batch.size: ${DEBEZIUM_CONNECTOR_MAX_BATCH_SIZE}
       debezium.connector.max.queue.size: ${DEBEZIUM_CONNECTOR_MAX_QUEUE_SIZE}
@@ -149,7 +161,6 @@ objects:
       kafka.topic.partitions: ${KAFKA_TOPIC_PARTITIONS}
       kafka.topic.replicas: ${KAFKA_TOPIC_REPLICAS}
       jenkins.managed.version: ${JENKINS_MANAGED_VERSION}
-      hbi.db.ssl: ${HBI_DB_SSL}
       kafka.topic.retention.bytes: ${KAFKA_TOPIC_RETENTION_BYTES}
       full.validation.num.threads: ${FULL_VALIDATION_NUM_THREADS}
       full.validation.chunk.size: ${FULL_VALIDATION_CHUNK_SIZE}

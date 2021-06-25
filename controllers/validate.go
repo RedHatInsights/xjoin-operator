@@ -108,6 +108,15 @@ func (i *ReconcileIteration) countValidation() (isValid bool, mismatchCount int,
 	return
 }
 
+func (i ReconcileIteration) validateIdChunk(hbiIds []string, esIds []string) (mismatchCount int, inHbiOnly []string, inAppOnly []string) {
+	i.Log.Info("Fetched host ids")
+	inHbiOnly = utils.Difference(hbiIds, esIds)
+	inAppOnly = utils.Difference(esIds, hbiIds)
+	mismatchCount = len(inHbiOnly) + len(inAppOnly)
+
+	return mismatchCount, inHbiOnly, inAppOnly
+}
+
 func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mismatchRatio float64, hbiIds []string, err error) {
 	isValid = false
 
@@ -123,23 +132,37 @@ func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mi
 	}
 	endTime := now.Add(-time.Duration(validationLagComp) * time.Second)
 
-	hbiIds, err = i.InventoryDb.GetHostIds(startTime, endTime)
+	//validate chunk between startTime and endTime
+	hbiIds, err = i.InventoryDb.GetHostIdsByModifiedOn(startTime, endTime)
 	if err != nil {
 		return
 	}
 
-	esIds, err := i.ESClient.GetHostIDs(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), startTime, endTime)
+	esIds, err := i.ESClient.GetHostIDsByModifiedOn(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), startTime, endTime)
 	if err != nil {
 		return
 	}
 
-	i.Log.Info("Fetched host ids")
-	inHbiOnly := utils.Difference(hbiIds, esIds)
-	inAppOnly := utils.Difference(esIds, hbiIds)
-	mismatchCount = len(inHbiOnly) + len(inAppOnly)
+	mismatchCount, inHbiOnly, inAppOnly := i.validateIdChunk(hbiIds, esIds)
+
+	//re-validate any mismatched hosts to check if they were invalid due to lag
+	//this can happen when the modified_on filter excludes hosts updated between retrieving hosts from the DB/ES
+	if mismatchCount > 0 {
+		mismatchedIds := append(hbiIds, esIds...)
+		hbiIds, err = i.InventoryDb.GetHostIdsByIdList(mismatchedIds)
+		if err != nil {
+			return
+		}
+
+		esIds, err = i.ESClient.GetHostIDsByIdList(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), mismatchedIds)
+		if err != nil {
+			return
+		}
+
+		mismatchCount, inHbiOnly, inAppOnly = i.validateIdChunk(hbiIds, esIds)
+	}
 
 	validationThresholdPercent := i.getValidationPercentageThreshold()
-
 	mismatchRatio = float64(mismatchCount) / math.Max(float64(len(hbiIds)), 1)
 	isValid = (mismatchRatio * 100) <= float64(validationThresholdPercent)
 
@@ -176,18 +199,14 @@ type idDiff struct {
 func (i *ReconcileIteration) validateChunk(chunk []string, allIdDiffs chan idDiff, errorsChan chan error, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	now := time.Now().UTC()
-	validationLagComp := i.parameters.ValidationLagCompensationSeconds.Int()
-	endTime := now.Add(-time.Duration(validationLagComp) * time.Second)
-
 	//retrieve hosts from db and es
-	esHosts, err := i.ESClient.GetHostsByIds(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), chunk, endTime)
+	esHosts, err := i.ESClient.GetHostsByIds(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), chunk)
 	if err != nil {
 		errorsChan <- err
 		return
 	}
 
-	hbiHosts, err := i.InventoryDb.GetHostsByIds(chunk, endTime)
+	hbiHosts, err := i.InventoryDb.GetHostsByIds(chunk)
 	if err != nil {
 		errorsChan <- err
 		return

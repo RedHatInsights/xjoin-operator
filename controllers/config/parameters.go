@@ -55,7 +55,8 @@ type Parameters struct {
 	HBIDBPort                            Parameter
 	HBIDBUser                            Parameter
 	HBIDBPassword                        Parameter
-	HBIDBSSL                             Parameter
+	HBIDBSSLMode                         Parameter
+	HBIDBSSLRootCert                     Parameter
 	HBIDBSecretName                      Parameter
 	HBIDBSecretVersion                   Parameter
 	KafkaTopicPartitions                 Parameter
@@ -411,6 +412,8 @@ func NewXJoinConfiguration() Parameters {
 				"database.password": "{{.HBIDBPassword}}",
 				"database.dbname": "{{.HBIDBName}}",
 				"database.server.name": "{{.ResourceNamePrefix}}.{{.Version}}",
+				"database.sslmode": "{{.HBIDBSSLMode}}",
+				"database.sslrootcert": "{{.HBIDBSSLRootCert}}",
 				"table.whitelist": "public.hosts",
 				"plugin.name": "pgoutput",
 				"transforms": "unwrap",
@@ -483,10 +486,10 @@ func NewXJoinConfiguration() Parameters {
 			SecretKey:    "db.password",
 			DefaultValue: "insights",
 		},
-		HBIDBSSL: Parameter{
+		HBIDBSSLMode: Parameter{
 			Type:         reflect.String,
 			DefaultValue: "disable",
-			ConfigMapKey: "hbi.db.ssl",
+			ConfigMapKey: "hbi.db.ssl.mode",
 		},
 		KafkaTopicPartitions: Parameter{
 			Type:         reflect.Int,
@@ -557,6 +560,11 @@ func NewXJoinConfiguration() Parameters {
 			Type:         reflect.Int,
 			ConfigMapKey: "kafka.connect.reconcile.interval.seconds",
 			DefaultValue: 120,
+		},
+		HBIDBSSLRootCert: Parameter{
+			Type:         reflect.String,
+			ConfigMapKey: "hbi.db.ssl.root.cert",
+			DefaultValue: "/opt/kafka/external-configuration/rds-client-ca/rds-cacert",
 		},
 	}
 }
