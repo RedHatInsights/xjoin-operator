@@ -15,13 +15,12 @@ import (
 	"time"
 )
 
-func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string, endTime time.Time) ([]data.Host, error) {
+func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.Host, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	var query QueryHostsById
 	query.Query.Bool.Filter.IDs.Values = hostIds
-	query.Query.Bool.Must.Range.ModifiedOn.Lt = endTime.Format(utils.TimeFormat())
 	reqJSON, err := json.Marshal(query)
 	requestSize := len(hostIds)
 
@@ -69,14 +68,9 @@ func sortHostFields(hosts []data.Host) []data.Host {
 	return hosts
 }
 
-func (es *ElasticSearch) GetHostIDs(index string, start time.Time, end time.Time) ([]string, error) {
+func (es *ElasticSearch) getHostIDsQuery(index string, reqJSON []byte) ([]string, error) {
 	size := new(int)
 	*size = 10000
-
-	var query QueryHostIDsRange
-	query.Query.Range.ModifiedOn.Lt = end.Format(utils.TimeFormat())
-	query.Query.Range.ModifiedOn.Gt = start.Format(utils.TimeFormat())
-	reqJSON, err := json.Marshal(query)
 
 	searchReq := esapi.SearchRequest{
 		Index:  []string{index},
@@ -86,8 +80,6 @@ func (es *ElasticSearch) GetHostIDs(index string, start time.Time, end time.Time
 		Size:   size,
 		Sort:   []string{"_doc"},
 	}
-
-	log.Info("ElasticSearch.GetHostIDsQuery", "query", searchReq, "body", query)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
@@ -142,6 +134,31 @@ func (es *ElasticSearch) GetHostIDs(index string, start time.Time, end time.Time
 	}
 
 	return ids, nil
+}
+
+func (es *ElasticSearch) GetHostIDsByIdList(index string, ids []string) ([]string, error) {
+	var query QueryHostIDsList
+	query.Query.Bool.Filter.IDs.Values = ids
+	reqJSON, err := json.Marshal(query)
+	if err != nil {
+		return nil, err
+	}
+
+	return es.getHostIDsQuery(index, reqJSON)
+}
+
+func (es *ElasticSearch) GetHostIDsByModifiedOn(index string, start time.Time, end time.Time) ([]string, error) {
+	var query QueryHostIDsRange
+	query.Query.Range.ModifiedOn.Lt = end.Format(utils.TimeFormat())
+	query.Query.Range.ModifiedOn.Gt = start.Format(utils.TimeFormat())
+	reqJSON, err := json.Marshal(query)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Info("ElasticSearch.GetHostIDsQuery", "body", query)
+
+	return es.getHostIDsQuery(index, reqJSON)
 }
 
 func parseSearchHostsResponse(res *esapi.Response) ([]data.Host, error) {

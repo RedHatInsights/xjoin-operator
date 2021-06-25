@@ -355,12 +355,13 @@ func (i *ReconcileIteration) updateAliasIfHealthier() error {
 
 		// no need to close this as that's done in ReconcileIteration.Close()
 		i.InventoryDb = database.NewDatabase(database.DBParams{
-			Host:     i.parameters.HBIDBHost.String(),
-			User:     i.parameters.HBIDBUser.String(),
-			Name:     i.parameters.HBIDBName.String(),
-			Port:     i.parameters.HBIDBPort.String(),
-			Password: i.parameters.HBIDBPassword.String(),
-			SSL:      i.parameters.HBIDBSSL.String(),
+			Host:        i.parameters.HBIDBHost.String(),
+			User:        i.parameters.HBIDBUser.String(),
+			Name:        i.parameters.HBIDBName.String(),
+			Port:        i.parameters.HBIDBPort.String(),
+			Password:    i.parameters.HBIDBPassword.String(),
+			SSLMode:     i.parameters.HBIDBSSLMode.String(),
+			SSLRootCert: i.parameters.HBIDBSSLRootCert.String(),
 		})
 
 		if err = i.InventoryDb.Connect(); err != nil {

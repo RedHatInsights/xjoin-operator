@@ -1,7 +1,6 @@
 package test
 
 import (
-	"context"
 	. "github.com/onsi/gomega"
 	. "github.com/redhatinsights/xjoin-operator/controllers"
 	. "github.com/redhatinsights/xjoin-operator/controllers/config"
@@ -9,17 +8,14 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"github.com/redhatinsights/xjoin-operator/test"
 	"github.com/spf13/viper"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"os/exec"
 	"reflect"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
 	"time"
 )
 
@@ -105,6 +101,15 @@ func getParameters() (Parameters, map[string]interface{}) {
 }
 
 func Before() *Iteration {
+	//occasionally the port-forward fails during the test suite execution,
+	//so make sure they are forwarded before each test
+	//there is a slight lag between running oc port-forward and being able to access the service
+	//which is why the sleep is here
+	cmd := exec.Command(test.GetRootDir() + "/dev/forward-ports.sh")
+	err := cmd.Run()
+	Expect(err).ToNot(HaveOccurred())
+	time.Sleep(1 * time.Second)
+
 	i := NewTestIteration()
 
 	i.NamespacedName = types.NamespacedName{
@@ -147,7 +152,7 @@ func Before() *Iteration {
 		User:     "postgres",
 		Password: "postgres",
 		Name:     i.Parameters.HBIDBName.String(),
-		SSL:      "disable",
+		SSLMode:  "disable",
 	})
 
 	err = i.DbClient.Connect()
@@ -172,59 +177,6 @@ func After(i *Iteration) {
 		err = i.EsClient.DeleteIndexByFullName(index)
 		Expect(err).ToNot(HaveOccurred())
 	}
-
-	projects := &unstructured.UnstructuredList{}
-	projects.SetKind("Namespace")
-	projects.SetAPIVersion("v1")
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
-	defer cancel()
-	err = i.XJoinReconciler.Client.List(ctx, projects)
-	Expect(err).ToNot(HaveOccurred())
-
-	//remove finalizers from leftover pipelines so the project can be deleted
-	for _, p := range i.Pipelines {
-		pipelines, err :=
-			utils.FetchXJoinPipelinesByNamespacedName(test.Client, p.Name, p.Namespace)
-		Expect(err).ToNot(HaveOccurred())
-		if len(pipelines.Items) != 0 {
-			pipeline := pipelines.Items[0]
-			_ = i.KafkaClient.DeleteConnectorsForPipelineVersion(pipeline.Status.PipelineVersion)
-			_ = i.KafkaClient.DeleteTopicByPipelineVersion(pipeline.Status.PipelineVersion)
-			_ = i.DbClient.RemoveReplicationSlotsForPipelineVersion(pipeline.Status.PipelineVersion)
-			_ = i.EsClient.DeleteIndex(pipeline.Status.PipelineVersion)
-			_ = i.EsClient.DeleteESPipelineByVersion(pipeline.Status.PipelineVersion)
-
-			_ = i.KafkaClient.DeleteConnector(pipeline.Status.ActiveDebeziumConnectorName)
-			_ = i.KafkaClient.DeleteConnector(pipeline.Status.ActiveESConnectorName)
-			_ = i.KafkaClient.DeleteTopic(pipeline.Status.ActiveTopicName)
-			_ = i.DbClient.RemoveReplicationSlot(pipeline.Status.ActiveReplicationSlotName)
-			_ = i.EsClient.DeleteIndexByFullName(pipeline.Status.ActiveIndexName)
-			_ = i.EsClient.DeleteESPipelineByFullName(pipeline.Status.ActiveESPipelineName)
-
-			i.DeleteAllHosts()
-			if pipeline.DeletionTimestamp == nil {
-				pipeline.ObjectMeta.Finalizers = nil
-				err = i.XJoinReconciler.Client.Update(ctx, &pipeline)
-				Expect(err).ToNot(HaveOccurred())
-			}
-		}
-	}
-
-	//delete leftover projects
-	for _, p := range projects.Items {
-		if strings.Index(p.GetName(), ResourceNamePrefix) == 0 && p.GetDeletionTimestamp() == nil {
-			project := &unstructured.Unstructured{}
-			project.SetName(p.GetName())
-			project.SetNamespace(p.GetNamespace())
-			project.SetGroupVersionKind(p.GroupVersionKind())
-			err = i.XJoinReconciler.Client.Delete(ctx, project)
-			Expect(err).ToNot(HaveOccurred())
-			err = i.KafkaClient.DeleteConnectorsForPipelineVersion("1")
-		}
-	}
-
-	i.DbClient.Close()
 
 	cmd := exec.Command(test.GetRootDir() + "/dev/cleanup.projects.sh")
 	err = cmd.Run()

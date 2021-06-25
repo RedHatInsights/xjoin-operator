@@ -39,8 +39,7 @@ func ForwardPorts() {
 	time.Sleep(time.Second * 2)
 }
 
-/*
- * Sets up Before/After hooks that initialize testEnv.
+/* Sets up Before/After hooks that initialize testEnv.
  * Registers CRDs.
  * Registers Ginkgo Handler.
  */
@@ -48,6 +47,10 @@ func Setup(t *testing.T, suiteName string) {
 
 	var _ = BeforeSuite(func(done Done) {
 		ForwardPorts()
+
+		cmd := exec.Command(GetRootDir() + "/dev/cleanup.projects.sh")
+		err := cmd.Run()
+		Expect(err).ToNot(HaveOccurred())
 
 		useExistingCluster := true
 
@@ -57,7 +60,7 @@ func Setup(t *testing.T, suiteName string) {
 			UseExistingCluster: &useExistingCluster,
 		}
 
-		cfg, err := testEnv.Start()
+		cfg, err = testEnv.Start()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(cfg).ToNot(BeNil())
 
@@ -78,16 +81,17 @@ func Setup(t *testing.T, suiteName string) {
 			User:     "insights",
 			Password: "insights",
 			Name:     "test",
-			SSL:      "disable",
+			SSLMode:  "disable",
 		})
 
 		err = dbClient.Connect()
 		Expect(err).ToNot(HaveOccurred())
-		defer dbClient.Close()
 
 		err = dbClient.RemoveReplicationSlotsForPrefix("xjointest")
 		Expect(err).ToNot(HaveOccurred())
 		err = dbClient.RemoveReplicationSlotsForPrefix("xjointestupdated")
+		Expect(err).ToNot(HaveOccurred())
+		err = dbClient.Close()
 		Expect(err).ToNot(HaveOccurred())
 
 		close(done)

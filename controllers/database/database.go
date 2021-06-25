@@ -25,12 +25,13 @@ type Database struct {
 }
 
 type DBParams struct {
-	User     string
-	Password string
-	Host     string
-	Name     string
-	Port     string
-	SSL      string
+	User        string
+	Password    string
+	Host        string
+	Name        string
+	Port        string
+	SSLMode     string
+	SSLRootCert string
 }
 
 func NewDatabase(config DBParams) *Database {
@@ -52,7 +53,11 @@ func (db *Database) Connect() (err error) {
 }
 
 func (db *Database) GetConnection() (connection *sqlx.DB, err error) {
-	const connectionStringTemplate = "host=%s user=%s password=%s port=%s sslmode=%s"
+	connectionStringTemplate := "host=%s user=%s password=%s port=%s sslmode=%s"
+
+	if db.Config.SSLMode != "disable" {
+		connectionStringTemplate = connectionStringTemplate + " sslrootcert=" + db.Config.SSLRootCert
+	}
 
 	connStr := fmt.Sprintf(
 		connectionStringTemplate,
@@ -60,7 +65,7 @@ func (db *Database) GetConnection() (connection *sqlx.DB, err error) {
 		db.Config.User,
 		db.Config.Password,
 		db.Config.Port,
-		db.Config.SSL)
+		db.Config.SSLMode)
 
 	//db.Config.Name is empty before creating the test database
 	if db.Config.Name != "" {
@@ -244,13 +249,7 @@ func (db *Database) CountHosts(endTime time.Time) (int, error) {
 	return response, err
 }
 
-func (db *Database) GetHostIds(start time.Time, end time.Time) ([]string, error) {
-	query := fmt.Sprintf(
-		`SELECT id FROM hosts WHERE modified_on > '%s' AND modified_on < '%s' ORDER BY id `,
-		start.Format(utils.TimeFormat()), end.Format(utils.TimeFormat()))
-
-	log.Info("GetHostIdsQuery", "query", query)
-
+func (db *Database) QueryIds(query string) ([]string, error) {
 	rows, err := db.RunQuery(query)
 	defer closeRows(rows)
 
@@ -274,6 +273,26 @@ func (db *Database) GetHostIds(start time.Time, end time.Time) ([]string, error)
 	return ids, nil
 }
 
+func (db *Database) GetHostIdsByIdList(ids []string) ([]string, error) {
+	idsString, err := formatIdsList(ids)
+	if err != nil {
+		return nil, err
+	}
+
+	query := fmt.Sprintf(`SELECT id FROM hosts WHERE id in (%s)`, idsString)
+	return db.QueryIds(query)
+}
+
+func (db *Database) GetHostIdsByModifiedOn(start time.Time, end time.Time) ([]string, error) {
+	query := fmt.Sprintf(
+		`SELECT id FROM hosts WHERE modified_on > '%s' AND modified_on < '%s' ORDER BY id `,
+		start.Format(utils.TimeFormat()), end.Format(utils.TimeFormat()))
+
+	log.Info("GetHostIdsQuery", "query", query)
+
+	return db.QueryIds(query)
+}
+
 func closeRows(rows *sqlx.Rows) {
 	if rows != nil {
 		err := rows.Close()
@@ -292,29 +311,37 @@ func parseJsonField(field []uint8) (map[string]interface{}, error) {
 	return fieldMap, nil
 }
 
-//TODO handle this dynamically with a schema
-func (db *Database) GetHostsByIds(ids []string, endTime time.Time) ([]data.Host, error) {
-	cols := "id,account,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter,tags"
-
+func formatIdsList(ids []string) (string, error) {
 	idsMap := make(map[string]interface{})
 	idsMap["IDs"] = ids
 
 	tmpl, err := template.New("host-ids").Parse(`{{range $idx, $id := .IDs}}'{{$id}}',{{end}}`)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	var idsTemplateBuffer bytes.Buffer
 	err = tmpl.Execute(&idsTemplateBuffer, idsMap)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	idsTemplateParsed := idsTemplateBuffer.String()
 	idsTemplateParsed = idsTemplateParsed[0 : len(idsTemplateParsed)-1]
+	return idsTemplateParsed, nil
+}
+
+//TODO handle this dynamically with a schema
+func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
+	cols := "id,account,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter,tags"
+
+	idsString, err := formatIdsList(ids)
+	if err != nil {
+		return nil, err
+	}
 
 	query := fmt.Sprintf(
-		"SELECT %s FROM hosts WHERE ID IN (%s) AND modified_on < '%s' ORDER BY id",
-		cols, idsTemplateParsed, endTime.Format(utils.TimeFormat()))
+		"SELECT %s FROM hosts WHERE ID IN (%s) ORDER BY id",
+		cols, idsString)
 
 	rows, err := db.connection.Queryx(query)
 	defer closeRows(rows)
