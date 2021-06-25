@@ -25,15 +25,19 @@ jobs:
           repository: ryandillinfelton/inventory-schemas
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           path: ./inventory-schemas
-      - name: update mapping from schema
+      - name: Set vars
+        id: vars
         run: |
           git config user.name 'GitHub Actions' 
           git config user.email 'actions@github.com'
+          echo "::set-output name=schema_sha::$(git ls-remote https://github.com/RedHatInsights/inventory-schemas.git master)"
+      - name: update mapping from schema
+        run: |
           cd scripts
           npm ci
           node update_mapping.js ../inventory-schemas/schemas/system_profile/v1.yaml
           git add -u
-          git commit -m "update mapping ${{ github.sha }}"
+          git commit -m "update mapping ${{ steps.vars.outputs.schema_sha }}"
       - name: remove schema submodule
         run: rm -r inventory-schemas
       - name: Create Pull Request
