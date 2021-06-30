@@ -18,7 +18,7 @@ jobs:
       - name: Check out schema repo to copy current schema from
         uses: actions/checkout@v2
         with:
-          repository: ryandillinfelton/inventory-schemas
+          repository: RedHatInsights/inventory-schemas
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           path: ./inventory-schemas
       - name: Set vars
