@@ -53,13 +53,3 @@ type QueryHostIDsRange struct {
 		} `json:"range"`
 	} `json:"query"`
 }
-
-type QueryCountIDs struct {
-	Query struct {
-		Range struct {
-			ModifiedOn struct {
-				Lt string `json:"lt"`
-			} `json:"modified_on"`
-		} `json:"range"`
-	} `json:"query"`
-}
