@@ -114,8 +114,8 @@ func (db *Database) ExecQuery(query string) (result sql.Result, err error) {
 	return result, nil
 }
 
-func (db *Database) hostCountQuery(endTime time.Time) string {
-	return fmt.Sprintf(`SELECT count(*) FROM hosts WHERE modified_on < '%s'`, endTime.Format(utils.TimeFormat()))
+func (db *Database) hostCountQuery() string {
+	return "SELECT count(*) FROM hosts"
 }
 
 func ReplicationSlotName(resourceNamePrefix string, pipelineVersion string) string {
@@ -228,8 +228,8 @@ func (db *Database) RemoveReplicationSlotsForPipelineVersion(pipelineVersion str
 	return nil
 }
 
-func (db *Database) CountHosts(endTime time.Time) (int, error) {
-	rows, err := db.RunQuery(db.hostCountQuery(endTime))
+func (db *Database) CountHosts() (int, error) {
+	rows, err := db.RunQuery(db.hostCountQuery())
 	defer closeRows(rows)
 
 	if err != nil {
