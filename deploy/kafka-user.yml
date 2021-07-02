@@ -23,30 +23,30 @@ objects:
         type: scram-sha-512
       authorization:
         acls:
-          # topics
-          - resource:
+        # topics
+        - resource:
             type: topic
             name: 'xjoin*'
             patternType: literal
-            operation: All
+          operation: All
 
-          # connect offset, storage and config topics
-          - resource:
-              name: 'xjoin-connect'
-              patternType: prefix
-              type: topic
-            operation: All
+        # connect offset, storage and config topics
+        - resource:
+            name: 'xjoin-connect'
+            patternType: prefix
+            type: topic
+          operation: All
 
-          # connect cluster consumer group
-          - resource:
-              name: ${GROUP_ID}
-              patternType: literal
-              type: group
-            operation: All
-          # connector consumer groups
-          - resource:
-              name: ${CONNECTOR_GROUP_PREFIX}
-              patternType: prefix
-              type: group
-            operation: All
+        # connect cluster consumer group
+        - resource:
+            name: ${GROUP_ID}
+            patternType: literal
+            type: group
+          operation: All
+        # connector consumer groups
+        - resource:
+            name: ${CONNECTOR_GROUP_PREFIX}
+            patternType: prefix
+            type: group
+          operation: All
         type: simple
