@@ -154,3 +154,7 @@ container-build:
 container-push:
 	$(CONTAINER_ENGINE) push ${IMG}
 
+# Create a release manifest file
+release: manifests kustomize
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config/default > manifest.yaml
