@@ -26,8 +26,8 @@ objects:
         # topics
         - resource:
             type: topic
-            name: 'xjoin*'
-            patternType: literal
+            name: 'xjoin'
+            patternType: prefix
           operation: All
 
         # connect offset, storage and config topics
