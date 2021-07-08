@@ -227,7 +227,12 @@ func (config *Config) getIntValue(key string, defaultValue int) (int, error) {
 	return defaultValue, nil
 }
 
-func (config *Config) readSecretValue(secret *corev1.Secret, key string) (string, error) {
-	value := secret.Data[key]
-	return string(value), nil
+func (config *Config) readSecretValue(secret *corev1.Secret, keys []string) (value string, err error) {
+	for _, key := range keys {
+		value = string(secret.Data[key])
+		if value != "" {
+			break
+		}
+	}
+	return
 }

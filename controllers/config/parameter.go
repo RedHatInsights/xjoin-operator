@@ -9,7 +9,7 @@ import (
 type Parameter struct {
 	SpecKey      string
 	Secret       string
-	SecretKey    string
+	SecretKey    []string
 	ConfigMapKey string
 	DefaultValue interface{}
 	value        interface{}

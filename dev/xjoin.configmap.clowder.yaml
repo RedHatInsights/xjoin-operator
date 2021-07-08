@@ -1,0 +1,17 @@
+apiVersion: v1
+data:
+  standard.interval: '120'
+  validation.interval: '1800'
+  validation.attempts.threshold: '2'
+  validation.percentage.threshold: '5'
+  init.validation.interval: '60'
+  init.validation.attempts.threshold: '30'
+  init.validation.percentage.threshold: '5'
+  connect.cluster: connect
+  kafka.cluster: kafka
+  kafka.cluster.namespace: test
+  connect.cluster.namespace: test
+  elasticsearch.connector.tasks.max: '5'
+kind: ConfigMap
+metadata:
+  name: xjoin

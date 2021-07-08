@@ -312,19 +312,19 @@ func NewXJoinConfiguration() Parameters {
 		ElasticSearchURL: Parameter{
 			Type:         reflect.String,
 			Secret:       secretTypes.elasticSearch,
-			SecretKey:    "endpoint",
+			SecretKey:    []string{"endpoint"},
 			DefaultValue: "http://localhost:9200",
 		},
 		ElasticSearchUsername: Parameter{
 			Type:         reflect.String,
 			Secret:       secretTypes.elasticSearch,
-			SecretKey:    "username",
+			SecretKey:    []string{"username"},
 			DefaultValue: "xjoin",
 		},
 		ElasticSearchPassword: Parameter{
 			Type:         reflect.String,
 			Secret:       secretTypes.elasticSearch,
-			SecretKey:    "password",
+			SecretKey:    []string{"password"},
 			DefaultValue: "xjoin1337",
 		},
 		ElasticSearchTasksMax: Parameter{
@@ -459,31 +459,31 @@ func NewXJoinConfiguration() Parameters {
 		HBIDBName: Parameter{
 			Type:         reflect.String,
 			Secret:       secretTypes.hbiDB,
-			SecretKey:    "db.name",
+			SecretKey:    []string{"db.name", "name"},
 			DefaultValue: "insights",
 		},
 		HBIDBHost: Parameter{
 			Type:         reflect.String,
 			Secret:       secretTypes.hbiDB,
-			SecretKey:    "db.host",
+			SecretKey:    []string{"db.host", "hostname"},
 			DefaultValue: "inventory-db",
 		},
 		HBIDBPort: Parameter{
 			Type:         reflect.String,
 			Secret:       secretTypes.hbiDB,
-			SecretKey:    "db.port",
+			SecretKey:    []string{"db.port", "port"},
 			DefaultValue: "5432",
 		},
 		HBIDBUser: Parameter{
 			Type:         reflect.String,
 			Secret:       secretTypes.hbiDB,
-			SecretKey:    "db.user",
+			SecretKey:    []string{"db.user", "username"},
 			DefaultValue: "insights",
 		},
 		HBIDBPassword: Parameter{
 			Type:         reflect.String,
 			Secret:       secretTypes.hbiDB,
-			SecretKey:    "db.password",
+			SecretKey:    []string{"db.password", "password"},
 			DefaultValue: "insights",
 		},
 		HBIDBSSLMode: Parameter{

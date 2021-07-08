@@ -4,5 +4,4 @@ metadata:
   name: xjoinpipeline-sample
 spec:
   # Add fields here
-  connectCluster: xjoin-kafka-connect-strimzi
   elasticSearchURL: https://elasticsearch:9200

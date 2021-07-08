@@ -35,6 +35,18 @@ The operator defines two controllers that reconcile a XJoinPipeline
   ElasticSearch index with what is stored in HBI to determine whether the pipeline is valid
 
 ## Development
+### Setting up the development environment using Clowder
+1. Login to https://quay.io and https://registry.redhat.io
+   - `docker login -u=<quay-username> -p="password" quay.io`
+   - `docker login https://registry.redhat.io`
+
+1. Append the following line into `/etc/hosts`
+    ```
+    127.0.0.1 inventory-db xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http
+    ```
+
+1. `./dev/setup-clowder.sh`
+
 ### Setting up the development environment
 
 1. Set up a local Kubernetes environment. Known to work with the following:
@@ -75,7 +87,7 @@ The operator defines two controllers that reconcile a XJoinPipeline
 
 1. Run the setup script
     ```
-    dev/setup.sh
+    dev/setup.sh --project xjoin-operator-project --all
     ```
    
 ### Reset the development environment
