@@ -9,8 +9,9 @@ function print_start_message() {
 # kube_setup.sh
 print_start_message "Running kube-setup.sh"
 mkdir /tmp/kubesetup
-curl https://raw.githubusercontent.com/RedHatInsights/clowder/master/build/kube_setup.sh -o /tmp/kube_setup.sh && chmod +x /tmp/kube_setup.sh
-/tmp/kube_setup.sh
+#curl https://raw.githubusercontent.com/RedHatInsights/clowder/master/build/kube_setup.sh -o /tmp/kubesetup/kube_setup.sh && chmod +x /tmp/kubesetup/kube_setup.sh
+#/tmp/kubesetup/kube_setup.sh
+/home/chris/dev/projects/active/clowder/build/kube_setup.sh
 rm -r /tmp/kubesetup
 
 # clowder CRDs
@@ -24,21 +25,13 @@ dev/setup.sh --clowder --secret --project test
 # bonfire environment (kafka, connect, etc.)
 print_start_message "Setting up bonfire environment"
 bonfire deploy-env -n test
-kubectl patch env env-test --patch '{"spec": {"providers": {"pullSecrets": [{"name": "xjoin-pull-secret", "namespace": "test"}]}}}' --type=merge
-kubectl patch KafkaConnect connect --patch '{"spec": {"config": {"connector.client.config.override.policy": "All"}}}' --type=merge
+kubectl patch KafkaConnect connect --patch '{"spec": {"config": {"connector.client.config.override.policy": "All"}}}' --type=merge -n test
 
 sleep 5
 
 # inventory resources
 print_start_message "Setting up host-inventory"
-
-# there is a bug in the bonfire inventory deployment which prevents the image from being pulled.
-# So pull the image before starting the bonfire deployment
-kubectl run -n test inventory-image-pull --image=quay.io/cloudservices/insights-inventory:latest --command -- /bin/sh -c "sleep 30"
-kubectl wait pods/inventory-image-pull --for=condition=Ready --timeout=150s -n test
-kubectl delete pods/inventory-image-pull -n test
-
-bonfire deploy host-inventory -i quay.io/cloudservices/insights-inventory=latest -n test
+bonfire deploy host-inventory -n test
 
 dev/forward-ports-clowder.sh test
 HBI_USER=$(kubectl -n test get secret/host-inventory-db -o custom-columns=:data.username | base64 -d)
@@ -52,3 +45,8 @@ dev/setup.sh --elasticsearch --clowder --project test
 # operator CRDs, configmap, XJoinPipeline
 print_start_message "Setting up XJoin operator"
 dev/setup.sh --xjoin-operator --clowder --project test
+kubectl patch KafkaConnect connect --patch '{"spec": {"config": {"connector.client.config.override.policy": "All"}}}' --type=merge -n test
+
+# xjoin-search
+print_start_message "Setting up xjoin-search"
+bonfire deploy xjoin-search -n test

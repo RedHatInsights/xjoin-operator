@@ -14,6 +14,9 @@ kubectl port-forward svc/host-inventory-db 5432:5432 -n "$PROJECT_NAME" >/dev/nu
 kubectl port-forward services/connect-connect-api 8083:8083 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward svc/xjoin-elasticsearch-es-http 9200:9200 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward svc/kafka-kafka-bootstrap 9092:9092 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward svc/kafka-kafka-bootstrap 29092:9092 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward svc/xjoin-search 4000:4000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward svc/host-inventory-service 8000:8000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 
 
 pgrep -fla "kubectl port-forward"

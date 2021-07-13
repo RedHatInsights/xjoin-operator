@@ -9,6 +9,8 @@ parameters:
     value: quay.io/cloudservices/xjoin-operator-index
   - name: TARGET_NAMESPACE
     value: xjoin
+  - name: SOURCE_NAMESPACE
+    value: xjoin
   - name: RECONCILE_INTERVAL
     value: "120"
   - name: VALIDATION_INTERVAL
@@ -90,8 +92,7 @@ objects:
     metadata:
       name: xjoin-operator-group
     spec:
-      targetNamespaces:
-        - ${TARGET_NAMESPACE}
+      targetNamespaces: [ "${TARGET_NAMESPACE}" ]
 
   - apiVersion: operators.coreos.com/v1alpha1
     kind: CatalogSource
@@ -109,7 +110,7 @@ objects:
       channel: alpha
       name: xjoin-operator
       source: xjoin-operator-source
-      sourceNamespace: ${TARGET_NAMESPACE}
+      sourceNamespace: ${SOURCE_NAMESPACE}
       config:
         volumes:
           - name: rds-client-ca

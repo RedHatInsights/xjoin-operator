@@ -6,6 +6,7 @@ function usage() {
 
   printf "%-25s %s\n" "-p, --project (required)" "Kubernetes namespace where the resources will be created"
   printf "%-25s %s\n" "-c, --clowder" "set this when deploying into a Clowder environment (changes which ports to forward)"
+  printf "%-25s %s\n" "-d, --dev" "Run make install to install the operator CRDs. Use this when running the operator locally for development."
   printf "%-25s %s\n" "-f, --forward-ports" "kubectl port-forward to all the services"
   printf "%-25s %s\n" "-h, --help" "show this message"
 
@@ -21,7 +22,7 @@ function usage() {
 
 function args()
 {
-    options=$(getopt -o p:akiehpscxf --long forward-ports --long xjoin-operator --long all --long kafka --long inventory --long elasticsearch --long project: --long secret --long clowder --long help -- "$@")
+    options=$(getopt -o p:adkiehpscxf --long dev --long forward-ports --long xjoin-operator --long all --long kafka --long inventory --long elasticsearch --long project: --long secret --long clowder --long help -- "$@")
     [ $? -eq 0 ] || {
         echo "Incorrect option provided"
         exit 1
@@ -80,6 +81,12 @@ function args()
         --clowder)
           SETUP_CLOWDER=true
           ;;
+        -d)
+          SETUP_DEV=true
+          ;;
+        --dev)
+          SETUP_DEV=true
+          ;;
         -x)
           SETUP_XJOIN_OPERATOR=true
           ;;
@@ -131,7 +138,7 @@ if [ $NAMESPACE_EXISTS -eq 1 ]; then
 fi
 
 #pull secret
-PULL_SECRET=xjoin-pull-secret
+PULL_SECRET=quay-cloudservices-pull
 if [ "$SETUP_PULL_SECRET" = true ] || [ "$SETUP_ALL" = true ]; then
   echo "Setting up pull secret"
   kubectl create secret generic "$PULL_SECRET" --from-file=.dockerconfigjson="$HOME/.docker/config.json" --type=kubernetes.io/dockerconfigjson -n "$PROJECT_NAME"
@@ -240,10 +247,16 @@ if [ "$SETUP_XJOIN_OPERATOR" = true ] || [ "$SETUP_ALL" = true ]; then
   cd ../
   if [ "$SETUP_CLOWDER" = true ]; then
     kubectl apply -f dev/xjoin.configmap.clowder.yaml -n "$PROJECT_NAME"
+    kubectl apply -f dev/xjoin.role.clowder.yaml -n "$PROJECT_NAME"
+    kubectl apply -f dev/xjoin.rolebinding.clowder.yaml -n "$PROJECT_NAME"
   else
     kubectl apply -f dev/xjoin.configmap.yaml -n "$PROJECT_NAME"
   fi
-  make install
+
+  if [ "$SETUP_DEV" = true ]; then
+    make install
+  fi
+
   kubectl apply -f config/samples/xjoin_v1alpha1_xjoinpipeline.yaml -n "$PROJECT_NAME"
 fi
 
