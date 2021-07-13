@@ -35,7 +35,7 @@ objects:
           podTemplate:
             environment:
               - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
-              -
+
   - apiVersion: xjoin.cloud.redhat.com/v1alpha1
     kind: XJoinPipeline
     metadata:
