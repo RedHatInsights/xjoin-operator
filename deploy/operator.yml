@@ -91,8 +91,6 @@ objects:
     kind: OperatorGroup
     metadata:
       name: xjoin-operator-group
-    spec:
-      targetNamespaces: [ "${TARGET_NAMESPACE}" ]
 
   - apiVersion: operators.coreos.com/v1alpha1
     kind: CatalogSource
