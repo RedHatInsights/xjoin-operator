@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
@@ -164,6 +165,11 @@ func (r *KafkaConnectReconciler) reconcileKafkaConnect() error {
 		if err != nil {
 			return err
 		}
+
+		if len(pods.Items) < 1 {
+			return errors.New("no Kafka Connect instance found")
+		}
+		
 		podLabels := pods.Items[0].GetLabels()
 		currentHash := podLabels["pod-template-hash"]
 
