@@ -75,6 +75,10 @@ func getParameters() (Parameters, map[string]interface{}) {
 	options.SetDefault("HBIDBPassword", "insights")
 	options.SetDefault("HBIDBName", "test")
 	options.SetDefault("ResourceNamePrefix", ResourceNamePrefix)
+	options.SetDefault("ConnectClusterNamespace", "test")
+	options.SetDefault("ConnectCluster", "connect")
+	options.SetDefault("KafkaClusterNamespace", "test")
+	options.SetDefault("KafkaCluster", "kafka")
 	options.AutomaticEnv()
 
 	xjoinConfiguration := NewXJoinConfiguration()
@@ -95,6 +99,14 @@ func getParameters() (Parameters, map[string]interface{}) {
 	err = xjoinConfiguration.HBIDBName.SetValue(options.GetString("HBIDBName"))
 	Expect(err).ToNot(HaveOccurred())
 	err = xjoinConfiguration.ResourceNamePrefix.SetValue(options.GetString("ResourceNamePrefix"))
+	Expect(err).ToNot(HaveOccurred())
+	err = xjoinConfiguration.ConnectCluster.SetValue(options.GetString("ConnectCluster"))
+	Expect(err).ToNot(HaveOccurred())
+	err = xjoinConfiguration.ConnectClusterNamespace.SetValue(options.GetString("ConnectClusterNamespace"))
+	Expect(err).ToNot(HaveOccurred())
+	err = xjoinConfiguration.KafkaCluster.SetValue(options.GetString("KafkaCluster"))
+	Expect(err).ToNot(HaveOccurred())
+	err = xjoinConfiguration.KafkaClusterNamespace.SetValue(options.GetString("KafkaClusterNamespace"))
 	Expect(err).ToNot(HaveOccurred())
 
 	return xjoinConfiguration, parametersToMap(xjoinConfiguration)
@@ -157,7 +169,7 @@ func Before() *Iteration {
 		} else {
 			//there is a slight lag between running oc port-forward and being able to access the service
 			//which is why the sleep is here
-			cmd := exec.Command(test.GetRootDir() + "/dev/forward-ports.sh")
+			cmd := exec.Command(test.GetRootDir() + "/dev/forward-ports-clowder.sh")
 			err := cmd.Run()
 			Expect(err).ToNot(HaveOccurred())
 			time.Sleep(1 * time.Second)

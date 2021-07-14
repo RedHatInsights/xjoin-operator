@@ -24,7 +24,7 @@ var _ = Describe("Pipeline operations", func() {
 			defer gock.Off()
 			defer test.ForwardPorts()
 
-			gock.New("http://xjoin-kafka-connect-strimzi-connect-api.xjoin-operator-project.svc:8083").
+			gock.New("http://connect-connect-api.test.svc:8083").
 				Get("/connectors").
 				Reply(500)
 
@@ -53,11 +53,11 @@ var _ = Describe("Pipeline operations", func() {
 
 			pipeline := i.CreateValidPipeline()
 
-			gock.New("http://xjoin-kafka-connect-strimzi-connect-api.xjoin-operator-project.svc:8083").
+			gock.New("http://connect-connect-api.test.svc:8083").
 				Get("/connectors/" + pipeline.Status.ActiveDebeziumConnectorName).
 				Reply(500)
 
-			gock.New("http://xjoin-kafka-connect-strimzi-connect-api.xjoin-operator-project.svc:8083").
+			gock.New("http://connect-connect-api.test.svc:8083").
 				Get("/connectors/" + pipeline.Status.ActiveESConnectorName).
 				Reply(500)
 

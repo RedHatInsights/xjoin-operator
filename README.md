@@ -36,28 +36,10 @@ The operator defines two controllers that reconcile a XJoinPipeline
 
 ## Development
 ### Setting up the development environment using Clowder
-1. Login to https://quay.io and https://registry.redhat.io
-   - `docker login -u=<quay-username> -p="password" quay.io`
-   - `docker login https://registry.redhat.io`
-
-1. Append the following line into `/etc/hosts`
-    ```
-    127.0.0.1 inventory-db xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http
-    ```
-
-1. `./dev/setup-clowder.sh`
-
-### Setting up the development environment
-
 1. Set up a local Kubernetes environment. Known to work with the following:
-    - [CodeReady Containers](https://developers.redhat.com/products/codeready-containers/overview)
-    - [MiniKube](https://minikube.sigs.k8s.io/docs/start/)
+   - [CodeReady Containers](https://developers.redhat.com/products/codeready-containers/overview)
+   - [MiniKube](https://minikube.sigs.k8s.io/docs/start/)
 
-1. Append the following line into `/etc/hosts`
-    ```
-    127.0.0.1 inventory-db xjoin-elasticsearch-es-default.xjoin-operator-project.svc xjoin-kafka-connect-strimzi-connect-api.xjoin-operator-project.svc xjoin-elasticsearch-es-http
-    ```
-   
 1. Configure Kubernetes to use at least 16G of memory and 6 cpus. This is known to work although you can try with less.
     ```
     ./crc config set memory 16384
@@ -79,16 +61,18 @@ The operator defines two controllers that reconcile a XJoinPipeline
 1. If using CRC
    - When prompted for a pull secret paste it (you obtained pull secret on step 1 when downloading CRC)
    - Log in to the cluster as kubeadmin (oc login -u kubeadmin -p ...)
-      You'll find the exact command to use in the CRC startup log
+     You'll find the exact command to use in the CRC startup log
 
-1. Login to `quay.io` and `https://registry.redhat.io`
+1. Login to https://quay.io and https://registry.redhat.io
    - `docker login -u=<quay-username> -p="password" quay.io`
    - `docker login https://registry.redhat.io`
 
-1. Run the setup script
+1. Append the following line into `/etc/hosts`
     ```
-    dev/setup.sh --project xjoin-operator-project --all
+    127.0.0.1 inventory-db xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http
     ```
+
+1. `./dev/setup-clowder.sh`
    
 ### Reset the development environment
 The Openshift environment can be deleted with this script:
@@ -114,7 +98,7 @@ With the cluster set up it is now possible to install manifests and run the oper
 
 1. Finally, create a new pipeline
     ```
-    oc apply -f ../config/samples/xjoin_v1alpha1_xjoinpipeline.yaml
+    kubectl apply -f ../config/samples/xjoin_v1alpha1_xjoinpipeline.yaml
     ```
 
 There is also `make delve` to debug the operator. After starting the Delve server process, connect to it with a Delve debugger.
@@ -151,5 +135,5 @@ docker login -u=$QUAY_USERNAME -p $QUAY_PASSWORD
 - The tests require an initialized Kubernetes environment. See [Setting up the development environment](#development).
 - They can be executed via `make test`.
 - There is also `make delve-test` to run the tests in debug mode. Then `delve` can be used to connect to the test run.
-- The tests take a while to run. To run whitelist one or a few tests, prepend `It` with an F. e.g. change `It("Creates a connector...` to `FIt("Creates a connector...) {`
+- The tests take a while to run. To whitelist one or a few tests, prepend `It` with an F. e.g. change `It("Creates a connector...` to `FIt("Creates a connector...) {`
 - Sometimes when the test execution fails unexpectedly it will leave orphaned projects in kubernetes. Use `dev/cleanup.projects.sh` to remove them.

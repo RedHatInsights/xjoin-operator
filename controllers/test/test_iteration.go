@@ -119,7 +119,7 @@ func (i *Iteration) DeleteService(serviceName string) {
 	defer cancel()
 
 	err := i.XJoinReconciler.Client.Get(
-		ctx, client.ObjectKey{Name: serviceName, Namespace: "xjoin-operator-project"}, service)
+		ctx, client.ObjectKey{Name: serviceName, Namespace: "test"}, service)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = i.XJoinReconciler.Client.Delete(ctx, service)
@@ -132,11 +132,11 @@ func (i *Iteration) CreateDBService(serviceName string) {
 	defer cancel()
 
 	err := i.XJoinReconciler.Client.Get(
-		ctx, client.ObjectKey{Name: "inventory-db", Namespace: "xjoin-operator-project"}, service)
+		ctx, client.ObjectKey{Name: "inventory-db", Namespace: "test"}, service)
 	Expect(err).ToNot(HaveOccurred())
 
 	service.Name = serviceName
-	service.Namespace = "xjoin-operator-project"
+	service.Namespace = "test"
 	service.Spec.ClusterIP = ""
 	service.Spec.ClusterIPs = []string{}
 	service.ResourceVersion = ""
@@ -150,11 +150,11 @@ func (i *Iteration) CreateESService(serviceName string) {
 	defer cancel()
 
 	err := i.XJoinReconciler.Client.Get(
-		ctx, client.ObjectKey{Name: "xjoin-elasticsearch-es-default", Namespace: "xjoin-operator-project"}, service)
+		ctx, client.ObjectKey{Name: "xjoin-elasticsearch-es-default", Namespace: "test"}, service)
 	Expect(err).ToNot(HaveOccurred())
 
 	service.Name = serviceName
-	service.Namespace = "xjoin-operator-project"
+	service.Namespace = "test"
 	service.Spec.ClusterIP = ""
 	service.Spec.ClusterIPs = []string{}
 	service.ResourceVersion = ""
@@ -547,6 +547,16 @@ func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) {
 		}
 	}
 
+	connectCluster := "connect"
+	spec.ConnectCluster = &connectCluster
+	connectClusterNamespace := "test"
+	spec.ConnectClusterNamespace = &connectClusterNamespace
+
+	kafkaCluster := "kafka"
+	spec.KafkaCluster = &kafkaCluster
+	kafkaClusterNamespace := "test"
+	spec.KafkaClusterNamespace = &kafkaClusterNamespace
+
 	pipeline := xjoin.XJoinPipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      i.NamespacedName.Name,
@@ -760,7 +770,7 @@ func (i *Iteration) getConnectPodName() (string, error) {
 	defer cancel()
 
 	labels := client.MatchingLabels{}
-	labels["app.kubernetes.io/part-of"] = "strimzi-xjoin-kafka-connect-strimzi"
+	labels["app.kubernetes.io/part-of"] = "strimzi-connect"
 	err := i.KafkaConnectReconciler.Client.List(ctx, pods, labels)
 	if err != nil {
 		return "", err

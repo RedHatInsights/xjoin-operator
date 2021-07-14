@@ -160,7 +160,7 @@ func (r *KafkaConnectReconciler) reconcileKafkaConnect() error {
 		pods := &corev1.PodList{}
 
 		labels := client.MatchingLabels{}
-		labels["app.kubernetes.io/part-of"] = "strimzi-xjoin-kafka-connect-strimzi"
+		labels["app.kubernetes.io/part-of"] = "strimzi-" + r.parameters.ConnectCluster.String()
 		err = r.Client.List(ctx, pods, labels)
 		if err != nil {
 			return err
@@ -169,7 +169,7 @@ func (r *KafkaConnectReconciler) reconcileKafkaConnect() error {
 		if len(pods.Items) < 1 {
 			return errors.New("no Kafka Connect instance found")
 		}
-		
+
 		podLabels := pods.Items[0].GetLabels()
 		currentHash := podLabels["pod-template-hash"]
 
@@ -220,7 +220,7 @@ func (r *KafkaConnectReconciler) reconcileKafkaConnect() error {
 			defer cancel()
 
 			labels := client.MatchingLabels{}
-			labels["app.kubernetes.io/part-of"] = "strimzi-xjoin-kafka-connect-strimzi"
+			labels["app.kubernetes.io/part-of"] = "strimzi-" + r.parameters.ConnectCluster.String()
 			err = r.Client.List(ctx, pods, labels)
 
 			//only check pods for new deployment

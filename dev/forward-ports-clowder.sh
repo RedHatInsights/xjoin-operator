@@ -5,7 +5,7 @@ pkill -f "kubectl port-forward"
 PROJECT_NAME=$1
 
 if [ -z "$PROJECT_NAME" ]; then
-  PROJECT_NAME=xjoin-operator-project
+  PROJECT_NAME="test"
 fi
 
 echo "Using namespace $PROJECT_NAME"

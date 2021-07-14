@@ -46,7 +46,7 @@ var _ = Describe("Pipeline operations", func() {
 			dbConnector, err := i.KafkaClient.GetConnector(
 				i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(dbConnector.GetLabels()["strimzi.io/cluster"]).To(Equal("xjoin-kafka-connect-strimzi"))
+			Expect(dbConnector.GetLabels()["strimzi.io/cluster"]).To(Equal("connect"))
 			Expect(dbConnector.GetName()).To(Equal(ResourceNamePrefix + ".db." + pipeline.Status.PipelineVersion))
 			dbConnectorSpec := dbConnector.Object["spec"].(map[string]interface{})
 			Expect(dbConnectorSpec["class"]).To(Equal("io.debezium.connector.postgresql.PostgresConnector"))
@@ -74,7 +74,7 @@ var _ = Describe("Pipeline operations", func() {
 			esConnector, err := i.KafkaClient.GetConnector(
 				i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(esConnector.GetLabels()["strimzi.io/cluster"]).To(Equal("xjoin-kafka-connect-strimzi"))
+			Expect(esConnector.GetLabels()["strimzi.io/cluster"]).To(Equal("connect"))
 			Expect(esConnector.GetName()).To(Equal(ResourceNamePrefix + ".es." + pipeline.Status.PipelineVersion))
 			esConnectorSpec := esConnector.Object["spec"].(map[string]interface{})
 			Expect(esConnectorSpec["class"]).To(Equal("io.confluent.connect.elasticsearch.ElasticsearchSinkConnector"))
@@ -633,13 +633,13 @@ var _ = Describe("Pipeline operations", func() {
 
 			defer gock.Off()
 
-			gock.New("http://newCluster-connect-api.xjoin-operator-project.svc:8083").
+			gock.New("http://newCluster-connect-api.test.svc:8083").
 				Get("/connectors/"+pipeline.Status.ActiveESConnectorName+"/status").
 				Reply(200).
 				BodyString("{}").
 				AddHeader("Content-Type", "application/json")
 
-			gock.New("http://newCluster-connect-api.xjoin-operator-project.svc:8083").
+			gock.New("http://newCluster-connect-api.test.svc:8083").
 				Get("/connectors/"+pipeline.Status.ActiveDebeziumConnectorName+"/status").
 				Reply(200).
 				BodyString("{}").
@@ -885,14 +885,14 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Restarts failed DB connector task without a refresh", func() {
-			defer i.ScaleDeployment("inventory-db", "xjoin-operator-project", 1)
+			defer i.ScaleDeployment("inventory-db", "test", 1)
 			defer test.ForwardPorts()
 
 			pipeline := i.CreateValidPipeline()
 			activePipelineVersion := pipeline.Status.ActivePipelineVersion
 
 			//scale down strimzi operator deployment
-			i.ScaleDeployment("inventory-db", "xjoin-operator-project", 0)
+			i.ScaleDeployment("inventory-db", "test", 0)
 
 			//restart task to trigger failure
 			tasks, err := i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveDebeziumConnectorName)
@@ -914,7 +914,7 @@ var _ = Describe("Pipeline operations", func() {
 				Expect(task["state"]).To(Equal("FAILED"))
 			}
 
-			i.ScaleDeployment("inventory-db", "xjoin-operator-project", 1)
+			i.ScaleDeployment("inventory-db", "test", 1)
 			test.ForwardPorts()
 
 			//reconcile
@@ -936,7 +936,7 @@ var _ = Describe("Pipeline operations", func() {
 
 			pipeline := i.CreateValidPipeline()
 
-			gock.New("http://xjoin-kafka-connect-strimzi-connect-api.xjoin-operator-project.svc:8083").
+			gock.New("http://connect-connect-api.test.svc:8083").
 				Get("/connectors/" + pipeline.Status.ActiveESConnectorName + "/status").
 				Reply(500)
 

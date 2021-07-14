@@ -33,7 +33,7 @@ func GetRootDir() string {
 }
 
 func ForwardPorts() {
-	cmd := exec.Command(GetRootDir() + "/dev/forward-ports.sh")
+	cmd := exec.Command(GetRootDir() + "/dev/forward-ports-clowder.sh")
 	err := cmd.Run()
 	Expect(err).ToNot(HaveOccurred())
 	time.Sleep(time.Second * 3)
