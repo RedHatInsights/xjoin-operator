@@ -20,7 +20,7 @@ kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/0.1
 
 # project and secrets
 print_start_message "Setting up pull secrets"
-dev/setup.sh --clowder --secret --project test
+dev/setup.sh --secret --project test
 
 # bonfire environment (kafka, connect, etc.)
 print_start_message "Setting up bonfire environment"
@@ -43,11 +43,11 @@ psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE DATABASE t
 
 # elasticsearch
 print_start_message "Setting up elasticsearch"
-dev/setup.sh --elasticsearch --clowder --project test
+dev/setup.sh --elasticsearch --project test
 
 # operator CRDs, configmap, XJoinPipeline
 print_start_message "Setting up XJoin operator"
-dev/setup.sh --xjoin-operator --clowder --dev --project test
+dev/setup.sh --xjoin-operator --dev --project test
 kubectl patch KafkaConnect connect --patch '{"spec": {"config": {"connector.client.config.override.policy": "All"}}}' --type=merge -n test
 
 # xjoin-search
