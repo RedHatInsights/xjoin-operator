@@ -42,3 +42,21 @@ objects:
       name: xjoinpipeline
     spec:
       pause: false
+      ConnectCluster: connect
+      ConnectClusterNamespace: test
+      KafkaCluster: kafka
+      KafkaClusterNamespace: test
+
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-from-xjoin-operator-namespace
+    spec:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: xjoin
+      podSelector: {}
+      policyTypes:
+        - Ingress
