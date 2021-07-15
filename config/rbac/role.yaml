@@ -10,7 +10,17 @@ rules:
   - ""
   resources:
   - configmaps
+  - pods
   - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - kafka.strimzi.io
+  resources:
+  - kafka
+  - kafkaconnect
   verbs:
   - get
   - list
@@ -55,10 +65,3 @@ rules:
   - patch
   - update
   - watch
-- apiGroups: [""]
-  resources:
-    - Pods
-  verbs:
-    - get
-    - list
-    - watch
