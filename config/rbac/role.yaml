@@ -19,15 +19,6 @@ rules:
 - apiGroups:
   - kafka.strimzi.io
   resources:
-  - kafka
-  - kafkaconnect
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - kafka.strimzi.io
-  resources:
   - kafkaconnectors
   - kafkaconnectors/finalizers
   verbs:
@@ -37,6 +28,15 @@ rules:
   - list
   - patch
   - update
+  - watch
+- apiGroups:
+  - kafka.strimzi.io
+  resources:
+  - kafkaconnects
+  - kafkas
+  verbs:
+  - get
+  - list
   - watch
 - apiGroups:
   - kafka.strimzi.io
