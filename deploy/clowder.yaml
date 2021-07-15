@@ -60,19 +60,6 @@ objects:
         - Ingress
 
   - apiVersion: rbac.authorization.k8s.io/v1
-    kind: RoleBinding
-    metadata:
-      name: xjoin-operator-xjoin-operator-leader-election-rolebinding
-    roleRef:
-      apiGroup: rbac.authorization.k8s.io
-      kind: Role
-      name: xjoin-operator
-    subjects:
-      - kind: ServiceAccount
-        name: default
-        namespace: xjoin
-
-  - apiVersion: rbac.authorization.k8s.io/v1
     kind: Role
     metadata:
       name: xjoin-operator
@@ -86,3 +73,16 @@ objects:
           - get
           - list
           - watch
+
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: xjoin-operator-xjoin-operator-leader-election-rolebinding
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: xjoin-operator
+    subjects:
+      - kind: ServiceAccount
+        name: default
+        namespace: xjoin
