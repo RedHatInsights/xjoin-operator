@@ -136,6 +136,8 @@ func (config *Config) parameterValue(param Parameter) (reflect.Value, error) {
 
 //Unable to pass ephemeral environment's kafka/connect cluster name into the deployment template
 func (config *Config) buildEphemeralConfig() (err error) {
+	log.Info("Loading Kafka parameters for ephemeral environment")
+
 	var connectGVK = schema.GroupVersionKind{
 		Group:   "kafka.strimzi.io",
 		Kind:    "KafkaConnectList",
@@ -192,6 +194,11 @@ func (config *Config) buildEphemeralConfig() (err error) {
 		return
 	}
 
+	config.ParametersMap["KafkaClusterNamespace"] = config.Parameters.KafkaClusterNamespace.String()
+	config.ParametersMap["KafkaCluster"] = config.Parameters.KafkaCluster.String()
+	config.ParametersMap["ConnectClusterNamespace"] = config.Parameters.ConnectClusterNamespace.String()
+	config.ParametersMap["ConnectCluster"] = config.Parameters.ConnectCluster.String()
+
 	return
 }
 
@@ -214,6 +221,7 @@ func (config *Config) buildXJoinConfig() error {
 		updatedParameter := configReflection.Field(i).Interface().(Parameter)
 		parametersMap[configReflection.Type().Field(i).Name] = updatedParameter.Value()
 	}
+	config.ParametersMap = parametersMap
 
 	if config.Parameters.Ephemeral.Bool() == true {
 		err := config.buildEphemeralConfig()
@@ -221,8 +229,6 @@ func (config *Config) buildXJoinConfig() error {
 			return err
 		}
 	}
-
-	config.ParametersMap = parametersMap
 
 	configMapHash, err := utils.ConfigMapHash(config.configMap, keysIgnoredByRefresh...)
 	if err != nil {

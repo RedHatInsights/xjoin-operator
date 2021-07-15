@@ -49,6 +49,8 @@ spec:
             elasticSearchSecretName:
               minLength: 1
               type: string
+            ephemeral:
+              type: boolean
             hbiDBSecretName:
               minLength: 1
               type: string
