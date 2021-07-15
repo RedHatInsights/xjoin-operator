@@ -1,14 +1,19 @@
 package config
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
+	"time"
 )
 
 var log = logger.NewLogger("config")
@@ -24,6 +29,7 @@ type Config struct {
 	configMap           *corev1.ConfigMap
 	Parameters          Parameters
 	ParametersMap       map[string]interface{}
+	client              client.Client
 }
 
 func NewConfig(instance *xjoin.XJoinPipeline, client client.Client) (*Config, error) {
@@ -36,6 +42,7 @@ func NewConfig(instance *xjoin.XJoinPipeline, client client.Client) (*Config, er
 	}
 	config.configMap = cm
 	config.instance = instance
+	config.client = client
 
 	hbiDBSecretNameVal, err := config.parameterValue(config.Parameters.HBIDBSecretName)
 	if err != nil {
@@ -127,6 +134,67 @@ func (config *Config) parameterValue(param Parameter) (reflect.Value, error) {
 	return reflect.ValueOf(param), nil
 }
 
+//Unable to pass ephemeral environment's kafka/connect cluster name into the deployment template
+func (config *Config) buildEphemeralConfig() (err error) {
+	var connectGVK = schema.GroupVersionKind{
+		Group:   "kafka.strimzi.io",
+		Kind:    "KafkaConnectList",
+		Version: "v1beta2",
+	}
+
+	connect := &unstructured.UnstructuredList{}
+	connect.SetGroupVersionKind(connectGVK)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err = config.client.List(
+		ctx,
+		connect)
+
+	if len(connect.Items) != 1 {
+		return errors.New("invalid number of connect instances found: " + strconv.Itoa(len(connect.Items)))
+	}
+
+	err = config.Parameters.ConnectCluster.SetValue(connect.Items[0].GetName())
+	if err != nil {
+		return
+	}
+
+	err = config.Parameters.ConnectClusterNamespace.SetValue(config.instance.Namespace)
+	if err != nil {
+		return
+	}
+
+	var kafkaGVK = schema.GroupVersionKind{
+		Group:   "kafka.strimzi.io",
+		Kind:    "KafkaList",
+		Version: "v1beta2",
+	}
+
+	kafka := &unstructured.UnstructuredList{}
+	kafka.SetGroupVersionKind(kafkaGVK)
+
+	err = config.client.List(
+		ctx,
+		kafka)
+
+	if len(kafka.Items) != 1 {
+		return errors.New("invalid number of kafka instances found: " + strconv.Itoa(len(kafka.Items)))
+	}
+
+	err = config.Parameters.KafkaCluster.SetValue(kafka.Items[0].GetName())
+	if err != nil {
+		return
+	}
+
+	err = config.Parameters.KafkaClusterNamespace.SetValue(config.instance.Namespace)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 func (config *Config) buildXJoinConfig() error {
 
 	configReflection := reflect.ValueOf(&config.Parameters).Elem()
@@ -145,6 +213,13 @@ func (config *Config) buildXJoinConfig() error {
 
 		updatedParameter := configReflection.Field(i).Interface().(Parameter)
 		parametersMap[configReflection.Type().Field(i).Name] = updatedParameter.Value()
+	}
+
+	if config.Parameters.Ephemeral.Bool() == true {
+		err := config.buildEphemeralConfig()
+		if err != nil {
+			return err
+		}
 	}
 
 	config.ParametersMap = parametersMap

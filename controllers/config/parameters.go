@@ -13,6 +13,7 @@ var secretTypes = secrets{
 }
 
 type Parameters struct {
+	Ephemeral                            Parameter
 	ResourceNamePrefix                   Parameter
 	ConnectCluster                       Parameter
 	ConnectClusterNamespace              Parameter
@@ -78,6 +79,11 @@ type Parameters struct {
 
 func NewXJoinConfiguration() Parameters {
 	return Parameters{
+		Ephemeral: Parameter{
+			SpecKey:      "Ephemeral",
+			DefaultValue: false,
+			Type:         reflect.Bool,
+		},
 		JenkinsManagedVersion: Parameter{
 			DefaultValue: "v1.160",
 			Type:         reflect.String,
