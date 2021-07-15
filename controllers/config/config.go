@@ -153,6 +153,9 @@ func (config *Config) buildEphemeralConfig() (err error) {
 		ctx,
 		connect,
 		client.InNamespace(config.instance.Namespace))
+	if err != nil {
+		return
+	}
 
 	if len(connect.Items) != 1 {
 		return errors.New("invalid number of connect instances found: " + strconv.Itoa(len(connect.Items)))
@@ -181,6 +184,9 @@ func (config *Config) buildEphemeralConfig() (err error) {
 		ctx,
 		kafka,
 		client.InNamespace(config.instance.Namespace))
+	if err != nil {
+		return
+	}
 
 	if len(kafka.Items) != 1 {
 		return errors.New("invalid number of kafka instances found: " + strconv.Itoa(len(kafka.Items)))
