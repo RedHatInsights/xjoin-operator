@@ -51,6 +51,13 @@ objects:
     metadata:
       name: xjoin
     data:
+      init.validation.attempts.threshold: "5"
+      init.validation.interval: "15"
+      init.validation.percentage.threshold: "5"
+      standard.interval: "60"
+      validation.attempts.threshold: "5"
+      validation.interval: "60"
+      validation.percentage.threshold: "5"
       debezium.connector.config: >-
         {
           "tasks.max": "{{.DebeziumTasksMax}}",
