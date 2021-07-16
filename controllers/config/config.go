@@ -202,10 +202,35 @@ func (config *Config) buildEphemeralConfig() (err error) {
 		return
 	}
 
+	err = config.Parameters.ElasticSearchURL.SetValue(
+		"http://xjoin-elasticsearch-es-default." + config.instance.Namespace + ".svc:9200")
+	if err != nil {
+		return
+	}
+
+	err = config.Parameters.ElasticSearchUsername.SetValue("elastic")
+	if err != nil {
+		return
+	}
+
+	esSecret, err := utils.FetchSecret(config.client, config.instance.Namespace, "xjoin-elasticsearch-es-elastic-user")
+	if err != nil {
+		return err
+	}
+
+	password, err := config.readSecretValue(esSecret, []string{"elastic"})
+	err = config.Parameters.ElasticSearchPassword.SetValue(password)
+	if err != nil {
+		return
+	}
+
 	config.ParametersMap["KafkaClusterNamespace"] = config.Parameters.KafkaClusterNamespace.String()
 	config.ParametersMap["KafkaCluster"] = config.Parameters.KafkaCluster.String()
 	config.ParametersMap["ConnectClusterNamespace"] = config.Parameters.ConnectClusterNamespace.String()
 	config.ParametersMap["ConnectCluster"] = config.Parameters.ConnectCluster.String()
+	config.ParametersMap["ElasticSearchURL"] = config.Parameters.ElasticSearchURL.String()
+	config.ParametersMap["ElasticSearchUsername"] = config.Parameters.ElasticSearchUsername.String()
+	config.ParametersMap["ElasticSearchPassword"] = config.Parameters.ElasticSearchPassword.String()
 
 	return
 }

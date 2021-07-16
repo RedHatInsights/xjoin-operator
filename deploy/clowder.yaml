@@ -4,16 +4,6 @@ metadata:
   name: xjoin
 
 objects:
-  - apiVersion: v1
-    data:
-      endpoint: aHR0cDovL3hqb2luLWVsYXN0aWNzZWFyY2gtZXMtZGVmYXVsdC50ZXN0LnN2Yzo5MjAw
-      username: eGpvaW4=
-      password: eGpvaW4xMzM3
-    kind: Secret
-    metadata:
-      name: xjoin-elasticsearch
-    type: Opaque
-
   - apiVersion: elasticsearch.k8s.elastic.co/v1
     kind: Elasticsearch
     metadata:
