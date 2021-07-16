@@ -55,6 +55,30 @@ parameters:
     value: "1"
   - name: ES_INDEX_SHARDS
     value: "3"
+  - name: DEBEZIUM_CONNECTOR_CONFIG
+    value: '{
+      "tasks.max": "{{.DebeziumTasksMax}}",
+      "producer.override.max.request.size": "2097152",
+      "database.hostname": "{{.HBIDBHost}}",
+      "database.port": "{{.HBIDBPort}}",
+      "database.user": "{{.HBIDBUser}}",
+      "database.password": "{{.HBIDBPassword}}",
+      "database.dbname": "{{.HBIDBName}}",
+      "database.server.name": "{{.ResourceNamePrefix}}.{{.Version}}",
+      "database.sslmode": "{{.HBIDBSSLMode}}",
+      "database.sslrootcert": "{{.HBIDBSSLRootCert}}",
+      "table.whitelist": "public.hosts",
+      "plugin.name": "pgoutput",
+      "transforms": "unwrap",
+      "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+      "transforms.unwrap.delete.handling.mode": "rewrite",
+      "errors.log.enable": {{.DebeziumErrorsLogEnable}},
+      "errors.log.include.messages": true,
+      "slot.name": "{{.ReplicationSlotName}}",
+      "max.queue.size": {{.DebeziumQueueSize}},
+      "max.batch.size": {{.DebeziumMaxBatchSize}},
+      "poll.interval.ms": {{.DebeziumPollIntervalMS}}
+    }'
   - name: DEBEZIUM_CONNECTOR_TASKS_MAX
     value: "1"
   - name: DEBEZIUM_CONNECTOR_MAX_BATCH_SIZE
@@ -153,6 +177,7 @@ objects:
       elasticsearch.index.shards: ${ES_INDEX_SHARDS}
       hbi.db.ssl.mode: ${HBI_DB_SSL_MODE}
       hbi.db.ssl.root.cert: ${HBI_DB_SSL_ROOT_CERT}
+      debezium.connector.config: ${DEBEZIUM_CONNECTOR_CONFIG}
       debezium.connector.tasks.max: ${DEBEZIUM_CONNECTOR_TASKS_MAX}
       debezium.connector.max.batch.size: ${DEBEZIUM_CONNECTOR_MAX_BATCH_SIZE}
       debezium.connector.max.queue.size: ${DEBEZIUM_CONNECTOR_MAX_QUEUE_SIZE}
