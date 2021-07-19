@@ -8,11 +8,20 @@ function print_start_message() {
 
 # kube_setup.sh
 print_start_message "Running kube-setup.sh"
+KUBE_SETUP_PATH=$1
+CURRENT_DIR=$(pwd)
 mkdir /tmp/kubesetup
-#curl https://raw.githubusercontent.com/RedHatInsights/clowder/master/build/kube_setup.sh -o /tmp/kubesetup/kube_setup.sh && chmod +x /tmp/kubesetup/kube_setup.sh
-#/tmp/kubesetup/kube_setup.sh
-/home/chris/dev/projects/active/gopath/src/clowder/build/kube_setup.sh
+cd /tmp/kubesetup || exit 1
+if [ -z "$KUBE_SETUP_PATH" ]; then
+  echo "Using default kube_setup from github"
+  curl https://raw.githubusercontent.com/RedHatInsights/clowder/master/build/kube_setup.sh -o /tmp/kubesetup/kube_setup.sh && chmod +x /tmp/kubesetup/kube_setup.sh
+  /tmp/kubesetup/kube_setup.sh
+else
+  echo "Using local kube_setup: $KUBE_SETUP_PATH"
+  eval "$KUBE_SETUP_PATH"
+fi
 rm -r /tmp/kubesetup
+cd "$CURRENT_DIR" || exit 1
 
 # clowder CRDs
 print_start_message "Installing Clowder CRDs"
