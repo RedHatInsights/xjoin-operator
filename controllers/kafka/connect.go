@@ -125,8 +125,8 @@ func (kafka *Kafka) newConnectorResource(
 
 func (kafka *Kafka) GetTaskStatus(connectorName string, taskId float64) (map[string]interface{}, error) {
 	url := fmt.Sprintf(
-		"http://%s-connect-api.%s.svc:8083/connectors/%s/tasks/%.0f/status",
-		kafka.Parameters.ConnectCluster.String(), kafka.Parameters.ConnectClusterNamespace.String(), connectorName, taskId)
+		"%s/connectors/%s/tasks/%.0f/status",
+		kafka.connectUrl(), connectorName, taskId)
 	res, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -165,9 +165,8 @@ func (kafka *Kafka) RestartTaskForConnector(connectorName string, taskId float64
 	log.Warn("Restarting connector task", "connector", connectorName, "taskId", taskId)
 
 	url := fmt.Sprintf(
-		"http://%s-connect-api.%s.svc:8083/connectors/%s/tasks/%.0f/restart",
-		kafka.Parameters.ConnectCluster.String(),
-		kafka.Parameters.ConnectClusterNamespace.String(),
+		"%s/connectors/%s/tasks/%.0f/restart",
+		kafka.connectUrl(),
 		connectorName,
 		taskId)
 	res, err := http.Post(url, "application/json", nil)
@@ -233,13 +232,18 @@ func (kafka *Kafka) GetConnector(name string) (*unstructured.Unstructured, error
 	return connector, err
 }
 
+func (kafka *Kafka) connectUrl() string {
+	url := fmt.Sprintf(
+		"http://%s-connect-api.%s.svc:8083",
+		kafka.Parameters.ConnectCluster.String(), kafka.Parameters.ConnectClusterNamespace.String())
+	return url
+}
+
 // CheckIfConnectIsResponding
 // First validate /connectors responds. If there are existing connectors, validate one of those can be retrieved too.
 func (kafka *Kafka) CheckIfConnectIsResponding() (bool, error) {
 	for j := 0; j < 10; j++ {
-		url := fmt.Sprintf(
-			"http://%s-connect-api.%s.svc:8083/connectors",
-			kafka.Parameters.ConnectCluster.String(), kafka.Parameters.ConnectClusterNamespace.String())
+		url := kafka.connectUrl() + "/connectors"
 		res, err := http.Get(url)
 
 		//ignore errors and try again
@@ -281,8 +285,8 @@ func (kafka *Kafka) CheckIfConnectIsResponding() (bool, error) {
 
 func (kafka *Kafka) CheckConnectorExistsViaREST(name string) (bool, error) {
 	url := fmt.Sprintf(
-		"http://%s-connect-api.%s.svc:8083/connectors/%s",
-		kafka.Parameters.ConnectCluster.String(), kafka.Parameters.ConnectClusterNamespace.String(), name)
+		"%s/connectors/%s",
+		kafka.connectUrl(), name)
 	res, err := http.Get(url)
 	if err != nil {
 		return false, err
@@ -409,8 +413,8 @@ func (kafka *Kafka) DeleteConnector(name string) error {
 
 func (kafka *Kafka) GetConnectorStatus(connectorName string) (map[string]interface{}, error) {
 	url := fmt.Sprintf(
-		"http://%s-connect-api.%s.svc:8083/connectors/%s/status",
-		kafka.Parameters.ConnectCluster.String(), kafka.Parameters.ConnectClusterNamespace.String(), connectorName)
+		"%s/connectors/%s/status",
+		kafka.connectUrl(), connectorName)
 	res, err := http.Get(url)
 	if err != nil {
 		return nil, err
