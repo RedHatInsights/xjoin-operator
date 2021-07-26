@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -95,6 +96,9 @@ func (db *Database) SetMaxConnections(numConnections int) {
 }
 
 func (db *Database) RunQuery(query string) (*sqlx.Rows, error) {
+	if db.connection == nil {
+		return nil, errors.New("cannot run query because there is no database connection")
+	}
 	rows, err := db.connection.Queryx(query)
 
 	if err != nil {
@@ -105,6 +109,9 @@ func (db *Database) RunQuery(query string) (*sqlx.Rows, error) {
 }
 
 func (db *Database) ExecQuery(query string) (result sql.Result, err error) {
+	if db.connection == nil {
+		return nil, errors.New("cannot run query because there is no database connection")
+	}
 	result, err = db.connection.Exec(query)
 
 	if err != nil {
