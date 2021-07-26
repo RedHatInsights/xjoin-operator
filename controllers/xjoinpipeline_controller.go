@@ -177,11 +177,14 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 
 		err = i.DeleteResourceForPipeline(i.Instance.Status.PipelineVersion)
 		err = i.DeleteResourceForPipeline(i.Instance.Status.ActivePipelineVersion)
-		if err != nil {
+
+		//allow this to fail in ephemeral envs because
+		//DeleteResourceForPipeline could fail due to Kafka/KafkaConnect already being deleted
+		if err != nil && !i.parameters.Ephemeral.Bool() {
 			return reconcile.Result{}, err
 		}
 
-		if err = i.removeFinalizer(); err != nil {
+		if err = i.removeFinalizer(); err != nil && !i.parameters.Ephemeral.Bool() {
 			i.error(err, "Error removing finalizer")
 			return reconcile.Result{}, err
 		}
