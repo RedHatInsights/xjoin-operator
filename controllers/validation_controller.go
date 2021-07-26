@@ -4,8 +4,6 @@ import (
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
-	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -24,23 +22,7 @@ type ValidationReconciler struct {
 }
 
 func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request) (ReconcileIteration, error) {
-	var i ReconcileIteration
-	instance, err := utils.FetchXJoinPipeline(r.Client, request.NamespacedName)
-	if err != nil {
-		if k8errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return i, nil
-		}
-		// Error reading the object - requeue the request.
-		return i, err
-	}
-
-	if instance == nil {
-		return i, err
-	}
-	i, err = r.XJoinPipelineReconciler.setup(reqLogger, instance)
+	i, err := r.XJoinPipelineReconciler.setup(reqLogger, request)
 
 	if err != nil || i.Instance == nil {
 		return i, err
