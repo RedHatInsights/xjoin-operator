@@ -128,6 +128,8 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, instance *xjo
 // +kubebuilder:rbac:groups="",resources=configmaps;secrets;pods,verbs=get;list;watch
 
 func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
+	var setupErrors []error
+
 	reqLogger := xjoinlogger.NewLogger("controller_xjoinpipeline", "Pipeline", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling XJoinPipeline")
 
@@ -152,9 +154,9 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 	i, err := r.setup(reqLogger, instance)
 	defer i.Close()
 
-	if err != nil && instance.Spec.Ephemeral == false { //allow setup to fail in ephemeral so it can be deleted
+	if err != nil {
 		i.error(err)
-		return reconcile.Result{}, err
+		setupErrors = append(setupErrors, err)
 	}
 
 	//pause this pipeline. Reconcile loop is skipped until Pause is set to false or nil
@@ -164,16 +166,16 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 
 	// remove any stale dependencies
 	// if we're shutting down this removes all dependencies
-	xjoinErrors := i.deleteStaleDependencies()
+	setupErrors = append(setupErrors, i.deleteStaleDependencies()...)
 
-	for _, err = range xjoinErrors {
+	for _, err = range setupErrors {
 		i.error(err, "Error deleting stale dependency")
 	}
 
 	// STATE_REMOVED
 	if i.Instance.GetState() == xjoin.STATE_REMOVED {
-		if len(xjoinErrors) > 0 {
-			return reconcile.Result{}, xjoinErrors[0]
+		if len(setupErrors) > 0 && !i.parameters.Ephemeral.Bool() {
+			return reconcile.Result{}, setupErrors[0]
 		}
 
 		err = i.DeleteResourceForPipeline(i.Instance.Status.PipelineVersion)
@@ -185,13 +187,17 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 			return reconcile.Result{}, err
 		}
 
-		if err = i.removeFinalizer(); err != nil && !i.parameters.Ephemeral.Bool() {
+		if err = i.removeFinalizer(); err != nil {
 			i.error(err, "Error removing finalizer")
 			return reconcile.Result{}, err
 		}
 
 		i.Log.Info("Successfully finalized XJoinPipeline")
 		return reconcile.Result{}, nil
+	}
+
+	if len(setupErrors) > 0 {
+		return reconcile.Result{}, setupErrors[0]
 	}
 
 	metrics.InitLabels()
