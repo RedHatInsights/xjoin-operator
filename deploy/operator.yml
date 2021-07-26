@@ -230,7 +230,15 @@ objects:
               "canonical_facts": {
                 "type": "object",
                 "properties": {
-                  "fqdn": { "type": "keyword"},
+                  "fqdn": {
+                    "type": "keyword",
+                    "fields": {
+                      "lowercase": {
+                        "type": "keyword",
+                        "normalizer": "case_insensitive"
+                      }
+                    }
+                  },
                   "insights_id": { "type": "keyword"},
                   "satellite_id": { "type": "keyword"},
                   "provider_type": { "type": "keyword"},
