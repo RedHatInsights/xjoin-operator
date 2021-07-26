@@ -54,21 +54,9 @@ type XJoinPipelineReconciler struct {
 	Test      bool
 }
 
-func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.Request) (ReconcileIteration, error) {
+func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, instance *xjoin.XJoinPipeline) (ReconcileIteration, error) {
 
 	i := ReconcileIteration{}
-
-	instance, err := utils.FetchXJoinPipeline(r.Client, request.NamespacedName)
-	if err != nil {
-		if k8errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return i, nil
-		}
-		// Error reading the object - requeue the request.
-		return i, err
-	}
 
 	if instance.Spec.Pause == true {
 		return i, nil
@@ -143,17 +131,30 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 	reqLogger := xjoinlogger.NewLogger("controller_xjoinpipeline", "Pipeline", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling XJoinPipeline")
 
-	i, err := r.setup(reqLogger, request)
-	defer i.Close()
+	instance, err := utils.FetchXJoinPipeline(r.Client, request.NamespacedName)
 
 	if err != nil {
-		i.error(err)
+		if k8errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return reconcile.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
 
 	// Request object not found, could have been deleted after reconcile request or
-	if i.Instance == nil {
+	if instance == nil {
 		return reconcile.Result{}, nil
+	}
+
+	i, err := r.setup(reqLogger, instance)
+	defer i.Close()
+
+	if err != nil && instance.Spec.Ephemeral == false { //allow setup to fail in ephemeral so it can be deleted
+		i.error(err)
+		return reconcile.Result{}, err
 	}
 
 	//pause this pipeline. Reconcile loop is skipped until Pause is set to false or nil
