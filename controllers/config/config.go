@@ -147,6 +147,16 @@ func (config *Config) buildEphemeralConfig() (err error) {
 	connect := &unstructured.UnstructuredList{}
 	connect.SetGroupVersionKind(connectGVK)
 
+	err = config.Parameters.ConnectClusterNamespace.SetValue(config.instance.Namespace)
+	if err != nil {
+		return
+	}
+
+	err = config.Parameters.KafkaClusterNamespace.SetValue(config.instance.Namespace)
+	if err != nil {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 	err = config.client.List(
@@ -162,11 +172,6 @@ func (config *Config) buildEphemeralConfig() (err error) {
 	}
 
 	err = config.Parameters.ConnectCluster.SetValue(connect.Items[0].GetName())
-	if err != nil {
-		return
-	}
-
-	err = config.Parameters.ConnectClusterNamespace.SetValue(config.instance.Namespace)
 	if err != nil {
 		return
 	}
@@ -193,11 +198,6 @@ func (config *Config) buildEphemeralConfig() (err error) {
 	}
 
 	err = config.Parameters.KafkaCluster.SetValue(kafka.Items[0].GetName())
-	if err != nil {
-		return
-	}
-
-	err = config.Parameters.KafkaClusterNamespace.SetValue(config.instance.Namespace)
 	if err != nil {
 		return
 	}
