@@ -14,18 +14,23 @@ var _ = Describe("Validation controller", func() {
 	validationSuccessZeroMismatchMessage := "Validation succeeded - 0 hosts IDs (0.00%) do not match, and 0 (0.00%) hosts have inconsistent data."
 
 	BeforeEach(func() {
-		i = Before()
+		iteration, err := Before()
+		Expect(err).ToNot(HaveOccurred())
+		i = iteration
 	})
 
 	AfterEach(func() {
-		After(i)
+		err := After(i)
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("Valid pipeline", func() {
 		It("Correctly validates fully in-sync table", func() {
-			pipeline := i.CreateValidPipeline()
+			pipeline, err := i.CreateValidPipeline()
+			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
-			i.SyncHosts(version, 3)
+			_, err = i.SyncHosts(version, 3)
+			Expect(err).ToNot(HaveOccurred())
 
 			dbCount, err := i.DbClient.CountHosts()
 			Expect(err).ToNot(HaveOccurred())
@@ -35,22 +40,27 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esCount).To(Equal(3))
 
-			pipeline = i.ExpectValidReconcile()
+			pipeline, err = i.ExpectValidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationSucceeded"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(validationSuccessZeroMismatchMessage))
 
 		})
 
 		It("Correctly validates fully in-sync initial table", func() {
-			i.CreatePipeline()
-			pipeline := i.ReconcileXJoin()
+			err := i.CreatePipeline()
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err := i.ReconcileXJoin()
+			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
 
-			err := i.KafkaClient.PauseElasticSearchConnector(version)
+			err = i.KafkaClient.PauseElasticSearchConnector(version)
 			Expect(err).ToNot(HaveOccurred())
 
-			i.SyncHosts(version, 3)
-			pipeline = i.ExpectValidReconcile()
+			_, err = i.SyncHosts(version, 3)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err = i.ExpectValidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationSucceeded"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(validationSuccessZeroMismatchMessage))
@@ -61,37 +71,50 @@ var _ = Describe("Validation controller", func() {
 				"init.validation.percentage.threshold": "0",
 				"init.validation.attempts.threshold":   "4",
 			}
-			i.CreateConfigMap("xjoin", cm)
-			i.CreatePipeline()
-			pipeline := i.ReconcileXJoin()
+			err := i.CreateConfigMap("xjoin", cm)
+			Expect(err).ToNot(HaveOccurred())
+			err = i.CreatePipeline()
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err := i.ReconcileXJoin()
+			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
 
-			err := i.KafkaClient.PauseElasticSearchConnector(version)
+			err = i.KafkaClient.PauseElasticSearchConnector(version)
 			Expect(err).ToNot(HaveOccurred())
 
-			id1 := i.InsertSimpleHost()
-			id2 := i.InsertSimpleHost()
-			id3 := i.InsertSimpleHost()
+			id1, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			id2, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			id3, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
 
-			pipeline = i.ExpectInitSyncInvalidReconcile()
+			pipeline, err = i.ExpectInitSyncInvalidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
 				"Count validation failed - 3 hosts (100.00%) do not match"))
 
-			i.IndexSimpleDocument(version, id1)
-			pipeline = i.ExpectInitSyncInvalidReconcile()
+			err = i.IndexSimpleDocument(version, id1)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err = i.ExpectInitSyncInvalidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
 				"Count validation failed - 2 hosts (66.67%) do not match"))
 
-			i.IndexSimpleDocument(version, id2)
-			pipeline = i.ExpectInitSyncInvalidReconcile()
+			err = i.IndexSimpleDocument(version, id2)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err = i.ExpectInitSyncInvalidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
 				"ID validation failed - 1 hosts (33.33%) do not match"))
 
-			i.IndexSimpleDocument(version, id3)
-			pipeline = i.ExpectValidReconcile()
+			err = i.IndexSimpleDocument(version, id3)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err = i.ExpectValidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationSucceeded"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(validationSuccessZeroMismatchMessage))
 		})
@@ -101,37 +124,50 @@ var _ = Describe("Validation controller", func() {
 				"validation.percentage.threshold": "0",
 				"validation.attempts.threshold":   "4",
 			}
-			i.CreateConfigMap("xjoin", cm)
-			i.CreateValidPipeline()
-			pipeline := i.ReconcileXJoin()
+			err := i.CreateConfigMap("xjoin", cm)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = i.CreateValidPipeline()
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err := i.ReconcileXJoin()
+			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
 
-			err := i.KafkaClient.PauseElasticSearchConnector(version)
+			err = i.KafkaClient.PauseElasticSearchConnector(version)
 			Expect(err).ToNot(HaveOccurred())
 
-			id1 := i.InsertSimpleHost()
-			id2 := i.InsertSimpleHost()
-			id3 := i.InsertSimpleHost()
+			id1, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			id2, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			id3, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
 
-			pipeline = i.ExpectInvalidReconcile()
+			pipeline, err = i.ExpectInvalidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
 				"Count validation failed - 3 hosts (100.00%) do not match"))
 
-			i.IndexSimpleDocument(version, id1)
-			pipeline = i.ExpectInvalidReconcile()
+			err = i.IndexSimpleDocument(version, id1)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err = i.ExpectInvalidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
 				"Count validation failed - 2 hosts (66.67%) do not match"))
 
-			i.IndexSimpleDocument(version, id2)
-			pipeline = i.ExpectInvalidReconcile()
+			err = i.IndexSimpleDocument(version, id2)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err = i.ExpectInvalidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
 				"ID validation failed - 1 hosts (33.33%) do not match"))
 
-			i.IndexSimpleDocument(version, id3)
-			pipeline = i.ExpectValidReconcile()
+			err = i.IndexSimpleDocument(version, id3)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err = i.ExpectValidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationSucceeded"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(validationSuccessZeroMismatchMessage))
 		})
@@ -140,16 +176,20 @@ var _ = Describe("Validation controller", func() {
 			cm := map[string]string{
 				"validation.percentage.threshold": "40",
 			}
-			i.CreateConfigMap("xjoin", cm)
-			pipeline := i.CreateValidPipeline()
+			err := i.CreateConfigMap("xjoin", cm)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err := i.CreateValidPipeline()
+			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
 
-			err := i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 
 			//create 6 hosts in db, 5 in ES
-			i.SyncHosts(version, 5)
-			i.InsertSimpleHost()
+			_, err = i.SyncHosts(version, 5)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
 
 			dbCount, err := i.DbClient.CountHosts()
 			Expect(err).ToNot(HaveOccurred())
@@ -159,7 +199,8 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esCount).To(Equal(5))
 
-			pipeline = i.ExpectValidReconcile()
+			pipeline, err = i.ExpectValidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationSucceeded"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
 				"Validation succeeded - 1 hosts IDs (16.67%) do not match, and 1 (16.67%) hosts have inconsistent data."))
@@ -169,17 +210,22 @@ var _ = Describe("Validation controller", func() {
 			cm := map[string]string{
 				"init.validation.percentage.threshold": "40",
 			}
-			i.CreateConfigMap("xjoin", cm)
-			i.CreatePipeline()
-			pipeline := i.ReconcileXJoin()
+			err := i.CreateConfigMap("xjoin", cm)
+			Expect(err).ToNot(HaveOccurred())
+			err = i.CreatePipeline()
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err := i.ReconcileXJoin()
+			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
 
-			err := i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 
 			//create 6 hosts in db, 5 in ES
-			i.SyncHosts(version, 5)
-			i.InsertSimpleHost()
+			_, err = i.SyncHosts(version, 5)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
 
 			dbCount, err := i.DbClient.CountHosts()
 			Expect(err).ToNot(HaveOccurred())
@@ -189,7 +235,8 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esCount).To(Equal(5))
 
-			pipeline = i.ExpectValidReconcile()
+			pipeline, err = i.ExpectValidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationSucceeded"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
 				"Validation succeeded - 1 hosts IDs (16.67%) do not match, and 1 (16.67%) hosts have inconsistent data."))
@@ -201,17 +248,23 @@ var _ = Describe("Validation controller", func() {
 			cm := map[string]string{
 				"validation.percentage.threshold": "5",
 			}
-			i.CreateConfigMap("xjoin", cm)
-			pipeline := i.CreateValidPipeline()
-
-			err := i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err := i.CreateConfigMap("xjoin", cm)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err := i.CreateValidPipeline()
 			Expect(err).ToNot(HaveOccurred())
 
-			i.InsertSimpleHost()
-			i.InsertSimpleHost()
-			i.InsertSimpleHost()
+			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
 
-			pipeline = i.ReconcileValidation()
+			_, err = i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			_, err = i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			_, err = i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+
+			pipeline, err = i.ReconcileValidation()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
@@ -224,25 +277,37 @@ var _ = Describe("Validation controller", func() {
 				"validation.percentage.threshold": "19",
 				"validation.attempts.threshold":   "1",
 			}
-			i.CreateConfigMap("xjoin", cm)
-			pipeline := i.CreateValidPipeline()
+			err := i.CreateConfigMap("xjoin", cm)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err := i.CreateValidPipeline()
+			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
 
-			err := i.KafkaClient.PauseElasticSearchConnector(version)
+			err = i.KafkaClient.PauseElasticSearchConnector(version)
 			Expect(err).ToNot(HaveOccurred())
 
-			i.InsertSimpleHost()
-			id1 := i.InsertSimpleHost()
-			id2 := i.InsertSimpleHost()
-			id3 := i.InsertSimpleHost()
-			id4 := i.InsertSimpleHost()
+			_, err = i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			id1, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			id2, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			id3, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			id4, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
 
-			i.IndexSimpleDocument(version, id1)
-			i.IndexSimpleDocument(version, id2)
-			i.IndexSimpleDocument(version, id3)
-			i.IndexSimpleDocument(version, id4)
+			err = i.IndexSimpleDocument(version, id1)
+			Expect(err).ToNot(HaveOccurred())
+			err = i.IndexSimpleDocument(version, id2)
+			Expect(err).ToNot(HaveOccurred())
+			err = i.IndexSimpleDocument(version, id3)
+			Expect(err).ToNot(HaveOccurred())
+			err = i.IndexSimpleDocument(version, id4)
+			Expect(err).ToNot(HaveOccurred())
 
-			pipeline = i.ReconcileValidation()
+			pipeline, err = i.ReconcileValidation()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
@@ -254,26 +319,32 @@ var _ = Describe("Validation controller", func() {
 			cm := map[string]string{
 				"validation.attempts.threshold": "10",
 			}
-			i.CreateConfigMap("xjoin", cm)
-			pipeline := i.CreateValidPipeline()
-
-			err := i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err := i.CreateConfigMap("xjoin", cm)
 			Expect(err).ToNot(HaveOccurred())
-			i.InsertSimpleHost()
+			pipeline, err := i.CreateValidPipeline()
+			Expect(err).ToNot(HaveOccurred())
 
-			pipeline = i.ExpectInvalidReconcile()
+			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+
+			pipeline, err = i.ExpectInvalidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.ValidationFailedCount).To(Equal(1))
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
 				"Count validation failed - 1 hosts (100.00%) do not match"))
 
-			pipeline = i.ExpectInvalidReconcile()
+			pipeline, err = i.ExpectInvalidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.ValidationFailedCount).To(Equal(2))
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
 				"Count validation failed - 1 hosts (100.00%) do not match"))
 
-			pipeline = i.ExpectInvalidReconcile()
+			pipeline, err = i.ExpectInvalidReconcile()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.ValidationFailedCount).To(Equal(3))
 			Expect(pipeline.Status.Conditions[0].Reason).To(Equal("ValidationFailed"))
 			Expect(pipeline.Status.Conditions[0].Message).To(Equal(
@@ -286,39 +357,57 @@ var _ = Describe("Validation controller", func() {
 			cm := map[string]string{
 				"validation.percentage.threshold": "20",
 			}
-			i.CreateConfigMap("xjoin", cm)
+			err := i.CreateConfigMap("xjoin", cm)
+			Expect(err).ToNot(HaveOccurred())
 
-			i.CreatePipeline()
-			i.ReconcileXJoin()
-			pipeline := i.ExpectValidReconcile()
-			i.AssertValidationEvents(0)
+			err = i.CreatePipeline()
+			Expect(err).ToNot(HaveOccurred())
+			_, err = i.ReconcileXJoin()
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err := i.ExpectValidReconcile()
+			Expect(err).ToNot(HaveOccurred())
+			err = i.AssertValidationEvents(0)
+			Expect(err).ToNot(HaveOccurred())
 
 			for j := 0; j < 5; j++ {
-				hostId := i.InsertSimpleHost()
-				i.IndexSimpleDocument(pipeline.Status.PipelineVersion, hostId)
+				hostId, err := i.InsertSimpleHost()
+				Expect(err).ToNot(HaveOccurred())
+				err = i.IndexSimpleDocument(pipeline.Status.PipelineVersion, hostId)
+				Expect(err).ToNot(HaveOccurred())
 			}
-			i.ReconcileValidation()
-			i.AssertValidationEvents(5)
+			_, err = i.ReconcileValidation()
+			Expect(err).ToNot(HaveOccurred())
+			err = i.AssertValidationEvents(5)
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Skips full validation when id validation fails", func() {
 			cm := map[string]string{
 				"validation.percentage.threshold": "5",
 			}
-			i.CreateConfigMap("xjoin", cm)
-			pipeline := i.CreateValidPipeline()
-			i.AssertValidationEvents(0)
-
-			err := i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err := i.CreateConfigMap("xjoin", cm)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err := i.CreateValidPipeline()
+			Expect(err).ToNot(HaveOccurred())
+			err = i.AssertValidationEvents(0)
 			Expect(err).ToNot(HaveOccurred())
 
-			hostId1 := i.InsertSimpleHost()
-			hostId2 := i.InsertSimpleHost()
-			i.IndexSimpleDocument(pipeline.Status.PipelineVersion, hostId1)
-			i.IndexSimpleDocument(pipeline.Status.PipelineVersion, hostId2)
-			i.InsertSimpleHost()
+			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
 
-			pipeline = i.ReconcileValidation()
+			hostId1, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			hostId2, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			err = i.IndexSimpleDocument(pipeline.Status.PipelineVersion, hostId1)
+			Expect(err).ToNot(HaveOccurred())
+			err = i.IndexSimpleDocument(pipeline.Status.PipelineVersion, hostId2)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+
+			pipeline, err = i.ReconcileValidation()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
 
@@ -336,19 +425,27 @@ var _ = Describe("Validation controller", func() {
 			cm := map[string]string{
 				"validation.percentage.threshold": "5",
 			}
-			i.CreateConfigMap("xjoin", cm)
-			pipeline := i.CreateValidPipeline()
-			i.AssertValidationEvents(0)
-
-			err := i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err := i.CreateConfigMap("xjoin", cm)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err := i.CreateValidPipeline()
+			Expect(err).ToNot(HaveOccurred())
+			err = i.AssertValidationEvents(0)
 			Expect(err).ToNot(HaveOccurred())
 
-			hostId1 := i.InsertSimpleHost()
-			hostId2 := i.InsertSimpleHost()
-			i.IndexSimpleDocument(pipeline.Status.PipelineVersion, hostId1)
-			i.IndexDocumentNow(pipeline.Status.PipelineVersion, hostId2, "display-name-changed")
+			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
 
-			pipeline = i.ReconcileValidation()
+			hostId1, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			hostId2, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			err = i.IndexSimpleDocument(pipeline.Status.PipelineVersion, hostId1)
+			Expect(err).ToNot(HaveOccurred())
+			err = i.IndexDocumentNow(pipeline.Status.PipelineVersion, hostId2, "display-name-changed")
+			Expect(err).ToNot(HaveOccurred())
+
+			pipeline, err = i.ReconcileValidation()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
 
@@ -368,21 +465,29 @@ var _ = Describe("Validation controller", func() {
 			cm := map[string]string{
 				"validation.lag.compensation.seconds": "10",
 			}
-			i.CreateConfigMap("xjoin", cm)
-			pipeline := i.CreateValidPipeline()
-			i.AssertValidationEvents(0)
-			i.SyncHosts(pipeline.Status.PipelineVersion, 4)
+			err := i.CreateConfigMap("xjoin", cm)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err := i.CreateValidPipeline()
+			Expect(err).ToNot(HaveOccurred())
+			err = i.AssertValidationEvents(0)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = i.SyncHosts(pipeline.Status.PipelineVersion, 4)
+			Expect(err).ToNot(HaveOccurred())
 
 			//this host should be validated because modified_on is after 10 seconds
 			now := time.Now().UTC()
 			nowMinus11 := now.Add(-time.Duration(11) * time.Second)
-			id := i.InsertHost("simple", nowMinus11)
-			i.IndexDocument(pipeline.Status.PipelineVersion, id, "simple", nowMinus11)
+			id, err := i.InsertHost("simple", nowMinus11)
+			Expect(err).ToNot(HaveOccurred())
+			err = i.IndexDocument(pipeline.Status.PipelineVersion, id, "simple", nowMinus11)
+			Expect(err).ToNot(HaveOccurred())
 
 			//this host should not be validated because modified on is too recent
-			i.InsertHost("simple", now)
+			_, err = i.InsertHost("simple", now)
+			Expect(err).ToNot(HaveOccurred())
 
-			pipeline = i.ReconcileValidation()
+			pipeline, err = i.ReconcileValidation()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
 
@@ -401,20 +506,27 @@ var _ = Describe("Validation controller", func() {
 				"validation.period.minutes":           "1",
 				"validation.lag.compensation.seconds": "1",
 			}
-			i.CreateConfigMap("xjoin", cm)
-			pipeline := i.CreateValidPipeline()
-			i.AssertValidationEvents(0)
+			err := i.CreateConfigMap("xjoin", cm)
+			Expect(err).ToNot(HaveOccurred())
+			pipeline, err := i.CreateValidPipeline()
+			Expect(err).ToNot(HaveOccurred())
+			err = i.AssertValidationEvents(0)
+			Expect(err).ToNot(HaveOccurred())
 
 			//these hosts should not be validated because modified_on is older than a minute
-			i.SyncHosts(pipeline.Status.PipelineVersion, 4)
+			_, err = i.SyncHosts(pipeline.Status.PipelineVersion, 4)
+			Expect(err).ToNot(HaveOccurred())
 
 			//this host should be validated because modified_on is less than a minute old
 			now := time.Now().UTC()
 			nowMinus11 := now.Add(-time.Duration(11) * time.Second)
-			id := i.InsertHost("simple", nowMinus11)
-			i.IndexDocument(pipeline.Status.PipelineVersion, id, "simple", nowMinus11)
+			id, err := i.InsertHost("simple", nowMinus11)
+			Expect(err).ToNot(HaveOccurred())
+			err = i.IndexDocument(pipeline.Status.PipelineVersion, id, "simple", nowMinus11)
+			Expect(err).ToNot(HaveOccurred())
 
-			pipeline = i.ReconcileValidation()
+			pipeline, err = i.ReconcileValidation()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
 
@@ -431,83 +543,106 @@ var _ = Describe("Validation controller", func() {
 
 	Describe("Full validation JSON", func() {
 		It("Fails when a top level key is in ES but not in HBI", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-top-level-key-added")
+			err := i.fullValidationFailureTest("simple", "systemprofile-top-level-key-added")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when a top level key is in HBI but not in ES", func() {
-			i.fullValidationFailureTest("systemprofile-top-level-key-added", "simple")
+			err := i.fullValidationFailureTest("systemprofile-top-level-key-added", "simple")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when a top level key is mismatched", func() {
-			i.fullValidationFailureTest("systemprofile-top-level-key-added", "systemprofile-top-level-key-modified")
+			err := i.fullValidationFailureTest("systemprofile-top-level-key-added", "systemprofile-top-level-key-modified")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when a simple array has an extra value", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-extra-simple-array-value")
+			err := i.fullValidationFailureTest("simple", "systemprofile-extra-simple-array-value")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when a simple array has a missing value", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-missing-simple-array-value")
+			err := i.fullValidationFailureTest("simple", "systemprofile-missing-simple-array-value")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when an array of objects has a missing object", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-array-of-objects-missing-object")
+			err := i.fullValidationFailureTest("simple", "systemprofile-array-of-objects-missing-object")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when an array of objects has an extra object", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-array-of-objects-extra-object")
+			err := i.fullValidationFailureTest("simple", "systemprofile-array-of-objects-extra-object")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when an array of objects has an extra key in an object", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-array-of-objects-extra-key")
+			err := i.fullValidationFailureTest("simple", "systemprofile-array-of-objects-extra-key")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when an array of objects has a key missing in an object", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-array-of-objects-missing-key")
+			err := i.fullValidationFailureTest("simple", "systemprofile-array-of-objects-missing-key")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when an array of objects has a value changed in an object", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-array-of-objects-value-changed")
+			err := i.fullValidationFailureTest("simple", "systemprofile-array-of-objects-value-changed")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when an object key is added", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-object-key-added")
+			err := i.fullValidationFailureTest("simple", "systemprofile-object-key-added")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when an object key is removed", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-object-key-removed")
+			err := i.fullValidationFailureTest("simple", "systemprofile-object-key-removed")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when an object value is changed", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-object-value-changed")
+			err := i.fullValidationFailureTest("simple", "systemprofile-object-value-changed")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when an object is missing", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-object-missing")
+			err := i.fullValidationFailureTest("simple", "systemprofile-object-missing")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when an array within an object is modified", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-object-array-value-changed")
+			err := i.fullValidationFailureTest("simple", "systemprofile-object-array-value-changed")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when a boolean value is modified", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-boolean-modified")
+			err := i.fullValidationFailureTest("simple", "systemprofile-boolean-modified")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when an integer value is modified", func() {
-			i.fullValidationFailureTest("simple", "systemprofile-integer-modified")
+			err := i.fullValidationFailureTest("simple", "systemprofile-integer-modified")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when there are multiple changes to a single host", func() {
-			pipeline := i.CreateValidPipeline()
-			i.AssertValidationEvents(0)
+			pipeline, err := i.CreateValidPipeline()
+			Expect(err).ToNot(HaveOccurred())
+			err = i.AssertValidationEvents(0)
+			Expect(err).ToNot(HaveOccurred())
 
-			i.SyncHosts(pipeline.Status.PipelineVersion, 5)
+			_, err = i.SyncHosts(pipeline.Status.PipelineVersion, 5)
+			Expect(err).ToNot(HaveOccurred())
 
-			hostId := i.InsertSimpleHost()
-			i.IndexDocumentNow(pipeline.Status.PipelineVersion, hostId, "lots-of-changes")
+			hostId, err := i.InsertSimpleHost()
+			Expect(err).ToNot(HaveOccurred())
+			err = i.IndexDocumentNow(pipeline.Status.PipelineVersion, hostId, "lots-of-changes")
+			Expect(err).ToNot(HaveOccurred())
 
-			pipeline = i.ReconcileValidation()
+			pipeline, err = i.ReconcileValidation()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
 
@@ -525,29 +660,38 @@ var _ = Describe("Validation controller", func() {
 
 	Describe("Tag validation", func() {
 		It("Fails when tag structured namespace is inconsistent", func() {
-			i.fullValidationFailureTest("simple", "tags-structured-namespace-modified")
+			err := i.fullValidationFailureTest("simple", "tags-structured-namespace-modified")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when tag structured key is inconsistent", func() {
-			i.fullValidationFailureTest("simple", "tags-structured-key-modified")
+			err := i.fullValidationFailureTest("simple", "tags-structured-key-modified")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when tag structured value is inconsistent", func() {
-			i.fullValidationFailureTest("simple", "tags-structured-value-modified")
+			err := i.fullValidationFailureTest("simple", "tags-structured-value-modified")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Fails when tag string inconsistent", func() {
-			i.fullValidationFailureTest("simple", "tags-string-modified")
+			err := i.fullValidationFailureTest("simple", "tags-string-modified")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("Validates complex, unordered tags", func() {
-			pipeline := i.CreateValidPipeline()
-			i.AssertValidationEvents(0)
+			pipeline, err := i.CreateValidPipeline()
+			Expect(err).ToNot(HaveOccurred())
+			err = i.AssertValidationEvents(0)
+			Expect(err).ToNot(HaveOccurred())
 
-			hostId := i.InsertHostNow("tags-multiple-unordered")
-			i.IndexDocumentNow(pipeline.Status.PipelineVersion, hostId, "tags-multiple-unordered")
+			hostId, err := i.InsertHostNow("tags-multiple-unordered")
+			Expect(err).ToNot(HaveOccurred())
+			err = i.IndexDocumentNow(pipeline.Status.PipelineVersion, hostId, "tags-multiple-unordered")
+			Expect(err).ToNot(HaveOccurred())
 
-			pipeline = i.ReconcileValidation()
+			pipeline, err = i.ReconcileValidation()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
 		})

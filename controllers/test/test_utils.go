@@ -1,7 +1,6 @@
 package test
 
 import (
-	. "github.com/onsi/gomega"
 	. "github.com/redhatinsights/xjoin-operator/controllers"
 	. "github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
@@ -64,12 +63,12 @@ func parametersToMap(parameters Parameters) map[string]interface{} {
 	return parametersMap
 }
 
-func getParameters() (Parameters, map[string]interface{}) {
+func getParameters() (Parameters, map[string]interface{}, error) {
 	options := viper.New()
 	options.SetDefault("ElasticSearchURL", "http://xjoin-elasticsearch-es-http:9200")
 	options.SetDefault("ElasticSearchUsername", "test")
 	options.SetDefault("ElasticSearchPassword", "test1337")
-	options.SetDefault("HBIDBHost", "inventory-db")
+	options.SetDefault("HBIDBHost", "host-inventory-db.test.svc")
 	options.SetDefault("HBIDBPort", "5432")
 	options.SetDefault("HBIDBUser", "insights")
 	options.SetDefault("HBIDBPassword", "insights")
@@ -83,41 +82,71 @@ func getParameters() (Parameters, map[string]interface{}) {
 
 	xjoinConfiguration := NewXJoinConfiguration()
 	err := xjoinConfiguration.ElasticSearchURL.SetValue(options.GetString("ElasticSearchURL"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 	err = xjoinConfiguration.ElasticSearchUsername.SetValue(options.GetString("ElasticSearchUsername"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 	err = xjoinConfiguration.ElasticSearchPassword.SetValue(options.GetString("ElasticSearchPassword"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 	err = xjoinConfiguration.HBIDBHost.SetValue(options.GetString("HBIDBHost"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 	err = xjoinConfiguration.HBIDBPort.SetValue(options.GetString("HBIDBPort"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 	err = xjoinConfiguration.HBIDBUser.SetValue(options.GetString("HBIDBUser"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 	err = xjoinConfiguration.HBIDBPassword.SetValue(options.GetString("HBIDBPassword"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 	err = xjoinConfiguration.HBIDBName.SetValue(options.GetString("HBIDBName"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 	err = xjoinConfiguration.ResourceNamePrefix.SetValue(options.GetString("ResourceNamePrefix"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 	err = xjoinConfiguration.ConnectCluster.SetValue(options.GetString("ConnectCluster"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 	err = xjoinConfiguration.ConnectClusterNamespace.SetValue(options.GetString("ConnectClusterNamespace"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 	err = xjoinConfiguration.KafkaCluster.SetValue(options.GetString("KafkaCluster"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 	err = xjoinConfiguration.KafkaClusterNamespace.SetValue(options.GetString("KafkaClusterNamespace"))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return xjoinConfiguration, nil, err
+	}
 
-	return xjoinConfiguration, parametersToMap(xjoinConfiguration)
+	return xjoinConfiguration, parametersToMap(xjoinConfiguration), nil
 }
 
-func Before() *Iteration {
+func Before() (*Iteration, error) {
 	i := NewTestIteration()
+	ns, err := test.UniqueNamespace(ResourceNamePrefix)
+	if err != nil {
+		return nil, err
+	}
 
 	i.NamespacedName = types.NamespacedName{
 		Name:      "test-pipeline-01",
-		Namespace: test.UniqueNamespace(ResourceNamePrefix),
+		Namespace: ns,
 	}
 
 	log.Info("Namespace: " + i.NamespacedName.Namespace)
@@ -126,9 +155,21 @@ func Before() *Iteration {
 	i.ValidationReconciler = newValidationReconciler(i.NamespacedName.Namespace)
 	i.KafkaConnectReconciler = newKafkaConnectReconciler(i.NamespacedName.Namespace, true)
 
-	i.Parameters, i.ParametersMap = getParameters()
-	i.CreateDbSecret("host-inventory-db")
-	i.CreateESSecret("xjoin-elasticsearch")
+	parameters, parametersMap, err := getParameters()
+	if err != nil {
+		return nil, err
+	}
+	i.Parameters = parameters
+	i.ParametersMap = parametersMap
+
+	err = i.CreateDbSecret("host-inventory-db")
+	if err != nil {
+		return nil, err
+	}
+	err = i.CreateESSecret("xjoin-elasticsearch")
+	if err != nil {
+		return nil, err
+	}
 
 	es, err := elasticsearch.NewElasticSearch(
 		"http://xjoin-elasticsearch-es-http:9200",
@@ -139,8 +180,11 @@ func Before() *Iteration {
 		i.Parameters.ElasticSearchIndexTemplate.String(),
 		i.ParametersMap)
 
+	if err != nil {
+		return nil, err
+	}
+
 	i.EsClient = es
-	Expect(err).ToNot(HaveOccurred())
 
 	i.KafkaClient = kafka.Kafka{
 		Namespace:     i.NamespacedName.Namespace,
@@ -152,8 +196,8 @@ func Before() *Iteration {
 	i.DbClient = database.NewDatabase(database.DBParams{
 		Host:     i.Parameters.HBIDBHost.String(),
 		Port:     i.Parameters.HBIDBPort.String(),
-		User:     "postgres",
-		Password: "postgres",
+		User:     "insights",
+		Password: "insights",
 		Name:     i.Parameters.HBIDBName.String(),
 		SSLMode:  "disable",
 	})
@@ -171,34 +215,47 @@ func Before() *Iteration {
 			//which is why the sleep is here
 			cmd := exec.Command(test.GetRootDir() + "/dev/forward-ports-clowder.sh")
 			err := cmd.Run()
-			Expect(err).ToNot(HaveOccurred())
+			if err != nil {
+				return nil, err
+			}
 			time.Sleep(1 * time.Second)
 		}
 	}
 
-	Expect(err).ToNot(HaveOccurred())
 	i.DbClient.SetMaxConnections(1000)
 
-	_, err = i.DbClient.ExecQuery("DELETE FROM hosts")
-	Expect(err).ToNot(HaveOccurred())
+	err = i.DbClient.Connect()
+	if err != nil {
+		return nil, err
+	}
 
-	return i
+	_, err = i.DbClient.ExecQuery("DELETE FROM hosts")
+	if err != nil {
+		return nil, err
+	}
+
+	return i, nil
 }
 
-func After(i *Iteration) {
+func After(i *Iteration) error {
 	err := i.DbClient.Connect()
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 	defer i.CloseDB()
 
 	//Delete any leftover ES indices
 	indices, err := i.EsClient.ListIndices()
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 	for _, index := range indices {
 		err = i.EsClient.DeleteIndexByFullName(index)
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			return err
+		}
 	}
 
 	cmd := exec.Command(test.GetRootDir() + "/dev/cleanup.projects.sh")
-	err = cmd.Run()
-	Expect(err).ToNot(HaveOccurred())
+	return cmd.Run()
 }

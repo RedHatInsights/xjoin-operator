@@ -107,7 +107,7 @@ func NewXJoinConfiguration() Parameters {
 		ConnectClusterNamespace: Parameter{
 			SpecKey:      "ConnectClusterNamespace",
 			ConfigMapKey: "connect.cluster.namespace",
-			DefaultValue: "xjoin-operator-project",
+			DefaultValue: "test",
 			Type:         reflect.String,
 		},
 		HBIDBSecretName: Parameter{
@@ -131,7 +131,7 @@ func NewXJoinConfiguration() Parameters {
 		KafkaClusterNamespace: Parameter{
 			SpecKey:      "KafkaClusterNamespace",
 			ConfigMapKey: "kafka.cluster.namespace",
-			DefaultValue: "xjoin-operator-project",
+			DefaultValue: "test",
 			Type:         reflect.String,
 		},
 		StandardInterval: Parameter{
@@ -222,7 +222,15 @@ func NewXJoinConfiguration() Parameters {
 						"canonical_facts": {
 							"type": "object",
 							"properties": {
-								"fqdn": { "type": "keyword"},
+								"fqdn": {
+									"type": "keyword",
+									"fields": {
+										"lowercase": {
+											"type": "keyword",
+											"normalizer": "case_insensitive"
+										}
+									}
+								},
 								"insights_id": { "type": "keyword"},
 								"satellite_id": { "type": "keyword"}
 							}
@@ -411,7 +419,6 @@ func NewXJoinConfiguration() Parameters {
 			ConfigMapKey: "debezium.connector.config",
 			DefaultValue: `{
 				"tasks.max": "{{.DebeziumTasksMax}}",
-				"producer.override.max.request.size": "2097152",
 				"database.hostname": "{{.HBIDBHost}}",
 				"database.port": "{{.HBIDBPort}}",
 				"database.user": "{{.HBIDBUser}}",

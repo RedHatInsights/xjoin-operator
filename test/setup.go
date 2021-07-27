@@ -76,7 +76,7 @@ func Setup(t *testing.T, suiteName string) {
 
 		//make sure the test environment is clean
 		dbClient := database.NewDatabase(database.DBParams{
-			Host:     "inventory-db",
+			Host:     "host-inventory-db.test.svc",
 			Port:     "5432",
 			User:     "insights",
 			Password: "insights",

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/google/uuid"
-	. "github.com/onsi/gomega"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers"
 	xjoinconfig "github.com/redhatinsights/xjoin-operator/controllers/config"
@@ -76,82 +75,147 @@ func (i *Iteration) CheckIfDependenciesAreResponding() bool {
 	return true
 }
 
-func (i *Iteration) CloseDB() {
+func (i *Iteration) CloseDB() error {
 	if i.DbClient != nil {
 		err := i.DbClient.Close()
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (i *Iteration) SetESConnectorURL(esUrl string, connectorName string) {
+func (i *Iteration) getConnectorConfig(connectorName string) (map[string]interface{}, error) {
 	configUrl := fmt.Sprintf(
 		"http://%s-connect-api.%s.svc:8083/connectors/%s/config",
 		i.Parameters.ConnectCluster.String(), i.Parameters.ConnectClusterNamespace.String(), connectorName)
 
 	//GET current config from Kafka Connect REST API
 	res, err := http.Get(configUrl)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode >= 300 {
+		return nil, errors.New(fmt.Sprintf("invalid response code during getConnectorConfig: %v", res.StatusCode))
+	}
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
 	var bodyMap map[string]interface{}
 	err = json.Unmarshal(body, &bodyMap)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return nil, err
+	}
+	return bodyMap, nil
+}
+
+func (i *Iteration) putConnectorConfig(connectorName string, config []byte) error {
+	configUrl := fmt.Sprintf(
+		"http://%s-connect-api.%s.svc:8083/connectors/%s/config",
+		i.Parameters.ConnectCluster.String(), i.Parameters.ConnectClusterNamespace.String(), connectorName)
+
+	//PUT updated config
+	httpClient := &http.Client{}
+	req, err := http.NewRequest(http.MethodPut, configUrl, bytes.NewReader(config))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	if res == nil {
+		return errors.New("empty response during putConnectorConfig")
+	}
+	err = res.Body.Close()
+	return err
+}
+
+func (i *Iteration) SetDBConnectorHost(dbHost string, connectorName string) error {
+	bodyMap, err := i.getConnectorConfig(connectorName)
+	if err != nil {
+		return err
+	}
+
+	//update config with new URL
+	bodyMap["database.hostname"] = dbHost
+	bodyJson, err := json.Marshal(bodyMap)
+	if err != nil {
+		return err
+	}
+
+	err = i.putConnectorConfig(connectorName, bodyJson)
+	return err
+}
+
+func (i *Iteration) SetESConnectorURL(esUrl string, connectorName string) error {
+	bodyMap, err := i.getConnectorConfig(connectorName)
+	if err != nil {
+		return err
+	}
 
 	//update config with new URL
 	bodyMap["connection.url"] = esUrl
 	bodyJson, err := json.Marshal(bodyMap)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
-	//PUT updated config
-	httpClient := &http.Client{}
-	req, err := http.NewRequest(http.MethodPut, configUrl, bytes.NewReader(bodyJson))
-	Expect(err).ToNot(HaveOccurred())
-	req.Header.Add("Content-Type", "application/json")
-	res, err = httpClient.Do(req)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(res).ToNot(BeNil())
-	defer res.Body.Close()
+	err = i.putConnectorConfig(connectorName, bodyJson)
+	return err
 }
 
-func (i *Iteration) DeleteService(serviceName string) {
+func (i *Iteration) DeleteService(serviceName string) error {
 	service := &corev1.Service{}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	err := i.XJoinReconciler.Client.Get(
 		ctx, client.ObjectKey{Name: serviceName, Namespace: "test"}, service)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	err = i.XJoinReconciler.Client.Delete(ctx, service)
-	Expect(err).ToNot(HaveOccurred())
+	return err
 }
 
-func (i *Iteration) CreateDBService(serviceName string) {
-	service := &corev1.Service{}
+func (i *Iteration) CreateDBService(serviceName string) error {
+	existingService := &corev1.Service{}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	err := i.XJoinReconciler.Client.Get(
-		ctx, client.ObjectKey{Name: "inventory-db", Namespace: "test"}, service)
-	Expect(err).ToNot(HaveOccurred())
+		ctx, client.ObjectKey{Name: "host-inventory-db", Namespace: "test"}, existingService)
+	if err != nil {
+		return err
+	}
 
-	service.Name = serviceName
-	service.Namespace = "test"
-	service.Spec.ClusterIP = ""
-	service.Spec.ClusterIPs = []string{}
-	service.ResourceVersion = ""
-	err = i.XJoinReconciler.Client.Create(ctx, service)
-	Expect(err).ToNot(HaveOccurred())
+	newService := &corev1.Service{}
+	newService.Name = serviceName
+	newService.Namespace = "test"
+	newService.Spec.Selector = existingService.Spec.Selector
+	newService.Spec.Ports = existingService.Spec.Ports
+
+	err = i.XJoinReconciler.Client.Create(ctx, newService)
+	return err
 }
 
-func (i *Iteration) CreateESService(serviceName string) {
+func (i *Iteration) CreateESService(serviceName string) error {
 	service := &corev1.Service{}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	err := i.XJoinReconciler.Client.Get(
 		ctx, client.ObjectKey{Name: "xjoin-elasticsearch-es-default", Namespace: "test"}, service)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	service.Name = serviceName
 	service.Namespace = "test"
@@ -159,10 +223,10 @@ func (i *Iteration) CreateESService(serviceName string) {
 	service.Spec.ClusterIPs = []string{}
 	service.ResourceVersion = ""
 	err = i.XJoinReconciler.Client.Create(ctx, service)
-	Expect(err).ToNot(HaveOccurred())
+	return err
 }
 
-func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int) {
+func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int) error {
 	var deploymentGVK = schema.GroupVersionKind{
 		Group:   "apps",
 		Kind:    "Deployment",
@@ -176,8 +240,9 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 	defer cancel()
 	err := i.XJoinReconciler.Client.Get(
 		ctx, client.ObjectKey{Name: name, Namespace: namespace}, deployment)
-
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	//update deployment with replicas
 	obj := deployment.Object
@@ -187,7 +252,9 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 	err = i.KafkaClient.Client.Update(ctx, deployment)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	//wait for deployment to be ready if replicas > 0
 	if replicas > 0 {
@@ -217,7 +284,10 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 
 			return false, nil
 		})
-		Expect(err).ToNot(HaveOccurred())
+
+		if err != nil {
+			return err
+		}
 	} else {
 		err = wait.PollImmediate(time.Second, time.Duration(120)*time.Second, func() (bool, error) {
 			pods := &corev1.PodList{}
@@ -235,13 +305,19 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 				return true, nil
 			}
 		})
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
-func (i *Iteration) EditESConnectorToBeInvalid(pipelineVersion string) {
+func (i *Iteration) EditESConnectorToBeInvalid(pipelineVersion string) error {
 	connector, err := i.KafkaClient.GetConnector(i.KafkaClient.ESConnectorName(pipelineVersion))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	obj := connector.Object
 	spec := obj["spec"].(map[string]interface{})
@@ -251,14 +327,14 @@ func (i *Iteration) EditESConnectorToBeInvalid(pipelineVersion string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 	err = i.KafkaClient.Client.Update(ctx, connector)
-	Expect(err).ToNot(HaveOccurred())
+	return err
 }
 
 func (i *Iteration) TestSpecFieldChangedForPipeline(
 	pipeline *xjoin.XJoinPipeline,
 	fieldName string,
 	fieldValue interface{},
-	valueType reflect.Kind) {
+	valueType reflect.Kind) error {
 
 	activeIndex := pipeline.Status.ActiveIndexName
 
@@ -275,48 +351,91 @@ func (i *Iteration) TestSpecFieldChangedForPipeline(
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 	err := test.Client.Update(ctx, pipeline)
-	Expect(err).ToNot(HaveOccurred())
-	pipeline = i.ExpectInitSyncUnknownReconcile()
-	Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
+	if err != nil {
+		return err
+	}
+	pipeline, err = i.ExpectInitSyncUnknownReconcile()
+	if err != nil {
+		return err
+	}
+	if pipeline.Status.ActiveIndexName != activeIndex {
+		return errors.New("pipeline.Status.ActiveIndexName != activeIndex")
+	}
+
+	return nil
 }
 
-func (i *Iteration) TestSpecFieldChanged(fieldName string, fieldValue interface{}, valueType reflect.Kind) {
-	pipeline := i.CreateValidPipeline()
-	i.TestSpecFieldChangedForPipeline(pipeline, fieldName, fieldValue, valueType)
+func (i *Iteration) TestSpecFieldChanged(fieldName string, fieldValue interface{}, valueType reflect.Kind) error {
+	pipeline, err := i.CreateValidPipeline()
+	if err != nil {
+		return err
+	}
+	return i.TestSpecFieldChangedForPipeline(pipeline, fieldName, fieldValue, valueType)
 }
 
-func (i *Iteration) DeleteAllHosts() {
+func (i *Iteration) CopySecret(existingSecretName string, newSecretName string, namespace string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+
+	secret := &corev1.Secret{}
+	err := test.Client.Get(ctx, client.ObjectKey{Name: existingSecretName, Namespace: namespace}, secret)
+	if err != nil {
+		return err
+	}
+
+	newSecret := &corev1.Secret{}
+	newSecret.Name = newSecretName
+	newSecret.Data = secret.Data
+	newSecret.Data["newkey"] = nil
+	newSecret.Namespace = namespace
+
+	return test.Client.Create(ctx, newSecret)
+}
+
+func (i *Iteration) DeleteAllHosts() error {
 	rows, err := i.DbClient.RunQuery("DELETE FROM hosts;")
-	Expect(err).ToNot(HaveOccurred())
-	rows.Close()
+	if err != nil {
+		return err
+	}
+	return rows.Close()
 }
 
-func (i *Iteration) SyncHosts(pipelineVersion string, numHosts int) []string {
+func (i *Iteration) SyncHosts(pipelineVersion string, numHosts int) ([]string, error) {
 	var ids []string
 
 	for j := 0; j < numHosts; j++ {
-		id := i.InsertSimpleHost()
-		i.IndexSimpleDocument(pipelineVersion, id)
+		id, err := i.InsertSimpleHost()
+		if err != nil {
+			return nil, err
+		}
+		err = i.IndexSimpleDocument(pipelineVersion, id)
+		if err != nil {
+			return nil, err
+		}
 		ids = append(ids, id)
 	}
 
-	return ids
+	return ids, nil
 }
 
-func (i *Iteration) IndexSimpleDocument(pipelineVersion string, id string) {
-	i.IndexDocument(pipelineVersion, id, "simple", i.Now)
+func (i *Iteration) IndexSimpleDocument(pipelineVersion string, id string) error {
+	return i.IndexDocument(pipelineVersion, id, "simple", i.Now)
 }
 
-func (i *Iteration) IndexDocumentNow(pipelineVersion string, id string, filename string) {
-	i.IndexDocument(pipelineVersion, id, filename, i.Now)
+func (i *Iteration) IndexDocumentNow(pipelineVersion string, id string, filename string) error {
+	return i.IndexDocument(pipelineVersion, id, filename, i.Now)
 }
 
-func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename string, modifiedOn time.Time) {
+func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename string, modifiedOn time.Time) error {
 	esDocumentFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/hosts/es/" + filename + ".json")
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	tmpl, err := template.New("esDocumentTemplate").Parse(string(esDocumentFile))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	m := make(map[string]interface{})
 	m["ID"] = id
@@ -324,7 +443,9 @@ func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename st
 
 	var templateBuffer bytes.Buffer
 	err = tmpl.Execute(&templateBuffer, m)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 	templateParsed := templateBuffer.String()
 
 	// Set up the request object.
@@ -339,37 +460,48 @@ func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename st
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 	res, err := req.Do(ctx, i.EsClient.Client)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 
 	if res.IsError() {
 
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		err = res.Body.Close()
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			return err
+		}
 
-		log.Error(
-			errors.New(fmt.Sprintf("elasticsearch API error: %s, %s", strconv.Itoa(res.StatusCode), bodyBytes)),
-			"error indexing document")
-		Expect(res.IsError()).To(BeFalse())
+		errorMsg := fmt.Sprintf("elasticsearch API error: %s, %s", strconv.Itoa(res.StatusCode), bodyBytes)
+		log.Error(errors.New(errorMsg), "error indexing document")
+		if res.IsError() {
+			return errors.New(errorMsg)
+		}
 	}
+
+	return nil
 }
 
-func (i *Iteration) InsertSimpleHost() string {
+func (i *Iteration) InsertSimpleHost() (string, error) {
 	return i.InsertHost("simple", i.Now)
 }
 
-func (i *Iteration) InsertHostNow(filename string) string {
+func (i *Iteration) InsertHostNow(filename string) (string, error) {
 	return i.InsertHost(filename, i.Now)
 }
 
-func (i *Iteration) InsertHost(filename string, modifiedOn time.Time) string {
+func (i *Iteration) InsertHost(filename string, modifiedOn time.Time) (string, error) {
 	hostId, err := uuid.NewUUID()
 
 	hbiHostFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/hosts/hbi/" + filename + ".sql")
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return "", err
+	}
 
 	tmpl, err := template.New("hbiHostTemplate").Parse(string(hbiHostFile))
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return "", err
+	}
 
 	m := make(map[string]interface{})
 	m["ID"] = hostId.String()
@@ -377,16 +509,20 @@ func (i *Iteration) InsertHost(filename string, modifiedOn time.Time) string {
 
 	var templateBuffer bytes.Buffer
 	err = tmpl.Execute(&templateBuffer, m)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return "", err
+	}
 	query := strings.ReplaceAll(templateBuffer.String(), "\n", "")
 
 	_, err = i.DbClient.ExecQuery(query)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return "", err
+	}
 
-	return hostId.String()
+	return hostId.String(), nil
 }
 
-func (i *Iteration) CreateConfigMap(name string, data map[string]string) {
+func (i *Iteration) CreateConfigMap(name string, data map[string]string) error {
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -397,11 +533,10 @@ func (i *Iteration) CreateConfigMap(name string, data map[string]string) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
-	err := test.Client.Create(ctx, configMap)
-	Expect(err).ToNot(HaveOccurred())
+	return test.Client.Create(ctx, configMap)
 }
 
-func (i *Iteration) CreateESSecret(name string) {
+func (i *Iteration) CreateESSecret(name string) error {
 	secret := &corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		ObjectMeta: metav1.ObjectMeta{
@@ -417,11 +552,10 @@ func (i *Iteration) CreateESSecret(name string) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
-	err := test.Client.Create(ctx, secret)
-	Expect(err).ToNot(HaveOccurred())
+	return test.Client.Create(ctx, secret)
 }
 
-func (i *Iteration) CreateDbSecret(name string) {
+func (i *Iteration) CreateDbSecret(name string) error {
 	secret := &corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		ObjectMeta: metav1.ObjectMeta{
@@ -439,102 +573,230 @@ func (i *Iteration) CreateDbSecret(name string) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
-	err := test.Client.Create(ctx, secret)
-	Expect(err).ToNot(HaveOccurred())
+	return test.Client.Create(ctx, secret)
 }
 
-func (i *Iteration) ExpectPipelineVersionToBeRemoved(pipelineVersion string) {
+func (i *Iteration) ExpectPipelineVersionToBeRemoved(pipelineVersion string) error {
 	exists, err := i.EsClient.IndexExists(i.EsClient.ESIndexName(pipelineVersion))
-	Expect(err).ToNot(HaveOccurred())
-	Expect(exists).To(Equal(false))
+	if err != nil {
+		return err
+	}
+	if exists != false {
+		return errors.New(fmt.Sprintf("expected index %s to not exist", i.EsClient.ESIndexName(pipelineVersion)))
+	}
 
 	slots, err := i.DbClient.ListReplicationSlots(ResourceNamePrefix)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(len(slots)).To(Equal(0))
+	if err != nil {
+		return err
+	}
+	if len(slots) != 0 {
+		return errors.New("expected all replication slots to be removed for prefix: " + ResourceNamePrefix)
+	}
 
 	versions, err := i.KafkaClient.ListTopicNamesForPipelineVersion(pipelineVersion)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(len(versions)).To(Equal(0))
+	if err != nil {
+		return err
+	}
+	if len(versions) != 0 {
+		return errors.New("expected no topic names to exist for version: " + pipelineVersion)
+	}
 
 	connectors, err := i.KafkaClient.ListConnectorNamesForPipelineVersion(pipelineVersion)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(len(connectors)).To(Equal(0))
+	if err != nil {
+		return err
+	}
+	if len(connectors) != 0 {
+		return errors.New("expected no connectors for version: " + pipelineVersion)
+	}
 
 	esPipelines, err := i.EsClient.ListESPipelines(pipelineVersion)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(len(esPipelines)).To(Equal(0))
+	if err != nil {
+		return err
+	}
+	if len(esPipelines) != 0 {
+		return errors.New("expected no pipelines to exist for version: " + pipelineVersion)
+	}
+
+	return nil
 }
 
-func (i *Iteration) ExpectValidReconcile() *xjoin.XJoinPipeline {
-	i.ReconcileValidation()
-	pipeline := i.ReconcileXJoin()
-	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
-	Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
-	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
-	return pipeline
+func (i *Iteration) ExpectValidReconcile() (*xjoin.XJoinPipeline, error) {
+	_, err := i.ReconcileValidation()
+	if err != nil {
+		return nil, err
+	}
+	pipeline, err := i.ReconcileXJoin()
+	if err != nil {
+		return nil, err
+	}
+
+	if pipeline.GetState() != xjoin.STATE_VALID {
+		return nil, errors.New("expected pipeline state to be valid")
+	}
+
+	if pipeline.Status.InitialSyncInProgress != false {
+		return nil, errors.New("expected InitialSyncInProgress to be false")
+	}
+
+	if pipeline.GetValid() != metav1.ConditionTrue {
+		return nil, errors.New("expected pipeline to be valid")
+	}
+
+	return pipeline, nil
 }
 
-func (i *Iteration) ExpectNewReconcile() *xjoin.XJoinPipeline {
-	i.ReconcileValidation()
-	pipeline := i.ReconcileXJoin()
-	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_NEW))
-	Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
-	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
-	return pipeline
+func (i *Iteration) ExpectNewReconcile() (*xjoin.XJoinPipeline, error) {
+	_, err := i.ReconcileValidation()
+	if err != nil {
+		return nil, err
+	}
+	pipeline, err := i.ReconcileXJoin()
+	if err != nil {
+		return nil, err
+	}
+
+	if pipeline.GetState() != xjoin.STATE_NEW {
+		return nil, errors.New("expected pipeline state to be new")
+	}
+
+	if pipeline.Status.InitialSyncInProgress != false {
+		return nil, errors.New("expected InitialSyncInProgress to be false")
+	}
+
+	if pipeline.GetValid() != metav1.ConditionUnknown {
+		return nil, errors.New("expected pipeline condition to be unknown")
+	}
+
+	return pipeline, nil
 }
 
-func (i *Iteration) ExpectInitSyncInvalidReconcile() *xjoin.XJoinPipeline {
-	i.ReconcileValidation()
-	pipeline := i.ReconcileXJoin()
-	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
-	Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
-	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
-	return pipeline
+func (i *Iteration) ExpectInitSyncInvalidReconcile() (*xjoin.XJoinPipeline, error) {
+	_, err := i.ReconcileValidation()
+	if err != nil {
+		return nil, err
+	}
+	pipeline, err := i.ReconcileXJoin()
+	if err != nil {
+		return nil, err
+	}
+
+	if pipeline.GetState() != xjoin.STATE_INITIAL_SYNC {
+		return nil, errors.New("expected pipeline state to be initial_sync")
+	}
+
+	if pipeline.Status.InitialSyncInProgress != true {
+		return nil, errors.New("expected InitialSyncInProgress to be true")
+	}
+
+	if pipeline.GetValid() != metav1.ConditionFalse {
+		return nil, errors.New("expected pipeline to not be valid")
+	}
+	return pipeline, nil
 }
 
-func (i *Iteration) ExpectInitSyncUnknownReconcile() *xjoin.XJoinPipeline {
-	i.ReconcileValidation()
-	pipeline := i.ReconcileXJoin()
-	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INITIAL_SYNC))
-	Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
-	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
-	return pipeline
+func (i *Iteration) ExpectInitSyncUnknownReconcile() (*xjoin.XJoinPipeline, error) {
+	_, err := i.ReconcileValidation()
+	if err != nil {
+		return nil, err
+	}
+	pipeline, err := i.ReconcileXJoin()
+	if err != nil {
+		return nil, err
+	}
+
+	if pipeline.GetState() != xjoin.STATE_INITIAL_SYNC {
+		return nil, errors.New("expected pipeline state to be initial_sync")
+	}
+
+	if pipeline.Status.InitialSyncInProgress != true {
+		return nil, errors.New("expected InitialSyncInProgress to be true")
+	}
+
+	if pipeline.GetValid() != metav1.ConditionUnknown {
+		return nil, errors.New("expected pipeline condition to be unknown")
+	}
+	return pipeline, nil
 }
 
-func (i *Iteration) ExpectInvalidReconcile() *xjoin.XJoinPipeline {
-	i.ReconcileValidation()
-	pipeline := i.ReconcileXJoin()
-	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
-	Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
-	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
-	return pipeline
+func (i *Iteration) ExpectInvalidReconcile() (*xjoin.XJoinPipeline, error) {
+	_, err := i.ReconcileValidation()
+	if err != nil {
+		return nil, err
+	}
+	pipeline, err := i.ReconcileXJoin()
+	if err != nil {
+		return nil, err
+	}
+
+	if pipeline.GetState() != xjoin.STATE_INVALID {
+		return nil, errors.New("expected pipeline state to be invalid")
+	}
+
+	if pipeline.Status.InitialSyncInProgress != false {
+		return nil, errors.New("expected InitialSyncInProgress to be false")
+	}
+
+	if pipeline.GetValid() != metav1.ConditionFalse {
+		return nil, errors.New("expected pipeline to be invalid")
+	}
+	return pipeline, nil
 }
 
-func (i *Iteration) CreateValidPipeline(specs ...*xjoin.XJoinPipelineSpec) *xjoin.XJoinPipeline {
-	i.CreatePipeline(specs...)
-	i.ReconcileXJoin()
-	i.ReconcileValidation()
-	pipeline := i.ReconcileXJoin()
-	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
-	Expect(pipeline.Status.InitialSyncInProgress).To(BeFalse())
-	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
+func (i *Iteration) CreateValidPipeline(specs ...*xjoin.XJoinPipelineSpec) (*xjoin.XJoinPipeline, error) {
+	err := i.CreatePipeline(specs...)
+	if err != nil {
+		return nil, err
+	}
+	_, err = i.ReconcileXJoin()
+	if err != nil {
+		return nil, err
+	}
+	_, err = i.ReconcileValidation()
+	if err != nil {
+		return nil, err
+	}
 
-	return pipeline
+	pipeline, err := i.ReconcileXJoin()
+	if err != nil {
+		return nil, err
+	}
+
+	if pipeline.GetState() != xjoin.STATE_VALID {
+		return nil, errors.New("expected pipeline state to be valid")
+	}
+
+	if pipeline.Status.InitialSyncInProgress != false {
+		return nil, errors.New("expected InitialSyncInProgress to be false")
+	}
+
+	if pipeline.GetValid() != metav1.ConditionTrue {
+		return nil, errors.New("expected pipeline to be invalid")
+	}
+
+	return pipeline, nil
 }
 
-func (i *Iteration) DeletePipeline(pipeline *xjoin.XJoinPipeline) {
+func (i *Iteration) DeletePipeline(pipeline *xjoin.XJoinPipeline) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 	err := test.Client.Delete(ctx, pipeline)
-	Expect(err).ToNot(HaveOccurred())
-	i.ReconcileValidationForDeletedPipeline()
-	i.ReconcileXJoinForDeletedPipeline()
+	if err != nil {
+		return err
+	}
+	err = i.ReconcileValidationForDeletedPipeline()
+	if err != nil {
+		return err
+	}
+	err = i.ReconcileXJoinForDeletedPipeline()
+	return err
 }
 
-func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) {
+func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) error {
 	var spec *xjoin.XJoinPipelineSpec
 
-	Expect(len(specs) <= 1).To(BeTrue())
+	if len(specs) > 1 {
+		return errors.New("only one spec is allowed")
+	}
 
 	if len(specs) == 1 {
 		spec = specs[0]
@@ -542,20 +804,17 @@ func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) {
 			specs[0].ResourceNamePrefix = &ResourceNamePrefix
 		}
 	} else {
+		namespace := "test"
+		connectCluster := "connect"
+		kafkaCluster := "kafka"
 		spec = &xjoin.XJoinPipelineSpec{
-			ResourceNamePrefix: &ResourceNamePrefix,
+			ResourceNamePrefix:      &ResourceNamePrefix,
+			ConnectCluster:          &connectCluster,
+			ConnectClusterNamespace: &namespace,
+			KafkaCluster:            &kafkaCluster,
+			KafkaClusterNamespace:   &namespace,
 		}
 	}
-
-	connectCluster := "connect"
-	spec.ConnectCluster = &connectCluster
-	connectClusterNamespace := "test"
-	spec.ConnectClusterNamespace = &connectClusterNamespace
-
-	kafkaCluster := "kafka"
-	spec.KafkaCluster = &kafkaCluster
-	kafkaClusterNamespace := "test"
-	spec.KafkaClusterNamespace = &kafkaClusterNamespace
 
 	pipeline := xjoin.XJoinPipeline{
 		ObjectMeta: metav1.ObjectMeta{
@@ -568,90 +827,139 @@ func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 	err := test.Client.Create(ctx, &pipeline)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 	i.Pipelines = append(i.Pipelines, &pipeline)
+	return nil
 }
 
-func (i *Iteration) GetPipeline() (pipeline *xjoin.XJoinPipeline) {
-	pipeline, err := utils.FetchXJoinPipeline(test.Client, i.NamespacedName)
-	Expect(err).ToNot(HaveOccurred())
-	return
+func (i *Iteration) GetPipeline() (*xjoin.XJoinPipeline, error) {
+	return utils.FetchXJoinPipeline(test.Client, i.NamespacedName)
 }
 
-func (i *Iteration) ReconcileXJoinForDeletedPipeline() {
+func (i *Iteration) ReconcileXJoinForDeletedPipeline() error {
 	result, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(result.Requeue).To(BeFalse())
+	if err != nil {
+		return err
+	}
+
+	if result.Requeue != false {
+		return errors.New("expected result.Requeue to be false")
+	}
+
+	return nil
 }
 
 func (i *Iteration) ReconcileValidationWithError() error {
 	_, err := i.ValidationReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
-	Expect(err).To(HaveOccurred())
 	return err
 }
 
 func (i *Iteration) ReconcileXJoinWithError() error {
 	_, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
-	Expect(err).To(HaveOccurred())
 	return err
 }
 
 func (i *Iteration) ReconcileXJoinNonTestWithError() error {
 	xJoinReconciler := newXJoinReconciler(i.NamespacedName.Namespace, false)
 	_, err := xJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
-	Expect(err).To(HaveOccurred())
 	return err
 }
 
-func (i *Iteration) ReconcileXJoinNonTest() *xjoin.XJoinPipeline {
+func (i *Iteration) ReconcileXJoinNonTest() (*xjoin.XJoinPipeline, error) {
 	xJoinReconciler := newXJoinReconciler(i.NamespacedName.Namespace, false)
 	result, err := xJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(result.Requeue).To(BeFalse())
+	if err != nil {
+		return nil, err
+	}
+
+	if result.Requeue != false {
+		return nil, errors.New("expected result.requeue to be false")
+	}
 	return i.GetPipeline()
 }
 
 func (i *Iteration) ReconcileKafkaConnect() (bool, error) {
 	result, err := i.KafkaConnectReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
-	Expect(result).ToNot(BeNil())
+	if err != nil {
+		return false, err
+	}
 	return result.Requeue, err
 }
 
-func (i *Iteration) ReconcileXJoin() *xjoin.XJoinPipeline {
+func (i *Iteration) ReconcileXJoin() (*xjoin.XJoinPipeline, error) {
 	result, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(result.Requeue).To(BeFalse())
+	if err != nil {
+		return nil, err
+	}
+	if result.Requeue != false {
+		return nil, errors.New("expected result.Requeue to be false")
+	}
 	return i.GetPipeline()
 }
 
-func (i *Iteration) ReconcileValidationForDeletedPipeline() {
+func (i *Iteration) ReconcileValidationForDeletedPipeline() error {
 	result, err := i.ValidationReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(result.Requeue).To(BeFalse())
+	if err != nil {
+		return err
+	}
+	if result.Requeue != false {
+		return errors.New("expected result.Requeue to be false")
+	}
+
+	return nil
 }
 
-func (i *Iteration) ReconcileValidation() *xjoin.XJoinPipeline {
+func (i *Iteration) ReconcileValidation() (*xjoin.XJoinPipeline, error) {
 	result, err := i.ValidationReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(result.Requeue).To(BeFalse())
+	if err != nil {
+		return nil, err
+	}
+
+	if result.Requeue != false {
+		return nil, errors.New("expected result.requeue to be false")
+	}
 	return i.GetPipeline()
 }
 
-func (i *Iteration) AssertValidationEvents(numHosts int) {
+func (i *Iteration) AssertValidationEvents(numHosts int) error {
 	recorder, _ := i.ValidationReconciler.Recorder.(*record.FakeRecorder)
-	Expect(recorder.Events).To(HaveLen(3))
-	Expect(<-recorder.Events).To(Equal(fmt.Sprintf("Normal CountValidationPassed Results: mismatchRatio: 0, esCount: %v, hbiCount: %v", numHosts, numHosts)))
-	Expect(<-recorder.Events).To(Equal(fmt.Sprintf("Normal IDValidationPassed 0 hosts ids do not match. Number of hosts IDs retrieved: HBI: %v, ES: %v", numHosts, numHosts)))
+	if len(recorder.Events) != 3 {
+		return errors.New("expected 3 events")
+	}
 	msg := <-recorder.Events
-	Expect(msg).To(Equal(fmt.Sprintf("Normal FullValidationPassed 0 hosts do not match. %v hosts validated.", numHosts)))
+	expectedMsg := fmt.Sprintf("Normal CountValidationPassed Results: mismatchRatio: 0, esCount: %v, hbiCount: %v", numHosts, numHosts)
+	if msg != expectedMsg {
+		return errors.New(fmt.Sprintf("expected msg %s to equal %s", msg, expectedMsg))
+	}
+	msg = <-recorder.Events
+	expectedMsg = fmt.Sprintf("Normal IDValidationPassed 0 hosts ids do not match. Number of hosts IDs retrieved: HBI: %v, ES: %v", numHosts, numHosts)
+	if msg != expectedMsg {
+		return errors.New(fmt.Sprintf("expected msg %s to equal %s", msg, expectedMsg))
+	}
+
+	msg = <-recorder.Events
+	expectedMsg = fmt.Sprintf("Normal FullValidationPassed 0 hosts do not match. %v hosts validated.", numHosts)
+	if msg != expectedMsg {
+		return errors.New(fmt.Sprintf("expected msg %s to equal %s", msg, expectedMsg))
+	}
+
+	return nil
 }
 
-func (i *Iteration) WaitForPipelineToBeValid() *xjoin.XJoinPipeline {
+func (i *Iteration) WaitForPipelineToBeValid() (*xjoin.XJoinPipeline, error) {
 	var pipeline *xjoin.XJoinPipeline
 
 	for j := 0; j < 10; j++ {
-		i.ReconcileValidation()
-		pipeline = i.GetPipeline()
+		_, err := i.ReconcileValidation()
+		if err != nil {
+			return nil, err
+		}
+		pipeline, err = i.GetPipeline()
+		if err != nil {
+			return nil, err
+		}
 
 		if pipeline.GetState() == xjoin.STATE_VALID {
 			break
@@ -660,107 +968,77 @@ func (i *Iteration) WaitForPipelineToBeValid() *xjoin.XJoinPipeline {
 		time.Sleep(1 * time.Second)
 	}
 
-	return pipeline
+	return pipeline, nil
 }
 
-func (i *Iteration) setPrefix(prefix string) {
+func (i *Iteration) setPrefix(prefix string) error {
 	err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue(prefix)
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return err
+	}
 	i.EsClient.SetResourceNamePrefix(prefix)
-	err = i.Parameters.ResourceNamePrefix.SetValue(prefix)
-	Expect(err).ToNot(HaveOccurred())
+	return i.Parameters.ResourceNamePrefix.SetValue(prefix)
 }
 
-func (i *Iteration) cleanupJenkinsResources() {
-	i.setPrefix("xjoin.inventory.hosts")
+func (i *Iteration) fullValidationFailureTest(hbiFileName string, esFileName string) error {
+	pipeline, err := i.CreateValidPipeline()
+	if err != nil {
+		return err
+	}
+	err = i.AssertValidationEvents(0)
+	if err != nil {
+		return err
+	}
 
-	_ = i.KafkaClient.DeleteConnector("xjoin.inventory.hosts.db.v1.1")
-	_ = i.KafkaClient.DeleteConnector("xjoin.inventory.hosts.es.v1.1")
-	_ = i.EsClient.DeleteIndex("v1.1")
-	_ = i.EsClient.DeleteESPipelineByFullName("xjoin.inventory.hosts.v1.1")
-	_ = i.KafkaClient.DeleteTopic("xjoin.inventory.v1.1.public.hosts")
-	_ = i.DbClient.RemoveReplicationSlot("xjoin_inventory_v1_1")
-}
+	_, err = i.SyncHosts(pipeline.Status.PipelineVersion, 3)
+	if err != nil {
+		return err
+	}
 
-func (i *Iteration) createJenkinsResources() {
-	i.setPrefix("xjoin.inventory.hosts")
+	hostId, err := i.InsertHostNow(hbiFileName)
+	if err != nil {
+		return err
+	}
+	err = i.IndexDocumentNow(pipeline.Status.PipelineVersion, hostId, esFileName)
+	if err != nil {
+		return err
+	}
 
-	//create resources to represent existing jenkins pipeline
-	_, err := i.KafkaClient.CreateDebeziumConnector("v1.1", false)
-	Expect(err).ToNot(HaveOccurred())
-
-	_, err = i.KafkaClient.CreateESConnector("v1.1", false)
-	Expect(err).ToNot(HaveOccurred())
-
-	err = i.EsClient.CreateIndex("v1.1")
-	Expect(err).ToNot(HaveOccurred())
-
-	err = i.EsClient.CreateESPipeline("v1.1")
-	Expect(err).ToNot(HaveOccurred())
-
-	_, err = i.KafkaClient.CreateTopicByFullName("xjoin.inventory.v1.1.public.hosts", false)
-	Expect(err).ToNot(HaveOccurred())
-
-	err = i.DbClient.CreateReplicationSlot("xjoin_inventory_v1_1")
-	Expect(err).ToNot(HaveOccurred())
-
-	err = i.EsClient.UpdateAliasByFullIndexName("xjoin.inventory.hosts", "xjoin.inventory.hosts.v1.1")
-	Expect(err).ToNot(HaveOccurred())
-}
-
-func (i *Iteration) validateJenkinsResourcesStillExist() {
-	i.setPrefix("xjoin.inventory.hosts")
-
-	dbConnector, err := i.KafkaClient.GetConnector("xjoin.inventory.hosts.db.v1.1")
-	Expect(err).ToNot(HaveOccurred())
-	Expect(dbConnector).ToNot(BeNil())
-	Expect(dbConnector.GetName()).ToNot(BeEmpty())
-
-	esConnector, err := i.KafkaClient.GetConnector("xjoin.inventory.hosts.es.v1.1")
-	Expect(err).ToNot(HaveOccurred())
-	Expect(esConnector).ToNot(BeNil())
-	Expect(esConnector.GetName()).ToNot(BeEmpty())
-
-	indices, err := i.EsClient.ListIndices()
-	Expect(err).ToNot(HaveOccurred())
-	Expect(indices).To(ContainElement("xjoin.inventory.hosts.v1.1"))
-
-	pipelines, err := i.EsClient.ListESPipelines()
-	Expect(err).ToNot(HaveOccurred())
-	Expect(pipelines).To(ContainElement("xjoin.inventory.hosts.v1.1"))
-
-	topic, err := i.KafkaClient.GetTopic("xjoin.inventory.v1.1.public.hosts")
-	Expect(err).ToNot(HaveOccurred())
-	Expect(topic).ToNot(BeNil())
-	Expect(topic.GetName()).ToNot(BeEmpty())
-
-	slots, err := i.DbClient.ListReplicationSlots("xjoin_inventory")
-	Expect(err).ToNot(HaveOccurred())
-	Expect(slots).To(ContainElements("xjoin_inventory_v1_1"))
-}
-
-func (i *Iteration) fullValidationFailureTest(hbiFileName string, esFileName string) {
-	pipeline := i.CreateValidPipeline()
-	i.AssertValidationEvents(0)
-
-	i.SyncHosts(pipeline.Status.PipelineVersion, 3)
-
-	hostId := i.InsertHostNow(hbiFileName)
-	i.IndexDocumentNow(pipeline.Status.PipelineVersion, hostId, esFileName)
-
-	pipeline = i.ReconcileValidation()
-	Expect(pipeline.GetState()).To(Equal(xjoin.STATE_INVALID))
-	Expect(pipeline.GetValid()).To(Equal(metav1.ConditionFalse))
+	pipeline, err = i.ReconcileValidation()
+	if err != nil {
+		return err
+	}
+	if pipeline.GetState() != xjoin.STATE_INVALID {
+		return errors.New("expected pipeline state to be invalid")
+	}
+	if pipeline.GetValid() != metav1.ConditionFalse {
+		return errors.New("expected pipeline to be invalid")
+	}
 
 	recorder, _ := i.ValidationReconciler.Recorder.(*record.FakeRecorder)
-	Expect(recorder.Events).To(HaveLen(3))
+	if len(recorder.Events) != 3 {
+		return errors.New("expected recorder.Events to have length of 3")
+	}
 
 	msg := <-recorder.Events
-	Expect(msg).To(Equal("Normal CountValidationPassed Results: mismatchRatio: 0, esCount: 4, hbiCount: 4"))
+	expectedMsg := "Normal CountValidationPassed Results: mismatchRatio: 0, esCount: 4, hbiCount: 4"
+	if msg != expectedMsg {
+		return errors.New(fmt.Sprintf("invalid event message: %s, expected: %s", msg, expectedMsg))
+	}
+
 	msg = <-recorder.Events
-	Expect(msg).To(Equal("Normal IDValidationPassed 0 hosts ids do not match. Number of hosts IDs retrieved: HBI: 4, ES: 4"))
+	expectedMsg = "Normal IDValidationPassed 0 hosts ids do not match. Number of hosts IDs retrieved: HBI: 4, ES: 4"
+	if msg != expectedMsg {
+		return errors.New(fmt.Sprintf("invalid event message: %s, expected: %s", msg, expectedMsg))
+	}
+
 	msg = <-recorder.Events
-	Expect(msg).To(Equal("Normal FullValidationFailed 1 hosts do not match. 4 hosts validated."))
+	expectedMsg = "Normal FullValidationFailed 1 hosts do not match. 4 hosts validated."
+	if msg != expectedMsg {
+		return errors.New(fmt.Sprintf("invalid event message: %s, expected: %s", msg, expectedMsg))
+	}
+
+	return nil
 }
 
 func (i *Iteration) getConnectPodName() (string, error) {
@@ -789,4 +1067,47 @@ func (i *Iteration) getConnectPodName() (string, error) {
 	}
 
 	return "", errors.New("unable to get pod name, it might not be ready yet")
+}
+
+func (i *Iteration) WaitForConnectorToBeCreated(connectorName string) error {
+	attempts := 20
+
+	for j := 0; j < attempts; j++ {
+		exists, err := i.KafkaClient.CheckConnectorExistsViaREST(connectorName)
+		if err != nil {
+			return err
+		}
+
+		if exists {
+			return nil
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	return errors.New("timed out waiting for connector to be created")
+}
+
+func (i *Iteration) WaitForConnectorTaskToFail(connectorName string) error {
+	isFailed := false
+	for j := 0; j < 20; j++ {
+		tasks, err := i.KafkaClient.ListConnectorTasks(connectorName)
+		if err != nil {
+			return err
+		}
+		for _, task := range tasks {
+			if task["state"] == "FAILED" {
+				isFailed = true
+				break
+			}
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	if !isFailed {
+		return errors.New(fmt.Sprintf("timed out waiting for connector %s task to fail", connectorName))
+	}
+
+	return nil
 }

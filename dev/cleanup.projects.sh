@@ -1,12 +1,12 @@
 #!/bin/bash
-echo "Deleting topics.."
-kubectl get KafkaTopic -o custom-columns=name:metadata.name | grep xjointest | while read -r topic ; do
-    kubectl delete KafkaTopic "$topic"
+echo "Deleting connectors.."
+kubectl -n test get KafkaConnector -o custom-columns=name:metadata.name | grep xjointest | while read -r connector ; do
+    kubectl delete KafkaConnector "$connector" -n test
 done
 
-echo "Deleting connectors.."
-kubectl get KafkaConnector -o custom-columns=name:metadata.name | grep xjointest | while read -r connector ; do
-    kubectl delete KafkaConnector "$connector"
+echo "Deleting topics.."
+kubectl -n test get KafkaTopic -o custom-columns=name:metadata.name | grep xjointest | while read -r topic ; do
+    kubectl delete KafkaTopic "$topic" -n test
 done
 
 echo "Deleting namespaces.."
@@ -19,17 +19,19 @@ done
 
 kubectl get namespaces -o custom-columns=name:metadata.name | grep test | while read -r project ; do
     echo "$project"
-    kubectl get CyndiPipeline integration-test-pipeline -o=json -n "$project" | jq '.metadata.finalizers = null' | kubectl apply -f -
 
-    kubectl delete KafkaTopic --all
+    kubectl delete KafkaConnector --all -n "$project"
     sleep 1
-    kubectl delete KafkaConnector --all
+    kubectl delete KafkaTopic --all -n "$project"
     sleep 1
-
-    kubectl delete project "$project"
 done
 
 echo "Deleting indices..."
 curl -u "xjoin:xjoin1337" "http://localhost:9200/_cat/indices/xjointest*?h=index" | while read -r index ; do
   curl -u "xjoin:xjoin1337" -X DELETE "http://localhost:9200/$index"
+done
+
+echo "Deleting topics.."
+kubectl -n test get KafkaTopic -o custom-columns=name:metadata.name | grep xjointest | while read -r topic ; do
+    kubectl delete KafkaTopic "$topic" -n test
 done

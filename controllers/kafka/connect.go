@@ -194,7 +194,7 @@ func (kafka *Kafka) verifyTaskIsRunning(task map[string]interface{}, connectorNa
 				return false, err
 			}
 
-			time.Sleep(1 * time.Second)
+			time.Sleep(2 * time.Second)
 
 			task, err = kafka.GetTaskStatus(connectorName, task["id"].(float64))
 		}
