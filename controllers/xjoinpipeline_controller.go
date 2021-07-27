@@ -168,7 +168,9 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 
 	// remove any stale dependencies
 	// if we're shutting down this removes all dependencies
-	setupErrors = append(setupErrors, i.deleteStaleDependencies()...)
+	if len(setupErrors) < 1 {
+		setupErrors = append(setupErrors, i.deleteStaleDependencies()...)
+	}
 
 	for _, err = range setupErrors {
 		i.error(err, "Error deleting stale dependency")
@@ -178,6 +180,12 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 	if i.Instance.GetState() == xjoin.STATE_REMOVED {
 		if len(setupErrors) > 0 && !i.parameters.Ephemeral.Bool() {
 			return reconcile.Result{}, setupErrors[0]
+		} else if len(setupErrors) > 0 && i.parameters.Ephemeral.Bool() {
+			//remove finalizer without deleting deps in ephemeral env when an error occurred loading configuration params
+			if err = i.removeFinalizer(); err != nil {
+				i.error(err, "Error removing finalizer")
+				return reconcile.Result{}, err
+			}
 		}
 
 		err = i.DeleteResourceForPipeline(i.Instance.Status.PipelineVersion)
