@@ -84,10 +84,13 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 	}
 
 	xjoinConfig, err := config.NewConfig(i.Instance, i.Client)
+	if xjoinConfig != nil {
+		i.parameters = xjoinConfig.Parameters
+	}
+
 	if err != nil {
 		return i, err
 	}
-	i.parameters = xjoinConfig.Parameters
 
 	i.GetRequeueInterval = func(Instance *ReconcileIteration) int {
 		return i.parameters.StandardInterval.Int()

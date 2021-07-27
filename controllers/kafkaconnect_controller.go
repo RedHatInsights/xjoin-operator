@@ -48,10 +48,12 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 	r.instance = instance
 
 	xjoinConfig, err := config.NewConfig(instance, r.Client)
+	if xjoinConfig != nil {
+		r.parameters = xjoinConfig.Parameters
+	}
 	if err != nil {
 		return err
 	}
-	r.parameters = xjoinConfig.Parameters
 
 	r.kafka = kafka.Kafka{
 		Namespace:     request.Namespace,
