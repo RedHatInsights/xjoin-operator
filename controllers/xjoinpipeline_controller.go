@@ -182,9 +182,12 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 			return reconcile.Result{}, setupErrors[0]
 		} else if len(setupErrors) > 0 && i.parameters.Ephemeral.Bool() {
 			//remove finalizer without deleting deps in ephemeral env when an error occurred loading configuration params
-			if err = i.removeFinalizer(); err != nil {
+			err = i.removeFinalizer()
+			if err != nil {
 				i.error(err, "Error removing finalizer")
 				return reconcile.Result{}, err
+			} else {
+				return reconcile.Result{}, nil
 			}
 		}
 
