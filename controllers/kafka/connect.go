@@ -9,6 +9,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"net/http"
 	"strings"
 	"text/template"
@@ -109,7 +110,8 @@ func (kafka *Kafka) newConnectorResource(
 			"name":      name,
 			"namespace": kafka.Parameters.ConnectClusterNamespace.String(),
 			"labels": map[string]interface{}{
-				LabelStrimziCluster: kafka.Parameters.ConnectCluster.String(),
+				LabelStrimziCluster:    kafka.Parameters.ConnectCluster.String(),
+				"resource.name.prefix": kafka.Parameters.ResourceNamePrefix.String(),
 			},
 		},
 		"spec": map[string]interface{}{
@@ -302,6 +304,30 @@ func (kafka *Kafka) CheckConnectorExistsViaREST(name string) (bool, error) {
 	}
 }
 
+func (kafka *Kafka) ListConnectorsREST() (connectors []string, err error) {
+	url := fmt.Sprintf(
+		"%s/connectors",
+		kafka.connectUrl())
+	res, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	var bodyMap []string
+	if res.StatusCode == 200 {
+		body, err := ioutil.ReadAll(res.Body)
+		err = json.Unmarshal(body, &bodyMap)
+		if err != nil {
+			return nil, err
+		}
+	} else if res.StatusCode != 404 {
+		return nil, errors.New("unable to get connectors")
+	}
+
+	return bodyMap, nil
+}
+
 func (kafka *Kafka) DeleteConnectorsForPipelineVersion(pipelineVersion string) error {
 	connectorsToDelete, err := kafka.ListConnectorNamesForPipelineVersion(pipelineVersion)
 	if err != nil {
@@ -364,6 +390,41 @@ func EmptyConnector() *unstructured.Unstructured {
 	connector := &unstructured.Unstructured{}
 	connector.SetGroupVersionKind(connectorGVK)
 	return connector
+}
+
+func (kafka *Kafka) DeleteAllConnectors() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	defer cancel()
+
+	connector := &unstructured.Unstructured{}
+	connector.SetGroupVersionKind(connectorsGVK)
+
+	err := kafka.Client.DeleteAllOf(
+		ctx,
+		connector,
+		client.InNamespace(kafka.Parameters.KafkaClusterNamespace.String()),
+		client.MatchingLabels{"resource.name.prefix": kafka.Parameters.ResourceNamePrefix.String()})
+
+	if err != nil {
+		return err
+	}
+
+	err = wait.PollImmediate(time.Second, time.Duration(120)*time.Second, func() (bool, error) {
+		connectors, err := kafka.ListConnectorsREST()
+		if err != nil {
+			return false, err
+		}
+		if len(connectors) > 0 {
+			return false, nil
+		} else {
+			return true, nil
+		}
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (kafka *Kafka) DeleteConnector(name string) error {

@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	. "github.com/redhatinsights/xjoin-operator/controllers"
 	. "github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
@@ -9,11 +10,16 @@ import (
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/test"
 	"github.com/spf13/viper"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"os/exec"
 	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"time"
 )
@@ -149,8 +155,6 @@ func Before() (*Iteration, error) {
 		Namespace: ns,
 	}
 
-	log.Info("Namespace: " + i.NamespacedName.Namespace)
-
 	i.XJoinReconciler = newXJoinReconciler(i.NamespacedName.Namespace, true)
 	i.ValidationReconciler = newValidationReconciler(i.NamespacedName.Namespace)
 	i.KafkaConnectReconciler = newKafkaConnectReconciler(i.NamespacedName.Namespace, true)
@@ -256,6 +260,52 @@ func After(i *Iteration) error {
 		}
 	}
 
-	cmd := exec.Command(test.GetRootDir() + "/dev/cleanup.projects.sh")
-	return cmd.Run()
+	err = i.KafkaClient.DeleteAllConnectors()
+	if err != nil {
+		return err
+	}
+
+	err = i.KafkaClient.DeleteAllTopics()
+	if err != nil {
+		return err
+	}
+
+	//remove pipeline finalizers
+	var xjoinPipelineGVK = schema.GroupVersionKind{
+		Group:   "xjoin.cloud.redhat.com",
+		Kind:    "XJoinPipeline",
+		Version: "v1alpha1",
+	}
+
+	pipelines := &unstructured.UnstructuredList{}
+	pipelines.SetGroupVersionKind(xjoinPipelineGVK)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	err = test.Client.List(ctx, pipelines, client.InNamespace(i.NamespacedName.Namespace))
+	if err != nil {
+		return err
+	}
+
+	for _, pipeline := range pipelines.Items {
+		pipeline.SetFinalizers([]string{})
+		err = test.Client.Update(ctx, &pipeline)
+		if err != nil {
+			return err
+		}
+	}
+
+	//delete namespace
+	namespace := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: i.NamespacedName.Namespace,
+		},
+	}
+
+	err = test.Client.Delete(context.Background(), &namespace, client.GracePeriodSeconds(0))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

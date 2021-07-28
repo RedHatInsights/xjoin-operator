@@ -327,7 +327,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(len(indices)).To(Equal(1))
 		})
 
-		//FIt
+		//FIt reliably fails
 		It("Removes stale topics", func() {
 			_, err := i.KafkaClient.CreateTopic("1", false)
 			Expect(err).ToNot(HaveOccurred())

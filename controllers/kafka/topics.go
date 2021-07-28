@@ -36,7 +36,8 @@ func (kafka *Kafka) CreateTopicByFullName(topicName string, dryRun bool) (*unstr
 			"name":      topicName,
 			"namespace": kafka.Parameters.KafkaClusterNamespace.String(),
 			"labels": map[string]interface{}{
-				"strimzi.io/cluster": kafka.Parameters.KafkaCluster.String(),
+				"strimzi.io/cluster":   kafka.Parameters.KafkaCluster.String(),
+				"resource.name.prefix": kafka.Parameters.ResourceNamePrefix.String(),
 			},
 		},
 		"spec": map[string]interface{}{
@@ -122,6 +123,42 @@ func (kafka *Kafka) CreateTopic(pipelineVersion string, dryRun bool) (*unstructu
 func (kafka *Kafka) DeleteTopicByPipelineVersion(pipelineVersion string) error {
 	err := kafka.DeleteTopic(kafka.TopicName(pipelineVersion))
 	return err
+}
+
+func (kafka *Kafka) DeleteAllTopics() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	defer cancel()
+
+	topic := &unstructured.Unstructured{}
+	topic.SetNamespace(kafka.Parameters.KafkaClusterNamespace.String())
+	topic.SetGroupVersionKind(topicsGroupVersionKind)
+
+	err := kafka.Client.DeleteAllOf(
+		ctx,
+		topic,
+		client.InNamespace(kafka.Parameters.KafkaClusterNamespace.String()),
+		client.MatchingLabels{"resource.name.prefix": kafka.Parameters.ResourceNamePrefix.String()},
+		client.GracePeriodSeconds(0))
+	if err != nil {
+		return err
+	}
+
+	err = wait.PollImmediate(time.Second, time.Duration(120)*time.Second, func() (bool, error) {
+		topics, err := kafka.ListTopicNamesForPrefix(kafka.Parameters.ResourceNamePrefix.String())
+		if err != nil {
+			return false, err
+		}
+		if len(topics) > 0 {
+			return false, nil
+		} else {
+			return true, nil
+		}
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (kafka *Kafka) DeleteTopic(topicName string) error {
