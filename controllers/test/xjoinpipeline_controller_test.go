@@ -1,7 +1,6 @@
 package test
 
 import (
-	"context"
 	"fmt"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
@@ -11,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -52,7 +52,6 @@ var _ = Describe("Pipeline operations", func() {
 			dbConnector, err := i.KafkaClient.GetConnector(
 				i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(dbConnector.GetLabels()["strimzi.io/cluster"]).To(Equal("connect"))
 			Expect(dbConnector.GetName()).To(Equal(ResourceNamePrefix + ".db." + pipeline.Status.PipelineVersion))
 			dbConnectorSpec := dbConnector.Object["spec"].(map[string]interface{})
 			Expect(dbConnectorSpec["class"]).To(Equal("io.debezium.connector.postgresql.PostgresConnector"))
@@ -80,7 +79,6 @@ var _ = Describe("Pipeline operations", func() {
 			esConnector, err := i.KafkaClient.GetConnector(
 				i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(esConnector.GetLabels()["strimzi.io/cluster"]).To(Equal("connect"))
 			Expect(esConnector.GetName()).To(Equal(ResourceNamePrefix + ".es." + pipeline.Status.PipelineVersion))
 			esConnectorSpec := esConnector.Object["spec"].(map[string]interface{})
 			Expect(esConnectorSpec["class"]).To(Equal("io.confluent.connect.elasticsearch.ElasticsearchSinkConnector"))
@@ -98,7 +96,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["transforms.flattenListString.sourceField"]).To(Equal("tags"))
 			Expect(esConnectorConfig["auto.create.indices.at.start"]).To(Equal(false))
 			Expect(esConnectorConfig["behavior.on.null.values"]).To(Equal("delete"))
-			Expect(esConnectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-http:9200"))
+			Expect(esConnectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-http.test.svc:9200"))
 			Expect(esConnectorConfig["errors.log.enable"]).To(Equal(true))
 			Expect(esConnectorConfig["max.retries"]).To(Equal(int64(8)))
 			Expect(esConnectorConfig["transforms.deleteIf.field"]).To(Equal("__deleted"))
@@ -123,7 +121,6 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["transforms.flattenList.type"]).To(Equal("com.redhat.insights.flattenlistsmt.FlattenList$Value"))
 			Expect(esConnectorConfig["transforms.flattenListString.delimiterJoin"]).To(Equal("/"))
 			Expect(esConnectorConfig["batch.size"]).To(Equal(int64(100)))
-			Expect(esConnectorConfig["connection.password"]).To(Equal("test1337"))
 			Expect(esConnectorConfig["transforms.deleteIf.value"]).To(Equal("true"))
 			Expect(esConnectorConfig["transforms.extractKey.type"]).To(Equal("org.apache.kafka.connect.transforms.ExtractField$Key"))
 			Expect(esConnectorConfig["transforms.flattenList.keys"]).To(Equal("namespace,key,value"))
@@ -252,7 +249,7 @@ var _ = Describe("Pipeline operations", func() {
 			hbiDBSecret, err := utils.FetchSecret(
 				test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			ctx, cancel := utils.DefaultContext()
 			defer cancel()
 			err = test.Client.Delete(ctx, hbiDBSecret)
 			Expect(err).ToNot(HaveOccurred())
@@ -270,7 +267,7 @@ var _ = Describe("Pipeline operations", func() {
 		It("Considers es secret name configuration", func() {
 			elasticSearchSecret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			ctx, cancel := utils.DefaultContext()
 			defer cancel()
 			err = test.Client.Delete(ctx, elasticSearchSecret)
 			Expect(err).ToNot(HaveOccurred())
@@ -327,7 +324,6 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(len(indices)).To(Equal(1))
 		})
 
-		//FIt reliably fails
 		It("Removes stale topics", func() {
 			_, err := i.KafkaClient.CreateTopic("1", false)
 			Expect(err).ToNot(HaveOccurred())
@@ -349,7 +345,7 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Removes stale replication slots", func() {
-			prefix := ResourceNamePrefix + ".withadot"
+			prefix := "prefix.withadot"
 			slot1 := database.ReplicationSlotPrefix(prefix) + "_1"
 			slot2 := database.ReplicationSlotPrefix(prefix) + "_2"
 			err := i.DbClient.RemoveReplicationSlotsForPrefix(prefix)
@@ -582,7 +578,7 @@ var _ = Describe("Pipeline operations", func() {
 			cm["debezium.connector.errors.log.enable"] = "false"
 
 			configMap.Data = cm
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			ctx, cancel := utils.DefaultContext()
 			defer cancel()
 			err = test.Client.Update(ctx, configMap)
 			Expect(err).ToNot(HaveOccurred())
@@ -613,7 +609,7 @@ var _ = Describe("Pipeline operations", func() {
 				fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s' IN ROLE insights;", tempUser, tempPassword))
 			secret.Data["db.user"] = []byte(tempUser)
 			secret.Data["db.password"] = []byte(tempPassword)
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			ctx, cancel := utils.DefaultContext()
 			defer cancel()
 			err = test.Client.Update(ctx, secret)
 
@@ -641,7 +637,7 @@ var _ = Describe("Pipeline operations", func() {
 
 			//change the secret hash by adding a new field
 			secret.Data["newfield"] = []byte("value")
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			ctx, cancel := utils.DefaultContext()
 			defer cancel()
 			err = test.Client.Update(ctx, secret)
 
@@ -655,7 +651,7 @@ var _ = Describe("Pipeline operations", func() {
 			connectorConfig := connectorSpec["config"].(map[string]interface{})
 			Expect(connectorConfig["connection.username"]).To(Equal("test"))
 			Expect(connectorConfig["connection.password"]).To(Equal("test1337"))
-			Expect(connectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-http:9200"))
+			Expect(connectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-http.test.svc:9200"))
 		})
 
 		It("Triggers refresh if index disappears", func() {
@@ -716,7 +712,7 @@ var _ = Describe("Pipeline operations", func() {
 
 	Describe("Spec changed", func() {
 		It("Triggers refresh if resource name prefix changes", func() {
-			err := i.TestSpecFieldChanged("ResourceNamePrefix", "xjointestupdated", reflect.String)
+			err := i.TestSpecFieldChanged("ResourceNamePrefix", "prefixupdated", reflect.String)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -760,7 +756,7 @@ var _ = Describe("Pipeline operations", func() {
 
 		It("Triggers refresh if HBIDBSecretName changes", func() {
 			newSecretName := "host-inventory-db-new"
-			err := i.CopySecret("host-inventory-db", newSecretName, i.NamespacedName.Namespace)
+			err := i.CopySecret("host-inventory-db", newSecretName, i.NamespacedName.Namespace, i.NamespacedName.Namespace)
 			Expect(err).ToNot(HaveOccurred())
 			err = i.TestSpecFieldChanged("HBIDBSecretName", newSecretName, reflect.String)
 			Expect(err).ToNot(HaveOccurred())
@@ -804,7 +800,6 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		//FIt
 		It("Artifacts removed when refreshing pipeline is removed", func() {
 			pipeline, err := i.CreateValidPipeline()
 			Expect(err).ToNot(HaveOccurred())
@@ -815,7 +810,7 @@ var _ = Describe("Pipeline operations", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["newfield"] = []byte("value")
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			ctx, cancel := utils.DefaultContext()
 			defer cancel()
 			err = test.Client.Update(ctx, secret)
 			pipeline, err = i.ExpectInitSyncUnknownReconcile()
@@ -838,7 +833,7 @@ var _ = Describe("Pipeline operations", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["db.host"] = []byte("invalidurl")
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			ctx, cancel := utils.DefaultContext()
 			defer cancel()
 			err = test.Client.Update(ctx, secret)
 
@@ -867,12 +862,11 @@ var _ = Describe("Pipeline operations", func() {
 	})
 
 	Describe("Failures", func() {
-		//FIt
 		It("Fails if ElasticSearch secret is misconfigured", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["endpoint"] = []byte("invalidurl")
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			ctx, cancel := utils.DefaultContext()
 			defer cancel()
 			err = test.Client.Update(ctx, secret)
 
@@ -881,17 +875,13 @@ var _ = Describe("Pipeline operations", func() {
 			err = i.ReconcileXJoinWithError()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(HavePrefix(`unsupported protocol scheme`))
-
-			recorder, _ := i.XJoinReconciler.Recorder.(*record.FakeRecorder)
-			Expect(recorder.Events).To(HaveLen(3))
 		})
 
-		//FIt
 		It("Fails if HBI DB secret is misconfigured", func() {
 			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["db.host"] = []byte("invalidurl")
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+			ctx, cancel := utils.DefaultContext()
 			defer cancel()
 			err = test.Client.Update(ctx, secret)
 
@@ -900,23 +890,14 @@ var _ = Describe("Pipeline operations", func() {
 			err = i.ReconcileXJoinWithError()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(HavePrefix(`error connecting to invalidurl`))
-
-			recorder, _ := i.XJoinReconciler.Recorder.(*record.FakeRecorder)
-			Expect(recorder.Events).To(HaveLen(1))
 		})
 
 		It("Fails if the unable to create Kafka Topic", func() {
-			cm := map[string]string{
-				"kafka.cluster.namespace": "invalid",
-			}
-			err := i.CreateConfigMap("xjoin", cm)
-			Expect(err).ToNot(HaveOccurred())
-
 			namespace := "invalid"
 			spec := xjoin.XJoinPipelineSpec{
 				KafkaClusterNamespace: &namespace,
 			}
-			err = i.CreatePipeline(&spec)
+			err := i.CreatePipeline(&spec)
 			Expect(err).ToNot(HaveOccurred())
 			err = i.ReconcileXJoinWithError()
 			Expect(err).To(HaveOccurred())
@@ -989,13 +970,8 @@ var _ = Describe("Pipeline operations", func() {
 	})
 
 	Describe("Deviation", func() {
-		//FIt
 		It("Restarts failed ES connector task without a refresh", func() {
 			serviceName := "xjoin-elasticsearch-es-default-new"
-			defer func(i *Iteration, name string, namespace string, replicas int) {
-				err := i.ScaleDeployment(name, namespace, replicas)
-				Expect(err).ToNot(HaveOccurred())
-			}(i, "strimzi-cluster-operator", "strimzi", 1)
 			defer func(i *Iteration, serviceName string) {
 				err := i.DeleteService(serviceName)
 				Expect(err).ToNot(HaveOccurred())
@@ -1008,8 +984,12 @@ var _ = Describe("Pipeline operations", func() {
 			err = i.WaitForConnectorToBeCreated(pipeline.Status.ActiveESConnectorName)
 			Expect(err).ToNot(HaveOccurred())
 
-			//scale down strimzi operator deployment
-			err = i.ScaleDeployment("strimzi-cluster-operator", "strimzi", 0)
+			//pause connector reconciliation, so it can be modified to an invalid state
+			defer func(i *Iteration, connectorName string) {
+				err := i.ResumeConnectorReconciliation(connectorName)
+				Expect(err).ToNot(HaveOccurred())
+			}(i, pipeline.Status.ActiveESConnectorName)
+			err = i.PauseConnectorReconciliation(pipeline.Status.ActiveESConnectorName)
 			Expect(err).ToNot(HaveOccurred())
 
 			//update es connector config with invalid url
@@ -1026,7 +1006,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			//give the service time to be fully created
-			time.Sleep(15 * time.Second)
+			time.Sleep(5 * time.Second)
 
 			//reconcile
 			pipeline, err = i.ExpectValidReconcile()
@@ -1043,17 +1023,12 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.ActivePipelineVersion).To(Equal(activePipelineVersion))
 		})
 
-		//FIt
 		It("Restarts failed DB connector task without a refresh", func() {
 			dbHost := "host-inventory-db-new"
 			defer func(i *Iteration, serviceName string) {
 				err := i.DeleteService(serviceName)
 				Expect(err).ToNot(HaveOccurred())
 			}(i, dbHost)
-			defer func(i *Iteration, name string, namespace string, replicas int) {
-				err := i.ScaleDeployment(name, namespace, replicas)
-				Expect(err).ToNot(HaveOccurred())
-			}(i, "strimzi-cluster-operator", "strimzi", 1)
 			defer test.ForwardPorts()
 
 			pipeline, err := i.CreateValidPipeline()
@@ -1063,8 +1038,12 @@ var _ = Describe("Pipeline operations", func() {
 			err = i.WaitForConnectorToBeCreated(pipeline.Status.ActiveDebeziumConnectorName)
 			Expect(err).ToNot(HaveOccurred())
 
-			//scale down strimzi operator deployment
-			err = i.ScaleDeployment("strimzi-cluster-operator", "strimzi", 0)
+			//pause connector reconciliation, so it can be modified to an invalid state
+			defer func(i *Iteration, connectorName string) {
+				err := i.ResumeConnectorReconciliation(connectorName)
+				Expect(err).ToNot(HaveOccurred())
+			}(i, pipeline.Status.ActiveDebeziumConnectorName)
+			err = i.PauseConnectorReconciliation(pipeline.Status.ActiveDebeziumConnectorName)
 			Expect(err).ToNot(HaveOccurred())
 
 			//create the service, do the PUT, then delete the service
@@ -1081,7 +1060,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			//give the connector time to realize it can't connect
-			time.Sleep(20 * time.Second)
+			time.Sleep(10 * time.Second)
 			err = i.KafkaClient.RestartTaskForConnector(pipeline.Status.ActiveDebeziumConnectorName, 0)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -1094,7 +1073,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			//give the service time to be fully created
-			time.Sleep(15 * time.Second)
+			time.Sleep(5 * time.Second)
 
 			//reconcile
 			pipeline, err = i.ExpectValidReconcile()
@@ -1127,13 +1106,8 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err.Error()).To(HaveSuffix("status"))
 		})
 
-		//FIt
 		It("Performs a refresh when unable to successfully restart failed connector task", func() {
 			serviceName := "xjoin-elasticsearch-es-default-new"
-			defer func(i *Iteration, name string, namespace string, replicas int) {
-				err := i.ScaleDeployment(name, namespace, replicas)
-				Expect(err).ToNot(HaveOccurred())
-			}(i, "strimzi-cluster-operator", "strimzi", 1)
 
 			cm := map[string]string{
 				"init.validation.attempts.threshold": "1",
@@ -1148,12 +1122,13 @@ var _ = Describe("Pipeline operations", func() {
 			//give connect time to create the connectors
 			time.Sleep(15 * time.Second)
 
-			//scale down strimzi operator deployment
-			err = i.ScaleDeployment("strimzi-cluster-operator", "strimzi", 0)
+			//pause reconciliation of ES connector
+			defer func(i *Iteration, connectorName string) {
+				err := i.ResumeConnectorReconciliation(connectorName)
+				Expect(err).ToNot(HaveOccurred())
+			}(i, pipeline.Status.ActiveESConnectorName)
+			err = i.PauseConnectorReconciliation(pipeline.Status.ActiveESConnectorName)
 			Expect(err).ToNot(HaveOccurred())
-
-			//give strimzi time to scale down
-			time.Sleep(10 * time.Second)
 
 			//update es connector config with invalid url
 			err = i.SetESConnectorURL(
@@ -1182,7 +1157,6 @@ var _ = Describe("Pipeline operations", func() {
 	})
 
 	Describe("Kafka Topic", func() {
-		//FIt
 		It("Waits for the Kafka topic to be ready before creating connectors", func() {
 			err := i.CreatePipeline()
 			Expect(err).ToNot(HaveOccurred())
@@ -1211,6 +1185,43 @@ var _ = Describe("Pipeline operations", func() {
 			err = i.ReconcileXJoinNonTestWithError()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(HavePrefix(`timed out waiting for Kafka Topic`))
+		})
+
+		It("Testing the failures", func() {
+			for j := 0; j < 1; j++ {
+				log.Info("ITERATION: " + strconv.Itoa(j))
+
+				version := strconv.FormatInt(time.Now().UnixNano(), 10)
+
+				log.Info("CREATING TOPIC " + version)
+				_, err := i.KafkaClient.CreateTopic(version, false)
+				if err != nil {
+					return
+				}
+
+				//log.Info("CREATING DB CONNECTOR" + version)
+				//_, err := i.KafkaClient.CreateDebeziumConnector(version, false)
+				//Expect(err).ToNot(HaveOccurred())
+
+				log.Info("CREATING ES CONNECTOR" + version)
+				_, err = i.KafkaClient.CreateESConnector(version, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				//log.Info("DELETING DB CONNECTOR" + version)
+				//err = i.KafkaClient.DeleteConnector("xjointest.db." + version)
+				//Expect(err).ToNot(HaveOccurred())
+
+				log.Info("DELETING ES CONNECTOR" + version)
+				err = i.KafkaClient.DeleteConnector("xjointest.es." + version)
+				Expect(err).ToNot(HaveOccurred())
+
+				log.Info("DELETING TOPIC" + version)
+				err = i.KafkaClient.DeleteTopicByPipelineVersion(version)
+				Expect(err).ToNot(HaveOccurred())
+
+				time.Sleep(100 * time.Millisecond)
+
+			}
 		})
 	})
 })

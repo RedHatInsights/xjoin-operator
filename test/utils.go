@@ -1,8 +1,8 @@
 package test
 
 import (
-	"context"
 	"fmt"
+	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"strconv"
 	"time"
 
@@ -13,7 +13,7 @@ import (
 func UniqueNamespace(prefix string) (namespace string, err error) {
 	namespace = fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err = Client.Create(ctx, ns)
 	return

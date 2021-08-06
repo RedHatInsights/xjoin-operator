@@ -40,6 +40,7 @@ type Parameters struct {
 	ElasticSearchMaxBufferedRecords      Parameter
 	ElasticSearchLingerMS                Parameter
 	ElasticSearchSecretName              Parameter
+	ElasticSearchNamespace               Parameter
 	ElasticSearchSecretVersion           Parameter
 	ElasticSearchPipelineTemplate        Parameter
 	ElasticSearchIndexReplicas           Parameter
@@ -101,7 +102,7 @@ func NewXJoinConfiguration() Parameters {
 		ConnectCluster: Parameter{
 			SpecKey:      "ConnectCluster",
 			ConfigMapKey: "connect.cluster",
-			DefaultValue: "xjoin-kafka-connect-strimzi",
+			DefaultValue: "connect",
 			Type:         reflect.String,
 		},
 		ConnectClusterNamespace: Parameter{
@@ -122,10 +123,16 @@ func NewXJoinConfiguration() Parameters {
 			DefaultValue: "xjoin-elasticsearch",
 			Type:         reflect.String,
 		},
+		ElasticSearchNamespace: Parameter{
+			SpecKey:      "ElasticSearchNamespace",
+			ConfigMapKey: "elasticsearch.namespace",
+			DefaultValue: "test",
+			Type:         reflect.String,
+		},
 		KafkaCluster: Parameter{
 			SpecKey:      "KafkaCluster",
 			ConfigMapKey: "kafka.cluster",
-			DefaultValue: "xjoin-kafka-cluster",
+			DefaultValue: "kafka",
 			Type:         reflect.String,
 		},
 		KafkaClusterNamespace: Parameter{

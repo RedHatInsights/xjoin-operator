@@ -10,13 +10,22 @@ fi
 
 echo "Using namespace $PROJECT_NAME"
 
-kubectl port-forward svc/host-inventory-db 5432:5432 -n "$PROJECT_NAME" >/dev/null 2>&1 &
-kubectl port-forward services/connect-connect-api 8083:8083 -n "$PROJECT_NAME" >/dev/null 2>&1 &
-kubectl port-forward svc/xjoin-elasticsearch-es-http 9200:9200 -n "$PROJECT_NAME" >/dev/null 2>&1 &
-kubectl port-forward svc/kafka-kafka-bootstrap 9092:9092 -n "$PROJECT_NAME" >/dev/null 2>&1 &
-kubectl port-forward svc/kafka-kafka-bootstrap 29092:9092 -n "$PROJECT_NAME" >/dev/null 2>&1 &
-kubectl port-forward svc/xjoin-search 4000:4000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
-kubectl port-forward svc/host-inventory-service 8000:8000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+KAFKA_NAME=$(kubectl get kafka -o custom-columns=:metadata.name -n "$PROJECT_NAME" | xargs)
+CONNECT_NAME=$(kubectl get kafkaconnect -o custom-columns=:metadata.name -n "$PROJECT_NAME" | xargs)
+KAFKA_SVC="svc/$KAFKA_NAME-kafka-bootstrap"
+CONNECT_SVC="svc/$CONNECT_NAME-connect-api"
+ELASTICSEARCH_SVC="svc/xjoin-elasticsearch-es-http"
+HBI_DB_SVC="svc/host-inventory-db"
+XJOIN_SVC="svc/xjoin-search"
+HBI_SVC="svc/host-inventory-service"
+
+kubectl port-forward "$HBI_DB_SVC" 5432:5432 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward "$CONNECT_SVC" 8083:8083 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward "$ELASTICSEARCH_SVC" 9200:9200 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward "$KAFKA_SVC" 9092:9092 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward "$KAFKA_SVC" 29092:9092 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward "$XJOIN_SVC" 4000:4000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward "$HBI_SVC" 8000:8000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 
 
 pgrep -fla "kubectl port-forward"

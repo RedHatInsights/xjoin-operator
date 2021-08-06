@@ -1,7 +1,6 @@
 package config
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -13,7 +12,6 @@ import (
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
-	"time"
 )
 
 var log = logger.NewLogger("config")
@@ -147,22 +145,33 @@ func (config *Config) buildEphemeralConfig() (err error) {
 	connect := &unstructured.UnstructuredList{}
 	connect.SetGroupVersionKind(connectGVK)
 
-	err = config.Parameters.ConnectClusterNamespace.SetValue(config.instance.Namespace)
-	if err != nil {
-		return
+	if config.instance.Spec.ConnectClusterNamespace == nil {
+		err = config.Parameters.ConnectClusterNamespace.SetValue(config.instance.Namespace)
+		if err != nil {
+			return
+		}
 	}
 
-	err = config.Parameters.KafkaClusterNamespace.SetValue(config.instance.Namespace)
-	if err != nil {
-		return
+	if config.instance.Spec.KafkaClusterNamespace == nil {
+		err = config.Parameters.KafkaClusterNamespace.SetValue(config.instance.Namespace)
+		if err != nil {
+			return
+		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	if config.instance.Spec.ElasticSearchNamespace == nil {
+		err = config.Parameters.ElasticSearchNamespace.SetValue(config.instance.Namespace)
+		if err != nil {
+			return
+		}
+	}
+
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err = config.client.List(
 		ctx,
 		connect,
-		client.InNamespace(config.instance.Namespace))
+		client.InNamespace(config.Parameters.ConnectClusterNamespace.String()))
 	if err != nil {
 		return
 	}
@@ -188,7 +197,7 @@ func (config *Config) buildEphemeralConfig() (err error) {
 	err = config.client.List(
 		ctx,
 		kafka,
-		client.InNamespace(config.instance.Namespace))
+		client.InNamespace(config.Parameters.KafkaClusterNamespace.String()))
 	if err != nil {
 		return
 	}
@@ -203,7 +212,7 @@ func (config *Config) buildEphemeralConfig() (err error) {
 	}
 
 	err = config.Parameters.ElasticSearchURL.SetValue(
-		"http://xjoin-elasticsearch-es-default." + config.instance.Namespace + ".svc:9200")
+		"http://xjoin-elasticsearch-es-default." + config.Parameters.ElasticSearchNamespace.String() + ".svc:9200")
 	if err != nil {
 		return
 	}
@@ -213,7 +222,7 @@ func (config *Config) buildEphemeralConfig() (err error) {
 		return
 	}
 
-	esSecret, err := utils.FetchSecret(config.client, config.instance.Namespace, "xjoin-elasticsearch-es-elastic-user")
+	esSecret, err := utils.FetchSecret(config.client, config.Parameters.ElasticSearchNamespace.String(), "xjoin-elasticsearch-es-elastic-user")
 	if err != nil {
 		return err
 	}

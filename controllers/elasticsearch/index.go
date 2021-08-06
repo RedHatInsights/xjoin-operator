@@ -2,13 +2,12 @@ package elasticsearch
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"io/ioutil"
 	"strings"
 	"text/template"
-	"time"
 )
 
 func (es *ElasticSearch) IndexExists(indexName string) (bool, error) {
@@ -51,7 +50,7 @@ func (es *ElasticSearch) CreateIndex(pipelineVersion string) error {
 		Body:  strings.NewReader(indexTemplateParsed),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	res, err := req.Do(ctx, es.Client)
 
@@ -91,7 +90,7 @@ func (es *ElasticSearch) ListIndices() ([]string, error) {
 		Index:  []string{es.resourceNamePrefix + ".*"},
 		H:      []string{"index"},
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	res, err := req.Do(ctx, es.Client)
 	if err != nil {
@@ -120,7 +119,7 @@ func (es *ElasticSearch) CountIndex(index string) (int, error) {
 		Index: []string{index},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	res, err := req.Do(ctx, es.Client)
 	if err != nil {

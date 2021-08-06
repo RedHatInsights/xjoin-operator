@@ -2,7 +2,6 @@ package test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -172,7 +171,7 @@ func (i *Iteration) SetESConnectorURL(esUrl string, connectorName string) error 
 
 func (i *Iteration) DeleteService(serviceName string) error {
 	service := &corev1.Service{}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 
 	err := i.XJoinReconciler.Client.Get(
@@ -187,7 +186,7 @@ func (i *Iteration) DeleteService(serviceName string) error {
 
 func (i *Iteration) CreateDBService(serviceName string) error {
 	existingService := &corev1.Service{}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 
 	err := i.XJoinReconciler.Client.Get(
@@ -208,7 +207,7 @@ func (i *Iteration) CreateDBService(serviceName string) error {
 
 func (i *Iteration) CreateESService(serviceName string) error {
 	service := &corev1.Service{}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 
 	err := i.XJoinReconciler.Client.Get(
@@ -236,7 +235,7 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 	//get existing strimzi deployment
 	deployment := &unstructured.Unstructured{}
 	deployment.SetGroupVersionKind(deploymentGVK)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err := i.XJoinReconciler.Client.Get(
 		ctx, client.ObjectKey{Name: name, Namespace: namespace}, deployment)
@@ -249,7 +248,7 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 	spec := obj["spec"].(map[string]interface{})
 	spec["replicas"] = replicas
 
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel = utils.DefaultContext()
 	defer cancel()
 	err = i.KafkaClient.Client.Update(ctx, deployment)
 	if err != nil {
@@ -258,10 +257,10 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 
 	//wait for deployment to be ready if replicas > 0
 	if replicas > 0 {
-		err = wait.PollImmediate(time.Second, time.Duration(120)*time.Second, func() (bool, error) {
+		err = wait.PollImmediate(time.Second, time.Duration(150)*time.Second, func() (bool, error) {
 			pods := &corev1.PodList{}
 
-			ctx, cancel = context.WithTimeout(context.Background(), time.Second*60)
+			ctx, cancel = utils.DefaultContext()
 			defer cancel()
 
 			labels := client.MatchingLabels{}
@@ -289,10 +288,10 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 			return err
 		}
 	} else {
-		err = wait.PollImmediate(time.Second, time.Duration(120)*time.Second, func() (bool, error) {
+		err = wait.PollImmediate(time.Second, time.Duration(150)*time.Second, func() (bool, error) {
 			pods := &corev1.PodList{}
 
-			ctx, cancel = context.WithTimeout(context.Background(), time.Second*60)
+			ctx, cancel = utils.DefaultContext()
 			defer cancel()
 
 			labels := client.MatchingLabels{}
@@ -324,7 +323,7 @@ func (i *Iteration) EditESConnectorToBeInvalid(pipelineVersion string) error {
 	config := spec["config"].(map[string]interface{})
 	config["connection.url"] = "invalid"
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err = i.KafkaClient.Client.Update(ctx, connector)
 	return err
@@ -348,7 +347,7 @@ func (i *Iteration) TestSpecFieldChangedForPipeline(
 		field.Set(reflect.ValueOf(&val))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err := test.Client.Update(ctx, pipeline)
 	if err != nil {
@@ -373,12 +372,12 @@ func (i *Iteration) TestSpecFieldChanged(fieldName string, fieldValue interface{
 	return i.TestSpecFieldChangedForPipeline(pipeline, fieldName, fieldValue, valueType)
 }
 
-func (i *Iteration) CopySecret(existingSecretName string, newSecretName string, namespace string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+func (i *Iteration) CopySecret(existingSecretName string, newSecretName string, existingNamespace string, newNamespace string) error {
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 
 	secret := &corev1.Secret{}
-	err := test.Client.Get(ctx, client.ObjectKey{Name: existingSecretName, Namespace: namespace}, secret)
+	err := test.Client.Get(ctx, client.ObjectKey{Name: existingSecretName, Namespace: existingNamespace}, secret)
 	if err != nil {
 		return err
 	}
@@ -387,7 +386,7 @@ func (i *Iteration) CopySecret(existingSecretName string, newSecretName string, 
 	newSecret.Name = newSecretName
 	newSecret.Data = secret.Data
 	newSecret.Data["newkey"] = nil
-	newSecret.Namespace = namespace
+	newSecret.Namespace = newNamespace
 
 	return test.Client.Create(ctx, newSecret)
 }
@@ -457,7 +456,7 @@ func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename st
 	}
 
 	// Perform the request with the client.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	res, err := req.Do(ctx, i.EsClient.Client)
 	if err != nil {
@@ -531,7 +530,7 @@ func (i *Iteration) CreateConfigMap(name string, data map[string]string) error {
 		Data: data,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	return test.Client.Create(ctx, configMap)
 }
@@ -550,7 +549,7 @@ func (i *Iteration) CreateESSecret(name string) error {
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	return test.Client.Create(ctx, secret)
 }
@@ -571,7 +570,7 @@ func (i *Iteration) CreateDbSecret(name string) error {
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	return test.Client.Create(ctx, secret)
 }
@@ -777,7 +776,7 @@ func (i *Iteration) CreateValidPipeline(specs ...*xjoin.XJoinPipelineSpec) (*xjo
 }
 
 func (i *Iteration) DeletePipeline(pipeline *xjoin.XJoinPipeline) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err := test.Client.Delete(ctx, pipeline)
 	if err != nil {
@@ -798,21 +797,42 @@ func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) error {
 		return errors.New("only one spec is allowed")
 	}
 
+	namespace := "test"
+	connectCluster := "connect"
+	kafkaCluster := "kafka"
 	if len(specs) == 1 {
 		spec = specs[0]
 		if specs[0].ResourceNamePrefix == nil {
 			specs[0].ResourceNamePrefix = &ResourceNamePrefix
 		}
+
+		if specs[0].ConnectCluster == nil {
+			specs[0].ConnectCluster = &connectCluster
+		}
+
+		if specs[0].ConnectClusterNamespace == nil {
+			specs[0].ConnectClusterNamespace = &namespace
+		}
+
+		if specs[0].KafkaCluster == nil {
+			specs[0].KafkaCluster = &kafkaCluster
+		}
+
+		if specs[0].KafkaClusterNamespace == nil {
+			specs[0].KafkaClusterNamespace = &namespace
+		}
+
+		if specs[0].ElasticSearchNamespace == nil {
+			specs[0].ElasticSearchNamespace = &namespace
+		}
 	} else {
-		namespace := "test"
-		connectCluster := "connect"
-		kafkaCluster := "kafka"
 		spec = &xjoin.XJoinPipelineSpec{
 			ResourceNamePrefix:      &ResourceNamePrefix,
-			ConnectCluster:          &connectCluster,
 			ConnectClusterNamespace: &namespace,
-			KafkaCluster:            &kafkaCluster,
 			KafkaClusterNamespace:   &namespace,
+			ConnectCluster:          &connectCluster,
+			KafkaCluster:            &kafkaCluster,
+			ElasticSearchNamespace:  &namespace,
 		}
 	}
 
@@ -824,7 +844,7 @@ func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) error {
 		Spec: *spec,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err := test.Client.Create(ctx, &pipeline)
 	if err != nil {
@@ -1044,7 +1064,7 @@ func (i *Iteration) fullValidationFailureTest(hbiFileName string, esFileName str
 func (i *Iteration) getConnectPodName() (string, error) {
 	pods := &corev1.PodList{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 
 	labels := client.MatchingLabels{}
@@ -1070,7 +1090,7 @@ func (i *Iteration) getConnectPodName() (string, error) {
 }
 
 func (i *Iteration) WaitForConnectorToBeCreated(connectorName string) error {
-	attempts := 20
+	attempts := 30
 
 	for j := 0; j < attempts; j++ {
 		exists, err := i.KafkaClient.CheckConnectorExistsViaREST(connectorName)
@@ -1090,7 +1110,7 @@ func (i *Iteration) WaitForConnectorToBeCreated(connectorName string) error {
 
 func (i *Iteration) WaitForConnectorTaskToFail(connectorName string) error {
 	isFailed := false
-	for j := 0; j < 20; j++ {
+	for j := 0; j < 60; j++ {
 		tasks, err := i.KafkaClient.ListConnectorTasks(connectorName)
 		if err != nil {
 			return err
@@ -1110,4 +1130,36 @@ func (i *Iteration) WaitForConnectorTaskToFail(connectorName string) error {
 	}
 
 	return nil
+}
+
+func (i *Iteration) PauseConnectorReconciliation(connectorName string) error {
+	return i.setConnectorReconciliationPause(connectorName, "true")
+}
+
+func (i *Iteration) ResumeConnectorReconciliation(connectorName string) (err error) {
+	return i.setConnectorReconciliationPause(connectorName, "false")
+}
+
+func (i *Iteration) setConnectorReconciliationPause(connectorName string, pause string) (err error) {
+	ctx, cancel := utils.DefaultContext()
+	defer cancel()
+
+	//strimzi might update the connector between the GET/PUT calls, so retry a few times
+	for j := 0; j < 5; j++ {
+		connector, err := i.KafkaClient.GetConnector(connectorName)
+		if err != nil {
+			return err
+		}
+		annotations := make(map[string]interface{})
+		annotations["strimzi.io/pause-reconciliation"] = pause
+		metadata := connector.Object["metadata"].(map[string]interface{})
+		metadata["annotations"] = annotations
+		err = test.Client.Update(ctx, connector)
+		if err == nil {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	return err
 }

@@ -2,14 +2,13 @@ package elasticsearch
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"strconv"
 	"strings"
 	"text/template"
-	"time"
 )
 
 func (es *ElasticSearch) ESPipelineName(pipelineVersion string) string {
@@ -21,7 +20,7 @@ func (es *ElasticSearch) ESPipelineExists(pipelineVersion string) (bool, error) 
 		DocumentID: es.ESPipelineName(pipelineVersion),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	res, err := req.Do(ctx, es.Client)
 	if err != nil {
@@ -43,7 +42,7 @@ func (es *ElasticSearch) GetESPipeline(pipelineVersion string) (map[string]inter
 		DocumentID: es.ESPipelineName(pipelineVersion),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	res, err := req.Do(ctx, es.Client)
 	if err != nil {
@@ -96,7 +95,7 @@ func (es *ElasticSearch) ListESPipelines(pipelineIds ...string) ([]string, error
 		req.DocumentID = "*" + pipelineIds[0] + "*"
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	res, err := req.Do(ctx, es.Client)
 	if err != nil {

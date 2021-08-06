@@ -1,9 +1,9 @@
 package kafka
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -16,13 +16,13 @@ import (
 var topicGroupVersionKind = schema.GroupVersionKind{
 	Group:   "kafka.strimzi.io",
 	Kind:    "KafkaTopic",
-	Version: "v1alpha1",
+	Version: "v1beta2",
 }
 
 var topicsGroupVersionKind = schema.GroupVersionKind{
 	Group:   "kafka.strimzi.io",
-	Kind:    "KafkaTopicList",
-	Version: "v1alpha1",
+	Kind:    "KafkaTopic",
+	Version: "v1beta2",
 }
 
 func (kafka *Kafka) TopicName(pipelineVersion string) string {
@@ -60,7 +60,7 @@ func (kafka *Kafka) CreateTopicByFullName(topicName string, dryRun bool) (*unstr
 		return topic, nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err := kafka.Client.Create(ctx, topic)
 	if err != nil {
@@ -126,7 +126,7 @@ func (kafka *Kafka) DeleteTopicByPipelineVersion(pipelineVersion string) error {
 }
 
 func (kafka *Kafka) DeleteAllTopics() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 
 	topic := &unstructured.Unstructured{}
@@ -143,7 +143,8 @@ func (kafka *Kafka) DeleteAllTopics() error {
 		return err
 	}
 
-	err = wait.PollImmediate(time.Second, time.Duration(120)*time.Second, func() (bool, error) {
+	log.Info("Waiting for topics to be deleted")
+	err = wait.PollImmediate(time.Second, time.Duration(300)*time.Second, func() (bool, error) {
 		topics, err := kafka.ListTopicNamesForPrefix(kafka.Parameters.ResourceNamePrefix.String())
 		if err != nil {
 			return false, err
@@ -171,7 +172,7 @@ func (kafka *Kafka) DeleteTopic(topicName string) error {
 	topic.SetNamespace(kafka.Parameters.KafkaClusterNamespace.String())
 	topic.SetGroupVersionKind(topicGroupVersionKind)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	if err := kafka.Client.Delete(ctx, topic); err != nil && !k8errors.IsNotFound(err) {
 		return err
@@ -184,7 +185,7 @@ func (kafka *Kafka) ListTopicNamesForPrefix(resourceNamePrefix string) ([]string
 	topics := &unstructured.UnstructuredList{}
 	topics.SetGroupVersionKind(topicsGroupVersionKind)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err := kafka.Client.List(
 		ctx, topics, client.InNamespace(kafka.Parameters.KafkaClusterNamespace.String()))
@@ -205,7 +206,7 @@ func (kafka *Kafka) ListTopicNamesForPipelineVersion(pipelineVersion string) ([]
 	topics := &unstructured.UnstructuredList{}
 	topics.SetGroupVersionKind(topicsGroupVersionKind)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err := kafka.Client.List(
 		ctx, topics, client.InNamespace(kafka.Parameters.KafkaClusterNamespace.String()))
@@ -225,7 +226,7 @@ func (kafka *Kafka) ListTopicNamesForPipelineVersion(pipelineVersion string) ([]
 func (kafka *Kafka) GetTopic(topicName string) (*unstructured.Unstructured, error) {
 	topic := &unstructured.Unstructured{}
 	topic.SetGroupVersionKind(topicGroupVersionKind)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err := kafka.Client.Get(
 		ctx,

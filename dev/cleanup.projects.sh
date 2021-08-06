@@ -17,21 +17,21 @@ kubectl get namespaces -o custom-columns=name:metadata.name | grep xjointest | w
     kubectl delete namespace "$namespace"
 done
 
-kubectl get namespaces -o custom-columns=name:metadata.name | grep test | while read -r project ; do
-    echo "$project"
-
-    kubectl delete KafkaConnector --all -n "$project"
-    sleep 1
-    kubectl delete KafkaTopic --all -n "$project"
-    sleep 1
-done
-
-echo "Deleting indices..."
-curl -u "xjoin:xjoin1337" "http://localhost:9200/_cat/indices/xjointest*?h=index" | while read -r index ; do
-  curl -u "xjoin:xjoin1337" -X DELETE "http://localhost:9200/$index"
-done
-
-echo "Deleting topics.."
-kubectl -n test get KafkaTopic -o custom-columns=name:metadata.name | grep xjointest | while read -r topic ; do
-    kubectl delete KafkaTopic "$topic" -n test
-done
+#kubectl get namespaces -o custom-columns=name:metadata.name | grep test | while read -r project ; do
+#    echo "$project"
+#
+#    kubectl delete KafkaConnector --all -n "$project"
+#    sleep 1
+#    kubectl delete KafkaTopic --all -n "$project"
+#    sleep 1
+#done
+#
+#echo "Deleting indices..."
+#curl -u "xjoin:xjoin1337" "http://localhost:9200/_cat/indices/xjointest*?h=index" | while read -r index ; do
+#  curl -u "xjoin:xjoin1337" -X DELETE "http://localhost:9200/$index"
+#done
+#
+#echo "Deleting topics.."
+#kubectl -n test get KafkaTopic -o custom-columns=name:metadata.name | grep xjointest | while read -r topic ; do
+#    kubectl delete KafkaTopic "$topic" -n test
+#done

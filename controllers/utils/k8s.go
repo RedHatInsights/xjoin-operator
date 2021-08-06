@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -12,14 +11,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
 )
 
 var log = logger.NewLogger("k8s")
 
 func FetchXJoinPipeline(c client.Client, namespacedName types.NamespacedName) (*xjoin.XJoinPipeline, error) {
 	instance := &xjoin.XJoinPipeline{}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := DefaultContext()
 	defer cancel()
 	err := c.Get(ctx, namespacedName, instance)
 	return instance, err
@@ -32,7 +30,7 @@ func FetchXJoinPipelinesByNamespacedName(c client.Client, name string, namespace
 	}
 
 	list := &xjoin.XJoinPipelineList{}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := DefaultContext()
 	defer cancel()
 	err := c.List(ctx, list, nameField)
 	return list, err
@@ -40,7 +38,7 @@ func FetchXJoinPipelinesByNamespacedName(c client.Client, name string, namespace
 
 func FetchXJoinPipelines(c client.Client) (*xjoin.XJoinPipelineList, error) {
 	list := &xjoin.XJoinPipelineList{}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := DefaultContext()
 	defer cancel()
 	err := c.List(ctx, list)
 	return list, err
@@ -48,7 +46,7 @@ func FetchXJoinPipelines(c client.Client) (*xjoin.XJoinPipelineList, error) {
 
 func FetchConfigMap(c client.Client, namespace string, name string) (*corev1.ConfigMap, error) {
 	configMap := &corev1.ConfigMap{}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := DefaultContext()
 	defer cancel()
 
 	err := c.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, configMap)
@@ -95,7 +93,7 @@ func ConfigMapHash(cm *corev1.ConfigMap, ignoredKeys ...string) (string, error) 
 
 func FetchSecret(c client.Client, namespace string, name string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := DefaultContext()
 	defer cancel()
 	err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, secret)
 

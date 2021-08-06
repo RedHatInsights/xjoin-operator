@@ -25,16 +25,18 @@ cd "$CURRENT_DIR" || exit 1
 
 # clowder CRDs
 print_start_message "Installing Clowder CRDs"
-kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/0.16.0/clowder-manifest-0.16.0.yaml --validate=false
+kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/v0.18.1/clowder-manifest-v0.18.1.yaml --validate=false
 
 # project and secrets
 print_start_message "Setting up pull secrets"
+kubectl create namespace test
 dev/setup.sh --secret --project test
+
+sleep 5
 
 # bonfire environment (kafka, connect, etc.)
 print_start_message "Setting up bonfire environment"
-bonfire deploy-env -n test
-kubectl patch KafkaConnect connect --patch '{"spec": {"config": {"connector.client.config.override.policy": "All"}}}' --type=merge -n test
+bonfire deploy-env -n test -u cloudservices -f ./dev/clowdenv.yaml
 
 sleep 5
 
@@ -57,8 +59,3 @@ dev/setup.sh --elasticsearch --project test
 # operator CRDs, configmap, XJoinPipeline
 print_start_message "Setting up XJoin operator"
 dev/setup.sh --xjoin-operator --dev --project test
-kubectl patch KafkaConnect connect --patch '{"spec": {"config": {"connector.client.config.override.policy": "All"}}}' --type=merge -n test
-
-# xjoin-search
-print_start_message "Setting up xjoin-search"
-bonfire deploy xjoin-search -n test

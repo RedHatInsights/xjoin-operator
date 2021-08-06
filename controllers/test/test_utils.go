@@ -8,6 +8,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"github.com/redhatinsights/xjoin-operator/test"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
@@ -71,7 +72,7 @@ func parametersToMap(parameters Parameters) map[string]interface{} {
 
 func getParameters() (Parameters, map[string]interface{}, error) {
 	options := viper.New()
-	options.SetDefault("ElasticSearchURL", "http://xjoin-elasticsearch-es-http:9200")
+	options.SetDefault("ElasticSearchURL", "http://xjoin-elasticsearch-es-http.test.svc:9200")
 	options.SetDefault("ElasticSearchUsername", "test")
 	options.SetDefault("ElasticSearchPassword", "test1337")
 	options.SetDefault("HBIDBHost", "host-inventory-db.test.svc")
@@ -176,7 +177,7 @@ func Before() (*Iteration, error) {
 	}
 
 	es, err := elasticsearch.NewElasticSearch(
-		"http://xjoin-elasticsearch-es-http:9200",
+		"http://xjoin-elasticsearch-es-http.test.svc:9200",
 		"xjoin",
 		"xjoin1337",
 		ResourceNamePrefix,
@@ -238,6 +239,11 @@ func Before() (*Iteration, error) {
 		return nil, err
 	}
 
+	err = i.CopySecret("xjoin-elasticsearch-es-elastic-user", "xjoin-elasticsearch-es-elastic-user", "test", ns)
+	if err != nil {
+		return nil, err
+	}
+
 	return i, nil
 }
 
@@ -248,7 +254,7 @@ func After(i *Iteration) error {
 	}
 	defer i.CloseDB()
 
-	//Delete any leftover ES indices
+	log.Info("Deleting ES indices")
 	indices, err := i.EsClient.ListIndices()
 	if err != nil {
 		return err
@@ -260,17 +266,21 @@ func After(i *Iteration) error {
 		}
 	}
 
-	err = i.KafkaClient.DeleteAllConnectors()
+	log.Info("Deleting connectors")
+	err = i.KafkaClient.DeleteAllConnectors(ResourceNamePrefix)
+	err = i.KafkaClient.DeleteAllConnectors("prefix.withadot")
+	err = i.KafkaClient.DeleteAllConnectors("prefixupdated")
 	if err != nil {
 		return err
 	}
 
+	log.Info("Deleting topics")
 	err = i.KafkaClient.DeleteAllTopics()
 	if err != nil {
 		return err
 	}
 
-	//remove pipeline finalizers
+	log.Info("Removing finalizers")
 	var xjoinPipelineGVK = schema.GroupVersionKind{
 		Group:   "xjoin.cloud.redhat.com",
 		Kind:    "XJoinPipeline",
@@ -280,7 +290,7 @@ func After(i *Iteration) error {
 	pipelines := &unstructured.UnstructuredList{}
 	pipelines.SetGroupVersionKind(xjoinPipelineGVK)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err = test.Client.List(ctx, pipelines, client.InNamespace(i.NamespacedName.Namespace))
 	if err != nil {
@@ -295,7 +305,7 @@ func After(i *Iteration) error {
 		}
 	}
 
-	//delete namespace
+	log.Info("Deleting namespace")
 	namespace := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: i.NamespacedName.Namespace,
@@ -307,5 +317,31 @@ func After(i *Iteration) error {
 		return err
 	}
 
-	return nil
+	err = attemptToRemoveReplicationSlots(i.DbClient)
+
+	if err != nil {
+		err = i.KafkaClient.RestartConnect()
+		if err != nil {
+			return err
+		}
+		err = attemptToRemoveReplicationSlots(i.DbClient)
+	}
+
+	return err
+}
+
+func attemptToRemoveReplicationSlots(dbClient *database.Database) (err error) {
+	//sometimes the underlying connector process doesn't release the slot quickly
+	//so retry this for 10 seconds
+	for j := 0; j < 10; j++ {
+		log.Info("Deleting replication slots")
+		err = dbClient.RemoveReplicationSlotsForPrefix(ResourceNamePrefix)
+		if err == nil {
+			return nil
+		}
+
+		time.Sleep(time.Second * 1)
+	}
+
+	return err
 }

@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"context"
 	"reflect"
 	"sort"
+	"time"
 )
 
 /*
@@ -96,4 +98,8 @@ func SortMap(unsortedMap map[string]interface{}) map[string]interface{} {
 
 func TimeFormat() string {
 	return "2006-01-02T15:04:05.999999999"
+}
+
+func DefaultContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), time.Second*30)
 }

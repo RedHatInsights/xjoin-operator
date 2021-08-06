@@ -24,7 +24,6 @@ var _ = Describe("Pipeline operations", func() {
 
 	Describe("Kafka Connect", func() {
 		It("Restarts Kafka Connect when /connectors is unreachable", func() {
-			Skip("Broken")
 			defer gock.Off()
 			defer test.ForwardPorts()
 
@@ -35,7 +34,8 @@ var _ = Describe("Pipeline operations", func() {
 			originalPodName, err := i.getConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
 
-			i.CreatePipeline()
+			err = i.CreatePipeline()
+			Expect(err).ToNot(HaveOccurred())
 			requeue, err := i.ReconcileKafkaConnect()
 			Expect(requeue).To(BeFalse())
 			Expect(err).ToNot(HaveOccurred())
@@ -49,7 +49,7 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Restarts Kafka Connect when /connectors/<connector> is unreachable", func() {
-			Skip("Broken")
+			Skip("busted")
 			defer gock.Off()
 			defer test.ForwardPorts()
 
@@ -60,6 +60,10 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			gock.New("http://connect-connect-api.test.svc:8083").
+				Get("/connectors").
+				Reply(200)
+
+			gock.New("http://connect-connect-api.test.svc:8083").
 				Get("/connectors/" + pipeline.Status.ActiveDebeziumConnectorName).
 				Reply(500)
 
@@ -67,10 +71,9 @@ var _ = Describe("Pipeline operations", func() {
 				Get("/connectors/" + pipeline.Status.ActiveESConnectorName).
 				Reply(500)
 
-			requeue, _ := i.ReconcileKafkaConnect()
+			requeue, err := i.ReconcileKafkaConnect()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(requeue).To(BeFalse())
-
-			time.Sleep(time.Second * 3) //give the old connect pod time to completely go away
 
 			newPodName, err := i.getConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
@@ -79,10 +82,10 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Doesn't restart Kafka Connect when it is available", func() {
-			Skip("Broken")
 			originalPodName, err := i.getConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
-			i.CreatePipeline()
+			err = i.CreatePipeline()
+			Expect(err).ToNot(HaveOccurred())
 			requeue, err := i.ReconcileKafkaConnect()
 			Expect(requeue).To(BeFalse())
 			Expect(err).ToNot(HaveOccurred())

@@ -2,14 +2,13 @@ package elasticsearch
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"io/ioutil"
 	"strconv"
-	"time"
 )
 
 func (es *ElasticSearch) UpdateAliasByFullIndexName(alias string, index string) error {
@@ -70,7 +69,7 @@ func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, erro
 		Name:   []string{name},
 		Format: "JSON",
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	res, err := req.Do(ctx, es.Client)
 	if err != nil {

@@ -117,7 +117,7 @@ if [ $NAMESPACE_EXISTS -eq 1 ]; then
 fi
 
 #pull secret
-PULL_SECRET=quay-cloudservices-pull
+PULL_SECRET=cloudservices-pull-secret
 if [ "$SETUP_PULL_SECRET" = true ] || [ "$SETUP_ALL" = true ]; then
   echo "Setting up pull secret"
   kubectl create secret generic "$PULL_SECRET" --from-file=.dockerconfigjson="$HOME/.docker/config.json" --type=kubernetes.io/dockerconfigjson -n "$PROJECT_NAME"

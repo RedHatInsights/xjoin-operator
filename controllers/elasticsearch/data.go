@@ -2,7 +2,6 @@ package elasticsearch
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +15,7 @@ import (
 )
 
 func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.Host, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 
 	var query QueryHostsById
@@ -81,7 +80,7 @@ func (es *ElasticSearch) getHostIDsQuery(index string, reqJSON []byte) ([]string
 		Sort:   []string{"_doc"},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	searchRes, err := searchReq.Do(ctx, es.Client)
 	if err != nil {
@@ -114,7 +113,7 @@ func (es *ElasticSearch) getHostIDsQuery(index string, reqJSON []byte) ([]string
 			ScrollID: scrollID,
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+		ctx, cancel := utils.DefaultContext()
 		defer cancel()
 		scrollRes, err := scrollReq.Do(ctx, es.Client)
 		if err != nil {

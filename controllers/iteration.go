@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -107,7 +106,7 @@ func (i *ReconcileIteration) updateStatusAndRequeue() (reconcile.Result, error) 
 	if !cmp.Equal(i.Instance.Status, i.OriginalInstance.Status) {
 		i.debug("Updating status")
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+		ctx, cancel := utils.DefaultContext()
 		defer cancel()
 
 		if err := i.Client.Status().Update(ctx, i.Instance); err != nil {
@@ -154,7 +153,7 @@ func (i *ReconcileIteration) addFinalizer() error {
 	if !utils.ContainsString(i.Instance.GetFinalizers(), xjoinpipelineFinalizer) {
 		controllerutil.AddFinalizer(i.Instance, xjoinpipelineFinalizer)
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+		ctx, cancel := utils.DefaultContext()
 		defer cancel()
 		return i.Client.Update(ctx, i.Instance)
 	}
@@ -164,7 +163,7 @@ func (i *ReconcileIteration) addFinalizer() error {
 
 func (i *ReconcileIteration) removeFinalizer() error {
 	controllerutil.RemoveFinalizer(i.Instance, xjoinpipelineFinalizer)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	return i.Client.Update(ctx, i.Instance)
 }
