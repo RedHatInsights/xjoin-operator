@@ -21,6 +21,18 @@ function wait_for_pod_to_be_created() {
 
 kubectl create ns test
 
+# OLM
+print_start_message "Installing OLM"
+CURRENT_DIR=$(pwd)
+mkdir /tmp/olm
+cd /tmp/olm || exit 1
+curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.18.3/install.sh -o install.sh
+chmod +x install.sh
+./install.sh v0.18.3
+rm -r /tmp/olm
+cd "$CURRENT_DIR" || exit 1
+sleep 1
+
 # kube_setup.sh
 print_start_message "Running kube-setup.sh"
 KUBE_SETUP_PATH=$1
@@ -79,3 +91,18 @@ psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE DATABASE t
 
 print_start_message "Setting up elasticsearch password"
 dev/setup.sh --elasticsearch --project test
+
+# Confluent schema registry
+print_start_message "Installing Confluent Schema Registry"
+kubectl apply -f dev/generic.refactor/confluent-schema-registry.yaml -n test
+
+# APICurio operator
+print_start_message "Installing Apicurio"
+kubectl create -f https://operatorhub.io/install/apicurio-registry.yaml
+wait_for_pod_to_be_created apicurio-registry-operator
+kubectl wait --for=condition=Ready --selector="name=apicurio-registry-operator" pods -n operators
+
+# APICurio resource
+kubectl apply -f dev/apicurio.yaml -n test
+wait_for_pod_to_be_created example-apicurioregistry-kafkasql
+kubectl wait --for=condition=Ready --selector="app=example-apicurioregistry-kafkasql" pods -n test
