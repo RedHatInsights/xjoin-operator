@@ -1,0 +1,149 @@
+{
+  "type": "record",
+  "name": "Value",
+  "namespace": "xjoin.inventory.1629987948345292675.public.hosts",
+  "fields": [
+    {
+      "name": "id",
+      "xjoin.name": "id",
+      "type": {
+        "type": "string",
+        "connect.version": 1,
+        "connect.name": "io.debezium.data.Uuid"
+      }
+    },
+    {
+      "name": "account",
+      "xjoin.name": "account",
+      "type": "string"
+    },
+    {
+      "name": "display_name",
+      "xjoin.name": "display_name",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "created_on",
+      "xjoin.name": "created_on",
+      "type": {
+        "type": "string",
+        "connect.version": 1,
+        "connect.name": "io.debezium.time.ZonedTimestamp"
+      }
+    },
+    {
+      "name": "modified_on",
+      "xjoin.name": "modified_on",
+      "type": {
+        "type": "string",
+        "connect.version": 1,
+        "connect.name": "io.debezium.time.ZonedTimestamp"
+      }
+    },
+    {
+      "name": "facts",
+      "xjoin.name": "facts",
+      "type": [
+        "null",
+        {
+          "type": "string",
+          "connect.version": 1,
+          "connect.name": "io.debezium.data.Json"
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "tags",
+      "xjoin.name": "tags",
+      "type": [
+        "null",
+        {
+          "type": "string",
+          "connect.version": 1,
+          "connect.name": "io.debezium.data.Json"
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "canonical_facts",
+      "xjoin.name": "canonical_facts",
+      "type": {
+        "type": "string",
+        "connect.version": 1,
+        "connect.name": "io.debezium.data.Json"
+      }
+    },
+    {
+      "name": "system_profile_facts",
+      "xjoin.name": "system_profile_facts",
+      "type": [
+        "null",
+        {
+          "type": "string",
+          "connect.version": 1,
+          "connect.name": "io.debezium.data.Json"
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "ansible_host",
+      "xjoin.name": "ansible_host",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "stale_timestamp",
+      "xjoin.name": "stale_timestamp",
+      "type": {
+        "type": "string",
+        "connect.version": 1,
+        "connect.name": "io.debezium.time.ZonedTimestamp"
+      }
+    },
+    {
+      "name": "reporter",
+      "xjoin.name": "reporter",
+      "type": "string"
+    },
+    {
+      "name": "per_reporter_staleness",
+      "xjoin.name": "per_reporter_staleness",
+      "type": {
+        "type": "string",
+        "connect.version": 1,
+        "connect.name": "io.debezium.data.Json"
+      }
+    },
+    {
+      "name": "__deleted",
+      "xjoin.name": "__deleted",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "rule_id",
+      "xjoin.name": "rule_id",
+      "xjoin.ref": "advisor.rule",
+      "xjoin.ref.key": "id",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    }
+  ],
+  "connect.name": "xjoin.inventory.1629987948345292675.public.hosts.Value"
+}

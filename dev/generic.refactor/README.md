@@ -1,0 +1,1 @@
+This directory hosts temporary/investigation related development resources while working on the large refactor to make the operator use generic CRDs.

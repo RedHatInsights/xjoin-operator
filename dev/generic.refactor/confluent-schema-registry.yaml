@@ -1,0 +1,51 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: confluent-schema-registry
+  labels:
+    app: confluent-schema-registry
+spec:
+  ports:
+    - port: 8081
+  selector:
+    app: confluent-schema-registry
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: confluent-schema-registry
+  labels:
+    app: confluent-schema-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: confluent-schema-registry
+  template:
+    metadata:
+      labels:
+        app: confluent-schema-registry
+    spec:
+      containers:
+        - name: confluent-schema-registry
+          image:  confluentinc/cp-schema-registry:latest-ubi8
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: server
+              containerPort: 8081
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          env:
+            - name: SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS
+              value: PLAINTEXT://kafka-kafka-bootstrap.test.svc:9092
+            - name: SCHEMA_REGISTRY_HOST_NAME
+              value: confluent-schema-registry.test.svc
+            - name: SCHEMA_REGISTRY_LISTENERS
+              value: http://0.0.0.0:8081

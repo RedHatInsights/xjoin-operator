@@ -1,0 +1,102 @@
+apiVersion: v1
+data:
+  standard.interval: '120'
+  validation.interval: '1800'
+  validation.attempts.threshold: '2'
+  validation.percentage.threshold: '5'
+  init.validation.interval: '60'
+  init.validation.attempts.threshold: '30'
+  init.validation.percentage.threshold: '5'
+  connect.cluster: connect
+  kafka.cluster: kafka
+  kafka.cluster.namespace: test
+  connect.cluster.namespace: test
+  elasticsearch.connector.tasks.max: '5'
+  elasticsearch.connector.config: >-
+    {
+        "tasks.max": "{{.ElasticSearchTasksMax}}",
+        "topics": "{{.Topic}}",
+        "key.ignore": "false",
+        "connection.url": "{{.ElasticSearchURL}}",
+        {{if .ElasticSearchUsername}}"connection.username": "{{.ElasticSearchUsername}}",{{end}}
+        {{if .ElasticSearchPassword}}"connection.password": "{{.ElasticSearchPassword}}",{{end}}
+        "type.name": "_doc",
+        "transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString, renameTopic",
+        "transforms.valueToKey.type":"org.apache.kafka.connect.transforms.ValueToKey",
+        "transforms.valueToKey.fields":"id",
+        "transforms.extractKey.type":"org.apache.kafka.connect.transforms.ExtractField$Key",
+        "transforms.extractKey.field":"id",
+        "transforms.expandJSON.type": "com.redhat.insights.expandjsonsmt.ExpandJSON$Value",
+        "transforms.expandJSON.sourceFields": "tags",
+        "transforms.deleteIf.type": "com.redhat.insights.deleteifsmt.DeleteIf$Value",
+        "transforms.deleteIf.field": "__deleted",
+        "transforms.deleteIf.value": "true",
+        "transforms.flattenList.type": "com.redhat.insights.flattenlistsmt.FlattenList$Value",
+        "transforms.flattenList.sourceField": "tags",
+        "transforms.flattenList.outputField": "tags_structured",
+        "transforms.flattenList.mode": "keys",
+        "transforms.flattenList.keys": "namespace,key,value",
+        "transforms.flattenListString.type": "com.redhat.insights.flattenlistsmt.FlattenList$Value",
+        "transforms.flattenListString.sourceField": "tags",
+        "transforms.flattenListString.outputField": "tags_string",
+        "transforms.flattenListString.mode": "join",
+        "transforms.flattenListString.delimiterJoin": "/",
+        "transforms.flattenListString.encode": true,
+        "transforms.renameTopic.type": "org.apache.kafka.connect.transforms.RegexRouter",
+        "transforms.renameTopic.regex": "{{.Topic}}",
+        "transforms.renameTopic.replacement": "{{.RenameTopicReplacement}}",
+        "behavior.on.null.values":"delete",
+        "behavior.on.malformed.documents": "warn",
+        "auto.create.indices.at.start": false,
+        "schema.ignore": true,
+        "max.in.flight.requests": {{.ElasticSearchMaxInFlightRequests}},
+        "errors.log.enable": {{.ElasticSearchErrorsLogEnable}},
+        "errors.log.include.messages": true,
+        "max.retries": {{.ElasticSearchMaxRetries}},
+        "retry.backoff.ms": {{.ElasticSearchRetryBackoffMS}},
+        "batch.size": {{.ElasticSearchBatchSize}},
+        "max.buffered.records": {{.ElasticSearchMaxBufferedRecords}},
+        "linger.ms": {{.ElasticSearchLingerMS}},
+        "key.converter": "io.confluent.connect.avro.AvroConverter",
+        "key.converter.auto.register.schemas": true,
+        "key.converter.use.latest.version": true,
+        "key.converter.schema.registry.url": "http://confluent-schema-registry:8081",
+        "value.converter": "io.confluent.connect.avro.AvroConverter",
+        "value.converter.schema.registry.url": "http://confluent-schema-registry:8081",
+        "value.converter.auto.register.schemas": false,
+        "value.converter.use.latest.version": true
+    }
+  debezium.connector.config: >-
+    {
+        "tasks.max": "{{.DebeziumTasksMax}}",
+        "database.hostname": "{{.HBIDBHost}}",
+        "database.port": "{{.HBIDBPort}}",
+        "database.user": "{{.HBIDBUser}}",
+        "database.password": "{{.HBIDBPassword}}",
+        "database.dbname": "{{.HBIDBName}}",
+        "database.server.name": "{{.ResourceNamePrefix}}.{{.Version}}",
+        "database.sslmode": "{{.HBIDBSSLMode}}",
+        "database.sslrootcert": "{{.HBIDBSSLRootCert}}",
+        "table.whitelist": "public.hosts",
+        "plugin.name": "pgoutput",
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.delete.handling.mode": "rewrite",
+        "errors.log.enable": {{.DebeziumErrorsLogEnable}},
+        "errors.log.include.messages": true,
+        "slot.name": "{{.ReplicationSlotName}}",
+        "max.queue.size": {{.DebeziumQueueSize}},
+        "max.batch.size": {{.DebeziumMaxBatchSize}},
+        "poll.interval.ms": {{.DebeziumPollIntervalMS}},
+        "key.converter": "io.confluent.connect.avro.AvroConverter",
+        "key.converter.auto.register.schemas": true,
+        "key.converter.use.latest.version": true,
+        "key.converter.schema.registry.url": "http://confluent-schema-registry:8081",
+        "value.converter": "io.confluent.connect.avro.AvroConverter",
+        "value.converter.schema.registry.url": "http://confluent-schema-registry:8081",
+        "value.converter.auto.register.schemas": false,
+        "value.converter.use.latest.version": true
+    }
+kind: ConfigMap
+metadata:
+  name: xjoin
