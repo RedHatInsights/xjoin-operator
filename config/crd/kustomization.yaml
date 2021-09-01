@@ -3,6 +3,8 @@
 # It should be run by config/default
 resources:
 - bases/xjoin.cloud.redhat.com_xjoinpipelines.yaml
+- bases/xjoin.cloud.redhat.com_xjoinindices.yaml
+- bases/xjoin.cloud.redhat.com_xjoindatasources.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:
