@@ -44,7 +44,7 @@ parameters:
       "tasks.max": "{{.ElasticSearchTasksMax}}",
       "topics": "{{.Topic}}",
       "key.ignore": "false",
-      "connection.url": "{{.ElasticSearchURL}}",
+      "connection.url": "${env:ELASTICSEARCH_ENDPOINT}",
       {{if .ElasticSearchUsername}}"connection.username": "{{.ElasticSearchUsername}}",{{end}}
       {{if .ElasticSearchPassword}}"connection.password": "{{.ElasticSearchPassword}}",{{end}}
       "type.name": "_doc",
@@ -105,11 +105,11 @@ parameters:
     value: '{
       "tasks.max": "{{.DebeziumTasksMax}}",
       "producer.override.max.request.size": "2097152",
-      "database.hostname": "{{.HBIDBHost}}",
+      "database.hostname": "${env:HOST_INVENTORY_DB_HOSTNAME}",
       "database.port": "{{.HBIDBPort}}",
-      "database.user": "{{.HBIDBUser}}",
-      "database.password": "{{.HBIDBPassword}}",
-      "database.dbname": "{{.HBIDBName}}",
+      "database.user": "${env:HOST_INVENTORY_DB_USERNAME}",
+      "database.password": "${env:HOST_INVENTORY_DB_PASSWORD}",
+      "database.dbname": "${env:HOST_INVENTORY_DB_NAME}",
       "database.server.name": "{{.ResourceNamePrefix}}.{{.Version}}",
       "database.sslmode": "{{.HBIDBSSLMode}}",
       "database.sslrootcert": "{{.HBIDBSSLRootCert}}",
