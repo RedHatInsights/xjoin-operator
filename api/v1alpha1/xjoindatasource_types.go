@@ -10,11 +10,24 @@ type XJoinDataSourceSpec struct {
 
 	// +kubebuilder:validation:Required
 	DatabaseHostname string `json:"databaseHostname,omitempty"`
-	DatabasePort     string `json:"databasePort,omitempty"`
+
+	// +kubebuilder:validation:Required
+	DatabasePort string `json:"databasePort,omitempty"`
+
+	// +kubebuilder:validation:Required
 	DatabaseUsername string `json:"databaseUsername,omitempty"`
+
+	// +kubebuilder:validation:Required
 	DatabasePassword string `json:"databasePassword,omitempty"`
-	DatabaseName     string `json:"databaseName,omitempty"`
-	DatabaseTable    string `json:"databaseTable,omitempty"`
+
+	// +kubebuilder:validation:Required
+	DatabaseName string `json:"databaseName,omitempty"`
+
+	// +kubebuilder:validation:Required
+	DatabaseTable string `json:"databaseTable,omitempty"`
+
+	// +optional
+	Pause bool `json:"pause,omitempty"`
 }
 
 type XJoinDataSourceStatus struct {

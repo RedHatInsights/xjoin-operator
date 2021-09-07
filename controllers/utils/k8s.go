@@ -23,6 +23,14 @@ func FetchXJoinPipeline(c client.Client, namespacedName types.NamespacedName) (*
 	return instance, err
 }
 
+func FetchXJoinDataSource(c client.Client, namespacedName types.NamespacedName) (*xjoin.XJoinDataSource, error) {
+	instance := &xjoin.XJoinDataSource{}
+	ctx, cancel := DefaultContext()
+	defer cancel()
+	err := c.Get(ctx, namespacedName, instance)
+	return instance, err
+}
+
 func FetchXJoinPipelinesByNamespacedName(c client.Client, name string, namespace string) (*xjoin.XJoinPipelineList, error) {
 	nameField := client.MatchingFields{
 		"metadata.name":      name,

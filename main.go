@@ -134,6 +134,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = controllers.NewXJoinDataSourceReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		ctrl.Log.WithName("controllers").WithName("XJoinDataSource"),
+		mgr.GetEventRecorderFor("xjoindatasource"),
+		namespace,
+		false,
+	).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "XJoinDataSource")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.XJoinPipelineReconciler{
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("XJoinPipeline"),

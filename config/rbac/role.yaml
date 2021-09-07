@@ -11,6 +11,15 @@ rules:
   resources:
   - configmaps
   - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - pods
   - secrets
   verbs:
   - get
@@ -43,6 +52,20 @@ rules:
   resources:
   - kafkatopics
   - kafkatopics/finalizers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - xjoin.cloud.redhat.com
+  resources:
+  - xjoindatasources
+  - xjoindatasources/finalizers
+  - xjoindatasources/status
   verbs:
   - create
   - delete
