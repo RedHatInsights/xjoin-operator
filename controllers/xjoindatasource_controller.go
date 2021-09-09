@@ -3,7 +3,10 @@ package controllers
 import (
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/components"
+	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -70,9 +73,26 @@ func (r *XJoinDataSourceReconciler) Reconcile(request ctrl.Request) (result ctrl
 		return
 	}
 
-	if instance.Spec.Pause == true {
+	configManager := config.NewManager(config.ManagerOptions{
+		Client:         r.Client,
+		Parameters:     parameters.BuildDataSourceParameters(),
+		ConfigMapNames: []string{"xjoin"},
+		SecretNames:    nil,
+		Namespace:      instance.Namespace,
+		Spec:           instance.Spec,
+	})
+	err = configManager.Parse()
+	if err != nil {
 		return
 	}
+
+	pause := configManager.GetParameter(parameters.PAUSE).Bool()
+	if pause == true {
+		return
+	}
+
+	componentManager := components.NewComponentManager()
+	componentManager.AddComponent(components.NewAvroSchema("test", configManager.GetParameter(parameters.AVRO_SCHEMA).String()))
 
 	return
 }

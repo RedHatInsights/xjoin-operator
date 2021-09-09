@@ -7,13 +7,14 @@ import (
 )
 
 type Parameter struct {
-	SpecKey      string
-	Secret       string
-	SecretKey    []string
-	ConfigMapKey string
-	DefaultValue interface{}
-	value        interface{}
-	Type         reflect.Kind
+	SpecKey       string
+	Secret        string
+	SecretKey     []string
+	ConfigMapKey  string
+	ConfigMapName string
+	DefaultValue  interface{}
+	value         interface{}
+	Type          reflect.Kind
 }
 
 func (p *Parameter) String() string {

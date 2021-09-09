@@ -1,0 +1,7 @@
+apiVersion: xjoin.cloud.redhat.com/v1alpha1
+kind: XJoinDataSource
+metadata:
+  name: test
+spec:
+  pause: false
+  avroschema: "{}"
