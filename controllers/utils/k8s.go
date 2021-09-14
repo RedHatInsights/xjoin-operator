@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -15,53 +16,41 @@ import (
 
 var log = logger.NewLogger("k8s")
 
-func FetchXJoinPipeline(c client.Client, namespacedName types.NamespacedName) (*xjoin.XJoinPipeline, error) {
+func FetchXJoinPipeline(c client.Client, namespacedName types.NamespacedName, ctx context.Context) (*xjoin.XJoinPipeline, error) {
 	instance := &xjoin.XJoinPipeline{}
-	ctx, cancel := DefaultContext()
-	defer cancel()
 	err := c.Get(ctx, namespacedName, instance)
 	return instance, err
 }
 
-func FetchXJoinDataSource(c client.Client, namespacedName types.NamespacedName) (*xjoin.XJoinDataSource, error) {
+func FetchXJoinDataSource(c client.Client, namespacedName types.NamespacedName, ctx context.Context) (*xjoin.XJoinDataSource, error) {
 	instance := &xjoin.XJoinDataSource{}
-	ctx, cancel := DefaultContext()
-	defer cancel()
 	err := c.Get(ctx, namespacedName, instance)
 	return instance, err
 }
 
-func FetchXJoinPipelinesByNamespacedName(c client.Client, name string, namespace string) (*xjoin.XJoinPipelineList, error) {
+func FetchXJoinPipelinesByNamespacedName(c client.Client, name string, namespace string, ctx context.Context) (*xjoin.XJoinPipelineList, error) {
 	nameField := client.MatchingFields{
 		"metadata.name":      name,
 		"metadata.namespace": namespace,
 	}
 
 	list := &xjoin.XJoinPipelineList{}
-	ctx, cancel := DefaultContext()
-	defer cancel()
 	err := c.List(ctx, list, nameField)
 	return list, err
 }
 
-func FetchXJoinPipelines(c client.Client) (*xjoin.XJoinPipelineList, error) {
+func FetchXJoinPipelines(c client.Client, ctx context.Context) (*xjoin.XJoinPipelineList, error) {
 	list := &xjoin.XJoinPipelineList{}
-	ctx, cancel := DefaultContext()
-	defer cancel()
 	err := c.List(ctx, list)
 	return list, err
 }
 
-func FetchConfigMap(c client.Client, namespace string, name string) (*corev1.ConfigMap, error) {
+func FetchConfigMap(c client.Client, namespace string, name string, ctx context.Context) (*corev1.ConfigMap, error) {
 	configMap := &corev1.ConfigMap{}
-	ctx, cancel := DefaultContext()
-	defer cancel()
-
 	err := c.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, configMap)
 	if client.IgnoreNotFound(err) != nil {
 		return nil, err
 	}
-
 	return configMap, nil
 }
 
@@ -99,10 +88,8 @@ func ConfigMapHash(cm *corev1.ConfigMap, ignoredKeys ...string) (string, error) 
 	return fmt.Sprint(algorithm.Sum32()), err
 }
 
-func FetchSecret(c client.Client, namespace string, name string) (*corev1.Secret, error) {
+func FetchSecret(c client.Client, namespace string, name string, ctx context.Context) (*corev1.Secret, error) {
 	secret := &corev1.Secret{}
-	ctx, cancel := DefaultContext()
-	defer cancel()
 	err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, secret)
 
 	if statusError, isStatus := err.(*errors.StatusError); isStatus && statusError.Status().Reason == metav1.StatusReasonNotFound {

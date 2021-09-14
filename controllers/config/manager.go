@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -15,6 +16,7 @@ type Spec interface{}
 type Manager struct {
 	Parameters     map[string]Parameter
 	client         client.Client
+	ctx            context.Context
 	configMapNames []string
 	secretNames    []string
 	namespace      string
@@ -30,6 +32,7 @@ type ManagerOptions struct {
 	SecretNames    []string
 	Namespace      string
 	Spec           Spec
+	Context        context.Context
 }
 
 func NewManager(opts ManagerOptions) *Manager {
@@ -46,6 +49,7 @@ func NewManager(opts ManagerOptions) *Manager {
 		spec:           opts.Spec,
 		configMaps:     configMaps,
 		secrets:        managerSecrets,
+		ctx:            opts.Context,
 	}
 }
 
@@ -82,7 +86,7 @@ func (m *Manager) GetParameter(name string) *Parameter {
 
 func (m *Manager) loadConfigMaps() (err error) {
 	for _, name := range m.configMapNames {
-		cm, err := utils.FetchConfigMap(m.client, m.namespace, name)
+		cm, err := utils.FetchConfigMap(m.client, m.namespace, name, m.ctx)
 		if err != nil {
 			return err
 		}
@@ -96,7 +100,7 @@ func (m *Manager) loadConfigMaps() (err error) {
 
 func (m *Manager) loadSecrets() (err error) {
 	for _, name := range m.secretNames {
-		secret, err := utils.FetchSecret(m.client, m.namespace, name)
+		secret, err := utils.FetchSecret(m.client, m.namespace, name, m.ctx)
 		if err != nil {
 			return err
 		}

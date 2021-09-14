@@ -246,11 +246,11 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Considers db secret name configuration", func() {
-			hbiDBSecret, err := utils.FetchSecret(
-				test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
-			Expect(err).ToNot(HaveOccurred())
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
+			hbiDBSecret, err := utils.FetchSecret(
+				test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
+			Expect(err).ToNot(HaveOccurred())
 			err = test.Client.Delete(ctx, hbiDBSecret)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -265,10 +265,10 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Considers es secret name configuration", func() {
-			elasticSearchSecret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
-			Expect(err).ToNot(HaveOccurred())
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
+			elasticSearchSecret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
+			Expect(err).ToNot(HaveOccurred())
 			err = test.Client.Delete(ctx, elasticSearchSecret)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -572,14 +572,14 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			activeIndex := pipeline.Status.ActiveIndexName
 
-			configMap, err := utils.FetchConfigMap(test.Client, i.NamespacedName.Namespace, "xjoin")
+			ctx, cancel := utils.DefaultContext()
+			defer cancel()
+			configMap, err := utils.FetchConfigMap(test.Client, i.NamespacedName.Namespace, "xjoin", ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			cm["debezium.connector.errors.log.enable"] = "false"
 
 			configMap.Data = cm
-			ctx, cancel := utils.DefaultContext()
-			defer cancel()
 			err = test.Client.Update(ctx, configMap)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -599,7 +599,9 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			activeIndex := pipeline.Status.ActiveIndexName
 
-			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
+			ctx, cancel := utils.DefaultContext()
+			defer cancel()
+			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			//update the secret with new username/password
@@ -609,8 +611,6 @@ var _ = Describe("Pipeline operations", func() {
 				fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s' IN ROLE insights;", tempUser, tempPassword))
 			secret.Data["db.user"] = []byte(tempUser)
 			secret.Data["db.password"] = []byte(tempPassword)
-			ctx, cancel := utils.DefaultContext()
-			defer cancel()
 			err = test.Client.Update(ctx, secret)
 
 			//run a reconcile
@@ -632,13 +632,13 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			activeIndex := pipeline.Status.ActiveIndexName
 
-			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
+			ctx, cancel := utils.DefaultContext()
+			defer cancel()
+			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			//change the secret hash by adding a new field
 			secret.Data["newfield"] = []byte("value")
-			ctx, cancel := utils.DefaultContext()
-			defer cancel()
 			err = test.Client.Update(ctx, secret)
 
 			pipeline, err = i.ExpectInitSyncUnknownReconcile()
@@ -807,11 +807,11 @@ var _ = Describe("Pipeline operations", func() {
 			firstVersion := pipeline.Status.PipelineVersion
 
 			//trigger refresh so there is an active and initializing pipeline
-			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
-			Expect(err).ToNot(HaveOccurred())
-			secret.Data["newfield"] = []byte("value")
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
+			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
+			Expect(err).ToNot(HaveOccurred())
+			secret.Data["newfield"] = []byte("value")
 			err = test.Client.Update(ctx, secret)
 			pipeline, err = i.ExpectInitSyncUnknownReconcile()
 			Expect(err).ToNot(HaveOccurred())
@@ -830,11 +830,11 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Artifacts removed when an error occurs during initial setup", func() {
-			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
-			Expect(err).ToNot(HaveOccurred())
-			secret.Data["db.host"] = []byte("invalidurl")
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
+			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
+			Expect(err).ToNot(HaveOccurred())
+			secret.Data["db.host"] = []byte("invalidurl")
 			err = test.Client.Update(ctx, secret)
 
 			//this will fail due to incorrect secret
@@ -863,11 +863,11 @@ var _ = Describe("Pipeline operations", func() {
 
 	Describe("Failures", func() {
 		It("Fails if ElasticSearch secret is misconfigured", func() {
-			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String())
-			Expect(err).ToNot(HaveOccurred())
-			secret.Data["endpoint"] = []byte("invalidurl")
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
+			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
+			Expect(err).ToNot(HaveOccurred())
+			secret.Data["endpoint"] = []byte("invalidurl")
 			err = test.Client.Update(ctx, secret)
 
 			err = i.CreatePipeline()
@@ -878,11 +878,11 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Fails if HBI DB secret is misconfigured", func() {
-			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String())
-			Expect(err).ToNot(HaveOccurred())
-			secret.Data["db.host"] = []byte("invalidurl")
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
+			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
+			Expect(err).ToNot(HaveOccurred())
+			secret.Data["db.host"] = []byte("invalidurl")
 			err = test.Client.Update(ctx, secret)
 
 			err = i.CreatePipeline()

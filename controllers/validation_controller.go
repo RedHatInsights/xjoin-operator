@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
@@ -21,8 +22,8 @@ type ValidationReconciler struct {
 	CheckResourceDeviation bool
 }
 
-func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request) (ReconcileIteration, error) {
-	i, err := r.XJoinPipelineReconciler.setup(reqLogger, request)
+func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request, ctx context.Context) (ReconcileIteration, error) {
+	i, err := r.XJoinPipelineReconciler.setup(reqLogger, request, ctx)
 
 	if err != nil || i.Instance == nil {
 		return i, err
@@ -39,10 +40,10 @@ func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request)
 	return i, err
 }
 
-func (r *ValidationReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
+func (r *ValidationReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	reqLogger := logger.NewLogger("controller_validation", "Pipeline", request.Name, "Namespace", request.Namespace)
 
-	i, err := r.setup(reqLogger, request)
+	i, err := r.setup(reqLogger, request, ctx)
 	defer i.Close()
 
 	if err != nil {
@@ -104,14 +105,14 @@ func (r *ValidationReconciler) Reconcile(request ctrl.Request) (ctrl.Result, err
 func eventFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaOld.GetGeneration() != e.MetaNew.GetGeneration() {
+			if e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration() {
 				return true // Pipeline definition changed
 			}
 
-			old, ok1 := e.ObjectOld.(*xjoin.XJoinPipeline)
-			new, ok2 := e.ObjectNew.(*xjoin.XJoinPipeline)
+			oldPipeline, ok1 := e.ObjectOld.(*xjoin.XJoinPipeline)
+			newPipeline, ok2 := e.ObjectNew.(*xjoin.XJoinPipeline)
 
-			if ok1 && ok2 && old.Status.InitialSyncInProgress == false && new.Status.InitialSyncInProgress == true {
+			if ok1 && ok2 && oldPipeline.Status.InitialSyncInProgress == false && newPipeline.Status.InitialSyncInProgress == true {
 				return true // pipeline refresh happened - validate the new pipeline
 			}
 

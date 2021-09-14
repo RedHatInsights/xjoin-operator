@@ -17,6 +17,7 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -54,11 +55,11 @@ type XJoinPipelineReconciler struct {
 	Test      bool
 }
 
-func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.Request) (ReconcileIteration, error) {
+func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.Request, ctx context.Context) (ReconcileIteration, error) {
 
 	i := ReconcileIteration{}
 
-	instance, err := utils.FetchXJoinPipeline(r.Client, request.NamespacedName)
+	instance, err := utils.FetchXJoinPipeline(r.Client, request.NamespacedName, ctx)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -83,7 +84,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		Recorder:         r.Recorder,
 	}
 
-	xjoinConfig, err := config.NewConfig(i.Instance, i.Client)
+	xjoinConfig, err := config.NewConfig(i.Instance, i.Client, ctx)
 	if xjoinConfig != nil {
 		i.parameters = xjoinConfig.Parameters
 	}
@@ -142,13 +143,13 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 // +kubebuilder:rbac:groups=kafka.strimzi.io,resources=kafkaconnects;kafkas,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=configmaps;secrets;pods,verbs=get;list;watch
 
-func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
+func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	var setupErrors []error
 
 	reqLogger := xjoinlogger.NewLogger("controller_xjoinpipeline", "Pipeline", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling XJoinPipeline")
 
-	i, err := r.setup(reqLogger, request)
+	i, err := r.setup(reqLogger, request, ctx)
 	defer i.Close()
 
 	if err != nil {
@@ -304,75 +305,73 @@ func (r *XJoinPipelineReconciler) Reconcile(request ctrl.Request) (ctrl.Result, 
 }
 
 func (r *XJoinPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-controller").
 		For(&xjoin.XJoinPipeline{}).
 		Owns(kafka.EmptyConnector()).
 		// trigger Reconcile if ConfigMap changes
-		Watches(&source.Kind{Type: &v1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
+		Watches(&source.Kind{Type: &v1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(func(configMap client.Object) []reconcile.Request {
+			ctx, cancel := utils.DefaultContext()
+			defer cancel()
 
-			ToRequests: handler.ToRequestsFunc(
-				func(configMap handler.MapObject) []reconcile.Request {
-					var requests []reconcile.Request
+			var requests []reconcile.Request
 
-					if configMap.Meta.GetNamespace() != r.Namespace || configMap.Meta.GetName() != "xjoin" {
-						return requests
-					}
+			if configMap.GetNamespace() != r.Namespace || configMap.GetName() != "xjoin" {
+				return requests
+			}
 
-					pipelines, err := utils.FetchXJoinPipelines(r.Client)
-					if err != nil {
-						r.Log.Error(err, "Failed to fetch XJoinPipelines")
-						return requests
-					}
+			pipelines, err := utils.FetchXJoinPipelines(r.Client, ctx)
+			if err != nil {
+				r.Log.Error(err, "Failed to fetch XJoinPipelines")
+				return requests
+			}
 
-					for _, pipeline := range pipelines.Items {
-						requests = append(requests, reconcile.Request{
-							NamespacedName: types.NamespacedName{
-								Namespace: configMap.Meta.GetNamespace(),
-								Name:      pipeline.GetName(),
-							},
-						})
-					}
+			for _, pipeline := range pipelines.Items {
+				requests = append(requests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: configMap.GetNamespace(),
+						Name:      pipeline.GetName(),
+					},
+				})
+			}
 
-					r.Log.Info("XJoin ConfigMap changed. Reconciling XJoinPipelines",
-						"namespace", configMap.Meta.GetNamespace(), "pipelines", requests)
-					return requests
-				}),
-		}).
-		Watches(&source.Kind{Type: &v1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(
-				func(secret handler.MapObject) []reconcile.Request {
-					var requests []reconcile.Request
+			r.Log.Info("XJoin ConfigMap changed. Reconciling XJoinPipelines",
+				"namespace", configMap.GetNamespace(), "pipelines", requests)
+			return requests
+		})).
+		Watches(&source.Kind{Type: &v1.Secret{}}, handler.EnqueueRequestsFromMapFunc(func(secret client.Object) []reconcile.Request {
+			ctx, cancel := utils.DefaultContext()
+			defer cancel()
 
-					if secret.Meta.GetNamespace() != r.Namespace {
-						return requests
-					}
+			var requests []reconcile.Request
 
-					secretName := secret.Meta.GetName()
+			if secret.GetNamespace() != r.Namespace {
+				return requests
+			}
 
-					pipelines, err := utils.FetchXJoinPipelines(r.Client)
-					if err != nil {
-						r.Log.Error(err, "Failed to fetch XJoinPipelines")
-						return requests
-					}
+			secretName := secret.GetName()
 
-					for _, pipeline := range pipelines.Items {
-						if pipeline.Status.HBIDBSecretName == secretName || pipeline.Status.ElasticSearchSecretName == secretName {
-							requests = append(requests, reconcile.Request{
-								NamespacedName: types.NamespacedName{
-									Namespace: pipeline.GetNamespace(),
-									Name:      pipeline.GetName(),
-								},
-							})
-						}
-					}
+			pipelines, err := utils.FetchXJoinPipelines(r.Client, ctx)
+			if err != nil {
+				r.Log.Error(err, "Failed to fetch XJoinPipelines")
+				return requests
+			}
 
-					r.Log.Info("XJoin secret changed. Reconciling XJoinPipelines",
-						"namespace", secret.Meta.GetNamespace(), "name", secret.Meta.GetName(), "pipelines", requests)
-					return requests
-				}),
-		}).
+			for _, pipeline := range pipelines.Items {
+				if pipeline.Status.HBIDBSecretName == secretName || pipeline.Status.ElasticSearchSecretName == secretName {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: pipeline.GetNamespace(),
+							Name:      pipeline.GetName(),
+						},
+					})
+				}
+			}
+
+			r.Log.Info("XJoin secret changed. Reconciling XJoinPipelines",
+				"namespace", secret.GetNamespace(), "name", secret.GetName(), "pipelines", requests)
+			return requests
+		})).
 		Complete(r)
 }
 

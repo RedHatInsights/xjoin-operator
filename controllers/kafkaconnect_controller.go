@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
@@ -25,8 +26,8 @@ type KafkaConnectReconciler struct {
 	instance   *xjoin.XJoinPipeline
 }
 
-func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Request) error {
-	instance, err := utils.FetchXJoinPipeline(r.Client, request.NamespacedName)
+func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Request, ctx context.Context) error {
+	instance, err := utils.FetchXJoinPipeline(r.Client, request.NamespacedName, ctx)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -39,7 +40,7 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 	}
 	r.instance = instance
 
-	xjoinConfig, err := config.NewConfig(instance, r.Client)
+	xjoinConfig, err := config.NewConfig(instance, r.Client, ctx)
 	if xjoinConfig != nil {
 		r.parameters = xjoinConfig.Parameters
 	}
@@ -63,11 +64,11 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 
 // Reconcile
 // This reconciles Kafka Connect is running and each active connector is running
-func (r *KafkaConnectReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
+func (r *KafkaConnectReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	reqLogger := logger.NewLogger("controller_validation", "Pipeline", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling Kafka Connect")
 
-	err := r.Setup(reqLogger, request)
+	err := r.Setup(reqLogger, request, ctx)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

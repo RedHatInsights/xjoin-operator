@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
@@ -57,11 +58,11 @@ func (r *XJoinDataSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=kafka.strimzi.io,resources=kafkaconnects;kafkas,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=configmaps;pods,verbs=get;list;watch
 
-func (r *XJoinDataSourceReconciler) Reconcile(request ctrl.Request) (result ctrl.Result, err error) {
+func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := xjoinlogger.NewLogger("controller_xjoindatasource", "DataSource", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling XJoinDataSource")
 
-	instance, err := utils.FetchXJoinDataSource(r.Client, request.NamespacedName)
+	instance, err := utils.FetchXJoinDataSource(r.Client, request.NamespacedName, ctx)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -80,6 +81,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(request ctrl.Request) (result ctrl
 		SecretNames:    nil,
 		Namespace:      instance.Namespace,
 		Spec:           instance.Spec,
+		Context:        ctx,
 	})
 	err = configManager.Parse()
 	if err != nil {

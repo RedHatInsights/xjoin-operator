@@ -855,11 +855,15 @@ func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) error {
 }
 
 func (i *Iteration) GetPipeline() (*xjoin.XJoinPipeline, error) {
-	return utils.FetchXJoinPipeline(test.Client, i.NamespacedName)
+	ctx, cancel := utils.DefaultContext()
+	defer cancel()
+	return utils.FetchXJoinPipeline(test.Client, i.NamespacedName, ctx)
 }
 
 func (i *Iteration) ReconcileXJoinForDeletedPipeline() error {
-	result, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	ctx, cancel := utils.DefaultContext()
+	defer cancel()
+	result, err := i.XJoinReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: i.NamespacedName})
 	if err != nil {
 		return err
 	}
@@ -872,24 +876,32 @@ func (i *Iteration) ReconcileXJoinForDeletedPipeline() error {
 }
 
 func (i *Iteration) ReconcileValidationWithError() error {
-	_, err := i.ValidationReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	ctx, cancel := utils.DefaultContext()
+	defer cancel()
+	_, err := i.ValidationReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: i.NamespacedName})
 	return err
 }
 
 func (i *Iteration) ReconcileXJoinWithError() error {
-	_, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	ctx, cancel := utils.DefaultContext()
+	defer cancel()
+	_, err := i.XJoinReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: i.NamespacedName})
 	return err
 }
 
 func (i *Iteration) ReconcileXJoinNonTestWithError() error {
+	ctx, cancel := utils.DefaultContext()
+	defer cancel()
 	xJoinReconciler := newXJoinReconciler(i.NamespacedName.Namespace, false)
-	_, err := xJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	_, err := xJoinReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: i.NamespacedName})
 	return err
 }
 
 func (i *Iteration) ReconcileXJoinNonTest() (*xjoin.XJoinPipeline, error) {
+	ctx, cancel := utils.DefaultContext()
+	defer cancel()
 	xJoinReconciler := newXJoinReconciler(i.NamespacedName.Namespace, false)
-	result, err := xJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	result, err := xJoinReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: i.NamespacedName})
 	if err != nil {
 		return nil, err
 	}
@@ -901,7 +913,9 @@ func (i *Iteration) ReconcileXJoinNonTest() (*xjoin.XJoinPipeline, error) {
 }
 
 func (i *Iteration) ReconcileKafkaConnect() (bool, error) {
-	result, err := i.KafkaConnectReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	ctx, cancel := utils.DefaultContext()
+	defer cancel()
+	result, err := i.KafkaConnectReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: i.NamespacedName})
 	if err != nil {
 		return false, err
 	}
@@ -909,7 +923,9 @@ func (i *Iteration) ReconcileKafkaConnect() (bool, error) {
 }
 
 func (i *Iteration) ReconcileXJoin() (*xjoin.XJoinPipeline, error) {
-	result, err := i.XJoinReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	ctx, cancel := utils.DefaultContext()
+	defer cancel()
+	result, err := i.XJoinReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: i.NamespacedName})
 	if err != nil {
 		return nil, err
 	}
@@ -920,7 +936,9 @@ func (i *Iteration) ReconcileXJoin() (*xjoin.XJoinPipeline, error) {
 }
 
 func (i *Iteration) ReconcileValidationForDeletedPipeline() error {
-	result, err := i.ValidationReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	ctx, cancel := utils.DefaultContext()
+	defer cancel()
+	result, err := i.ValidationReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: i.NamespacedName})
 	if err != nil {
 		return err
 	}
@@ -932,7 +950,9 @@ func (i *Iteration) ReconcileValidationForDeletedPipeline() error {
 }
 
 func (i *Iteration) ReconcileValidation() (*xjoin.XJoinPipeline, error) {
-	result, err := i.ValidationReconciler.Reconcile(ctrl.Request{NamespacedName: i.NamespacedName})
+	ctx, cancel := utils.DefaultContext()
+	defer cancel()
+	result, err := i.ValidationReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: i.NamespacedName})
 	if err != nil {
 		return nil, err
 	}

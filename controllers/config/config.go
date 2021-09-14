@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -30,11 +31,11 @@ type Config struct {
 	client              client.Client
 }
 
-func NewConfig(instance *xjoin.XJoinPipeline, client client.Client) (*Config, error) {
+func NewConfig(instance *xjoin.XJoinPipeline, client client.Client, ctx context.Context) (*Config, error) {
 	config := Config{}
 
 	config.Parameters = NewXJoinConfiguration()
-	cm, err := utils.FetchConfigMap(client, instance.Namespace, "xjoin")
+	cm, err := utils.FetchConfigMap(client, instance.Namespace, "xjoin", ctx)
 	if err != nil {
 		return &config, err
 	}
@@ -48,7 +49,7 @@ func NewConfig(instance *xjoin.XJoinPipeline, client client.Client) (*Config, er
 	}
 	hbiDBSecretName := hbiDBSecretNameVal.Interface().(Parameter)
 	instance.Status.HBIDBSecretName = hbiDBSecretName.String()
-	config.hbiDBSecret, err = utils.FetchSecret(client, instance.Namespace, hbiDBSecretName.String())
+	config.hbiDBSecret, err = utils.FetchSecret(client, instance.Namespace, hbiDBSecretName.String(), ctx)
 	if err != nil {
 		return &config, err
 	}
@@ -59,12 +60,12 @@ func NewConfig(instance *xjoin.XJoinPipeline, client client.Client) (*Config, er
 	}
 	elasticSearchSecretName := elasticSearchSecretVal.Interface().(Parameter)
 	instance.Status.ElasticSearchSecretName = elasticSearchSecretName.String()
-	config.elasticSearchSecret, err = utils.FetchSecret(client, instance.Namespace, elasticSearchSecretName.String())
+	config.elasticSearchSecret, err = utils.FetchSecret(client, instance.Namespace, elasticSearchSecretName.String(), ctx)
 	if err != nil {
 		return &config, err
 	}
 
-	err = config.buildXJoinConfig()
+	err = config.buildXJoinConfig(ctx)
 	if err != nil {
 		return &config, err
 	}
@@ -133,7 +134,7 @@ func (config *Config) parameterValue(param Parameter) (reflect.Value, error) {
 }
 
 //Unable to pass ephemeral environment's kafka/connect cluster name into the deployment template
-func (config *Config) buildEphemeralConfig() (err error) {
+func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 	log.Info("Loading Kafka parameters for ephemeral environment")
 
 	var connectGVK = schema.GroupVersionKind{
@@ -222,7 +223,8 @@ func (config *Config) buildEphemeralConfig() (err error) {
 		return
 	}
 
-	esSecret, err := utils.FetchSecret(config.client, config.Parameters.ElasticSearchNamespace.String(), "xjoin-elasticsearch-es-elastic-user")
+	esSecret, err := utils.FetchSecret(
+		config.client, config.Parameters.ElasticSearchNamespace.String(), "xjoin-elasticsearch-es-elastic-user", ctx)
 	if err != nil {
 		return err
 	}
@@ -244,7 +246,7 @@ func (config *Config) buildEphemeralConfig() (err error) {
 	return
 }
 
-func (config *Config) buildXJoinConfig() error {
+func (config *Config) buildXJoinConfig(ctx context.Context) error {
 
 	configReflection := reflect.ValueOf(&config.Parameters).Elem()
 	parametersMap := make(map[string]interface{})
@@ -266,7 +268,7 @@ func (config *Config) buildXJoinConfig() error {
 	config.ParametersMap = parametersMap
 
 	if config.Parameters.Ephemeral.Bool() == true {
-		err := config.buildEphemeralConfig()
+		err := config.buildEphemeralConfig(ctx)
 		if err != nil {
 			return err
 		}
