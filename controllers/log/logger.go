@@ -49,8 +49,8 @@ func NewLogger(name string, values ...interface{}) Log {
 			o.DestWritter = ginkgo.GinkgoWriter
 		}
 	}
-	logf.SetLogger(k8szap.New(opts))
-	l.logger = logf.Log.Logger
+	l.logger = k8szap.New(opts)
+	logf.SetLogger(l.logger)
 	return l
 }
 

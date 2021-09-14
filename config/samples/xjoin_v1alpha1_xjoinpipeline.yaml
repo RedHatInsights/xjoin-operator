@@ -4,7 +4,6 @@ metadata:
   name: xjoinpipeline-sample
 spec:
   # Add fields here
-  elasticSearchURL: https://elasticsearch:9200
   connectClusterNamespace: test
   kafkaClusterNamespace: test
   connectCluster: connect
