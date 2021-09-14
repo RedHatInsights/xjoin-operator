@@ -27,14 +27,19 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+# Setting SHELL to bash allows bash commands to be executed by recipes.
+# This is a requirement for 'setup-envtest.sh' in the test target.
+# Options are set to exit when a recipe line exits non-zero or a piped command fails.
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
+all: build
+
 # Get the container engine (podman/docker)
 ifneq (,$(shell which podman))
 CONTAINER_ENGINE=podman
 else
 CONTAINER_ENGINE=docker
 endif
-
-all: manager
 
 # Run tests
 ENVTEST_ASSETS_DIR = $(shell pwd)/testbin
@@ -47,6 +52,14 @@ delve-test: generate fmt vet manifests
 	mkdir -p $(ENVTEST_ASSETS_DIR)
 	test -f $(ENVTEST_ASSETS_DIR)/setup-envtest.sh || curl -sSLo $(ENVTEST_ASSETS_DIR)/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.6.3/hack/setup-envtest.sh
 	source $(ENVTEST_ASSETS_DIR)/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); which dlv; dlv version; dlv test ./controllers/test --headless --accept-multiclient --listen=:2345 --api-version=2
+
+##@ Build
+
+genconfig:
+	cd controllers/cloud.redhat.com/config && gojsonschema -p config -o types.go schema.json
+
+build: generate fmt vet ## Build manager binary.
+	go build -o bin/manager main.go
 
 # Build manager binary
 manager: generate fmt vet

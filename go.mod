@@ -17,8 +17,8 @@ require (
 	github.com/spf13/viper v1.4.0
 	go.uber.org/zap v1.15.0
 	gopkg.in/h2non/gock.v1 v1.0.16
-	k8s.io/api v0.20.1
-	k8s.io/apimachinery v0.20.1
-	k8s.io/client-go v0.20.1
-	sigs.k8s.io/controller-runtime v0.7.2
+	k8s.io/api v0.20.2
+	k8s.io/apimachinery v0.20.2
+	k8s.io/client-go v0.20.2
+	sigs.k8s.io/controller-runtime v0.8.3
 )
