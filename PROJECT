@@ -3,10 +3,12 @@ layout: go.kubebuilder.io/v2
 projectName: xjoin-operator
 repo: github.com/redhatinsights/xjoin-operator
 resources:
--
+- controller: true
+  domain: cloud.redhat.com
   group: xjoin
   kind: XJoinPipeline
+  path: github.com/redhatinsights/xjoin-operator/api/v1alpha1
   version: v1alpha1
-version: 3-alpha
+version: "3"
 plugins:
   go.sdk.operatorframework.io/v2-alpha: {}

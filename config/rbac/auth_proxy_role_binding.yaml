@@ -8,5 +8,5 @@ roleRef:
   name: xjoin-operator-proxy-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: controller-manager
   namespace: system
