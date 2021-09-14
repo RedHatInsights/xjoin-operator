@@ -14,7 +14,7 @@ import (
 type Spec interface{}
 
 type Manager struct {
-	Parameters     map[string]Parameter
+	Parameters     interface{}
 	client         client.Client
 	ctx            context.Context
 	configMapNames []string
@@ -27,7 +27,7 @@ type Manager struct {
 
 type ManagerOptions struct {
 	Client         client.Client
-	Parameters     map[string]Parameter
+	Parameters     interface{}
 	ConfigMapNames []string
 	SecretNames    []string
 	Namespace      string
@@ -35,10 +35,13 @@ type ManagerOptions struct {
 	Context        context.Context
 }
 
-func NewManager(opts ManagerOptions) *Manager {
-
+func NewManager(opts ManagerOptions) (*Manager, error) {
 	configMaps := make(map[string]v1.ConfigMap)
 	managerSecrets := make(map[string]v1.Secret)
+
+	if opts.Context == nil {
+		return nil, errors.New("context is required")
+	}
 
 	return &Manager{
 		client:         opts.Client,
@@ -50,7 +53,7 @@ func NewManager(opts ManagerOptions) *Manager {
 		configMaps:     configMaps,
 		secrets:        managerSecrets,
 		ctx:            opts.Context,
-	}
+	}, nil
 }
 
 func (m *Manager) Parse() (err error) {
@@ -64,7 +67,9 @@ func (m *Manager) Parse() (err error) {
 		return
 	}
 
-	for name, param := range m.Parameters {
+	parameters := reflect.ValueOf(m.Parameters).Elem()
+	for i := 0; i < parameters.NumField(); i++ {
+		param := parameters.Field(i).Interface().(Parameter)
 		value, err := m.parseParameterValue(param)
 		if err != nil {
 			return err
@@ -73,15 +78,10 @@ func (m *Manager) Parse() (err error) {
 		if err != nil {
 			return err
 		}
-		m.Parameters[name] = param
+		parameters.Field(i).Set(reflect.ValueOf(param))
 	}
 
 	return
-}
-
-func (m *Manager) GetParameter(name string) *Parameter {
-	parameter := m.Parameters[name]
-	return &parameter
 }
 
 func (m *Manager) loadConfigMaps() (err error) {
@@ -116,9 +116,15 @@ func (m *Manager) loadSecrets() (err error) {
 func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err error) {
 	if param.SpecKey != "" {
 		specReflection := reflect.ValueOf(&m.spec).Elem().Elem()
-		value = specReflection.FieldByName(param.SpecKey).Interface()
-		if err != nil {
-			return
+		field := specReflection.FieldByName(param.SpecKey)
+
+		if !field.IsValid() {
+			log.Info(fmt.Sprintf("key %s not found in spec", param.SpecKey))
+		} else {
+			value = field.Interface()
+			if err != nil {
+				return
+			}
 		}
 	}
 

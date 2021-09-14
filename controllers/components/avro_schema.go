@@ -3,20 +3,20 @@ package components
 import "github.com/redhatinsights/xjoin-operator/controllers/avro"
 
 type AvroSchema struct {
-	name   string
-	schema string
-	id     int
+	schemaName string
+	schema     string
+	id         int
 }
 
-func NewAvroSchema(name string, schema string) *AvroSchema {
+func NewAvroSchema(schemaName string, schema string) *AvroSchema {
 	return &AvroSchema{
-		name:   name,
-		schema: schema,
+		schemaName: schemaName,
+		schema:     schema,
 	}
 }
 
 func (as *AvroSchema) Name() string {
-	return as.name
+	return "AvroSchema"
 }
 
 func (as *AvroSchema) Create() (err error) {
@@ -29,7 +29,7 @@ func (as *AvroSchema) Create() (err error) {
 
 	registry.Init()
 
-	id, err := registry.RegisterSchema(as.name, as.schema)
+	id, err := registry.RegisterSchema(as.schemaName, as.schema)
 	if err != nil {
 		return
 	}
@@ -43,5 +43,9 @@ func (as *AvroSchema) Delete() (err error) {
 }
 
 func (as *AvroSchema) CheckDeviation() (err error) {
+	return
+}
+
+func (as *AvroSchema) Exists() (exists bool, err error) {
 	return
 }

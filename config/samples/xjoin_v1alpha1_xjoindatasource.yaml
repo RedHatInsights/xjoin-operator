@@ -4,4 +4,4 @@ metadata:
   name: test
 spec:
   pause: false
-  avroschema: "{}"
+  avroSchema: "{}"

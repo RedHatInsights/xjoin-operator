@@ -9,6 +9,18 @@ resources:
   kind: XJoinPipeline
   path: github.com/redhatinsights/xjoin-operator/api/v1alpha1
   version: v1alpha1
+- controller: true
+  domain: cloud.redhat.com
+  group: xjoin
+  kind: XJoinDataSource
+  path: github.com/redhatinsights/xjoin-operator/api/v1alpha1
+  version: v1alpha1
+- controller: true
+  domain: cloud.redhat.com
+  group: xjoin
+  kind: XJoinDataSourcePipeline
+  path: github.com/redhatinsights/xjoin-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"
 plugins:
   go.sdk.operatorframework.io/v2-alpha: {}

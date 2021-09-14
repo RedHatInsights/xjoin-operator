@@ -22,6 +22,12 @@ func FetchXJoinPipeline(c client.Client, namespacedName types.NamespacedName, ct
 	return instance, err
 }
 
+func FetchXJoinDataSourcePipeline(c client.Client, namespacedName types.NamespacedName, ctx context.Context) (*xjoin.XJoinDataSourcePipeline, error) {
+	instance := &xjoin.XJoinDataSourcePipeline{}
+	err := c.Get(ctx, namespacedName, instance)
+	return instance, err
+}
+
 func FetchXJoinDataSource(c client.Client, namespacedName types.NamespacedName, ctx context.Context) (*xjoin.XJoinDataSource, error) {
 	instance := &xjoin.XJoinDataSource{}
 	err := c.Get(ctx, namespacedName, instance)

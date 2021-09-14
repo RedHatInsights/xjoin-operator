@@ -5,25 +5,25 @@ import (
 )
 
 type XJoinDataSourceSpec struct {
-	// +kubebuilder:validation:Required
+	// +optional
 	AvroSchema string `json:"avroSchema,omitempty"`
 
-	// +kubebuilder:validation:Required
+	// +optional
 	DatabaseHostname string `json:"databaseHostname,omitempty"`
 
-	// +kubebuilder:validation:Required
+	// +optional
 	DatabasePort string `json:"databasePort,omitempty"`
 
-	// +kubebuilder:validation:Required
+	// +optional
 	DatabaseUsername string `json:"databaseUsername,omitempty"`
 
-	// +kubebuilder:validation:Required
+	// +optional
 	DatabasePassword string `json:"databasePassword,omitempty"`
 
-	// +kubebuilder:validation:Required
+	// +optional
 	DatabaseName string `json:"databaseName,omitempty"`
 
-	// +kubebuilder:validation:Required
+	// +optional
 	DatabaseTable string `json:"databaseTable,omitempty"`
 
 	// +optional
@@ -31,7 +31,7 @@ type XJoinDataSourceSpec struct {
 }
 
 type XJoinDataSourceStatus struct {
-	// +kubebuilder:validation:Minimum:=0
+	ActiveVersion string `json:"activeVersion"`
 }
 
 // +kubebuilder:object:root=true
@@ -51,7 +51,7 @@ type XJoinDataSource struct {
 type XJoinDataSourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []XJoinPipeline `json:"items"`
+	Items           []XJoinDataSource `json:"items"`
 }
 
 func init() {

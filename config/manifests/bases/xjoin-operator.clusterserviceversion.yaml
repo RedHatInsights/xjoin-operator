@@ -12,6 +12,14 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - displayName: XJoin Data Source Pipeline
+      kind: XJoinDataSourcePipeline
+      name: xjoindatasourcepipelines.xjoin.cloud.redhat.com
+      version: v1alpha1
+    - displayName: XJoin Data Source
+      kind: XJoinDataSource
+      name: xjoindatasources.xjoin.cloud.redhat.com
+      version: v1alpha1
     - description: XJoinPipeline is the Schema for the xjoinpipelines API
       displayName: XJoin Pipeline
       kind: XJoinPipeline

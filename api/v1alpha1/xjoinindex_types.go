@@ -30,7 +30,7 @@ type XJoinIndex struct {
 type XJoinIndexList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []XJoinPipeline `json:"items"`
+	Items           []XJoinIndex `json:"items"`
 }
 
 func init() {

@@ -1,23 +1,21 @@
-
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: xjoindatasources.xjoin.cloud.redhat.com
+  name: xjoindatasourcepipelines.xjoin.cloud.redhat.com
 spec:
   group: xjoin.cloud.redhat.com
   names:
     categories:
     - all
-    kind: XJoinDataSource
-    listKind: XJoinDataSourceList
-    plural: xjoindatasources
+    kind: XJoinDataSourcePipeline
+    listKind: XJoinDataSourcePipelineList
+    plural: xjoindatasourcepipelines
     shortNames:
-    - xjoindatasource
-    singular: xjoindatasource
+    - xjoindatasourcepipeline
+    singular: xjoindatasourcepipeline
   scope: Namespaced
   versions:
   - name: v1alpha1
@@ -54,13 +52,10 @@ spec:
                 type: string
               pause:
                 type: boolean
+              version:
+                type: string
             type: object
           status:
-            properties:
-              activeVersion:
-                type: string
-            required:
-            - activeVersion
             type: object
         type: object
     served: true

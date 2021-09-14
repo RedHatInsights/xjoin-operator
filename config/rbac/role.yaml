@@ -63,6 +63,20 @@ rules:
 - apiGroups:
   - xjoin.cloud.redhat.com
   resources:
+  - xjoindatasourcepipelines
+  - xjoindatasourcepipelines/finalizers
+  - xjoindatasourcepipelines/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - xjoin.cloud.redhat.com
+  resources:
   - xjoindatasources
   - xjoindatasources/finalizers
   - xjoindatasources/status
