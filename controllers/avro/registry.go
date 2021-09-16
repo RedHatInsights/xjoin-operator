@@ -27,15 +27,9 @@ func (sr *SchemaRegistry) Init() {
 }
 
 func (sr *SchemaRegistry) RegisterSchema(name string, schemaDefinition string) (id int, err error) {
-	schema, err := sr.Client.GetLatestSchema(name)
+	schema, err := sr.Client.CreateSchema(name, schemaDefinition, srclient.Avro)
 	if err != nil {
 		return
-	}
-	if schema == nil {
-		schema, err = sr.Client.CreateSchema(name, schemaDefinition, srclient.Avro)
-		if err != nil {
-			return
-		}
 	}
 	return schema.ID(), nil
 }

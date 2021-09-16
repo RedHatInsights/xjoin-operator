@@ -4,4 +4,128 @@ metadata:
   name: test
 spec:
   pause: false
-  avroSchema: "{}"
+  avroSchema: >
+    {
+      "type": "record",
+      "name": "Value",
+      "namespace": "xjoin.inventory.1630327723726062973.public.hosts",
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "connect.version": 1,
+            "connect.name": "io.debezium.data.Uuid"
+          }
+        },
+        {
+          "name": "account",
+          "type": "string"
+        },
+        {
+          "name": "display_name",
+          "type": [
+              "null",
+              "string"
+          ],
+          "default": null
+        },
+        {
+          "name": "created_on",
+          "type": {
+            "type": "string",
+            "connect.version": 1,
+            "connect.name": "io.debezium.time.ZonedTimestamp"
+          }
+        },
+        {
+          "name": "modified_on",
+          "type": {
+            "type": "string",
+            "connect.version": 1,
+            "connect.name": "io.debezium.time.ZonedTimestamp"
+          }
+        },
+        {
+          "name": "facts",
+          "type": [
+              "null",
+            {
+              "type": "string",
+              "connect.version": 1,
+              "connect.name": "io.debezium.data.Json"
+            }
+          ],
+          "default": null
+        },
+        {
+          "name": "tags",
+          "type": [
+              "null",
+            {
+              "type": "string",
+              "connect.version": 1,
+              "connect.name": "io.debezium.data.Json"
+            }
+          ],
+          "default": null
+        },
+        {
+          "name": "canonical_facts",
+          "type": {
+            "type": "string",
+            "connect.version": 1,
+            "connect.name": "io.debezium.data.Json"
+          }
+        },
+        {
+          "name": "system_profile_facts",
+          "type": [
+              "null",
+            {
+              "type": "string",
+              "connect.version": 1,
+              "connect.name": "io.debezium.data.Json"
+            }
+          ],
+          "default": null
+        },
+        {
+          "name": "ansible_host",
+          "type": [
+              "null",
+              "string"
+          ],
+          "default": null
+        },
+        {
+          "name": "stale_timestamp",
+          "type": {
+            "type": "string",
+            "connect.version": 1,
+            "connect.name": "io.debezium.time.ZonedTimestamp"
+          }
+        },
+        {
+          "name": "reporter",
+          "type": "string"
+        },
+        {
+          "name": "per_reporter_staleness",
+          "type": {
+            "type": "string",
+            "connect.version": 1,
+            "connect.name": "io.debezium.data.Json"
+          }
+        },
+        {
+          "name": "__deleted",
+          "type": [
+              "null",
+              "string"
+          ],
+          "default": null
+        }
+      ],
+      "connect.name": "xjoin.inventory.1630326061326535535.public.hosts.Value"
+    }

@@ -177,14 +177,14 @@ func (i *XJoinDataSourceInstance) createDataSourcePipeline(name string, version 
 			"namespace": i.instance.Namespace,
 		},
 		"spec": map[string]interface{}{
-			"Version":          version,
-			"AvroSchema":       i.parameters.AvroSchema.String(),
-			"DatabaseHostname": i.parameters.DatabaseHostname.String(),
-			"DatabasePort":     i.parameters.DatabasePort.String(),
-			"DatabaseName":     i.parameters.DatabaseName.String(),
-			"DatabaseUsername": i.parameters.DatabaseUsername.String(),
-			"DatabasePassword": i.parameters.DatabasePassword.String(),
-			"Pause":            i.parameters.Pause.Bool(),
+			"version":          version,
+			"avroSchema":       i.parameters.AvroSchema.String(),
+			"databaseHostname": i.parameters.DatabaseHostname.String(),
+			"databasePort":     i.parameters.DatabasePort.String(),
+			"databaseName":     i.parameters.DatabaseName.String(),
+			"databaseUsername": i.parameters.DatabaseUsername.String(),
+			"databasePassword": i.parameters.DatabasePassword.String(),
+			"pause":            i.parameters.Pause.Bool(),
 		},
 	}
 	dataSourcePipeline.SetGroupVersionKind(dataSourcePipelineGVK)

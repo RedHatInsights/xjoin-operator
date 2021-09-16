@@ -23,7 +23,7 @@ func (as *AvroSchema) Create() (err error) {
 	registry := avro.NewSchemaRegistry(
 		avro.SchemaRegistryConnectionParams{
 			Protocol: "http",
-			Hostname: "confluent-schema-registry",
+			Hostname: "confluent-schema-registry.test.svc",
 			Port:     "8081",
 		})
 

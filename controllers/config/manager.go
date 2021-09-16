@@ -119,7 +119,7 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 		field := specReflection.FieldByName(param.SpecKey)
 
 		if !field.IsValid() {
-			log.Info(fmt.Sprintf("key %s not found in spec", param.SpecKey))
+			log.Debug(fmt.Sprintf("key %s not found in spec", param.SpecKey))
 		} else {
 			value = field.Interface()
 			if err != nil {
