@@ -72,8 +72,8 @@ if [[ $prev_version != "" ]]; then
 fi
 export BUNDLE_IMAGE_TAG=$current_commit
 export VERSION=$version
-curl -L https://github.com/operator-framework/operator-sdk/releases/download/v1.0.1/operator-sdk-v1.0.1-x86_64-linux-gnu -o ./operator-sdk
-curl -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.8.5/kustomize_v3.8.5_linux_amd64.tar.gz | tar xzf - > kustomize
+curl -L https://github.com/operator-framework/operator-sdk/releases/download/v1.12.0/helm-operator_linux_amd64 -o ./operator-sdk
+curl -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv4.3.0/kustomize_v4.3.0_darwin_amd64.tar.gz | tar xzf - > kustomize
 chmod +x ./operator-sdk
 chmod +x ./kustomize
 export PATH=$PATH:.
