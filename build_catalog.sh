@@ -42,7 +42,7 @@ export PATH=${GOUNPACK}/go/bin:$PATH
 export DOCKER_CONFIG="$PWD/.docker"
 mkdir -p "$DOCKER_CONFIG"
 
-#docker login -u="$QUAY_USER" -p="$QUAY_TOKEN" quay.io
+docker login -u="$QUAY_USER" -p="$QUAY_TOKEN" quay.io
 
 # Find the CSV version from the previous bundle
 log "Pulling latest bundle image $BUNDLE_IMAGE"
