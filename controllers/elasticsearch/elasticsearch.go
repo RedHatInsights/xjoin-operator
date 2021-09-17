@@ -3,10 +3,10 @@ package elasticsearch
 import (
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/go-errors/errors"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"io"
 	"io/ioutil"
@@ -83,6 +83,7 @@ func parseResponse(res *esapi.Response) (int, map[string]interface{}, error) {
 	if len(bodyBytes) > 0 {
 		err = json.Unmarshal(bodyBytes, &bodyMap)
 		if err != nil {
+			err = errors.Wrap(err, 0)
 			log.Error(err,
 				"Unable to parse ES response body to map",
 				"body", string(bodyBytes))

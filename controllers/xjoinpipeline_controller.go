@@ -36,6 +36,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -309,6 +310,10 @@ func (r *XJoinPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Named("xjoin-controller").
 		For(&xjoin.XJoinPipeline{}).
 		Owns(kafka.EmptyConnector()).
+		WithLogger(mgr.GetLogger()).
+		WithOptions(controller.Options{
+			Log: mgr.GetLogger(),
+		}).
 		// trigger Reconcile if ConfigMap changes
 		Watches(&source.Kind{Type: &v1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(func(configMap client.Object) []reconcile.Request {
 			ctx, cancel := utils.DefaultContext()

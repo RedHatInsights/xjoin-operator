@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -126,6 +127,10 @@ func (r *ValidationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Named("xjoin-validation").
 		For(&xjoin.XJoinPipeline{}).
 		WithEventFilter(eventFilterPredicate()).
+		WithLogger(mgr.GetLogger()).
+		WithOptions(controller.Options{
+			Log: mgr.GetLogger(),
+		}).
 		Complete(r)
 }
 

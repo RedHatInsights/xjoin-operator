@@ -9,6 +9,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -105,6 +106,10 @@ func (r *KafkaConnectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Named("xjoin-kafkaconnect").
 		For(&xjoin.XJoinPipeline{}).
 		WithEventFilter(eventFilterPredicate()).
+		WithLogger(mgr.GetLogger()).
+		WithOptions(controller.Options{
+			Log: mgr.GetLogger(),
+		}).
 		Complete(r)
 }
 

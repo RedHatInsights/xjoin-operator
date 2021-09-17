@@ -12,7 +12,7 @@ import (
 )
 
 type Log struct {
-	logger logr.Logger
+	Logger logr.Logger
 	name   string
 	values []interface{}
 }
@@ -22,15 +22,24 @@ func NewLogger(name string, values ...interface{}) Log {
 	l.name = name
 	l.values = values
 	opts := func(o *k8szap.Options) {
-		o.StacktraceLevel = zap.WarnLevel
+		o.StacktraceLevel = zapcore.ErrorLevel
 
 		devMode := os.Getenv("DEV_MODE")
 		if strings.EqualFold(devMode, "true") {
 			o.Development = true
+
+			encoderConfig := zap.NewDevelopmentEncoderConfig()
+			encoderConfig.StacktraceKey = "trace"
+			encoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
+			xje := xjoinEncoder{
+				encoder: zapcore.NewConsoleEncoder(encoderConfig),
+			}
+			o.Encoder = &xje
 		} else {
 			o.Development = false
 
 			encoderConfig := zap.NewProductionEncoderConfig()
+			encoderConfig.StacktraceKey = "trace"
 			encoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
 			o.Encoder = zapcore.NewJSONEncoder(encoderConfig)
 		}
@@ -49,8 +58,8 @@ func NewLogger(name string, values ...interface{}) Log {
 			o.DestWritter = ginkgo.GinkgoWriter
 		}
 	}
-	l.logger = k8szap.New(opts)
-	logf.SetLogger(l.logger)
+	logf.SetLogger(k8szap.New(opts))
+	l.Logger = logf.Log
 	return l
 }
 
@@ -74,17 +83,17 @@ func addMetadata(messageKeyValues []interface{}, metaName string, metaValues []i
 }
 
 func (l Log) Debug(message string, keysAndValues ...interface{}) {
-	l.logger.V(1).Info(message, addMetadata(keysAndValues, l.name, l.values)...)
+	l.Logger.V(1).Info(message, addMetadata(keysAndValues, l.name, l.values)...)
 }
 
 func (l Log) Info(message string, keysAndValues ...interface{}) {
-	l.logger.Info(message, addMetadata(keysAndValues, l.name, l.values)...)
+	l.Logger.Info(message, addMetadata(keysAndValues, l.name, l.values)...)
 }
 
 func (l Log) Warn(message string, keysAndValues ...interface{}) {
-	l.logger.V(-1).Info(message, addMetadata(keysAndValues, l.name, l.values)...)
+	l.Logger.V(-1).Info(message, addMetadata(keysAndValues, l.name, l.values)...)
 }
 
 func (l Log) Error(err error, message string, keysAndValues ...interface{}) {
-	l.logger.Error(err, message, addMetadata(keysAndValues, l.name, l.values)...)
+	l.Logger.Error(err, message, addMetadata(keysAndValues, l.name, l.values)...)
 }

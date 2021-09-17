@@ -18,18 +18,16 @@ package main
 
 import (
 	"flag"
+	"github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	k8runtime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/clientcmd"
-	"log"
 	"os"
-	"os/signal"
-	"runtime/pprof"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	k8slog "sigs.k8s.io/controller-runtime/pkg/log"
 	"time"
 
 	xjoinv1alpha1 "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -39,38 +37,20 @@ import (
 )
 
 var (
-	scheme   = k8runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme = k8runtime.NewScheme()
 )
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
 	utilruntime.Must(xjoinv1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
-}
 
-func SetupCloseHandler() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		sigchan := make(chan os.Signal)
-		signal.Notify(sigchan, os.Interrupt)
-		<-sigchan
-		log.Println("CTRL-C Detected. Cleaning up.")
-		pprof.StopCPUProfile()
-		os.Exit(0)
-	}()
+	xjoinLogger := log.NewLogger("main")
+	k8slog.SetLogger(xjoinLogger.Logger)
+	ctrl.SetLogger(xjoinLogger.Logger)
 }
 
 func main() {
-	//SetupCloseHandler()
-	//
-	//go func() {
-	//	runtime.SetBlockProfileRate(1)
-	//	log.Println(http.ListenAndServe("localhost:6060", nil))
-	//}()
-
 	var metricsAddr string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
@@ -79,8 +59,6 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
-
 	kubeconfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		clientcmd.NewDefaultClientConfigLoadingRules(),
 		&clientcmd.ConfigOverrides{},
@@ -88,9 +66,9 @@ func main() {
 	namespace, _, err := kubeconfig.Namespace()
 
 	if err != nil {
-		setupLog.Error(err, "error loading namespace")
+		k8slog.Log.Error(err, "error loading namespace")
 	}
-	setupLog.Info("Running in namespace: " + namespace)
+	k8slog.Log.Info("Running in namespace: " + namespace)
 
 	renewDeadline := 60 * time.Second
 	leaseDuration := 90 * time.Second
@@ -103,9 +81,10 @@ func main() {
 		LeaderElectionID:   "222b734b.cloud.redhat.com",
 		RenewDeadline:      &renewDeadline,
 		LeaseDuration:      &leaseDuration,
+		Logger:             k8slog.Log,
 	})
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		k8slog.Log.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
@@ -117,7 +96,7 @@ func main() {
 		namespace,
 		false,
 	).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "KafkaConnect")
+		k8slog.Log.Error(err, "unable to create controller", "controller", "KafkaConnect")
 		os.Exit(1)
 	}
 
@@ -130,7 +109,7 @@ func main() {
 		namespace,
 		false,
 	).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Validation")
+		k8slog.Log.Error(err, "unable to create controller", "controller", "Validation")
 		os.Exit(1)
 	}
 
@@ -142,7 +121,7 @@ func main() {
 		namespace,
 		false,
 	).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "XJoinDataSourcePipeline")
+		k8slog.Log.Error(err, "unable to create controller", "controller", "XJoinDataSourcePipeline")
 		os.Exit(1)
 	}
 
@@ -154,7 +133,7 @@ func main() {
 		namespace,
 		false,
 	).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "XJoinDataSource")
+		k8slog.Log.Error(err, "unable to create controller", "controller", "XJoinDataSource")
 		os.Exit(1)
 	}
 
@@ -164,16 +143,16 @@ func main() {
 		Scheme:   mgr.GetScheme(),
 		Recorder: mgr.GetEventRecorderFor("xjoin"),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "XJoinPipeline")
+		k8slog.Log.Error(err, "unable to create controller", "controller", "XJoinPipeline")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
 
 	metrics.Init()
 
-	setupLog.Info("starting manager")
+	k8slog.Log.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
+		k8slog.Log.Error(err, "problem running manager")
 		os.Exit(1)
 	}
 }

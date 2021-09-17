@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"time"
@@ -52,6 +54,10 @@ func (r *XJoinDataSourcePipelineReconciler) SetupWithManager(mgr ctrl.Manager) e
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-datasourcepipeline-controller").
 		For(&xjoin.XJoinDataSourcePipeline{}).
+		WithLogger(mgr.GetLogger()).
+		WithOptions(controller.Options{
+			Log: mgr.GetLogger(),
+		}).
 		Complete(r)
 }
 
@@ -74,7 +80,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 			return result, nil
 		}
 		// Error reading the object - requeue the request.
-		return
+		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
 	p := parameters.BuildDataSourceParameters()
@@ -89,16 +95,15 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		Context:        ctx,
 	})
 	if err != nil {
-		return
+		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 	err = configManager.Parse()
 	if err != nil {
-		return
+		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
 	if p.Pause.Bool() == true {
-		reqLogger.Info("Resource is paused. Skipping reconcile loop")
-		return
+		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
 	componentManager := components.NewComponentManager(p.Version.String())
@@ -110,6 +115,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		reqLogger.Info("Starting finalizer")
 		err = componentManager.DeleteAll()
 		if err != nil {
+			reqLogger.Error(err, "error deleting components during finalizer")
 			return
 		}
 
@@ -118,7 +124,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		defer cancel()
 		err = r.Client.Update(ctx, instance)
 		if err != nil {
-			return
+			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
 
 		reqLogger.Info("Successfully finalized")
@@ -127,7 +133,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 
 	err = componentManager.CreateAll()
 	if err != nil {
-		return
+		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
 	return reconcile.Result{RequeueAfter: time.Second * 30}, nil

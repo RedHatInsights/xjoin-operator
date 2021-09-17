@@ -1,5 +1,7 @@
 package components
 
+import "github.com/go-errors/errors"
+
 type Component interface {
 	Name() string
 	Create() error
@@ -28,12 +30,12 @@ func (c ComponentManager) CreateAll() error {
 	for _, component := range c.components {
 		componentExists, err := component.Exists()
 		if err != nil {
-			return err
+			return errors.Wrap(err, 0)
 		}
 		if !componentExists {
 			err = component.Create()
 			if err != nil {
-				return err
+				return errors.Wrap(err, 0)
 			}
 		}
 	}

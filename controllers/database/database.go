@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/go-errors/errors"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
@@ -304,6 +304,7 @@ func closeRows(rows *sqlx.Rows) {
 	if rows != nil {
 		err := rows.Close()
 		if err != nil {
+			err = errors.Wrap(err, 0)
 			log.Error(err, "Unable to close rows")
 		}
 	}
