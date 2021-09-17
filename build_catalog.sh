@@ -42,7 +42,7 @@ export PATH=${GOUNPACK}/go/bin:$PATH
 export DOCKER_CONFIG="$PWD/.docker"
 mkdir -p "$DOCKER_CONFIG"
 
-docker login -u="$QUAY_USER" -p="$QUAY_TOKEN" quay.io
+#docker login -u="$QUAY_USER" -p="$QUAY_TOKEN" quay.io
 
 # Find the CSV version from the previous bundle
 log "Pulling latest bundle image $BUNDLE_IMAGE"
@@ -72,7 +72,7 @@ if [[ $prev_version != "" ]]; then
 fi
 export BUNDLE_IMAGE_TAG=$current_commit
 export VERSION=$version
-curl -L https://github.com/operator-framework/operator-sdk/releases/download/v1.12.0/helm-operator_linux_amd64 -o ./operator-sdk
+curl -L https://github.com/operator-framework/operator-sdk/releases/download/v1.12.0/operator-sdk_linux_amd64 -o ./operator-sdk
 curl -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv4.3.0/kustomize_v4.3.0_darwin_amd64.tar.gz | tar xzf - > kustomize
 chmod +x ./operator-sdk
 chmod +x ./kustomize
