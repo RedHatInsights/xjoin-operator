@@ -73,7 +73,8 @@ fi
 export BUNDLE_IMAGE_TAG=$current_commit
 export VERSION=$version
 curl -L https://github.com/operator-framework/operator-sdk/releases/download/v1.12.0/operator-sdk_linux_amd64 -o ./operator-sdk
-curl -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv4.3.0/kustomize_v4.3.0_darwin_amd64.tar.gz | tar xzf - > kustomize
+curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv4.3.0/kustomize_v4.3.0_linux_amd64.tar.gz
+tar -xvf kustomize_v4.3.0_linux_amd64.tar.gz
 chmod +x ./operator-sdk
 chmod +x ./kustomize
 export PATH=$PATH:.
