@@ -29,7 +29,7 @@ done
 num_commits=$(git rev-list $(git rev-list --max-parents=0 HEAD)..HEAD --count)
 current_commit=$(git rev-parse --short=7 HEAD)
 version="0.1.$num_commits-git$current_commit"
-opm_version="1.18.0"
+opm_version="1.14.0"
 
 # workaround for https://github.com/golang/go/issues/38373
 GO_VERSION="1.15.14"
