@@ -1,0 +1,1 @@
+This package contains code related to the legacy XJoinPipeline CRD.

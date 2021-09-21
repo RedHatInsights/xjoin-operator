@@ -1,4 +1,4 @@
-package controllers
+package pipeline
 
 import (
 	"errors"
@@ -19,7 +19,7 @@ import (
 const countMismatchThreshold = 0.5
 const idDiffMaxLength = 50
 
-func (i *ReconcileIteration) validate() (isValid bool, err error) {
+func (i *ReconcileIteration) Validate() (isValid bool, err error) {
 	isValid, countMismatchCount, countMismatchRatio, err := i.countValidation()
 	if err != nil || !isValid {
 		metrics.ValidationFinished(isValid)
@@ -43,7 +43,7 @@ func (i *ReconcileIteration) validate() (isValid bool, err error) {
 	fullMismatchCount := 0
 	fullMismatchRatio := 0.0
 
-	if i.parameters.FullValidationEnabled.Bool() == true {
+	if i.Parameters.FullValidationEnabled.Bool() == true {
 		isValid, fullMismatchCount, fullMismatchRatio, err = i.fullValidation(hbiIds)
 		if err != nil || !isValid {
 			metrics.ValidationFinished(isValid)
@@ -95,13 +95,13 @@ func (i *ReconcileIteration) countValidation() (isValid bool, mismatchCount int,
 		esCount,
 		hostCount)
 	if !isValid {
-		i.eventNormal("CountValidationFailed", msg)
+		i.EventNormal("CountValidationFailed", msg)
 	} else {
-		i.eventNormal("CountValidationPassed", msg)
+		i.EventNormal("CountValidationPassed", msg)
 	}
 
 	metrics.CountValidationFinished(
-		i.getValidationPercentageThreshold(), mismatchRatio, mismatchCount)
+		i.GetValidationPercentageThreshold(), mismatchRatio, mismatchCount)
 
 	return
 }
@@ -119,8 +119,8 @@ func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mi
 	isValid = false
 
 	now := time.Now().UTC()
-	validationPeriod := i.parameters.ValidationPeriodMinutes.Int()
-	validationLagComp := i.parameters.ValidationLagCompensationSeconds.Int()
+	validationPeriod := i.Parameters.ValidationPeriodMinutes.Int()
+	validationLagComp := i.Parameters.ValidationLagCompensationSeconds.Int()
 
 	var startTime time.Time
 	if i.Instance.GetState() == xjoin.STATE_INITIAL_SYNC {
@@ -145,7 +145,7 @@ func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mi
 
 	i.Log.Info(
 		"ID Validation results before lag compensation",
-		"validationThresholdPercent", i.getValidationPercentageThreshold(),
+		"validationThresholdPercent", i.GetValidationPercentageThreshold(),
 		"mismatchRatio", mismatchRatio,
 		"mismatchCount", mismatchCount,
 		"totalHBIHostsRetrieved", len(hbiIds),
@@ -172,20 +172,20 @@ func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mi
 		mismatchCount, inHbiOnly, inAppOnly = i.validateIdChunk(hbiIds, esIds)
 	}
 
-	validationThresholdPercent := i.getValidationPercentageThreshold()
+	validationThresholdPercent := i.GetValidationPercentageThreshold()
 	mismatchRatio = float64(mismatchCount) / math.Max(float64(len(hbiIds)), 1)
 	isValid = (mismatchRatio * 100) <= float64(validationThresholdPercent)
 
 	msg := fmt.Sprintf("%v hosts ids do not match. Number of hosts IDs retrieved: HBI: %v, ES: %v", mismatchCount, len(hbiIds), len(esIds))
 	if !isValid {
-		i.eventNormal("IDValidationFailed", msg)
+		i.EventNormal("IDValidationFailed", msg)
 	} else {
-		i.eventNormal("IDValidationPassed", msg)
+		i.EventNormal("IDValidationPassed", msg)
 	}
 
 	i.Log.Info(
 		"ID Validation results",
-		"validationThresholdPercent", i.getValidationPercentageThreshold(),
+		"validationThresholdPercent", i.GetValidationPercentageThreshold(),
 		"mismatchRatio", mismatchRatio,
 		"mismatchCount", mismatchCount,
 		"totalHBIHostsRetrieved", len(hbiIds),
@@ -196,7 +196,7 @@ func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mi
 	)
 
 	metrics.IDValidationFinished(
-		i.getValidationPercentageThreshold(), mismatchRatio, mismatchCount)
+		i.GetValidationPercentageThreshold(), mismatchRatio, mismatchCount)
 
 	return
 }
@@ -265,7 +265,7 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 	numThreads := 0
 	wg := new(sync.WaitGroup)
 
-	chunkSize := i.parameters.FullValidationChunkSize.Int()
+	chunkSize := i.Parameters.FullValidationChunkSize.Int()
 	var numChunks = int(math.Ceil(float64(len(ids)) / float64(chunkSize)))
 
 	i.Log.Info("Full Validation Start: " + time.Now().String())
@@ -286,7 +286,7 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 		numThreads += 1
 		go i.validateFullChunkAsync(chunk, allIdDiffs, errorsChan, wg)
 
-		if numThreads == i.parameters.FullValidationNumThreads.Int() || j == numChunks-1 {
+		if numThreads == i.Parameters.FullValidationNumThreads.Int() || j == numChunks-1 {
 			wg.Wait()
 			numThreads = 0
 		}
@@ -302,7 +302,7 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 			i.Log.Error(e, "Error during full validation")
 		}
 
-		return false, -1, -1, errors.New("error during full validation")
+		return false, -1, -1, errors.New("Error during full validation")
 	}
 
 	//double check mismatched hosts to account for lag
@@ -328,14 +328,14 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 	//determine if the data is valid within the threshold
 	mismatchCount = len(diffsById)
 	mismatchRatio = float64(mismatchCount) / math.Max(float64(len(ids)), 1)
-	isValid = (mismatchRatio * 100) <= float64(i.getValidationPercentageThreshold())
+	isValid = (mismatchRatio * 100) <= float64(i.GetValidationPercentageThreshold())
 	msg := fmt.Sprintf("%v hosts do not match. %v hosts validated.", mismatchCount, len(ids))
 
 	if !isValid {
 		isValid = false
-		i.eventNormal("FullValidationFailed", msg)
+		i.EventNormal("FullValidationFailed", msg)
 	} else {
-		i.eventNormal("FullValidationPassed", msg)
+		i.EventNormal("FullValidationPassed", msg)
 		isValid = true
 	}
 
@@ -352,14 +352,14 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 
 	i.Log.Info(
 		"Full Validation results",
-		"validationThresholdPercent", i.getValidationPercentageThreshold(),
+		"validationThresholdPercent", i.GetValidationPercentageThreshold(),
 		"mismatchRatio", mismatchRatio,
 		"mismatchCount", mismatchCount,
 		"mismatchedHosts", diffsToLog,
 	)
 
 	metrics.FullValidationFinished(
-		i.getValidationPercentageThreshold(), mismatchRatio, mismatchCount)
+		i.GetValidationPercentageThreshold(), mismatchRatio, mismatchCount)
 
 	return
 }

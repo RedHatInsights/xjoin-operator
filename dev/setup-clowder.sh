@@ -57,6 +57,7 @@ sleep 5
 # inventory resources
 print_start_message "Setting up host-inventory"
 bonfire deploy host-inventory -n test
+kubectl wait --for=condition=ContainersReady=True --selector="app=host-inventory,service=db" pods -n test
 
 dev/forward-ports-clowder.sh test
 HBI_USER=$(kubectl -n test get secret/host-inventory-db -o custom-columns=:data.username | base64 -d)

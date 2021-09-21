@@ -59,8 +59,17 @@ spec:
             properties:
               activeVersion:
                 type: string
+              activeVersionIsValid:
+                type: boolean
+              refreshingVersion:
+                type: string
+              refreshingVersionIsValid:
+                type: boolean
             required:
             - activeVersion
+            - activeVersionIsValid
+            - refreshingVersion
+            - refreshingVersionIsValid
             type: object
         type: object
     served: true

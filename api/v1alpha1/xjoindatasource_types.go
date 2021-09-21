@@ -31,7 +31,10 @@ type XJoinDataSourceSpec struct {
 }
 
 type XJoinDataSourceStatus struct {
-	ActiveVersion string `json:"activeVersion"`
+	ActiveVersion            string `json:"activeVersion"`
+	ActiveVersionIsValid     bool   `json:"activeVersionIsValid"`
+	RefreshingVersion        string `json:"refreshingVersion"`
+	RefreshingVersionIsValid bool   `json:"refreshingVersionIsValid"`
 }
 
 // +kubebuilder:object:root=true

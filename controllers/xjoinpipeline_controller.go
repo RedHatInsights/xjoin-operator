@@ -27,6 +27,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
+	. "github.com/redhatinsights/xjoin-operator/controllers/pipeline"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	v1 "k8s.io/api/core/v1"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
@@ -43,9 +44,6 @@ import (
 	"strconv"
 	"time"
 )
-
-// XJoinPipelineReconciler reconciles a XJoinPipeline object
-const xjoinpipelineFinalizer = "finalizer.xjoin.cloud.redhat.com"
 
 type XJoinPipelineReconciler struct {
 	Client    client.Client
@@ -87,7 +85,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 
 	xjoinConfig, err := config.NewConfig(i.Instance, i.Client, ctx)
 	if xjoinConfig != nil {
-		i.parameters = xjoinConfig.Parameters
+		i.Parameters = xjoinConfig.Parameters
 	}
 
 	if err != nil {
@@ -95,16 +93,16 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 	}
 
 	i.GetRequeueInterval = func(Instance *ReconcileIteration) int {
-		return i.parameters.StandardInterval.Int()
+		return i.Parameters.StandardInterval.Int()
 	}
 
 	es, err := elasticsearch.NewElasticSearch(
-		i.parameters.ElasticSearchURL.String(),
-		i.parameters.ElasticSearchUsername.String(),
-		i.parameters.ElasticSearchPassword.String(),
-		i.parameters.ResourceNamePrefix.String(),
-		i.parameters.ElasticSearchPipelineTemplate.String(),
-		i.parameters.ElasticSearchIndexTemplate.String(),
+		i.Parameters.ElasticSearchURL.String(),
+		i.Parameters.ElasticSearchUsername.String(),
+		i.Parameters.ElasticSearchPassword.String(),
+		i.Parameters.ResourceNamePrefix.String(),
+		i.Parameters.ElasticSearchPipelineTemplate.String(),
+		i.Parameters.ElasticSearchIndexTemplate.String(),
 		xjoinConfig.ParametersMap)
 
 	if err != nil {
@@ -115,20 +113,20 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 	i.Kafka = kafka.Kafka{
 		Namespace:     instance.Namespace,
 		Client:        i.Client,
-		Parameters:    i.parameters,
+		Parameters:    i.Parameters,
 		ParametersMap: xjoinConfig.ParametersMap,
 		Recorder:      i.Recorder,
 		Test:          r.Test,
 	}
 
 	i.InventoryDb = database.NewDatabase(database.DBParams{
-		Host:        i.parameters.HBIDBHost.String(),
-		User:        i.parameters.HBIDBUser.String(),
-		Name:        i.parameters.HBIDBName.String(),
-		Port:        i.parameters.HBIDBPort.String(),
-		Password:    i.parameters.HBIDBPassword.String(),
-		SSLMode:     i.parameters.HBIDBSSLMode.String(),
-		SSLRootCert: i.parameters.HBIDBSSLRootCert.String(),
+		Host:        i.Parameters.HBIDBHost.String(),
+		User:        i.Parameters.HBIDBUser.String(),
+		Name:        i.Parameters.HBIDBName.String(),
+		Port:        i.Parameters.HBIDBPort.String(),
+		Password:    i.Parameters.HBIDBPassword.String(),
+		SSLMode:     i.Parameters.HBIDBSSLMode.String(),
+		SSLRootCert: i.Parameters.HBIDBSSLRootCert.String(),
 	})
 
 	if err = i.InventoryDb.Connect(); err != nil {
@@ -154,7 +152,7 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 	defer i.Close()
 
 	if err != nil {
-		i.error(err)
+		i.Error(err)
 		setupErrors = append(setupErrors, err)
 	}
 
@@ -171,22 +169,22 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 	// remove any stale dependencies
 	// if we're shutting down this removes all dependencies
 	if len(setupErrors) < 1 {
-		setupErrors = append(setupErrors, i.deleteStaleDependencies()...)
+		setupErrors = append(setupErrors, i.DeleteStaleDependencies()...)
 	}
 
 	for _, err = range setupErrors {
-		i.error(err, "Error deleting stale dependency")
+		i.Error(err, "Error deleting stale dependency")
 	}
 
 	// STATE_REMOVED
 	if i.Instance.GetState() == xjoin.STATE_REMOVED {
-		if len(setupErrors) > 0 && !i.parameters.Ephemeral.Bool() {
+		if len(setupErrors) > 0 && !i.Parameters.Ephemeral.Bool() {
 			return reconcile.Result{}, setupErrors[0]
-		} else if len(setupErrors) > 0 && i.parameters.Ephemeral.Bool() {
+		} else if len(setupErrors) > 0 && i.Parameters.Ephemeral.Bool() {
 			//remove finalizer without deleting deps in ephemeral env when an error occurred loading configuration params
-			err = i.removeFinalizer()
+			err = i.RemoveFinalizer()
 			if err != nil {
-				i.error(err, "Error removing finalizer")
+				i.Error(err, "Error removing finalizer")
 				return reconcile.Result{}, err
 			} else {
 				return reconcile.Result{}, nil
@@ -198,12 +196,12 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 
 		//allow this to fail in ephemeral envs because
 		//DeleteResourceForPipeline could fail due to Kafka/KafkaConnect already being deleted
-		if err != nil && !i.parameters.Ephemeral.Bool() {
+		if err != nil && !i.Parameters.Ephemeral.Bool() {
 			return reconcile.Result{}, err
 		}
 
-		if err = i.removeFinalizer(); err != nil {
-			i.error(err, "Error removing finalizer")
+		if err = i.RemoveFinalizer(); err != nil {
+			i.Error(err, "Error removing finalizer")
 			return reconcile.Result{}, err
 		}
 
@@ -219,90 +217,90 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 
 	// STATE_NEW
 	if i.Instance.GetState() == xjoin.STATE_NEW {
-		if err = i.addFinalizer(); err != nil {
-			i.error(err, "Error adding finalizer")
+		if err = i.AddFinalizer(); err != nil {
+			i.Error(err, "Error adding finalizer")
 			return reconcile.Result{}, err
 		}
 
-		i.Instance.Status.XJoinConfigVersion = i.parameters.ConfigMapVersion.String()
-		i.Instance.Status.ElasticSearchSecretVersion = i.parameters.ElasticSearchSecretVersion.String()
-		i.Instance.Status.HBIDBSecretVersion = i.parameters.HBIDBSecretVersion.String()
+		i.Instance.Status.XJoinConfigVersion = i.Parameters.ConfigMapVersion.String()
+		i.Instance.Status.ElasticSearchSecretVersion = i.Parameters.ElasticSearchSecretVersion.String()
+		i.Instance.Status.HBIDBSecretVersion = i.Parameters.HBIDBSecretVersion.String()
 
 		pipelineVersion := fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
-		if err = i.Instance.TransitionToInitialSync(i.parameters.ResourceNamePrefix.String(), pipelineVersion); err != nil {
-			i.error(err, "Error transitioning to Initial Sync")
+		if err = i.Instance.TransitionToInitialSync(i.Parameters.ResourceNamePrefix.String(), pipelineVersion); err != nil {
+			i.Error(err, "Error transitioning to Initial Sync")
 			return reconcile.Result{}, err
 		}
-		i.probeStartingInitialSync()
+		i.ProbeStartingInitialSync()
 
 		_, err = i.Kafka.CreateTopic(pipelineVersion, false)
 		if err != nil {
-			i.error(err, "Error creating Kafka topic")
+			i.Error(err, "Error creating Kafka topic")
 			return reconcile.Result{}, err
 		}
 
 		err = i.ESClient.CreateESPipeline(pipelineVersion)
 		if err != nil {
-			i.error(err, "Error creating ElasticSearch pipeline")
+			i.Error(err, "Error creating ElasticSearch pipeline")
 			return reconcile.Result{}, err
 		}
 
 		err = i.ESClient.CreateIndex(pipelineVersion)
 		if err != nil {
-			i.error(err, "Error creating ElasticSearch index")
+			i.Error(err, "Error creating ElasticSearch index")
 			return reconcile.Result{}, err
 		}
 
 		_, err = i.Kafka.CreateDebeziumConnector(pipelineVersion, false)
 		if err != nil {
-			i.error(err, "Error creating debezium connector")
+			i.Error(err, "Error creating debezium connector")
 			return reconcile.Result{}, err
 		}
 
 		_, err = i.Kafka.CreateESConnector(pipelineVersion, false)
 		if err != nil {
-			i.error(err, "Error creating ES connector")
+			i.Error(err, "Error creating ES connector")
 			return reconcile.Result{}, err
 		}
 
 		i.Log.Info("Transitioning to InitialSync")
-		return i.updateStatusAndRequeue()
+		return i.UpdateStatusAndRequeue()
 	}
 
 	// STATE_VALID
 	if i.Instance.GetState() == xjoin.STATE_VALID {
-		i.setActiveResources()
-		if updated, err := i.recreateAliasIfNeeded(); err != nil {
-			i.error(err, "Error updating hosts view")
+		i.SetActiveResources()
+		if updated, err := i.RecreateAliasIfNeeded(); err != nil {
+			i.Error(err, "Error updating hosts view")
 			return reconcile.Result{}, err
 		} else if updated {
-			i.eventNormal(
+			i.EventNormal(
 				"ValidationSucceeded",
 				"Pipeline became valid. xjoin.inventory.hosts alias now points to %s",
 				i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
 		}
-		return i.updateStatusAndRequeue()
+		return i.UpdateStatusAndRequeue()
 	}
 
 	// invalid pipeline - either STATE_INITIAL_SYNC or STATE_INVALID
 	if i.Instance.GetValid() == metav1.ConditionFalse {
-		if i.Instance.Status.ValidationFailedCount >= i.getValidationAttemptsThreshold() {
+		if i.Instance.Status.ValidationFailedCount >= i.GetValidationAttemptsThreshold() {
 
 			// This pipeline never became valid.
 			if i.Instance.GetState() == xjoin.STATE_INITIAL_SYNC {
-				if err = i.updateAliasIfHealthier(); err != nil {
+				if err = i.UpdateAliasIfHealthier(); err != nil {
 					// if this fails continue and do refresh, keeping the old index active
 					i.Log.Error(err, "Failed to evaluate which table is healthier")
 				}
 			}
 
 			i.Instance.TransitionToNew()
-			i.probePipelineDidNotBecomeValid()
-			return i.updateStatusAndRequeue()
+			i.ProbePipelineDidNotBecomeValid()
+			return i.UpdateStatusAndRequeue()
 		}
 	}
 
-	return i.updateStatusAndRequeue()
+	return i.UpdateStatusAndRequeue()
 }
 
 func (r *XJoinPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {

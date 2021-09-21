@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"github.com/redhatinsights/xjoin-operator/controllers"
 	"github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	k8runtime "k8s.io/apimachinery/pkg/runtime"
@@ -31,7 +32,6 @@ import (
 	"time"
 
 	xjoinv1alpha1 "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	"github.com/redhatinsights/xjoin-operator/controllers"
 	// +kubebuilder:scaffold:imports
 	_ "net/http/pprof"
 )

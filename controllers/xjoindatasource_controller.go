@@ -5,19 +5,17 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
+	. "github.com/redhatinsights/xjoin-operator/controllers/datasource"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strconv"
@@ -25,12 +23,6 @@ import (
 )
 
 const xjoindatasourceFinalizer = "finalizer.xjoin.datasource.cloud.redhat.com"
-
-var dataSourcePipelineGVK = schema.GroupVersionKind{
-	Group:   "xjoin.cloud.redhat.com",
-	Kind:    "XJoinDataSourcePipeline",
-	Version: "v1alpha1",
-}
 
 type XJoinDataSourceReconciler struct {
 	Client    client.Client
@@ -63,22 +55,29 @@ func (r *XJoinDataSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-datasource-controller").
 		For(&xjoin.XJoinDataSource{}).
+		WithLogger(mgr.GetLogger()).
+		WithOptions(controller.Options{
+			Log: mgr.GetLogger(),
+		}).
 		Complete(r)
 }
 
-func (r *XJoinDataSourceReconciler) finalize(
-	instance *xjoin.XJoinDataSource, componentManager components.ComponentManager) (result ctrl.Result, err error) {
+func (r *XJoinDataSourceReconciler) finalize(i XJoinDataSourceInstance) (result ctrl.Result, err error) {
 
 	r.Log.Info("Starting finalizer")
-	err = componentManager.DeleteAll()
+	err = i.DeleteDataSourcePipeline(i.Instance.Name, i.Instance.Status.ActiveVersion)
+	if err != nil {
+		return
+	}
+	err = i.DeleteDataSourcePipeline(i.Instance.Name, i.Instance.Status.RefreshingVersion)
 	if err != nil {
 		return
 	}
 
-	controllerutil.RemoveFinalizer(instance, xjoindatasourceFinalizer)
+	controllerutil.RemoveFinalizer(i.Instance, xjoindatasourceFinalizer)
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err = r.Client.Update(ctx, instance)
+	err = r.Client.Update(ctx, i.Instance)
 	if err != nil {
 		return
 	}
@@ -130,89 +129,90 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 	}
 
 	i := XJoinDataSourceInstance{
-		instance:   instance,
-		client:     r.Client,
-		log:        reqLogger,
-		parameters: *p,
+		Instance:         instance,
+		OriginalInstance: *instance.DeepCopy(),
+		Client:           r.Client,
+		Log:              reqLogger,
+		Parameters:       *p,
 	}
 
-	//TODO: version management
-	version := instance.Status.ActiveVersion
-	if version == "" {
-		version = fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
-	}
-
-	componentManager := components.NewComponentManager(version)
-	componentManager.AddComponent(components.NewDataSourcePipeline())
-
+	//[REMOVED]
 	if instance.GetDeletionTimestamp() != nil {
-		return r.finalize(instance, componentManager)
+		i.Log.Debug("STATE: REMOVED")
+		return r.finalize(i)
 	}
 
-	err = componentManager.CreateAll()
-	if err != nil {
-		return
+	//[NEW]
+	if instance.Status.ActiveVersion == "" && instance.Status.RefreshingVersion == "" {
+		refreshingVersion := version()
+		instance.Status.RefreshingVersion = refreshingVersion
+		instance.Status.RefreshingVersionIsValid = false
+
+		i.Log.Debug("STATE: NEW")
+		err = i.CreateDataSourcePipeline(instance.Name, refreshingVersion)
+		if err != nil {
+			return
+		}
 	}
 
-	err = i.createDataSourcePipeline(instance.Name, version)
-	if err != nil {
-		return
+	//[INITIAL SYNC]
+	if instance.Status.ActiveVersion == "" &&
+		instance.Status.RefreshingVersionIsValid == false &&
+		instance.Status.RefreshingVersion != "" {
+
+		//TODO: noop? double check datasourcepipeline exists?
+		i.Log.Debug("STATE: INITIAL_SYNC")
 	}
 
-	return reconcile.Result{RequeueAfter: time.Second * 30}, nil
+	//[VALID] ACTIVE IS VALID
+	if instance.Status.ActiveVersion != "" &&
+		instance.Status.ActiveVersionIsValid == true {
+
+		//TODO: noop? double check datasourcepipeline exists?
+		i.Log.Debug("STATE: VALID")
+	}
+
+	//[START REFRESHING] ACTIVE IS INVALID, NOT REFRESHING YET
+	if instance.Status.ActiveVersion != "" &&
+		instance.Status.ActiveVersionIsValid == false &&
+		instance.Status.RefreshingVersion == "" {
+
+		i.Log.Debug("STATE: START REFRESH")
+		refreshingVersion := version()
+		instance.Status.RefreshingVersion = refreshingVersion
+
+		err = i.CreateDataSourcePipeline(instance.Name, refreshingVersion)
+	}
+
+	//[REFRESHING] ACTIVE IS INVALID, REFRESHING IS INVALID
+	if instance.Status.ActiveVersion != "" &&
+		instance.Status.ActiveVersionIsValid == false &&
+		instance.Status.RefreshingVersion != "" &&
+		instance.Status.RefreshingVersionIsValid == false {
+
+		//TODO: noop? double check both datasourcepipelines exist?
+		i.Log.Debug("STATE: REFRESHING")
+	}
+
+	//[REFRESH COMPLETE] ACTIVE IS INVALID, REFRESHING IS VALID
+	if instance.Status.ActiveVersion != "" &&
+		instance.Status.ActiveVersionIsValid == false &&
+		instance.Status.RefreshingVersion != "" &&
+		instance.Status.RefreshingVersionIsValid == true {
+
+		i.Log.Debug("STATE: REFRESH COMPLETE")
+		err = i.DeleteDataSourcePipeline(i.Instance.Name, i.Instance.Status.ActiveVersion)
+		if err != nil {
+			return
+		}
+
+		instance.Status.ActiveVersion = instance.Status.RefreshingVersion
+		instance.Status.ActiveVersionIsValid = instance.Status.RefreshingVersionIsValid
+	}
+
+	return i.UpdateStatusAndRequeue()
 }
 
-type XJoinDataSourceInstance struct {
-	instance   *xjoin.XJoinDataSource
-	client     client.Client
-	log        xjoinlogger.Log
-	parameters parameters.DataSourceParameters
-}
-
-func (i *XJoinDataSourceInstance) createDataSourcePipeline(name string, version string) (err error) {
-	dataSourcePipeline := &unstructured.Unstructured{}
-	dataSourcePipeline.Object = map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"name":      name + "." + version,
-			"namespace": i.instance.Namespace,
-		},
-		"spec": map[string]interface{}{
-			"version":          version,
-			"avroSchema":       i.parameters.AvroSchema.String(),
-			"databaseHostname": i.parameters.DatabaseHostname.String(),
-			"databasePort":     i.parameters.DatabasePort.String(),
-			"databaseName":     i.parameters.DatabaseName.String(),
-			"databaseUsername": i.parameters.DatabaseUsername.String(),
-			"databasePassword": i.parameters.DatabasePassword.String(),
-			"pause":            i.parameters.Pause.Bool(),
-		},
-	}
-	dataSourcePipeline.SetGroupVersionKind(dataSourcePipelineGVK)
-
-	blockOwnerDeletion := true
-	controller := true
-	ownerReference := metav1.OwnerReference{
-		APIVersion:         i.instance.APIVersion,
-		Kind:               i.instance.Kind,
-		Name:               i.instance.GetName(),
-		UID:                i.instance.GetUID(),
-		Controller:         &controller,
-		BlockOwnerDeletion: &blockOwnerDeletion,
-	}
-	dataSourcePipeline.SetOwnerReferences([]metav1.OwnerReference{ownerReference})
-
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-	err = i.client.Create(ctx, dataSourcePipeline)
-	return
-}
-
-func (i *XJoinDataSourceInstance) deleteDataSourcePipeline(name string, version string) (err error) {
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-
-	dataSourcePipeline := &unstructured.Unstructured{}
-	dataSourcePipeline.SetGroupVersionKind(dataSourcePipelineGVK)
-	dataSourcePipeline.SetName(name + "." + version)
-	return i.client.Delete(ctx, dataSourcePipeline)
+func version() string {
+	return fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
 }

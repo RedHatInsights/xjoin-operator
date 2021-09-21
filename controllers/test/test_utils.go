@@ -2,7 +2,7 @@ package test
 
 import (
 	"context"
-	. "github.com/redhatinsights/xjoin-operator/controllers"
+	"github.com/redhatinsights/xjoin-operator/controllers"
 	. "github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
@@ -27,8 +27,8 @@ import (
 
 var log = logger.NewLogger("test_utils")
 
-func newXJoinReconciler(namespace string, isTest bool) *XJoinPipelineReconciler {
-	return NewXJoinReconciler(
+func newXJoinReconciler(namespace string, isTest bool) *controllers.XJoinPipelineReconciler {
+	return controllers.NewXJoinReconciler(
 		test.Client,
 		scheme.Scheme,
 		logf.Log.WithName("test"),
@@ -37,8 +37,8 @@ func newXJoinReconciler(namespace string, isTest bool) *XJoinPipelineReconciler 
 		isTest)
 }
 
-func newValidationReconciler(namespace string) *ValidationReconciler {
-	return NewValidationReconciler(
+func newValidationReconciler(namespace string) *controllers.ValidationReconciler {
+	return controllers.NewValidationReconciler(
 		test.Client,
 		scheme.Scheme,
 		logf.Log.WithName("test-validation"),
@@ -48,8 +48,8 @@ func newValidationReconciler(namespace string) *ValidationReconciler {
 		true)
 }
 
-func newKafkaConnectReconciler(namespace string, isTest bool) *KafkaConnectReconciler {
-	return NewKafkaConnectReconciler(
+func newKafkaConnectReconciler(namespace string, isTest bool) *controllers.KafkaConnectReconciler {
+	return controllers.NewKafkaConnectReconciler(
 		test.Client,
 		scheme.Scheme,
 		logf.Log.WithName("test-kafkaconnect"),

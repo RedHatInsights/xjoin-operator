@@ -1,6 +1,9 @@
 package components
 
-import "github.com/redhatinsights/xjoin-operator/controllers/avro"
+import (
+	"github.com/go-errors/errors"
+	"github.com/redhatinsights/xjoin-operator/controllers/avro"
+)
 
 type AvroSchema struct {
 	schemaName string
@@ -16,7 +19,7 @@ func NewAvroSchema(schemaName string, schema string) *AvroSchema {
 }
 
 func (as *AvroSchema) Name() string {
-	return "AvroSchema"
+	return "AvroSchema" + "." + as.schemaName
 }
 
 func (as *AvroSchema) Create() (err error) {
@@ -31,7 +34,7 @@ func (as *AvroSchema) Create() (err error) {
 
 	id, err := registry.RegisterSchema(as.schemaName, as.schema)
 	if err != nil {
-		return
+		return errors.Wrap(err, 0)
 	}
 
 	as.id = id

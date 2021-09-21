@@ -1,8 +1,7 @@
-package controllers
+package utils
 
 import (
 	"fmt"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
@@ -34,7 +33,7 @@ func (r *DiffReporter) String() string {
 
 // normalizes different number types (e.g. float64 vs int64) by converting them to their string representation
 var NumberNormalizer = cmp.FilterValues(func(x, y interface{}) bool {
-	return utils.IsNumber(x) || utils.IsNumber(y)
+	return IsNumber(x) || IsNumber(y)
 }, cmp.Transformer("NormalizeNumbers", func(in interface{}) string {
 	return fmt.Sprintf("%v", in)
 }))

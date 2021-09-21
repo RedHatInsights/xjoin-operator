@@ -5,6 +5,7 @@ import (
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	. "github.com/redhatinsights/xjoin-operator/controllers/pipeline"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -35,7 +36,7 @@ func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request,
 	}
 
 	i.GetRequeueInterval = func(i *ReconcileIteration) int {
-		return i.getValidationInterval()
+		return i.GetValidationInterval()
 	}
 
 	return i, err
@@ -48,7 +49,7 @@ func (r *ValidationReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 	defer i.Close()
 
 	if err != nil {
-		i.error(err)
+		i.Error(err)
 		return reconcile.Result{}, err
 	}
 
@@ -68,27 +69,27 @@ func (r *ValidationReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 	reqLogger.Info("Checking for resource deviation")
 
 	if r.CheckResourceDeviation {
-		problem, err := i.checkForDeviation()
+		problem, err := i.CheckForDeviation()
 		if err != nil {
-			i.error(err, "Error checking for state deviation")
+			i.Error(err, "Error checking for state deviation")
 			return reconcile.Result{}, err
 		} else if problem != nil {
-			i.probeStateDeviationRefresh(problem.Error())
+			i.ProbeStateDeviationRefresh(problem.Error())
 			i.Instance.TransitionToNew()
-			return i.updateStatusAndRequeue()
+			return i.UpdateStatusAndRequeue()
 		}
 	}
 
 	reqLogger.Info("Validating XJoinPipeline",
-		"LagCompensationSeconds", i.parameters.ValidationLagCompensationSeconds.Int(),
-		"ValidationPeriodMinutes", i.parameters.ValidationPeriodMinutes.Int(),
-		"FullValidationEnabled", i.parameters.FullValidationEnabled.Bool(),
-		"FullValidationNumThreads", i.parameters.FullValidationNumThreads.Int(),
-		"FullValidationChunkSize", i.parameters.FullValidationChunkSize.Int())
+		"LagCompensationSeconds", i.Parameters.ValidationLagCompensationSeconds.Int(),
+		"ValidationPeriodMinutes", i.Parameters.ValidationPeriodMinutes.Int(),
+		"FullValidationEnabled", i.Parameters.FullValidationEnabled.Bool(),
+		"FullValidationNumThreads", i.Parameters.FullValidationNumThreads.Int(),
+		"FullValidationChunkSize", i.Parameters.FullValidationChunkSize.Int())
 
-	isValid, err := i.validate()
+	isValid, err := i.Validate()
 	if err != nil {
-		i.error(err, "Error validating pipeline")
+		i.Error(err, "Error validating pipeline")
 		return reconcile.Result{}, err
 	}
 
@@ -96,11 +97,11 @@ func (r *ValidationReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 
 	if isValid {
 		if i.Instance.GetState() == xjoin.STATE_INVALID {
-			i.eventNormal("Valid", "Pipeline is valid again")
+			i.EventNormal("Valid", "Pipeline is valid again")
 		}
 	}
 
-	return i.updateStatusAndRequeue()
+	return i.UpdateStatusAndRequeue()
 }
 
 func eventFilterPredicate() predicate.Predicate {
