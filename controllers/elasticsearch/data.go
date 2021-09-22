@@ -136,6 +136,7 @@ func (es *ElasticSearch) getHostIDsQuery(index string, reqJSON []byte) ([]string
 }
 
 func (es *ElasticSearch) GetHostIDsByIdList(index string, ids []string) ([]string, error) {
+	log.Debug("Retrieving ids from ES: ", "ids list (max 50)", ids[:utils.Min(50, len(ids))], "total", len(ids))
 	var query QueryHostIDsList
 	query.Query.Bool.Filter.IDs.Values = ids
 	reqJSON, err := json.Marshal(query)

@@ -143,6 +143,18 @@ func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mi
 
 	mismatchCount, inHbiOnly, inAppOnly := i.validateIdChunk(hbiIds, esIds)
 
+	i.Log.Info(
+		"ID Validation results before lag compensation",
+		"validationThresholdPercent", i.getValidationPercentageThreshold(),
+		"mismatchRatio", mismatchRatio,
+		"mismatchCount", mismatchCount,
+		"totalHBIHostsRetrieved", len(hbiIds),
+		"totalESHostsRetrieved", len(esIds),
+		// if the list is too long truncate it to first 50 ids to avoid log pollution
+		"inHbiOnly", inHbiOnly[:utils.Min(idDiffMaxLength, len(inHbiOnly))],
+		"inAppOnly", inAppOnly[:utils.Min(idDiffMaxLength, len(inAppOnly))],
+	)
+
 	//re-validate any mismatched hosts to check if they were invalid due to lag
 	//this can happen when the modified_on filter excludes hosts updated between retrieving hosts from the DB/ES
 	if mismatchCount > 0 {

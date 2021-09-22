@@ -281,6 +281,7 @@ func (db *Database) QueryIds(query string) ([]string, error) {
 }
 
 func (db *Database) GetHostIdsByIdList(ids []string) ([]string, error) {
+	log.Debug("Retrieving ids from DB: ", "ids list (max 50)", ids[:utils.Min(50, len(ids))], "total", len(ids))
 	idsString, err := formatIdsList(ids)
 	if err != nil {
 		return nil, err
