@@ -7,10 +7,16 @@ import (
 type XJoinIndexSpec struct {
 	// +kubebuilder:validation:Required
 	AvroSchema string `json:"avroSchema,omitempty"`
+
+	// +optional
+	Pause bool `json:"pause,omitempty"`
 }
 
 type XJoinIndexStatus struct {
-	// +kubebuilder:validation:Minimum:=0
+	ActiveVersion            string `json:"activeVersion"`
+	ActiveVersionIsValid     bool   `json:"activeVersionIsValid"`
+	RefreshingVersion        string `json:"refreshingVersion"`
+	RefreshingVersionIsValid bool   `json:"refreshingVersionIsValid"`
 }
 
 // +kubebuilder:object:root=true

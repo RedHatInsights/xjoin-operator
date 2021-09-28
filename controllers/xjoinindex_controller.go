@@ -2,12 +2,11 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
-	. "github.com/redhatinsights/xjoin-operator/controllers/datasource"
+	. "github.com/redhatinsights/xjoin-operator/controllers/index"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -19,13 +18,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strconv"
-	"time"
 )
 
-const xjoindatasourceFinalizer = "finalizer.xjoin.datasource.cloud.redhat.com"
+const xjoinindexFinalizer = "finalizer.xjoin.index.cloud.redhat.com"
 
-type XJoinDataSourceReconciler struct {
+type XJoinIndexReconciler struct {
 	Client    client.Client
 	Log       logr.Logger
 	Scheme    *runtime.Scheme
@@ -34,15 +31,15 @@ type XJoinDataSourceReconciler struct {
 	Test      bool
 }
 
-func NewXJoinDataSourceReconciler(
+func NewXJoinIndexReconciler(
 	client client.Client,
 	scheme *runtime.Scheme,
 	log logr.Logger,
 	recorder record.EventRecorder,
 	namespace string,
-	isTest bool) *XJoinDataSourceReconciler {
+	isTest bool) *XJoinIndexReconciler {
 
-	return &XJoinDataSourceReconciler{
+	return &XJoinIndexReconciler{
 		Client:    client,
 		Log:       log,
 		Scheme:    scheme,
@@ -52,10 +49,10 @@ func NewXJoinDataSourceReconciler(
 	}
 }
 
-func (r *XJoinDataSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *XJoinIndexReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		Named("xjoin-datasource-controller").
-		For(&xjoin.XJoinDataSource{}).
+		Named("xjoin-index-controller").
+		For(&xjoin.XJoinIndex{}).
 		WithLogger(mgr.GetLogger()).
 		WithOptions(controller.Options{
 			Log: mgr.GetLogger(),
@@ -63,22 +60,14 @@ func (r *XJoinDataSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *XJoinDataSourceReconciler) finalize(i XJoinDataSourceIteration) (result ctrl.Result, err error) {
+func (r *XJoinIndexReconciler) finalize(i XJoinIndexIteration) (result ctrl.Result, err error) {
 
 	r.Log.Info("Starting finalizer")
-	err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.ActiveVersion)
-	if err != nil {
-		return
-	}
-	err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.RefreshingVersion)
-	if err != nil {
-		return
-	}
+	controllerutil.RemoveFinalizer(i.Iteration.Instance, xjoinindexFinalizer)
 
-	controllerutil.RemoveFinalizer(i.Instance, xjoindatasourceFinalizer)
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err = r.Client.Update(ctx, i.Instance)
+	err = r.Client.Update(ctx, i.Iteration.Instance)
 	if err != nil {
 		return
 	}
@@ -87,14 +76,14 @@ func (r *XJoinDataSourceReconciler) finalize(i XJoinDataSourceIteration) (result
 	return reconcile.Result{}, nil
 }
 
-// +kubebuilder:rbac:groups=xjoin.cloud.redhat.com,resources=xjoindatasources;xjoindatasources/status;xjoindatasources/finalizers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=xjoin.cloud.redhat.com,resources=xjoinindices;xjoinindices/status;xjoinindices/finalizers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=configmaps;pods,verbs=get;list;watch
 
-func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := xjoinlogger.NewLogger("controller_xjoindatasource", "DataSource", request.Name, "Namespace", request.Namespace)
-	reqLogger.Info("Reconciling XJoinDataSource")
+func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
+	reqLogger := xjoinlogger.NewLogger("controller_xjoinindex", "Index", request.Name, "Namespace", request.Namespace)
+	reqLogger.Info("Reconciling XJoinIndex")
 
-	instance, err := utils.FetchXJoinDataSource(r.Client, request.NamespacedName, ctx)
+	instance, err := utils.FetchXJoinIndex(r.Client, request.NamespacedName, ctx)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -106,7 +95,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return
 	}
 
-	p := parameters.BuildDataSourceParameters()
+	p := parameters.BuildIndexParameters()
 
 	configManager, err := config.NewManager(config.ManagerOptions{
 		Client:         r.Client,
@@ -129,7 +118,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return
 	}
 
-	i := XJoinDataSourceIteration{
+	i := XJoinIndexIteration{
 		Parameters: *p,
 		Iteration: common.Iteration{
 			Context:          ctx,
@@ -153,7 +142,11 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		instance.Status.RefreshingVersionIsValid = false
 
 		i.Log.Debug("STATE: NEW")
-		err = i.CreateDataSourcePipeline(instance.Name, refreshingVersion)
+		err = i.CreateIndexPipeline(instance.Name, refreshingVersion)
+		if err != nil {
+			return
+		}
+		err = i.CreateIndexValidator(instance.Name, refreshingVersion)
 		if err != nil {
 			return
 		}
@@ -164,7 +157,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		instance.Status.RefreshingVersionIsValid == false &&
 		instance.Status.RefreshingVersion != "" {
 
-		//TODO: noop? double check datasourcepipeline exists?
+		//TODO: noop? double check indexpipeline exists?
 		i.Log.Debug("STATE: INITIAL_SYNC")
 	}
 
@@ -172,7 +165,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 	if instance.Status.ActiveVersion != "" &&
 		instance.Status.ActiveVersionIsValid == true {
 
-		//TODO: noop? double check datasourcepipeline exists?
+		//TODO: noop? double check indexpipeline exists?
 		i.Log.Debug("STATE: VALID")
 	}
 
@@ -185,7 +178,14 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		refreshingVersion := version()
 		instance.Status.RefreshingVersion = refreshingVersion
 
-		err = i.CreateDataSourcePipeline(instance.Name, refreshingVersion)
+		err = i.CreateIndexPipeline(instance.Name, refreshingVersion)
+		if err != nil {
+			return
+		}
+		err = i.CreateIndexValidator(instance.Name, refreshingVersion)
+		if err != nil {
+			return
+		}
 	}
 
 	//[REFRESHING] ACTIVE IS INVALID, REFRESHING IS INVALID
@@ -194,7 +194,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		instance.Status.RefreshingVersion != "" &&
 		instance.Status.RefreshingVersionIsValid == false {
 
-		//TODO: noop? double check both datasourcepipelines exist?
+		//TODO: noop? double check both indexpipelines exist?
 		i.Log.Debug("STATE: REFRESHING")
 	}
 
@@ -205,7 +205,11 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		instance.Status.RefreshingVersionIsValid == true {
 
 		i.Log.Debug("STATE: REFRESH COMPLETE")
-		err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.ActiveVersion)
+		err = i.DeleteIndexPipeline(i.Iteration.Instance.GetName(), i.GetInstance().Status.ActiveVersion)
+		if err != nil {
+			return
+		}
+		err = i.DeleteIndexValidator(i.Iteration.Instance.GetName(), i.GetInstance().Status.ActiveVersion)
 		if err != nil {
 			return
 		}
@@ -215,8 +219,4 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 	}
 
 	return i.UpdateStatusAndRequeue()
-}
-
-func version() string {
-	return fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
 }

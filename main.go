@@ -137,6 +137,42 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = controllers.NewXJoinIndexReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		ctrl.Log.WithName("controllers").WithName("XJoinIndex"),
+		mgr.GetEventRecorderFor("xjoinindex"),
+		namespace,
+		false,
+	).SetupWithManager(mgr); err != nil {
+		k8slog.Log.Error(err, "unable to create controller", "controller", "XJoinIndex")
+		os.Exit(1)
+	}
+
+	if err = controllers.NewXJoinIndexPipelineReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		ctrl.Log.WithName("controllers").WithName("XJoinIndexPipeline"),
+		mgr.GetEventRecorderFor("xjoinindexpipeline"),
+		namespace,
+		false,
+	).SetupWithManager(mgr); err != nil {
+		k8slog.Log.Error(err, "unable to create controller", "controller", "XJoinIndexPipeline")
+		os.Exit(1)
+	}
+
+	if err = controllers.NewXJoinIndexValidatorReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		ctrl.Log.WithName("controllers").WithName("XJoinIndexValidator"),
+		mgr.GetEventRecorderFor("xjoinindexvalidator"),
+		namespace,
+		false,
+	).SetupWithManager(mgr); err != nil {
+		k8slog.Log.Error(err, "unable to create controller", "controller", "XJoinIndexValidator")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.XJoinPipelineReconciler{
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("XJoinPipeline"),

@@ -91,6 +91,48 @@ rules:
 - apiGroups:
   - xjoin.cloud.redhat.com
   resources:
+  - xjoinindexpipelines
+  - xjoinindexpipelines/finalizers
+  - xjoinindexpipelines/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - xjoin.cloud.redhat.com
+  resources:
+  - xjoinindexvalidator
+  - xjoinindexvalidator/finalizers
+  - xjoinindexvalidator/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - xjoin.cloud.redhat.com
+  resources:
+  - xjoinindices
+  - xjoinindices/finalizers
+  - xjoinindices/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - xjoin.cloud.redhat.com
+  resources:
   - xjoinpipelines
   - xjoinpipelines/finalizers
   - xjoinpipelines/status

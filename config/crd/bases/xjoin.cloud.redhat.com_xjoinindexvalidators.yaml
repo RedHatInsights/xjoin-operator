@@ -6,18 +6,18 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: xjoinindices.xjoin.cloud.redhat.com
+  name: xjoinindexvalidators.xjoin.cloud.redhat.com
 spec:
   group: xjoin.cloud.redhat.com
   names:
     categories:
     - all
-    kind: XJoinIndex
-    listKind: XJoinIndexList
-    plural: xjoinindices
+    kind: XJoinIndexValidator
+    listKind: XJoinIndexValidatorList
+    plural: xjoinindexvalidators
     shortNames:
-    - xjoinindex
-    singular: xjoinindex
+    - xjoinindexvalidator
+    singular: xjoinindexvalidator
   scope: Namespaced
   versions:
   - name: v1alpha1
@@ -44,20 +44,6 @@ spec:
                 type: boolean
             type: object
           status:
-            properties:
-              activeVersion:
-                type: string
-              activeVersionIsValid:
-                type: boolean
-              refreshingVersion:
-                type: string
-              refreshingVersionIsValid:
-                type: boolean
-            required:
-            - activeVersion
-            - activeVersionIsValid
-            - refreshingVersion
-            - refreshingVersionIsValid
             type: object
         type: object
     served: true

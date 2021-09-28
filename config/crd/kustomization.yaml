@@ -4,6 +4,8 @@
 resources:
 - bases/xjoin.cloud.redhat.com_xjoinpipelines.yaml
 - bases/xjoin.cloud.redhat.com_xjoinindices.yaml
+- bases/xjoin.cloud.redhat.com_xjoinindexpipelines.yaml
+- bases/xjoin.cloud.redhat.com_xjoinindexvalidators.yaml
 - bases/xjoin.cloud.redhat.com_xjoindatasources.yaml
 - bases/xjoin.cloud.redhat.com_xjoindatasourcepipelines.yaml
 # +kubebuilder:scaffold:crdkustomizeresource

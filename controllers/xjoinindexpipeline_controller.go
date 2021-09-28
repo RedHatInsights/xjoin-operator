@@ -21,9 +21,9 @@ import (
 	"time"
 )
 
-const xjoindatasourcepipelineFinalizer = "finalizer.xjoin.datasourcepipeline.cloud.redhat.com"
+const xjoinindexpipelineFinalizer = "finalizer.xjoin.indexpipeline.cloud.redhat.com"
 
-type XJoinDataSourcePipelineReconciler struct {
+type XJoinIndexPipelineReconciler struct {
 	Client    client.Client
 	Log       logr.Logger
 	Scheme    *runtime.Scheme
@@ -32,15 +32,15 @@ type XJoinDataSourcePipelineReconciler struct {
 	Test      bool
 }
 
-func NewXJoinDataSourcePipelineReconciler(
+func NewXJoinIndexPipelineReconciler(
 	client client.Client,
 	scheme *runtime.Scheme,
 	log logr.Logger,
 	recorder record.EventRecorder,
 	namespace string,
-	isTest bool) *XJoinDataSourcePipelineReconciler {
+	isTest bool) *XJoinIndexPipelineReconciler {
 
-	return &XJoinDataSourcePipelineReconciler{
+	return &XJoinIndexPipelineReconciler{
 		Client:    client,
 		Log:       log,
 		Scheme:    scheme,
@@ -50,10 +50,10 @@ func NewXJoinDataSourcePipelineReconciler(
 	}
 }
 
-func (r *XJoinDataSourcePipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *XJoinIndexPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		Named("xjoin-datasourcepipeline-controller").
-		For(&xjoin.XJoinDataSourcePipeline{}).
+		Named("xjoin-indexpipeline-controller").
+		For(&xjoin.XJoinIndexPipeline{}).
 		WithLogger(mgr.GetLogger()).
 		WithOptions(controller.Options{
 			Log: mgr.GetLogger(),
@@ -61,17 +61,17 @@ func (r *XJoinDataSourcePipelineReconciler) SetupWithManager(mgr ctrl.Manager) e
 		Complete(r)
 }
 
-// +kubebuilder:rbac:groups=xjoin.cloud.redhat.com,resources=xjoindatasourcepipelines;xjoindatasourcepipelines/status;xjoindatasourcepipelines/finalizers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=xjoin.cloud.redhat.com,resources=xjoinindexpipelines;xjoinindexpipelines/status;xjoinindexpipelines/finalizers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kafka.strimzi.io,resources=kafkaconnectors;kafkaconnectors/finalizers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kafka.strimzi.io,resources=kafkatopics;kafkatopics/finalizers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kafka.strimzi.io,resources=kafkaconnects;kafkas,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=configmaps;pods,verbs=get;list;watch
 
-func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := xjoinlogger.NewLogger("controller_xjoindatasourcepipeline", "DataSourcePipeline", request.Name, "Namespace", request.Namespace)
-	reqLogger.Info("Reconciling XJoinDataSourcePipeline")
+func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
+	reqLogger := xjoinlogger.NewLogger("controller_xjoinindexpipeline", "IndexPipeline", request.Name, "Namespace", request.Namespace)
+	reqLogger.Info("Reconciling XJoinIndexPipeline")
 
-	instance, err := utils.FetchXJoinDataSourcePipeline(r.Client, request.NamespacedName, ctx)
+	instance, err := utils.FetchXJoinIndexPipeline(r.Client, request.NamespacedName, ctx)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -83,7 +83,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	p := parameters.BuildDataSourceParameters()
+	p := parameters.BuildIndexParameters()
 
 	configManager, err := config.NewManager(config.ManagerOptions{
 		Client:         r.Client,
@@ -107,9 +107,6 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 	}
 
 	componentManager := components.NewComponentManager(p.Version.String())
-	componentManager.AddComponent(components.NewAvroSchema("test.schema", p.AvroSchema.String()))
-	componentManager.AddComponent(components.NewKafkaTopic())
-	componentManager.AddComponent(components.NewDebeziumConnector())
 
 	if instance.GetDeletionTimestamp() != nil {
 		reqLogger.Info("Starting finalizer")
@@ -119,7 +116,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 			return
 		}
 
-		controllerutil.RemoveFinalizer(instance, xjoindatasourcepipelineFinalizer)
+		controllerutil.RemoveFinalizer(instance, xjoinindexpipelineFinalizer)
 		ctx, cancel := utils.DefaultContext()
 		defer cancel()
 		err = r.Client.Update(ctx, instance)
@@ -131,10 +128,10 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return reconcile.Result{}, nil
 	}
 
-	//err = componentManager.CreateAll()
-	//if err != nil {
-	//	return reconcile.Result{}, errors.Wrap(err, 0)
-	//}
+	err = componentManager.CreateAll()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
 
 	return reconcile.Result{RequeueAfter: time.Second * 30}, nil
 }

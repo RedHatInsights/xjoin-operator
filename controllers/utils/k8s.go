@@ -34,15 +34,22 @@ func FetchXJoinDataSource(c client.Client, namespacedName types.NamespacedName, 
 	return instance, err
 }
 
-func FetchXJoinPipelinesByNamespacedName(c client.Client, name string, namespace string, ctx context.Context) (*xjoin.XJoinPipelineList, error) {
-	nameField := client.MatchingFields{
-		"metadata.name":      name,
-		"metadata.namespace": namespace,
-	}
+func FetchXJoinIndex(c client.Client, namespacedName types.NamespacedName, ctx context.Context) (*xjoin.XJoinIndex, error) {
+	instance := &xjoin.XJoinIndex{}
+	err := c.Get(ctx, namespacedName, instance)
+	return instance, err
+}
 
-	list := &xjoin.XJoinPipelineList{}
-	err := c.List(ctx, list, nameField)
-	return list, err
+func FetchXJoinIndexPipeline(c client.Client, namespacedName types.NamespacedName, ctx context.Context) (*xjoin.XJoinIndexPipeline, error) {
+	instance := &xjoin.XJoinIndexPipeline{}
+	err := c.Get(ctx, namespacedName, instance)
+	return instance, err
+}
+
+func FetchXJoinIndexValidator(c client.Client, namespacedName types.NamespacedName, ctx context.Context) (*xjoin.XJoinIndexValidator, error) {
+	instance := &xjoin.XJoinIndexValidator{}
+	err := c.Get(ctx, namespacedName, instance)
+	return instance, err
 }
 
 func FetchXJoinPipelines(c client.Client, ctx context.Context) (*xjoin.XJoinPipelineList, error) {
