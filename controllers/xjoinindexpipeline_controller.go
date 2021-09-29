@@ -106,7 +106,9 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	componentManager := components.NewComponentManager(p.Version.String())
+	componentManager := components.NewComponentManager(instance.Name, p.Version.String())
+	componentManager.AddComponent(components.NewElasticsearchConnector())
+	componentManager.AddComponent(components.NewElasticsearchIndex())
 
 	if instance.GetDeletionTimestamp() != nil {
 		reqLogger.Info("Starting finalizer")

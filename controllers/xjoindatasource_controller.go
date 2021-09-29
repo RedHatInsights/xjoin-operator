@@ -3,9 +3,11 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	. "github.com/redhatinsights/xjoin-operator/controllers/datasource"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
@@ -212,6 +214,26 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 
 		instance.Status.ActiveVersion = instance.Status.RefreshingVersion
 		instance.Status.ActiveVersionIsValid = instance.Status.RefreshingVersionIsValid
+		instance.Status.RefreshingVersion = ""
+		instance.Status.RefreshingVersionIsValid = false
+	}
+
+	//Scrub orphaned resources
+	var validVersions []string
+	if instance.Status.ActiveVersion != "" {
+		validVersions = append(validVersions, instance.Status.ActiveVersion)
+	}
+	if instance.Status.RefreshingVersion != "" {
+		validVersions = append(validVersions, instance.Status.RefreshingVersion)
+	}
+
+	custodian := components.NewCustodian(i.GetInstance().Name, validVersions)
+	custodian.AddComponent(components.NewAvroSchema(""))
+	custodian.AddComponent(components.NewKafkaTopic())
+	custodian.AddComponent(components.NewDebeziumConnector())
+	err = custodian.Scrub()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
 	return i.UpdateStatusAndRequeue()

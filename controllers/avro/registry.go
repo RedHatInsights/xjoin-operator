@@ -2,7 +2,9 @@ package avro
 
 import (
 	"fmt"
+	"github.com/go-errors/errors"
 	"github.com/riferrei/srclient"
+	"strings"
 )
 
 type SchemaRegistryConnectionParams struct {
@@ -32,4 +34,19 @@ func (sr *SchemaRegistry) RegisterSchema(name string, schemaDefinition string) (
 		return
 	}
 	return schema.ID(), nil
+}
+
+func (sr *SchemaRegistry) CheckIfSchemaVersionExists(name string, version int) (exists bool, err error) {
+	_, err = sr.Client.GetSchemaByVersion(name, version)
+	if err != nil && strings.Index(err.Error(), "404 Not Found") == 0 {
+		return false, nil
+	} else if err != nil {
+		return false, errors.Wrap(err, 0)
+	} else {
+		return true, nil
+	}
+}
+
+func (sr *SchemaRegistry) DeleteSchema(name string) (err error) {
+	return sr.Client.DeleteSubject(name, true)
 }

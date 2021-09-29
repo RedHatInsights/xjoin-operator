@@ -106,8 +106,8 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	componentManager := components.NewComponentManager(p.Version.String())
-	componentManager.AddComponent(components.NewAvroSchema("test.schema", p.AvroSchema.String()))
+	componentManager := components.NewComponentManager(instance.Spec.Name, p.Version.String())
+	componentManager.AddComponent(components.NewAvroSchema(p.AvroSchema.String()))
 	componentManager.AddComponent(components.NewKafkaTopic())
 	componentManager.AddComponent(components.NewDebeziumConnector())
 
@@ -131,10 +131,10 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return reconcile.Result{}, nil
 	}
 
-	//err = componentManager.CreateAll()
-	//if err != nil {
-	//	return reconcile.Result{}, errors.Wrap(err, 0)
-	//}
+	err = componentManager.CreateAll()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
 
 	return reconcile.Result{RequeueAfter: time.Second * 30}, nil
 }

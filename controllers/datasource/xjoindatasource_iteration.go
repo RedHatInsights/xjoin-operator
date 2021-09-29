@@ -27,6 +27,7 @@ func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version
 			"namespace": i.Iteration.Instance.GetNamespace(),
 		},
 		"spec": map[string]interface{}{
+			"name":             name,
 			"version":          version,
 			"avroSchema":       i.Parameters.AvroSchema.String(),
 			"databaseHostname": i.Parameters.DatabaseHostname.String(),

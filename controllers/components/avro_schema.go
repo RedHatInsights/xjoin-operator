@@ -3,26 +3,18 @@ package components
 import (
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/avro"
+	"strings"
 )
 
 type AvroSchema struct {
-	schemaName string
-	schema     string
-	id         int
+	schema   string
+	id       int
+	registry *avro.SchemaRegistry
+	name     string
+	version  string
 }
 
-func NewAvroSchema(schemaName string, schema string) *AvroSchema {
-	return &AvroSchema{
-		schemaName: schemaName,
-		schema:     schema,
-	}
-}
-
-func (as *AvroSchema) Name() string {
-	return "AvroSchema" + "." + as.schemaName
-}
-
-func (as *AvroSchema) Create() (err error) {
+func NewAvroSchema(schema string) *AvroSchema {
 	registry := avro.NewSchemaRegistry(
 		avro.SchemaRegistryConnectionParams{
 			Protocol: "http",
@@ -32,7 +24,27 @@ func (as *AvroSchema) Create() (err error) {
 
 	registry.Init()
 
-	id, err := registry.RegisterSchema(as.schemaName, as.schema)
+	return &AvroSchema{
+		schema:   schema,
+		registry: registry,
+		id:       1, //valid avro ids start at 1
+	}
+}
+
+func (as *AvroSchema) SetName(name string) {
+	as.name = name
+}
+
+func (as *AvroSchema) SetVersion(version string) {
+	as.version = version
+}
+
+func (as *AvroSchema) Name() string {
+	return as.name + "." + as.version
+}
+
+func (as *AvroSchema) Create() (err error) {
+	id, err := as.registry.RegisterSchema(as.Name(), as.schema)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -42,13 +54,37 @@ func (as *AvroSchema) Create() (err error) {
 }
 
 func (as *AvroSchema) Delete() (err error) {
-	return
+	return as.registry.DeleteSchema(as.Name())
+}
+
+func (as *AvroSchema) DeleteByVersion(version string) (err error) {
+	return as.registry.DeleteSchema(as.name + "." + version)
 }
 
 func (as *AvroSchema) CheckDeviation() (err error) {
-	return
+	return //TODO
 }
 
 func (as *AvroSchema) Exists() (exists bool, err error) {
+	exists, err = as.registry.CheckIfSchemaVersionExists(as.Name(), as.id)
+	if err != nil {
+		return false, errors.Wrap(err, 0)
+	}
+	return
+}
+
+func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err error) {
+	subjects, err := as.registry.Client.GetSubjects()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	for _, subject := range subjects {
+		if strings.Index(subject, as.name+".") == 0 {
+			version := strings.Split(subject, ".")[1]
+			installedVersions = append(installedVersions, version)
+		}
+	}
+
 	return
 }
