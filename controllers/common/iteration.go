@@ -17,6 +17,8 @@ import (
 	"time"
 )
 
+const COMPONENT_NAME_LABEL = "xjoin.component.name"
+
 type Iteration struct {
 	Instance         client.Object
 	OriginalInstance client.Object
@@ -109,4 +111,55 @@ func (i *Iteration) AddFinalizer(finalizer string) error {
 	}
 
 	return nil
+}
+
+func (i *Iteration) ReconcileChild(child Child) (err error) {
+	//build an array and map of expected pipeline versions (active, refreshing)
+	//the map value will be set to true when an expected pipeline is found
+	expectedPipelinesMap := make(map[string]bool)
+	var expectedPipelinesArray []string
+	if child.GetInstance().GetActiveVersion() != "" {
+		expectedPipelinesMap[child.GetInstance().GetActiveVersion()] = false
+		expectedPipelinesArray = append(expectedPipelinesArray, child.GetInstance().GetActiveVersion())
+	}
+	if child.GetInstance().GetRefreshingVersion() != "" {
+		expectedPipelinesMap[child.GetInstance().GetRefreshingVersion()] = false
+		expectedPipelinesArray = append(expectedPipelinesArray, child.GetInstance().GetRefreshingVersion())
+	}
+
+	//retrieve a list of pipelines for this datasource.name
+	pipelines := &unstructured.UnstructuredList{}
+	pipelines.SetGroupVersionKind(child.GetGVK())
+	labels := client.MatchingLabels{}
+	labels[COMPONENT_NAME_LABEL] = child.GetInstance().GetName()
+	err = i.Client.List(i.Context, pipelines, labels)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	//remove any extra pipelines, ensure the expected pipelines are created
+	for _, pipeline := range pipelines.Items {
+		spec := pipeline.Object["spec"].(map[string]interface{})
+		pipelineVersion := spec["version"].(string)
+		if !utils.ContainsString(expectedPipelinesArray, pipelineVersion) {
+			err = child.Delete(pipelineVersion)
+			if err != nil {
+				return errors.Wrap(err, 0)
+			}
+		} else {
+			expectedPipelinesMap[pipelineVersion] = true
+		}
+	}
+
+	for version, exists := range expectedPipelinesMap {
+		if !exists {
+			i.Log.Info("expected pipeline version " + version + " not found, recreating it")
+			err = child.Create(version)
+			if err != nil {
+				return errors.Wrap(err, 0)
+			}
+		}
+	}
+
+	return
 }

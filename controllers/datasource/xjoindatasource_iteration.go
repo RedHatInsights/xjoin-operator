@@ -8,11 +8,8 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
-
-const XJOIN_COMPONENT_NAME_LABEL = "xjoin.component.name"
 
 type XJoinDataSourceIteration struct {
 	common.Iteration
@@ -32,7 +29,7 @@ func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version
 			"name":      name + "." + version,
 			"namespace": i.Iteration.Instance.GetNamespace(),
 			"labels": map[string]interface{}{
-				XJOIN_COMPONENT_NAME_LABEL: name,
+				common.COMPONENT_NAME_LABEL: name,
 			},
 		},
 		"spec": map[string]interface{}{
@@ -64,53 +61,11 @@ func (i *XJoinDataSourceIteration) DeleteDataSourcePipeline(name string, version
 }
 
 func (i *XJoinDataSourceIteration) ReconcilePipelines() (err error) {
-	//build an array and map of expected pipeline versions (active, refreshing)
-	//the map value will be set to true when an expected pipeline is found
-	expectedPipelinesMap := make(map[string]bool)
-	var expectedPipelinesArray []string
-	if i.GetInstance().Status.ActiveVersion != "" {
-		expectedPipelinesMap[i.GetInstance().Status.ActiveVersion] = false
-		expectedPipelinesArray = append(expectedPipelinesArray, i.GetInstance().Status.ActiveVersion)
-	}
-	if i.GetInstance().Status.RefreshingVersion != "" {
-		expectedPipelinesMap[i.GetInstance().Status.RefreshingVersion] = false
-		expectedPipelinesArray = append(expectedPipelinesArray, i.GetInstance().Status.RefreshingVersion)
-	}
-
-	//retrieve a list of pipelines for this datasource.name
-	pipelines := &unstructured.UnstructuredList{}
-	pipelines.SetGroupVersionKind(dataSourcePipelineGVK)
-	labels := client.MatchingLabels{}
-	labels[XJOIN_COMPONENT_NAME_LABEL] = i.GetInstance().Name
-	err = i.Client.List(i.Context, pipelines, labels)
+	child := NewDataSourcePipelineChild(i)
+	err = i.ReconcileChild(child)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
-
-	//remove any extra pipelines, ensure the expected pipelines are created
-	for _, pipeline := range pipelines.Items {
-		spec := pipeline.Object["spec"].(map[string]interface{})
-		pipelineVersion := spec["version"].(string)
-		if !utils.ContainsString(expectedPipelinesArray, pipelineVersion) {
-			err = i.DeleteDataSourcePipeline(i.GetInstance().Name, pipelineVersion)
-			if err != nil {
-				return errors.Wrap(err, 0)
-			}
-		} else {
-			expectedPipelinesMap[pipelineVersion] = true
-		}
-	}
-
-	for version, exists := range expectedPipelinesMap {
-		if !exists {
-			i.Log.Info("expected pipeline version " + version + " not found, recreating it")
-			err = i.CreateDataSourcePipeline(i.GetInstance().Name, version)
-			if err != nil {
-				return errors.Wrap(err, 0)
-			}
-		}
-	}
-
 	return
 }
 
