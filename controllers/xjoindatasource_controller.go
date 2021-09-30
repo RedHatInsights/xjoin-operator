@@ -6,7 +6,6 @@ import (
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
-	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	. "github.com/redhatinsights/xjoin-operator/controllers/datasource"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
@@ -18,11 +17,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
-
-const xjoindatasourceFinalizer = "finalizer.xjoin.datasource.cloud.redhat.com"
 
 type XJoinDataSourceReconciler struct {
 	Client    client.Client
@@ -60,34 +56,6 @@ func (r *XJoinDataSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			Log: mgr.GetLogger(),
 		}).
 		Complete(r)
-}
-
-func (r *XJoinDataSourceReconciler) finalize(i XJoinDataSourceIteration) (result ctrl.Result, err error) {
-
-	r.Log.Info("Starting finalizer")
-	if i.GetInstance().Status.ActiveVersion != "" {
-		err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.ActiveVersion)
-		if err != nil {
-			return result, errors.Wrap(err, 0)
-		}
-	}
-	if i.GetInstance().Status.RefreshingVersion != "" {
-		err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.RefreshingVersion)
-		if err != nil {
-			return result, errors.Wrap(err, 0)
-		}
-	}
-
-	controllerutil.RemoveFinalizer(i.Instance, xjoindatasourceFinalizer)
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-	err = r.Client.Update(ctx, i.Instance)
-	if err != nil {
-		return result, errors.Wrap(err, 0)
-	}
-
-	r.Log.Info("Successfully finalized")
-	return reconcile.Result{}, nil
 }
 
 // +kubebuilder:rbac:groups=xjoin.cloud.redhat.com,resources=xjoindatasources;xjoindatasources/status;xjoindatasources/finalizers,verbs=get;list;watch;create;update;patch;delete
@@ -143,116 +111,13 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		},
 	}
 
-	//[REMOVED]
-	if instance.GetDeletionTimestamp() != nil {
-		i.Log.Debug("STATE: REMOVED")
-		return r.finalize(i)
+	if err = i.AddFinalizer(i.GetFinalizerName()); err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	//[NEW]
-	if instance.Status.ActiveVersion == "" && instance.Status.RefreshingVersion == "" {
-		i.Log.Debug("STATE: NEW")
-
-		if err = i.AddFinalizer(xjoindatasourceFinalizer); err != nil {
-			return reconcile.Result{}, errors.Wrap(err, 0)
-		}
-
-		refreshingVersion := i.Version()
-		instance.Status.RefreshingVersion = refreshingVersion
-		instance.Status.RefreshingVersionIsValid = false
-
-		err = i.CreateDataSourcePipeline(instance.Name, refreshingVersion)
-		if err != nil {
-			return
-		}
-	}
-
-	//[INITIAL SYNC]
-	if instance.Status.ActiveVersion == "" &&
-		instance.Status.RefreshingVersionIsValid == false &&
-		instance.Status.RefreshingVersion != "" {
-
-		i.Log.Debug("STATE: INITIAL_SYNC")
-
-		err = i.ReconcilePipelines()
-		if err != nil {
-			return result, errors.Wrap(err, 0)
-		}
-	}
-
-	//[VALID] ACTIVE IS VALID
-	if instance.Status.ActiveVersion != "" &&
-		instance.Status.ActiveVersionIsValid == true {
-
-		i.Log.Debug("STATE: VALID")
-
-		err = i.ReconcilePipelines()
-		if err != nil {
-			return result, errors.Wrap(err, 0)
-		}
-	}
-
-	//[START REFRESHING] ACTIVE IS INVALID, NOT REFRESHING YET
-	if instance.Status.ActiveVersion != "" &&
-		instance.Status.ActiveVersionIsValid == false &&
-		instance.Status.RefreshingVersion == "" {
-
-		i.Log.Debug("STATE: START REFRESH")
-		refreshingVersion := i.Version()
-		instance.Status.RefreshingVersion = refreshingVersion
-
-		err = i.CreateDataSourcePipeline(instance.Name, refreshingVersion)
-		if err != nil {
-			return result, errors.Wrap(err, 0)
-		}
-	}
-
-	//[REFRESHING] ACTIVE IS INVALID, REFRESHING IS INVALID
-	if instance.Status.ActiveVersion != "" &&
-		instance.Status.ActiveVersionIsValid == false &&
-		instance.Status.RefreshingVersion != "" &&
-		instance.Status.RefreshingVersionIsValid == false {
-
-		i.Log.Debug("STATE: REFRESHING")
-
-		err = i.ReconcilePipelines()
-		if err != nil {
-			return result, errors.Wrap(err, 0)
-		}
-	}
-
-	//[REFRESH COMPLETE] ACTIVE IS INVALID, REFRESHING IS VALID
-	if instance.Status.ActiveVersion != "" &&
-		instance.Status.ActiveVersionIsValid == false &&
-		instance.Status.RefreshingVersion != "" &&
-		instance.Status.RefreshingVersionIsValid == true {
-
-		i.Log.Debug("STATE: REFRESH COMPLETE")
-		err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.ActiveVersion)
-		if err != nil {
-			return result, errors.Wrap(err, 0)
-		}
-
-		instance.Status.ActiveVersion = instance.Status.RefreshingVersion
-		instance.Status.ActiveVersionIsValid = instance.Status.RefreshingVersionIsValid
-		instance.Status.RefreshingVersion = ""
-		instance.Status.RefreshingVersionIsValid = false
-	}
-
-	//Scrub orphaned resources
-	var validVersions []string
-	if instance.Status.ActiveVersion != "" {
-		validVersions = append(validVersions, instance.Status.ActiveVersion)
-	}
-	if instance.Status.RefreshingVersion != "" {
-		validVersions = append(validVersions, instance.Status.RefreshingVersion)
-	}
-
-	custodian := components.NewCustodian(i.GetInstance().Name, validVersions)
-	custodian.AddComponent(components.NewAvroSchema(""))
-	custodian.AddComponent(components.NewKafkaTopic())
-	custodian.AddComponent(components.NewDebeziumConnector())
-	err = custodian.Scrub()
+	dataSourceReconciler := NewReconcileMethods(i)
+	reconciler := common.NewReconciler(dataSourceReconciler, instance, reqLogger)
+	err = reconciler.Reconcile()
 	if err != nil {
 		return result, errors.Wrap(err, 0)
 	}

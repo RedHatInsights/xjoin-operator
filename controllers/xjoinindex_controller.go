@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
@@ -16,11 +17,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
-
-const xjoinindexFinalizer = "finalizer.xjoin.index.cloud.redhat.com"
 
 type XJoinIndexReconciler struct {
 	Client    client.Client
@@ -58,22 +56,6 @@ func (r *XJoinIndexReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			Log: mgr.GetLogger(),
 		}).
 		Complete(r)
-}
-
-func (r *XJoinIndexReconciler) finalize(i XJoinIndexIteration) (result ctrl.Result, err error) {
-
-	r.Log.Info("Starting finalizer")
-	controllerutil.RemoveFinalizer(i.Iteration.Instance, xjoinindexFinalizer)
-
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-	err = r.Client.Update(ctx, i.Iteration.Instance)
-	if err != nil {
-		return
-	}
-
-	r.Log.Info("Successfully finalized")
-	return reconcile.Result{}, nil
 }
 
 // +kubebuilder:rbac:groups=xjoin.cloud.redhat.com,resources=xjoinindices;xjoinindices/status;xjoinindices/finalizers,verbs=get;list;watch;create;update;patch;delete
@@ -129,93 +111,15 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		},
 	}
 
-	//[REMOVED]
-	if instance.GetDeletionTimestamp() != nil {
-		i.Log.Debug("STATE: REMOVED")
-		return r.finalize(i)
+	if err = i.AddFinalizer(i.GetFinalizerName()); err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	//[NEW]
-	if instance.Status.ActiveVersion == "" && instance.Status.RefreshingVersion == "" {
-		refreshingVersion := i.Version()
-		instance.Status.RefreshingVersion = refreshingVersion
-		instance.Status.RefreshingVersionIsValid = false
-
-		i.Log.Debug("STATE: NEW")
-		err = i.CreateIndexPipeline(instance.Name, refreshingVersion)
-		if err != nil {
-			return
-		}
-		err = i.CreateIndexValidator(instance.Name, refreshingVersion)
-		if err != nil {
-			return
-		}
-	}
-
-	//[INITIAL SYNC]
-	if instance.Status.ActiveVersion == "" &&
-		instance.Status.RefreshingVersionIsValid == false &&
-		instance.Status.RefreshingVersion != "" {
-
-		//TODO: noop? double check indexpipeline exists?
-		i.Log.Debug("STATE: INITIAL_SYNC")
-	}
-
-	//[VALID] ACTIVE IS VALID
-	if instance.Status.ActiveVersion != "" &&
-		instance.Status.ActiveVersionIsValid == true {
-
-		//TODO: noop? double check indexpipeline exists?
-		i.Log.Debug("STATE: VALID")
-	}
-
-	//[START REFRESHING] ACTIVE IS INVALID, NOT REFRESHING YET
-	if instance.Status.ActiveVersion != "" &&
-		instance.Status.ActiveVersionIsValid == false &&
-		instance.Status.RefreshingVersion == "" {
-
-		i.Log.Debug("STATE: START REFRESH")
-		refreshingVersion := i.Version()
-		instance.Status.RefreshingVersion = refreshingVersion
-
-		err = i.CreateIndexPipeline(instance.Name, refreshingVersion)
-		if err != nil {
-			return
-		}
-		err = i.CreateIndexValidator(instance.Name, refreshingVersion)
-		if err != nil {
-			return
-		}
-	}
-
-	//[REFRESHING] ACTIVE IS INVALID, REFRESHING IS INVALID
-	if instance.Status.ActiveVersion != "" &&
-		instance.Status.ActiveVersionIsValid == false &&
-		instance.Status.RefreshingVersion != "" &&
-		instance.Status.RefreshingVersionIsValid == false {
-
-		//TODO: noop? double check both indexpipelines exist?
-		i.Log.Debug("STATE: REFRESHING")
-	}
-
-	//[REFRESH COMPLETE] ACTIVE IS INVALID, REFRESHING IS VALID
-	if instance.Status.ActiveVersion != "" &&
-		instance.Status.ActiveVersionIsValid == false &&
-		instance.Status.RefreshingVersion != "" &&
-		instance.Status.RefreshingVersionIsValid == true {
-
-		i.Log.Debug("STATE: REFRESH COMPLETE")
-		err = i.DeleteIndexPipeline(i.Iteration.Instance.GetName(), i.GetInstance().Status.ActiveVersion)
-		if err != nil {
-			return
-		}
-		err = i.DeleteIndexValidator(i.Iteration.Instance.GetName(), i.GetInstance().Status.ActiveVersion)
-		if err != nil {
-			return
-		}
-
-		instance.Status.ActiveVersion = instance.Status.RefreshingVersion
-		instance.Status.ActiveVersionIsValid = instance.Status.RefreshingVersionIsValid
+	indexReconcileMethods := NewReconcileMethods(i)
+	reconciler := common.NewReconciler(indexReconcileMethods, instance, reqLogger)
+	err = reconciler.Reconcile()
+	if err != nil {
+		return result, errors.Wrap(err, 0)
 	}
 
 	return i.UpdateStatusAndRequeue()

@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const XJOIN_COMPONENT_NAME_LABEL = "xjoin.component.name"
@@ -113,6 +114,37 @@ func (i *XJoinDataSourceIteration) ReconcilePipelines() (err error) {
 	return
 }
 
+func (i *XJoinDataSourceIteration) Finalize() (err error) {
+	i.Log.Info("Starting finalizer")
+	if i.GetInstance().Status.ActiveVersion != "" {
+		err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.ActiveVersion)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+	if i.GetInstance().Status.RefreshingVersion != "" {
+		err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.RefreshingVersion)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+
+	controllerutil.RemoveFinalizer(i.Instance, i.GetFinalizerName())
+	ctx, cancel := utils.DefaultContext()
+	defer cancel()
+	err = i.Client.Update(ctx, i.Instance)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	i.Log.Info("Successfully finalized")
+	return nil
+}
+
 func (i XJoinDataSourceIteration) GetInstance() *v1alpha1.XJoinDataSource {
 	return i.Instance.(*v1alpha1.XJoinDataSource)
+}
+
+func (i XJoinDataSourceIteration) GetFinalizerName() string {
+	return "finalizer.xjoin.datasource.cloud.redhat.com"
 }

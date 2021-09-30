@@ -1,4 +1,4 @@
-package datasource
+package index
 
 import (
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"

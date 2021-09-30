@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/google/go-cmp/cmp"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
@@ -15,7 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strconv"
 	"time"
 )
 
@@ -111,8 +109,4 @@ func (i *Iteration) AddFinalizer(finalizer string) error {
 	}
 
 	return nil
-}
-
-func (i *Iteration) Version() string {
-	return fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
 }

@@ -31,6 +31,38 @@ type XJoinIndex struct {
 	Status XJoinIndexStatus `json:"status,omitempty"`
 }
 
+func (in *XJoinIndex) GetActiveVersion() string {
+	return in.Status.ActiveVersion
+}
+
+func (in *XJoinIndex) SetActiveVersion(version string) {
+	in.Status.ActiveVersion = version
+}
+
+func (in *XJoinIndex) GetActiveVersionIsValid() bool {
+	return in.Status.ActiveVersionIsValid
+}
+
+func (in *XJoinIndex) SetActiveVersionIsValid(valid bool) {
+	in.Status.ActiveVersionIsValid = valid
+}
+
+func (in *XJoinIndex) GetRefreshingVersion() string {
+	return in.Status.RefreshingVersion
+}
+
+func (in *XJoinIndex) SetRefreshingVersion(version string) {
+	in.Status.RefreshingVersion = version
+}
+
+func (in *XJoinIndex) GetRefreshingVersionIsValid() bool {
+	return in.Status.RefreshingVersionIsValid
+}
+
+func (in *XJoinIndex) SetRefreshingVersionIsValid(valid bool) {
+	in.Status.RefreshingVersionIsValid = valid
+}
+
 // +kubebuilder:object:root=true
 
 type XJoinIndexList struct {

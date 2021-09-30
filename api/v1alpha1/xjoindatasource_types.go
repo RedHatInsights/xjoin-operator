@@ -49,6 +49,38 @@ type XJoinDataSource struct {
 	Status XJoinDataSourceStatus `json:"status,omitempty"`
 }
 
+func (in *XJoinDataSource) GetActiveVersion() string {
+	return in.Status.ActiveVersion
+}
+
+func (in *XJoinDataSource) SetActiveVersion(version string) {
+	in.Status.ActiveVersion = version
+}
+
+func (in *XJoinDataSource) GetActiveVersionIsValid() bool {
+	return in.Status.ActiveVersionIsValid
+}
+
+func (in *XJoinDataSource) SetActiveVersionIsValid(valid bool) {
+	in.Status.ActiveVersionIsValid = valid
+}
+
+func (in *XJoinDataSource) GetRefreshingVersion() string {
+	return in.Status.RefreshingVersion
+}
+
+func (in *XJoinDataSource) SetRefreshingVersion(version string) {
+	in.Status.RefreshingVersion = version
+}
+
+func (in *XJoinDataSource) GetRefreshingVersionIsValid() bool {
+	return in.Status.RefreshingVersionIsValid
+}
+
+func (in *XJoinDataSource) SetRefreshingVersionIsValid(valid bool) {
+	in.Status.RefreshingVersionIsValid = valid
+}
+
 // +kubebuilder:object:root=true
 
 type XJoinDataSourceList struct {
