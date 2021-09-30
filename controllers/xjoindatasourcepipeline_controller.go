@@ -5,8 +5,10 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
+	. "github.com/redhatinsights/xjoin-operator/controllers/datasource"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -103,6 +105,21 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 	}
 
 	if p.Pause.Bool() == true {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	i := XJoinDataSourcePipelineIteration{
+		Parameters: *p,
+		Iteration: common.Iteration{
+			Context:          ctx,
+			Instance:         instance,
+			OriginalInstance: instance.DeepCopy(),
+			Client:           r.Client,
+			Log:              reqLogger,
+		},
+	}
+
+	if err = i.AddFinalizer(xjoindatasourcepipelineFinalizer); err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 

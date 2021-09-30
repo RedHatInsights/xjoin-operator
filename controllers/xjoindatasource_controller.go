@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -21,8 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strconv"
-	"time"
 )
 
 const xjoindatasourceFinalizer = "finalizer.xjoin.datasource.cloud.redhat.com"
@@ -68,13 +65,17 @@ func (r *XJoinDataSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *XJoinDataSourceReconciler) finalize(i XJoinDataSourceIteration) (result ctrl.Result, err error) {
 
 	r.Log.Info("Starting finalizer")
-	err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.ActiveVersion)
-	if err != nil {
-		return
+	if i.GetInstance().Status.ActiveVersion != "" {
+		err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.ActiveVersion)
+		if err != nil {
+			return result, errors.Wrap(err, 0)
+		}
 	}
-	err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.RefreshingVersion)
-	if err != nil {
-		return
+	if i.GetInstance().Status.RefreshingVersion != "" {
+		err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.RefreshingVersion)
+		if err != nil {
+			return result, errors.Wrap(err, 0)
+		}
 	}
 
 	controllerutil.RemoveFinalizer(i.Instance, xjoindatasourceFinalizer)
@@ -82,7 +83,7 @@ func (r *XJoinDataSourceReconciler) finalize(i XJoinDataSourceIteration) (result
 	defer cancel()
 	err = r.Client.Update(ctx, i.Instance)
 	if err != nil {
-		return
+		return result, errors.Wrap(err, 0)
 	}
 
 	r.Log.Info("Successfully finalized")
@@ -150,11 +151,16 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	//[NEW]
 	if instance.Status.ActiveVersion == "" && instance.Status.RefreshingVersion == "" {
-		refreshingVersion := version()
+		i.Log.Debug("STATE: NEW")
+
+		if err = i.AddFinalizer(xjoindatasourceFinalizer); err != nil {
+			return reconcile.Result{}, errors.Wrap(err, 0)
+		}
+
+		refreshingVersion := i.Version()
 		instance.Status.RefreshingVersion = refreshingVersion
 		instance.Status.RefreshingVersionIsValid = false
 
-		i.Log.Debug("STATE: NEW")
 		err = i.CreateDataSourcePipeline(instance.Name, refreshingVersion)
 		if err != nil {
 			return
@@ -166,16 +172,24 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		instance.Status.RefreshingVersionIsValid == false &&
 		instance.Status.RefreshingVersion != "" {
 
-		//TODO: noop? double check datasourcepipeline exists?
 		i.Log.Debug("STATE: INITIAL_SYNC")
+
+		err = i.ReconcilePipelines()
+		if err != nil {
+			return result, errors.Wrap(err, 0)
+		}
 	}
 
 	//[VALID] ACTIVE IS VALID
 	if instance.Status.ActiveVersion != "" &&
 		instance.Status.ActiveVersionIsValid == true {
 
-		//TODO: noop? double check datasourcepipeline exists?
 		i.Log.Debug("STATE: VALID")
+
+		err = i.ReconcilePipelines()
+		if err != nil {
+			return result, errors.Wrap(err, 0)
+		}
 	}
 
 	//[START REFRESHING] ACTIVE IS INVALID, NOT REFRESHING YET
@@ -184,10 +198,13 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		instance.Status.RefreshingVersion == "" {
 
 		i.Log.Debug("STATE: START REFRESH")
-		refreshingVersion := version()
+		refreshingVersion := i.Version()
 		instance.Status.RefreshingVersion = refreshingVersion
 
 		err = i.CreateDataSourcePipeline(instance.Name, refreshingVersion)
+		if err != nil {
+			return result, errors.Wrap(err, 0)
+		}
 	}
 
 	//[REFRESHING] ACTIVE IS INVALID, REFRESHING IS INVALID
@@ -196,8 +213,12 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		instance.Status.RefreshingVersion != "" &&
 		instance.Status.RefreshingVersionIsValid == false {
 
-		//TODO: noop? double check both datasourcepipelines exist?
 		i.Log.Debug("STATE: REFRESHING")
+
+		err = i.ReconcilePipelines()
+		if err != nil {
+			return result, errors.Wrap(err, 0)
+		}
 	}
 
 	//[REFRESH COMPLETE] ACTIVE IS INVALID, REFRESHING IS VALID
@@ -209,7 +230,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		i.Log.Debug("STATE: REFRESH COMPLETE")
 		err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.ActiveVersion)
 		if err != nil {
-			return
+			return result, errors.Wrap(err, 0)
 		}
 
 		instance.Status.ActiveVersion = instance.Status.RefreshingVersion
@@ -233,12 +254,8 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 	custodian.AddComponent(components.NewDebeziumConnector())
 	err = custodian.Scrub()
 	if err != nil {
-		return reconcile.Result{}, errors.Wrap(err, 0)
+		return result, errors.Wrap(err, 0)
 	}
 
 	return i.UpdateStatusAndRequeue()
-}
-
-func version() string {
-	return fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
 }

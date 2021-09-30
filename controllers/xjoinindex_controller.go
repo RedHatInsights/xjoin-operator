@@ -137,7 +137,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 
 	//[NEW]
 	if instance.Status.ActiveVersion == "" && instance.Status.RefreshingVersion == "" {
-		refreshingVersion := version()
+		refreshingVersion := i.Version()
 		instance.Status.RefreshingVersion = refreshingVersion
 		instance.Status.RefreshingVersionIsValid = false
 
@@ -175,7 +175,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		instance.Status.RefreshingVersion == "" {
 
 		i.Log.Debug("STATE: START REFRESH")
-		refreshingVersion := version()
+		refreshingVersion := i.Version()
 		instance.Status.RefreshingVersion = refreshingVersion
 
 		err = i.CreateIndexPipeline(instance.Name, refreshingVersion)

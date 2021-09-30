@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/google/go-cmp/cmp"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
@@ -12,7 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strconv"
 	"time"
 )
 
@@ -96,5 +99,20 @@ func (i *Iteration) DeleteResource(name string, gvk schema.GroupVersionKind) err
 	dataSourcePipeline := &unstructured.Unstructured{}
 	dataSourcePipeline.SetGroupVersionKind(gvk)
 	dataSourcePipeline.SetName(name)
+	dataSourcePipeline.SetNamespace(i.Instance.GetNamespace())
 	return i.Client.Delete(i.Context, dataSourcePipeline)
+}
+
+func (i *Iteration) AddFinalizer(finalizer string) error {
+	if !utils.ContainsString(i.Instance.GetFinalizers(), finalizer) {
+		controllerutil.AddFinalizer(i.Instance, finalizer)
+
+		return i.Client.Update(i.Context, i.Instance)
+	}
+
+	return nil
+}
+
+func (i *Iteration) Version() string {
+	return fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
 }
