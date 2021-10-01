@@ -42,6 +42,8 @@ spec:
                 type: string
               pause:
                 type: boolean
+              version:
+                type: string
             type: object
           status:
             type: object

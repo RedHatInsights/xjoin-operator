@@ -36,18 +36,18 @@ func (d *ReconcileMethods) New(version string) (err error) {
 }
 
 func (d *ReconcileMethods) InitialSync() (err error) {
-	//err = d.iteration.ReconcilePipelines()
-	//if err != nil {
-	//	return errors.Wrap(err, 0)
-	//}
+	err = d.iteration.ReconcileChildren()
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	return
 }
 
 func (d *ReconcileMethods) Valid() (err error) {
-	//err = d.iteration.ReconcilePipelines()
-	//if err != nil {
-	//	return errors.Wrap(err, 0)
-	//}
+	err = d.iteration.ReconcileChildren()
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	return
 }
 
@@ -64,10 +64,10 @@ func (d *ReconcileMethods) StartRefreshing(version string) (err error) {
 }
 
 func (d *ReconcileMethods) Refreshing() (err error) {
-	//err = d.iteration.ReconcilePipelines()
-	//if err != nil {
-	//	return errors.Wrap(err, 0)
-	//}
+	err = d.iteration.ReconcileChildren()
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	return
 }
 

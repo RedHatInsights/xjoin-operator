@@ -6,5 +6,5 @@ type Child interface {
 	Create(string) error
 	Delete(string) error
 	GetGVK() schema.GroupVersionKind
-	GetInstance() XJoinObject
+	GetParentInstance() XJoinObject
 }

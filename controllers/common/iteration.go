@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/google/go-cmp/cmp"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
@@ -96,11 +97,11 @@ func (i *Iteration) CreateChildResource(resourceDefinition unstructured.Unstruct
 }
 
 func (i *Iteration) DeleteResource(name string, gvk schema.GroupVersionKind) error {
-	dataSourcePipeline := &unstructured.Unstructured{}
-	dataSourcePipeline.SetGroupVersionKind(gvk)
-	dataSourcePipeline.SetName(name)
-	dataSourcePipeline.SetNamespace(i.Instance.GetNamespace())
-	return i.Client.Delete(i.Context, dataSourcePipeline)
+	resource := &unstructured.Unstructured{}
+	resource.SetGroupVersionKind(gvk)
+	resource.SetName(name)
+	resource.SetNamespace(i.Instance.GetNamespace())
+	return i.Client.Delete(i.Context, resource)
 }
 
 func (i *Iteration) AddFinalizer(finalizer string) error {
@@ -114,46 +115,66 @@ func (i *Iteration) AddFinalizer(finalizer string) error {
 }
 
 func (i *Iteration) ReconcileChild(child Child) (err error) {
-	//build an array and map of expected pipeline versions (active, refreshing)
-	//the map value will be set to true when an expected pipeline is found
-	expectedPipelinesMap := make(map[string]bool)
-	var expectedPipelinesArray []string
-	if child.GetInstance().GetActiveVersion() != "" {
-		expectedPipelinesMap[child.GetInstance().GetActiveVersion()] = false
-		expectedPipelinesArray = append(expectedPipelinesArray, child.GetInstance().GetActiveVersion())
+	//build an array and map of expected child versions (active, refreshing)
+	//the map value will be set to true when an expected child is found
+	expectedChildrenMap := make(map[string]bool)
+	var expectedChildrenArray []string
+	if child.GetParentInstance().GetActiveVersion() != "" {
+		expectedChildrenMap[child.GetParentInstance().GetActiveVersion()] = false
+		expectedChildrenArray = append(expectedChildrenArray, child.GetParentInstance().GetActiveVersion())
 	}
-	if child.GetInstance().GetRefreshingVersion() != "" {
-		expectedPipelinesMap[child.GetInstance().GetRefreshingVersion()] = false
-		expectedPipelinesArray = append(expectedPipelinesArray, child.GetInstance().GetRefreshingVersion())
+	if child.GetParentInstance().GetRefreshingVersion() != "" {
+		expectedChildrenMap[child.GetParentInstance().GetRefreshingVersion()] = false
+		expectedChildrenArray = append(expectedChildrenArray, child.GetParentInstance().GetRefreshingVersion())
 	}
 
-	//retrieve a list of pipelines for this datasource.name
-	pipelines := &unstructured.UnstructuredList{}
-	pipelines.SetGroupVersionKind(child.GetGVK())
+	//retrieve a list of children for this datasource.name
+	children := &unstructured.UnstructuredList{}
+	children.SetGroupVersionKind(child.GetGVK())
 	labels := client.MatchingLabels{}
-	labels[COMPONENT_NAME_LABEL] = child.GetInstance().GetName()
-	err = i.Client.List(i.Context, pipelines, labels)
+	labels[COMPONENT_NAME_LABEL] = child.GetParentInstance().GetName()
+	err = i.Client.List(i.Context, children, labels)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 
-	//remove any extra pipelines, ensure the expected pipelines are created
-	for _, pipeline := range pipelines.Items {
-		spec := pipeline.Object["spec"].(map[string]interface{})
-		pipelineVersion := spec["version"].(string)
-		if !utils.ContainsString(expectedPipelinesArray, pipelineVersion) {
-			err = child.Delete(pipelineVersion)
+	apiVersion, kind := child.GetGVK().ToAPIVersionAndKind()
+
+	//remove any extra children, ensure the expected children are created
+	for _, childItem := range children.Items {
+		spec := childItem.Object["spec"]
+		if spec == nil {
+			err = errors.New(
+				fmt.Sprintf("spec not found in child custom resource. Name: %s, apiVersoin: %s, kind: %s",
+					child.GetParentInstance().GetName(), apiVersion, kind))
+			return errors.Wrap(err, 0)
+		}
+
+		specMap := spec.(map[string]interface{})
+		version := specMap["version"]
+		if version == nil {
+			err = errors.New(
+				fmt.Sprintf("version not found in child custom resource's spec. Name: %s, apiVersoin: %s, kind: %s",
+					child.GetParentInstance().GetName(), apiVersion, kind))
+			return errors.Wrap(err, 0)
+		}
+
+		versionString := version.(string)
+
+		if !utils.ContainsString(expectedChildrenArray, versionString) {
+			err = child.Delete(versionString)
 			if err != nil {
 				return errors.Wrap(err, 0)
 			}
 		} else {
-			expectedPipelinesMap[pipelineVersion] = true
+			expectedChildrenMap[versionString] = true
 		}
 	}
 
-	for version, exists := range expectedPipelinesMap {
+	for version, exists := range expectedChildrenMap {
 		if !exists {
-			i.Log.Info("expected pipeline version " + version + " not found, recreating it")
+			i.Log.Info("expected version "+version+" not found, recreating it.",
+				"kind", kind)
 			err = child.Create(version)
 			if err != nil {
 				return errors.Wrap(err, 0)

@@ -16,7 +16,7 @@ func NewDataSourcePipelineChild(iteration *XJoinDataSourceIteration) *DataSource
 	}
 }
 
-func (d *DataSourcePipelineChild) GetInstance() common.XJoinObject {
+func (d *DataSourcePipelineChild) GetParentInstance() common.XJoinObject {
 	return d.iteration.GetInstance()
 }
 

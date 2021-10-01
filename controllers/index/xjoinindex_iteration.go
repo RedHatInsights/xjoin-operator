@@ -1,6 +1,7 @@
 package index
 
 import (
+	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
@@ -33,6 +34,9 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 		"metadata": map[string]interface{}{
 			"name":      name + "." + version,
 			"namespace": i.Iteration.Instance.GetNamespace(),
+			"labels": map[string]interface{}{
+				common.COMPONENT_NAME_LABEL: name,
+			},
 		},
 		"spec": map[string]interface{}{
 			"version":    version,
@@ -42,15 +46,22 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 	}
 	dataSourcePipeline.SetGroupVersionKind(indexPipelineGVK)
 
-	return i.CreateChildResource(dataSourcePipeline)
+	err = i.CreateChildResource(dataSourcePipeline)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
 }
 
 func (i *XJoinIndexIteration) CreateIndexValidator(name string, version string) (err error) {
-	dataSourcePipeline := unstructured.Unstructured{}
-	dataSourcePipeline.Object = map[string]interface{}{
+	indexValidator := unstructured.Unstructured{}
+	indexValidator.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      name + "." + version,
 			"namespace": i.Iteration.Instance.GetNamespace(),
+			"labels": map[string]interface{}{
+				common.COMPONENT_NAME_LABEL: name,
+			},
 		},
 		"spec": map[string]interface{}{
 			"version":    version,
@@ -58,16 +69,28 @@ func (i *XJoinIndexIteration) CreateIndexValidator(name string, version string) 
 			"pause":      i.Parameters.Pause.Bool(),
 		},
 	}
-	dataSourcePipeline.SetGroupVersionKind(indexValidatorGVK)
-	return i.CreateChildResource(dataSourcePipeline)
+	indexValidator.SetGroupVersionKind(indexValidatorGVK)
+	err = i.CreateChildResource(indexValidator)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
 }
 
 func (i *XJoinIndexIteration) DeleteIndexPipeline(name string, version string) (err error) {
-	return i.DeleteResource(name+"."+version, indexPipelineGVK)
+	err = i.DeleteResource(name+"."+version, indexPipelineGVK)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
 }
 
 func (i *XJoinIndexIteration) DeleteIndexValidator(name string, version string) (err error) {
-	return i.DeleteResource(name+"."+version, indexValidatorGVK)
+	err = i.DeleteResource(name+"."+version, indexValidatorGVK)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
 }
 
 func (i XJoinIndexIteration) GetInstance() *v1alpha1.XJoinIndex {
@@ -86,9 +109,39 @@ func (i *XJoinIndexIteration) Finalize() (err error) {
 	defer cancel()
 	err = i.Client.Update(ctx, i.Iteration.Instance)
 	if err != nil {
-		return
+		return errors.Wrap(err, 0)
 	}
 
 	i.Log.Info("Successfully finalized")
 	return nil
+}
+
+func (i *XJoinIndexIteration) ReconcilePipeline() (err error) {
+	child := NewIndexPipelineChild(i)
+	err = i.ReconcileChild(child)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
+}
+
+func (i *XJoinIndexIteration) ReconcileValidator() (err error) {
+	child := NewIndexValidatorChild(i)
+	err = i.ReconcileChild(child)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
+}
+
+func (i *XJoinIndexIteration) ReconcileChildren() (err error) {
+	err = i.ReconcilePipeline()
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	err = i.ReconcileValidator()
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
 }

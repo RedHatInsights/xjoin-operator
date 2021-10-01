@@ -6,6 +6,9 @@ import (
 
 type XJoinIndexValidatorSpec struct {
 	// +kubebuilder:validation:Required
+	Version string `json:"version,omitempty"`
+
+	// +kubebuilder:validation:Required
 	AvroSchema string `json:"avroSchema,omitempty"`
 
 	// +optional
