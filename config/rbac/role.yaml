@@ -105,9 +105,9 @@ rules:
 - apiGroups:
   - xjoin.cloud.redhat.com
   resources:
-  - xjoinindexvalidator
-  - xjoinindexvalidator/finalizers
-  - xjoinindexvalidator/status
+  - xjoinindexvalidators
+  - xjoinindexvalidators/finalizers
+  - xjoinindexvalidators/status
   verbs:
   - create
   - delete

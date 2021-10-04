@@ -58,7 +58,7 @@ func (r *XJoinIndexValidatorReconciler) SetupWithManager(mgr ctrl.Manager) error
 		Complete(r)
 }
 
-// +kubebuilder:rbac:groups=xjoin.cloud.redhat.com,resources=xjoinindexvalidator;xjoinindexvalidator/status;xjoinindexvalidator/finalizers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=xjoin.cloud.redhat.com,resources=xjoinindexvalidators;xjoinindexvalidators/status;xjoinindexvalidators/finalizers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=configmaps;pods,verbs=get;list;watch
 
 func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
