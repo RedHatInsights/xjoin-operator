@@ -50,6 +50,8 @@ spec:
                 type: string
               databaseUsername:
                 type: string
+              name:
+                type: string
               pause:
                 type: boolean
               version:
