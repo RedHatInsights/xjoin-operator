@@ -20,6 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+const xjoinindexValidatorFinalizer = "finalizer.xjoin.indexvalidator.cloud.redhat.com"
+
 type XJoinIndexValidatorReconciler struct {
 	Client    client.Client
 	Log       logr.Logger
@@ -109,6 +111,10 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 			Client:           r.Client,
 			Log:              reqLogger,
 		},
+	}
+
+	if err = i.AddFinalizer(xjoinindexValidatorFinalizer); err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
 	if instance.GetDeletionTimestamp() != nil {

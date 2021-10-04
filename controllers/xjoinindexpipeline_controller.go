@@ -119,6 +119,10 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		},
 	}
 
+	if err = i.AddFinalizer(xjoinindexpipelineFinalizer); err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
 	avroSchemaReferences, err := i.ParseAvroSchemaReferences()
 	if err != nil {
 		return result, errors.Wrap(err, 0)

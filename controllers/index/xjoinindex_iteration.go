@@ -92,6 +92,27 @@ func (i XJoinIndexIteration) GetFinalizerName() string {
 
 func (i *XJoinIndexIteration) Finalize() (err error) {
 	i.Log.Info("Starting finalizer")
+	if i.GetInstance().Status.ActiveVersion != "" {
+		err = i.DeleteIndexPipeline(i.GetInstance().Name, i.GetInstance().Status.ActiveVersion)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+		err = i.DeleteIndexValidator(i.GetInstance().Name, i.GetInstance().Status.ActiveVersion)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+	if i.GetInstance().Status.RefreshingVersion != "" {
+		err = i.DeleteIndexPipeline(i.GetInstance().Name, i.GetInstance().Status.RefreshingVersion)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+		err = i.DeleteIndexValidator(i.GetInstance().Name, i.GetInstance().Status.RefreshingVersion)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+
 	controllerutil.RemoveFinalizer(i.Iteration.Instance, i.GetFinalizerName())
 
 	ctx, cancel := utils.DefaultContext()
