@@ -37,5 +37,5 @@ func (d *DataSourcePipelineChild) Delete(version string) (err error) {
 }
 
 func (d *DataSourcePipelineChild) GetGVK() (gvk schema.GroupVersionKind) {
-	return dataSourcePipelineGVK
+	return common.DataSourcePipelineGVK
 }

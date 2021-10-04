@@ -80,8 +80,9 @@ func (d *ReconcileMethods) Scrub() (err error) {
 		validVersions = append(validVersions, d.iteration.GetInstance().Status.RefreshingVersion)
 	}
 
-	custodian := components.NewCustodian(d.iteration.GetInstance().Name, validVersions)
-	custodian.AddComponent(components.NewAvroSchema(""))
+	custodian := components.NewCustodian(
+		d.iteration.GetInstance().Kind+"."+d.iteration.GetInstance().Name, validVersions)
+	custodian.AddComponent(components.NewAvroSchema("", nil))
 	custodian.AddComponent(components.NewKafkaTopic())
 	custodian.AddComponent(components.NewDebeziumConnector())
 	err = custodian.Scrub()

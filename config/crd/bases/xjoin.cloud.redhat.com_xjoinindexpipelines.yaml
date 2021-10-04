@@ -40,6 +40,8 @@ spec:
             properties:
               avroSchema:
                 type: string
+              name:
+                type: string
               pause:
                 type: boolean
               version:

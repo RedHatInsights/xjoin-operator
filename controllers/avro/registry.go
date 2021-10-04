@@ -28,10 +28,10 @@ func (sr *SchemaRegistry) Init() {
 	sr.Client = srclient.CreateSchemaRegistryClient("http://localhost:8081")
 }
 
-func (sr *SchemaRegistry) RegisterSchema(name string, schemaDefinition string) (id int, err error) {
-	schema, err := sr.Client.CreateSchema(name, schemaDefinition, srclient.Avro)
+func (sr *SchemaRegistry) RegisterSchema(name string, schemaDefinition string, references []srclient.Reference) (id int, err error) {
+	schema, err := sr.Client.CreateSchema(name, schemaDefinition, srclient.Avro, references...)
 	if err != nil {
-		return
+		return id, errors.Wrap(err, 0)
 	}
 	return schema.ID(), nil
 }

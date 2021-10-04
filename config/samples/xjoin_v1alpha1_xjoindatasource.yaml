@@ -7,8 +7,6 @@ spec:
   avroSchema: >
     {
       "type": "record",
-      "name": "Value",
-      "namespace": "xjoin.inventory.1630327723726062973.public.hosts",
       "fields": [
         {
           "name": "id",

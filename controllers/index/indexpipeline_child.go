@@ -37,5 +37,5 @@ func (d *IndexPipelineChild) Delete(version string) (err error) {
 }
 
 func (d *IndexPipelineChild) GetGVK() (gvk schema.GroupVersionKind) {
-	return indexPipelineGVK
+	return common.IndexPipelineGVK
 }

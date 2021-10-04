@@ -37,5 +37,5 @@ func (d *IndexValidatorChild) Delete(version string) (err error) {
 }
 
 func (d *IndexValidatorChild) GetGVK() (gvk schema.GroupVersionKind) {
-	return indexValidatorGVK
+	return common.IndexValidatorGVK
 }

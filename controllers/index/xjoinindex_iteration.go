@@ -7,25 +7,12 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type XJoinIndexIteration struct {
 	common.Iteration
 	Parameters parameters.IndexParameters
-}
-
-var indexPipelineGVK = schema.GroupVersionKind{
-	Group:   "xjoin.cloud.redhat.com",
-	Kind:    "XJoinIndexPipeline",
-	Version: "v1alpha1",
-}
-
-var indexValidatorGVK = schema.GroupVersionKind{
-	Group:   "xjoin.cloud.redhat.com",
-	Kind:    "XJoinIndexValidator",
-	Version: "v1alpha1",
 }
 
 func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (err error) {
@@ -39,12 +26,13 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 			},
 		},
 		"spec": map[string]interface{}{
+			"name":       name,
 			"version":    version,
 			"avroSchema": i.Parameters.AvroSchema.String(),
 			"pause":      i.Parameters.Pause.Bool(),
 		},
 	}
-	dataSourcePipeline.SetGroupVersionKind(indexPipelineGVK)
+	dataSourcePipeline.SetGroupVersionKind(common.IndexPipelineGVK)
 
 	err = i.CreateChildResource(dataSourcePipeline)
 	if err != nil {
@@ -64,12 +52,13 @@ func (i *XJoinIndexIteration) CreateIndexValidator(name string, version string) 
 			},
 		},
 		"spec": map[string]interface{}{
+			"name":       name,
 			"version":    version,
 			"avroSchema": i.Parameters.AvroSchema.String(),
 			"pause":      i.Parameters.Pause.Bool(),
 		},
 	}
-	indexValidator.SetGroupVersionKind(indexValidatorGVK)
+	indexValidator.SetGroupVersionKind(common.IndexValidatorGVK)
 	err = i.CreateChildResource(indexValidator)
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -78,7 +67,7 @@ func (i *XJoinIndexIteration) CreateIndexValidator(name string, version string) 
 }
 
 func (i *XJoinIndexIteration) DeleteIndexPipeline(name string, version string) (err error) {
-	err = i.DeleteResource(name+"."+version, indexPipelineGVK)
+	err = i.DeleteResource(name+"."+version, common.IndexPipelineGVK)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -86,7 +75,7 @@ func (i *XJoinIndexIteration) DeleteIndexPipeline(name string, version string) (
 }
 
 func (i *XJoinIndexIteration) DeleteIndexValidator(name string, version string) (err error) {
-	err = i.DeleteResource(name+"."+version, indexValidatorGVK)
+	err = i.DeleteResource(name+"."+version, common.IndexValidatorGVK)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

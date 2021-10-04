@@ -6,6 +6,9 @@ import (
 
 type XJoinIndexPipelineSpec struct {
 	// +kubebuilder:validation:Required
+	Name string `json:"name,omitempty"`
+
+	// +kubebuilder:validation:Required
 	Version string `json:"version,omitempty"`
 
 	// +kubebuilder:validation:Required

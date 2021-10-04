@@ -5,8 +5,10 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
+	. "github.com/redhatinsights/xjoin-operator/controllers/index"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -106,9 +108,26 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	componentManager := components.NewComponentManager(instance.Name, p.Version.String())
+	i := XJoinIndexPipelineIteration{
+		Parameters: *p,
+		Iteration: common.Iteration{
+			Context:          ctx,
+			Instance:         instance,
+			OriginalInstance: instance.DeepCopy(),
+			Client:           r.Client,
+			Log:              reqLogger,
+		},
+	}
+
+	avroSchemaReferences, err := i.ParseAvroSchemaReferences()
+	if err != nil {
+		return result, errors.Wrap(err, 0)
+	}
+
+	componentManager := components.NewComponentManager(instance.Kind+"."+instance.Spec.Name, p.Version.String())
 	componentManager.AddComponent(components.NewElasticsearchConnector())
 	componentManager.AddComponent(components.NewElasticsearchIndex())
+	componentManager.AddComponent(components.NewAvroSchema(i.GetInstance().Spec.AvroSchema, avroSchemaReferences))
 
 	if instance.GetDeletionTimestamp() != nil {
 		reqLogger.Info("Starting finalizer")

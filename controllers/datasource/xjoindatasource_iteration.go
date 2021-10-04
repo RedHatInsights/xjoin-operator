@@ -7,19 +7,12 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type XJoinDataSourceIteration struct {
 	common.Iteration
 	Parameters parameters.DataSourceParameters
-}
-
-var dataSourcePipelineGVK = schema.GroupVersionKind{
-	Group:   "xjoin.cloud.redhat.com",
-	Kind:    "XJoinDataSourcePipeline",
-	Version: "v1alpha1",
 }
 
 func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version string) (err error) {
@@ -44,7 +37,7 @@ func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version
 			"pause":            i.Parameters.Pause.Bool(),
 		},
 	}
-	dataSourcePipeline.SetGroupVersionKind(dataSourcePipelineGVK)
+	dataSourcePipeline.SetGroupVersionKind(common.DataSourcePipelineGVK)
 	err = i.CreateChildResource(dataSourcePipeline)
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -53,7 +46,7 @@ func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version
 }
 
 func (i *XJoinDataSourceIteration) DeleteDataSourcePipeline(name string, version string) (err error) {
-	err = i.DeleteResource(name+"."+version, dataSourcePipelineGVK)
+	err = i.DeleteResource(name+"."+version, common.DataSourcePipelineGVK)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

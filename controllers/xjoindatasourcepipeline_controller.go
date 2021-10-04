@@ -123,8 +123,13 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	componentManager := components.NewComponentManager(instance.Spec.Name, p.Version.String())
-	componentManager.AddComponent(components.NewAvroSchema(p.AvroSchema.String()))
+	avroSchema, err := i.ParseAvroSchema()
+	if err != nil {
+		return result, errors.Wrap(err, 0)
+	}
+
+	componentManager := components.NewComponentManager(instance.Kind+"."+instance.Spec.Name, p.Version.String())
+	componentManager.AddComponent(components.NewAvroSchema(avroSchema, nil))
 	componentManager.AddComponent(components.NewKafkaTopic())
 	componentManager.AddComponent(components.NewDebeziumConnector())
 

@@ -769,7 +769,7 @@ var _ = Describe("Pipeline operations", func() {
 	})
 
 	Describe("-> Removed", func() {
-		FIt("Artifacts removed when initializing pipeline is removed", func() {
+		It("Artifacts removed when initializing pipeline is removed", func() {
 			err := i.CreatePipeline()
 			Expect(err).ToNot(HaveOccurred())
 			pipeline, err := i.ExpectInitSyncUnknownReconcile()

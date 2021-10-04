@@ -3,18 +3,20 @@ package components
 import (
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/avro"
+	"github.com/riferrei/srclient"
 	"strings"
 )
 
 type AvroSchema struct {
-	schema   string
-	id       int
-	registry *avro.SchemaRegistry
-	name     string
-	version  string
+	schema     string
+	id         int
+	registry   *avro.SchemaRegistry
+	name       string
+	version    string
+	references []srclient.Reference
 }
 
-func NewAvroSchema(schema string) *AvroSchema {
+func NewAvroSchema(schema string, references []srclient.Reference) *AvroSchema {
 	registry := avro.NewSchemaRegistry(
 		avro.SchemaRegistryConnectionParams{
 			Protocol: "http",
@@ -25,9 +27,10 @@ func NewAvroSchema(schema string) *AvroSchema {
 	registry.Init()
 
 	return &AvroSchema{
-		schema:   schema,
-		registry: registry,
-		id:       1, //valid avro ids start at 1
+		schema:     schema,
+		registry:   registry,
+		references: references,
+		id:         1, //valid avro ids start at 1
 	}
 }
 
@@ -44,7 +47,7 @@ func (as *AvroSchema) Name() string {
 }
 
 func (as *AvroSchema) Create() (err error) {
-	id, err := as.registry.RegisterSchema(as.Name(), as.schema)
+	id, err := as.registry.RegisterSchema(as.Name(), as.schema, as.references)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

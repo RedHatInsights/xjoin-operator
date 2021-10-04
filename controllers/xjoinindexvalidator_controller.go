@@ -2,8 +2,10 @@ package controllers
 
 import (
 	"context"
+	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	. "github.com/redhatinsights/xjoin-operator/controllers/index"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
@@ -15,11 +17,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
-
-const xjoinindexvalidatorFinalizer = "finalizer.xjoin.indexvalidator.cloud.redhat.com"
 
 type XJoinIndexValidatorReconciler struct {
 	Client    client.Client
@@ -57,22 +56,6 @@ func (r *XJoinIndexValidatorReconciler) SetupWithManager(mgr ctrl.Manager) error
 			Log: mgr.GetLogger(),
 		}).
 		Complete(r)
-}
-
-func (r *XJoinIndexValidatorReconciler) finalize(i XJoinIndexValidatorIteration) (result ctrl.Result, err error) {
-
-	r.Log.Info("Starting finalizer")
-	controllerutil.RemoveFinalizer(i.Instance, xjoinindexvalidatorFinalizer)
-
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-	err = r.Client.Update(ctx, i.Instance)
-	if err != nil {
-		return
-	}
-
-	r.Log.Info("Successfully finalized")
-	return reconcile.Result{}, nil
 }
 
 // +kubebuilder:rbac:groups=xjoin.cloud.redhat.com,resources=xjoinindexvalidator;xjoinindexvalidator/status;xjoinindexvalidator/finalizers,verbs=get;list;watch;create;update;patch;delete
@@ -117,12 +100,27 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 		return
 	}
 
-	_ = XJoinIndexValidatorIteration{
-		Instance:         instance,
-		OriginalInstance: *instance.DeepCopy(),
-		Client:           r.Client,
-		Log:              reqLogger,
-		Parameters:       *p,
+	i := XJoinIndexValidatorIteration{
+		Parameters: *p,
+		Iteration: common.Iteration{
+			Context:          ctx,
+			Instance:         instance,
+			OriginalInstance: instance.DeepCopy(),
+			Client:           r.Client,
+			Log:              reqLogger,
+		},
+	}
+
+	if instance.GetDeletionTimestamp() != nil {
+		err = i.Finalize()
+		if err != nil {
+			return result, errors.Wrap(err, 0)
+		}
+	}
+
+	err = i.Validate()
+	if err != nil {
+		return result, errors.Wrap(err, 0)
 	}
 
 	return reconcile.Result{}, nil
