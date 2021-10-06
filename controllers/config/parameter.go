@@ -1,8 +1,8 @@
 package config
 
 import (
-	"errors"
 	"fmt"
+	"github.com/go-errors/errors"
 	"reflect"
 )
 
@@ -67,9 +67,9 @@ func (p *Parameter) SetValue(value interface{}) error {
 		}
 
 		if t != p.Type {
-			return errors.New(fmt.Sprintf(
+			return errors.Wrap(errors.New(fmt.Sprintf(
 				"Value must be of type %s.\nValue type: %s \nCM key: %s \nSpec key: %s \nSecret key: %s.%s",
-				p.Type.String(), t.String(), p.ConfigMapKey, p.SpecKey, p.Secret, p.SecretKey))
+				p.Type.String(), t.String(), p.ConfigMapKey, p.SpecKey, p.Secret, p.SecretKey)), 0)
 		} else {
 			p.value = value
 		}

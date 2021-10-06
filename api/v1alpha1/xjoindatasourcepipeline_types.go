@@ -14,23 +14,23 @@ type XJoinDataSourcePipelineSpec struct {
 	// +kubebuilder:validation:Required
 	AvroSchema string `json:"avroSchema,omitempty"`
 
-	// +kubebuilder:validation:Required
-	DatabaseHostname string `json:"databaseHostname,omitempty"`
+	// +optional
+	DatabaseHostname *StringOrSecretParameter `json:"databaseHostname,omitempty"`
 
-	// +kubebuilder:validation:Required
-	DatabasePort string `json:"databasePort,omitempty"`
+	// +optional
+	DatabasePort *StringOrSecretParameter `json:"databasePort,omitempty"`
 
-	// +kubebuilder:validation:Required
-	DatabaseUsername string `json:"databaseUsername,omitempty"`
+	// +optional
+	DatabaseUsername *StringOrSecretParameter `json:"databaseUsername,omitempty"`
 
-	// +kubebuilder:validation:Required
-	DatabasePassword string `json:"databasePassword,omitempty"`
+	// +optional
+	DatabasePassword *StringOrSecretParameter `json:"databasePassword,omitempty"`
 
-	// +kubebuilder:validation:Required
-	DatabaseName string `json:"databaseName,omitempty"`
+	// +optional
+	DatabaseName *StringOrSecretParameter `json:"databaseName,omitempty"`
 
-	// +kubebuilder:validation:Required
-	DatabaseTable string `json:"databaseTable,omitempty"`
+	// +optional
+	DatabaseTable *StringOrSecretParameter `json:"databaseTable,omitempty"`
 
 	// +optional
 	Pause bool `json:"pause,omitempty"`

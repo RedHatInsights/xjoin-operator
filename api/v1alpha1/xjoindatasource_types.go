@@ -9,22 +9,22 @@ type XJoinDataSourceSpec struct {
 	AvroSchema string `json:"avroSchema,omitempty"`
 
 	// +optional
-	DatabaseHostname string `json:"databaseHostname,omitempty"`
+	DatabaseHostname *StringOrSecretParameter `json:"databaseHostname,omitempty"`
 
 	// +optional
-	DatabasePort string `json:"databasePort,omitempty"`
+	DatabasePort *StringOrSecretParameter `json:"databasePort,omitempty"`
 
 	// +optional
-	DatabaseUsername string `json:"databaseUsername,omitempty"`
+	DatabaseUsername *StringOrSecretParameter `json:"databaseUsername,omitempty"`
 
 	// +optional
-	DatabasePassword string `json:"databasePassword,omitempty"`
+	DatabasePassword *StringOrSecretParameter `json:"databasePassword,omitempty"`
 
 	// +optional
-	DatabaseName string `json:"databaseName,omitempty"`
+	DatabaseName *StringOrSecretParameter `json:"databaseName,omitempty"`
 
 	// +optional
-	DatabaseTable string `json:"databaseTable,omitempty"`
+	DatabaseTable *StringOrSecretParameter `json:"databaseTable,omitempty"`
 
 	// +optional
 	Pause bool `json:"pause,omitempty"`

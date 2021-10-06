@@ -4,6 +4,27 @@ metadata:
   name: test
 spec:
   pause: false
+  databaseHostname:
+    value: "host-inventory-db"
+  databasePort:
+    value: "5432"
+  databaseUsername:
+    valueFrom:
+      secretKeyRef:
+        name: host-inventory-db
+        key: username
+  databasePassword:
+    valueFrom:
+      secretKeyRef:
+        name: host-inventory-db
+        key: password
+  databaseName:
+    valueFrom:
+      secretKeyRef:
+        name: host-inventory-db
+        key: name
+  databaseTable:
+    value: "hosts"
   avroSchema: >
     {
       "type": "record",

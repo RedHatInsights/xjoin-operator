@@ -74,7 +74,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 			return result, nil
 		}
 		// Error reading the object - requeue the request.
-		return
+		return result, errors.Wrap(err, 0)
 	}
 
 	p := parameters.BuildDataSourceParameters()
@@ -87,13 +87,15 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		Namespace:      instance.Namespace,
 		Spec:           instance.Spec,
 		Context:        ctx,
+		Log:            reqLogger,
 	})
 	if err != nil {
-		return
+		return result, errors.Wrap(err, 0)
 	}
+
 	err = configManager.Parse()
 	if err != nil {
-		return
+		return result, errors.Wrap(err, 0)
 	}
 
 	if p.Pause.Bool() == true {
