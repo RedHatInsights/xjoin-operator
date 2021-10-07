@@ -50,3 +50,19 @@ func (sr *SchemaRegistry) CheckIfSchemaVersionExists(name string, version int) (
 func (sr *SchemaRegistry) DeleteSchema(name string) (err error) {
 	return sr.Client.DeleteSubject(name, true)
 }
+
+func (sr *SchemaRegistry) GetSchemaReferences(subject string) (references []srclient.Reference, err error) {
+	schema, err := sr.Client.GetLatestSchema(subject)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	return schema.References(), nil
+}
+
+func (sr *SchemaRegistry) GetSchema(subject string) (schema string, err error) {
+	schemaObj, err := sr.Client.GetLatestSchema(subject)
+	if err != nil {
+		return schema, errors.Wrap(err, 0)
+	}
+	return schemaObj.Schema(), nil
+}

@@ -18,6 +18,7 @@ type XJoinIndexPipelineIteration struct {
 	Parameters parameters.IndexParameters
 }
 
+//ParseAvroSchemaReferences parses the Index's Avro Schema JSON to build a list of srclient.References
 func (i *XJoinIndexPipelineIteration) ParseAvroSchemaReferences() (references []srclient.Reference, err error) {
 	schemaString := i.GetInstance().Spec.AvroSchema
 	var schemaObj avro.IndexSchema
