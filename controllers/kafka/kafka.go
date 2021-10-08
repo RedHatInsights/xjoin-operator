@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -22,7 +23,10 @@ type Kafka struct {
 }
 
 type GenericKafka struct {
+	Context          context.Context
 	Client           client.Client
+	KafkaNamespace   string
+	KafkaCluster     string
 	ConnectNamespace string
 	ConnectCluster   string
 }

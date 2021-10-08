@@ -57,9 +57,12 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 		Recorder:      r.Recorder,
 		Test:          r.Test,
 		GenericKafka: kafka.GenericKafka{
+			Context:          ctx,
 			Client:           r.Client,
 			ConnectNamespace: r.parameters.ConnectClusterNamespace.String(),
 			ConnectCluster:   r.parameters.ConnectCluster.String(),
+			KafkaNamespace:   r.parameters.KafkaClusterNamespace.String(),
+			KafkaCluster:     r.parameters.KafkaCluster.String(),
 		},
 	}
 

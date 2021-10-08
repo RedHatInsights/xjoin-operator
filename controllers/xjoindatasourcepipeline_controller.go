@@ -131,14 +131,30 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 	}
 
 	kafkaClient := kafka.GenericKafka{
+		Context:          ctx,
 		ConnectNamespace: p.ConnectClusterNamespace.String(),
 		ConnectCluster:   p.ConnectCluster.String(),
+		KafkaNamespace:   p.KafkaClusterNamespace.String(),
+		KafkaCluster:     p.KafkaCluster.String(),
 		Client:           i.Client,
 	}
 
 	componentManager := components.NewComponentManager(instance.Kind+"."+instance.Spec.Name, p.Version.String())
 	componentManager.AddComponent(components.NewAvroSchema(avroSchema, nil))
-	componentManager.AddComponent(components.NewKafkaTopic())
+	componentManager.AddComponent(&components.KafkaTopic{
+		TopicParameters: kafka.TopicParameters{
+			Replicas:           p.KafkaTopicReplicas.Int(),
+			Partitions:         p.KafkaTopicPartitions.Int(),
+			CleanupPolicy:      p.KafkaTopicCleanupPolicy.String(),
+			MinCompactionLagMS: p.KafkaTopicMinCompactionLagMS.String(),
+			RetentionBytes:     p.KafkaTopicRetentionBytes.String(),
+			RetentionMS:        p.KafkaTopicRetentionMS.String(),
+			MessageBytes:       p.KafkaTopicMessageBytes.String(),
+			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
+		},
+		KafkaClient: kafkaClient,
+		Suffix:      p.DatabaseTable.String(),
+	})
 	componentManager.AddComponent(&components.DebeziumConnector{
 		TemplateParameters: config.ParametersToMap(*p),
 		KafkaClient:        kafkaClient,

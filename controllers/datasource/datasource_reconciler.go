@@ -3,6 +3,7 @@ package datasource
 import (
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
+	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 )
 
 type ReconcileMethods struct {
@@ -80,11 +81,24 @@ func (d *ReconcileMethods) Scrub() (err error) {
 		validVersions = append(validVersions, d.iteration.GetInstance().Status.RefreshingVersion)
 	}
 
+	kafkaClient := kafka.GenericKafka{
+		Context:          d.iteration.Context,
+		Client:           d.iteration.Client,
+		KafkaNamespace:   d.iteration.Parameters.KafkaClusterNamespace.String(),
+		KafkaCluster:     d.iteration.Parameters.KafkaCluster.String(),
+		ConnectNamespace: d.iteration.Parameters.ConnectClusterNamespace.String(),
+		ConnectCluster:   d.iteration.Parameters.ConnectCluster.String(),
+	}
+
 	custodian := components.NewCustodian(
 		d.iteration.GetInstance().Kind+"."+d.iteration.GetInstance().Name, validVersions)
 	custodian.AddComponent(components.NewAvroSchema("", nil))
-	custodian.AddComponent(components.NewKafkaTopic())
-	custodian.AddComponent(&components.DebeziumConnector{})
+	custodian.AddComponent(&components.KafkaTopic{
+		KafkaClient: kafkaClient,
+	})
+	custodian.AddComponent(&components.DebeziumConnector{
+		KafkaClient: kafkaClient,
+	})
 	err = custodian.Scrub()
 	if err != nil {
 		return errors.Wrap(err, 0)

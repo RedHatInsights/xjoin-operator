@@ -1,16 +1,21 @@
 package components
 
-type KafkaTopic struct {
-	name    string
-	version string
-}
+import (
+	"github.com/go-errors/errors"
+	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
+	"strings"
+)
 
-func NewKafkaTopic() *KafkaTopic {
-	return &KafkaTopic{}
+type KafkaTopic struct {
+	name            string
+	version         string
+	KafkaClient     kafka.GenericKafka
+	TopicParameters kafka.TopicParameters
+	Suffix          string
 }
 
 func (kt *KafkaTopic) SetName(name string) {
-	kt.name = name
+	kt.name = strings.ToLower(name)
 }
 
 func (kt *KafkaTopic) SetVersion(version string) {
@@ -18,25 +23,49 @@ func (kt *KafkaTopic) SetVersion(version string) {
 }
 
 func (kt *KafkaTopic) Name() string {
-	return "KafkaTopic"
+	name := kt.name + "." + kt.version
+	if kt.Suffix != "" {
+		name = name + "." + kt.Suffix
+	}
+	return name
 }
 
 func (kt *KafkaTopic) Create() (err error) {
+	err = kt.KafkaClient.CreateGenericTopic(kt.Name(), kt.TopicParameters)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	return
 }
 
 func (kt *KafkaTopic) Delete() (err error) {
+	err = kt.KafkaClient.DeleteTopic(kt.Name())
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	return
 }
 
 func (kt *KafkaTopic) CheckDeviation() (err error) {
-	return
+	return //TODO
 }
 
 func (kt *KafkaTopic) Exists() (exists bool, err error) {
+	exists, err = kt.KafkaClient.CheckIfTopicExists(kt.Name())
+	if err != nil {
+		return false, errors.Wrap(err, 0)
+	}
 	return
 }
 
 func (kt *KafkaTopic) ListInstalledVersions() (versions []string, err error) {
+	topicNames, err := kt.KafkaClient.ListTopicNamesForPrefix(kt.name)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	for _, name := range topicNames {
+		versions = append(versions, strings.Split(name, kt.name+".")[1])
+	}
 	return
 }

@@ -3,9 +3,9 @@ package test
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/go-errors/errors"
 	"github.com/google/uuid"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers"
@@ -780,14 +780,14 @@ func (i *Iteration) DeletePipeline(pipeline *xjoin.XJoinPipeline) error {
 	defer cancel()
 	err := test.Client.Delete(ctx, pipeline)
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 	err = i.ReconcileValidationForDeletedPipeline()
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 	err = i.ReconcileXJoinForDeletedPipeline()
-	return err
+	return errors.Wrap(err, 0)
 }
 
 func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) error {
@@ -865,11 +865,11 @@ func (i *Iteration) ReconcileXJoinForDeletedPipeline() error {
 	defer cancel()
 	result, err := i.XJoinReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: i.NamespacedName})
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 
 	if result.Requeue != false {
-		return errors.New("expected result.Requeue to be false")
+		return errors.Wrap(errors.New("expected result.Requeue to be false"), 0)
 	}
 
 	return nil

@@ -118,9 +118,12 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		Recorder:      i.Recorder,
 		Test:          r.Test,
 		GenericKafka: kafka.GenericKafka{
+			Context:          ctx,
 			Client:           i.Client,
 			ConnectNamespace: i.Parameters.ConnectClusterNamespace.String(),
 			ConnectCluster:   i.Parameters.ConnectCluster.String(),
+			KafkaNamespace:   i.Parameters.KafkaClusterNamespace.String(),
+			KafkaCluster:     i.Parameters.KafkaCluster.String(),
 		},
 	}
 

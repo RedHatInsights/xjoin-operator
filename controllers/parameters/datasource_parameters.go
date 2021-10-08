@@ -6,28 +6,38 @@ import (
 )
 
 type DataSourceParameters struct {
-	Pause                     Parameter
-	SchemaRegistryProtocol    Parameter
-	SchemaRegistryHost        Parameter
-	SchemaRegistryPort        Parameter
-	DatabaseHostname          Parameter
-	DatabasePort              Parameter
-	DatabaseName              Parameter
-	DatabaseTable             Parameter
-	DatabaseUsername          Parameter
-	DatabasePassword          Parameter
-	DatabaseSSLMode           Parameter
-	DatabaseSSLRootCert       Parameter
-	AvroSchema                Parameter
-	Version                   Parameter
-	DebeziumConnectorTemplate Parameter
-	DebeziumTasksMax          Parameter
-	DebeziumMaxBatchSize      Parameter
-	DebeziumQueueSize         Parameter
-	DebeziumPollIntervalMS    Parameter
-	DebeziumErrorsLogEnable   Parameter
-	ConnectCluster            Parameter
-	ConnectClusterNamespace   Parameter
+	Pause                        Parameter
+	SchemaRegistryProtocol       Parameter
+	SchemaRegistryHost           Parameter
+	SchemaRegistryPort           Parameter
+	DatabaseHostname             Parameter
+	DatabasePort                 Parameter
+	DatabaseName                 Parameter
+	DatabaseTable                Parameter
+	DatabaseUsername             Parameter
+	DatabasePassword             Parameter
+	DatabaseSSLMode              Parameter
+	DatabaseSSLRootCert          Parameter
+	AvroSchema                   Parameter
+	Version                      Parameter
+	DebeziumConnectorTemplate    Parameter
+	DebeziumTasksMax             Parameter
+	DebeziumMaxBatchSize         Parameter
+	DebeziumQueueSize            Parameter
+	DebeziumPollIntervalMS       Parameter
+	DebeziumErrorsLogEnable      Parameter
+	ConnectCluster               Parameter
+	ConnectClusterNamespace      Parameter
+	KafkaTopicPartitions         Parameter
+	KafkaTopicReplicas           Parameter
+	KafkaTopicCleanupPolicy      Parameter
+	KafkaTopicMinCompactionLagMS Parameter
+	KafkaTopicRetentionBytes     Parameter
+	KafkaTopicRetentionMS        Parameter
+	KafkaTopicMessageBytes       Parameter
+	KafkaTopicCreationTimeout    Parameter
+	KafkaCluster                 Parameter
+	KafkaClusterNamespace        Parameter
 }
 
 func BuildDataSourceParameters() *DataSourceParameters {
@@ -37,6 +47,13 @@ func BuildDataSourceParameters() *DataSourceParameters {
 			DefaultValue: false,
 			Type:         reflect.Bool,
 		},
+		Version: Parameter{
+			Type:         reflect.String,
+			SpecKey:      "Version",
+			DefaultValue: "1",
+		},
+
+		//avro schema
 		SchemaRegistryProtocol: Parameter{
 			Type:          reflect.String,
 			ConfigMapName: "xjoin-generic",
@@ -60,6 +77,8 @@ func BuildDataSourceParameters() *DataSourceParameters {
 			SpecKey:      "AvroSchema",
 			DefaultValue: "{}",
 		},
+
+		//database
 		DatabaseHostname: Parameter{
 			Type:         reflect.String,
 			SpecKey:      "DatabaseHostname",
@@ -78,7 +97,7 @@ func BuildDataSourceParameters() *DataSourceParameters {
 		DatabaseTable: Parameter{
 			Type:         reflect.String,
 			SpecKey:      "DatabaseTable",
-			DefaultValue: "hosts",
+			DefaultValue: "public.hosts",
 		},
 		DatabaseUsername: Parameter{
 			Type:         reflect.String,
@@ -102,11 +121,8 @@ func BuildDataSourceParameters() *DataSourceParameters {
 			ConfigMapKey:  "hbi.db.ssl.root.cert",
 			DefaultValue:  "/opt/kafka/external-configuration/rds-client-ca/rds-cacert",
 		},
-		Version: Parameter{
-			Type:         reflect.String,
-			SpecKey:      "Version",
-			DefaultValue: "1",
-		},
+
+		//debezium
 		DebeziumConnectorTemplate: Parameter{
 			Type:          reflect.String,
 			ConfigMapName: "xjoin-generic",
@@ -143,6 +159,8 @@ func BuildDataSourceParameters() *DataSourceParameters {
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  true,
 		},
+
+		//kafka connect
 		ConnectCluster: Parameter{
 			SpecKey:       "ConnectCluster",
 			ConfigMapKey:  "connect.cluster",
@@ -156,6 +174,70 @@ func BuildDataSourceParameters() *DataSourceParameters {
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  "test",
 			Type:          reflect.String,
+		},
+
+		//kafka topic
+		KafkaCluster: Parameter{
+			SpecKey:       "KafkaCluster",
+			ConfigMapKey:  "kafka.cluster",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "kafka",
+			Type:          reflect.String,
+		},
+		KafkaClusterNamespace: Parameter{
+			SpecKey:       "KafkaClusterNamespace",
+			ConfigMapKey:  "kafka.cluster.namespace",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "test",
+			Type:          reflect.String,
+		},
+		KafkaTopicPartitions: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "kafka.topic.partitions",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  1,
+		},
+		KafkaTopicReplicas: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "kafka.topic.replicas",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  1,
+		},
+		KafkaTopicCleanupPolicy: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "kafka.topic.cleanup.policy",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "compact,delete",
+		},
+		KafkaTopicMinCompactionLagMS: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "kafka.topic.min.compaction.lag.ms",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "3600000",
+		},
+		KafkaTopicRetentionBytes: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "kafka.topic.retention.bytes",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "5368709120",
+		},
+		KafkaTopicRetentionMS: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "kafka.topic.retention.ms",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "2678400001",
+		},
+		KafkaTopicMessageBytes: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "kafka.topic.max.message.bytes",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "2097176",
+		},
+		KafkaTopicCreationTimeout: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "kafka.topic.creation.timeout",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  300,
 		},
 	}
 

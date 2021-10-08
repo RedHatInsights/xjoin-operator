@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
@@ -72,7 +73,7 @@ func (r *ValidationReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		problem, err := i.CheckForDeviation()
 		if err != nil {
 			i.Error(err, "Error checking for state deviation")
-			return reconcile.Result{}, err
+			return reconcile.Result{}, errors.Wrap(err, 0)
 		} else if problem != nil {
 			i.ProbeStateDeviationRefresh(problem.Error())
 			i.Instance.TransitionToNew()

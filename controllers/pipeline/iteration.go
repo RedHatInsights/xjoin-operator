@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"fmt"
+	"github.com/go-errors/errors"
 	"github.com/google/go-cmp/cmp"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
@@ -422,32 +423,32 @@ func (i *ReconcileIteration) CheckForDeviation() (problem error, err error) {
 	//ES Index
 	problem, err = i.CheckESIndexDeviation()
 	if err != nil || problem != nil {
-		return problem, err
+		return problem, errors.Wrap(err, 0)
 	}
 
 	//ES Pipeline
 	problem, err = i.CheckESPipelineDeviation()
 	if err != nil || problem != nil {
-		return problem, err
+		return problem, errors.Wrap(err, 0)
 	}
 
 	//Connectors
 	problem, err = i.CheckConnectorDeviation(
 		i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion), "es")
 	if err != nil || problem != nil {
-		return problem, err
+		return problem, errors.Wrap(err, 0)
 	}
 
 	problem, err = i.CheckConnectorDeviation(
 		i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion), "debezium")
 	if err != nil || problem != nil {
-		return problem, err
+		return problem, errors.Wrap(err, 0)
 	}
 
 	//Topic
 	problem, err = i.CheckTopicDeviation()
 	if err != nil || problem != nil {
-		return problem, err
+		return problem, errors.Wrap(err, 0)
 	}
 
 	return nil, nil
@@ -502,7 +503,7 @@ func (i *ReconcileIteration) CheckTopicDeviation() (problem error, err error) {
 				"topic %s not found in %s",
 				topicName, i.Parameters.KafkaClusterNamespace), nil
 		}
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 
 	if topic.GetLabels()[kafka.LabelStrimziCluster] != i.Parameters.KafkaCluster.String() {
@@ -514,7 +515,7 @@ func (i *ReconcileIteration) CheckTopicDeviation() (problem error, err error) {
 
 	newTopic, err := i.Kafka.CreateTopic(i.Instance.Status.PipelineVersion, true)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 
 	topicUnstructured := topic.UnstructuredContent()

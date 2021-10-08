@@ -65,7 +65,7 @@ func (dc *DebeziumConnector) ListInstalledVersions() (versions []string, err err
 	}
 
 	for _, connector := range installedConnectors {
-		versions = append(versions, strings.Split(connector, dc.name + ".")[1])
+		versions = append(versions, strings.Split(connector, dc.name+".")[1])
 	}
 	return
 }

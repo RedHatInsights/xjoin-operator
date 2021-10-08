@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
-	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -162,46 +161,6 @@ func (kafka *Kafka) DeleteAllTopics() error {
 	return nil
 }
 
-func (kafka *Kafka) DeleteTopic(topicName string) error {
-	if topicName == "" {
-		return nil
-	}
-
-	topic := &unstructured.Unstructured{}
-	topic.SetName(topicName)
-	topic.SetNamespace(kafka.Parameters.KafkaClusterNamespace.String())
-	topic.SetGroupVersionKind(topicGroupVersionKind)
-
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-	if err := kafka.Client.Delete(ctx, topic); err != nil && !k8errors.IsNotFound(err) {
-		return err
-	}
-
-	return nil
-}
-
-func (kafka *Kafka) ListTopicNamesForPrefix(resourceNamePrefix string) ([]string, error) {
-	topics := &unstructured.UnstructuredList{}
-	topics.SetGroupVersionKind(topicsGroupVersionKind)
-
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-	err := kafka.Client.List(
-		ctx, topics, client.InNamespace(kafka.Parameters.KafkaClusterNamespace.String()))
-
-	var response []string
-	if topics.Items != nil {
-		for _, topic := range topics.Items {
-			if strings.Index(topic.GetName(), resourceNamePrefix) == 0 {
-				response = append(response, topic.GetName())
-			}
-		}
-	}
-
-	return response, err
-}
-
 func (kafka *Kafka) ListTopicNamesForPipelineVersion(pipelineVersion string) ([]string, error) {
 	topics := &unstructured.UnstructuredList{}
 	topics.SetGroupVersionKind(topicsGroupVersionKind)
@@ -221,16 +180,4 @@ func (kafka *Kafka) ListTopicNamesForPipelineVersion(pipelineVersion string) ([]
 	}
 
 	return response, err
-}
-
-func (kafka *Kafka) GetTopic(topicName string) (*unstructured.Unstructured, error) {
-	topic := &unstructured.Unstructured{}
-	topic.SetGroupVersionKind(topicGroupVersionKind)
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-	err := kafka.Client.Get(
-		ctx,
-		client.ObjectKey{Name: topicName, Namespace: kafka.Parameters.KafkaClusterNamespace.String()},
-		topic)
-	return topic, err
 }
