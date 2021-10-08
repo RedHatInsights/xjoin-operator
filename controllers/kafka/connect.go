@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -17,7 +17,6 @@ import (
 	"text/template"
 	"time"
 
-	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,20 +40,6 @@ var connectorsGVK = schema.GroupVersionKind{
 	Group:   "kafka.strimzi.io",
 	Kind:    "KafkaConnector",
 	Version: "v1beta2",
-}
-
-func (kafka *Kafka) CheckIfConnectorExists(name string) (bool, error) {
-	if name == "" {
-		return false, nil
-	}
-
-	if _, err := kafka.GetConnector(name); err != nil && k8errors.IsNotFound(err) {
-		return false, nil
-	} else if err == nil {
-		return true, nil
-	} else {
-		return false, err
-	}
 }
 
 func (kafka *Kafka) newESConnectorResource(pipelineVersion string) (*unstructured.Unstructured, error) {
@@ -130,7 +115,7 @@ func (kafka *Kafka) newConnectorResource(
 func (kafka *Kafka) GetTaskStatus(connectorName string, taskId float64) (map[string]interface{}, error) {
 	url := fmt.Sprintf(
 		"%s/connectors/%s/tasks/%.0f/status",
-		kafka.connectUrl(), connectorName, taskId)
+		kafka.ConnectUrl(), connectorName, taskId)
 	res, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -170,7 +155,7 @@ func (kafka *Kafka) RestartTaskForConnector(connectorName string, taskId float64
 
 	url := fmt.Sprintf(
 		"%s/connectors/%s/tasks/%.0f/restart",
-		kafka.connectUrl(),
+		kafka.ConnectUrl(),
 		connectorName,
 		taskId)
 	res, err := http.Post(url, "application/json", nil)
@@ -225,29 +210,11 @@ func (kafka *Kafka) RestartConnector(connectorName string) error {
 	return nil
 }
 
-func (kafka *Kafka) GetConnector(name string) (*unstructured.Unstructured, error) {
-	connector := EmptyConnector()
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-	err := kafka.Client.Get(
-		ctx,
-		client.ObjectKey{Name: name, Namespace: kafka.Parameters.ConnectClusterNamespace.String()},
-		connector)
-	return connector, err
-}
-
-func (kafka *Kafka) connectUrl() string {
-	url := fmt.Sprintf(
-		"http://%s-connect-api.%s.svc:8083",
-		kafka.Parameters.ConnectCluster.String(), kafka.Parameters.ConnectClusterNamespace.String())
-	return url
-}
-
 // CheckIfConnectIsResponding
 // First validate /connectors responds. If there are existing connectors, validate one of those can be retrieved too.
 func (kafka *Kafka) CheckIfConnectIsResponding() (bool, error) {
 	for j := 0; j < 10; j++ {
-		url := kafka.connectUrl() + "/connectors"
+		url := kafka.ConnectUrl() + "/connectors"
 		res, err := http.Get(url)
 
 		//ignore errors and try again
@@ -287,29 +254,10 @@ func (kafka *Kafka) CheckIfConnectIsResponding() (bool, error) {
 	return false, nil
 }
 
-func (kafka *Kafka) CheckConnectorExistsViaREST(name string) (bool, error) {
-	url := fmt.Sprintf(
-		"%s/connectors/%s",
-		kafka.connectUrl(), name)
-	res, err := http.Get(url)
-	if err != nil {
-		return false, err
-	}
-
-	if res.StatusCode == 404 {
-		return false, nil
-	} else if res.StatusCode < 500 {
-		return true, nil
-	} else {
-		return false, errors.New(fmt.Sprintf(
-			"invalid response code (%s) when checking if connector %v exists", name, res.StatusCode))
-	}
-}
-
 func (kafka *Kafka) ListConnectorsREST(prefix string) ([]string, error) {
 	url := fmt.Sprintf(
 		"%s/connectors",
-		kafka.connectUrl())
+		kafka.ConnectUrl())
 	res, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -353,22 +301,6 @@ func (kafka *Kafka) DeleteConnectorsForPipelineVersion(pipelineVersion string) e
 	return nil
 }
 
-func (kafka *Kafka) ListConnectorNamesForPrefix(prefix string) ([]string, error) {
-	connectors, err := kafka.ListConnectors()
-	if err != nil {
-		return nil, err
-	}
-
-	var names []string
-	for _, connector := range connectors.Items {
-		if strings.Index(connector.GetName(), prefix) == 0 {
-			names = append(names, connector.GetName())
-		}
-	}
-
-	return names, err
-}
-
 func (kafka *Kafka) ListConnectorNamesForPipelineVersion(pipelineVersion string) ([]string, error) {
 	connectors, err := kafka.ListConnectors()
 	if err != nil {
@@ -383,16 +315,6 @@ func (kafka *Kafka) ListConnectorNamesForPipelineVersion(pipelineVersion string)
 	}
 
 	return names, err
-}
-
-func (kafka *Kafka) ListConnectors() (*unstructured.UnstructuredList, error) {
-	connectors := &unstructured.UnstructuredList{}
-	connectors.SetGroupVersionKind(connectorsGVK)
-
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-	err := kafka.Client.List(ctx, connectors, client.InNamespace(kafka.Parameters.ConnectClusterNamespace.String()))
-	return connectors, err
 }
 
 func EmptyConnector() *unstructured.Unstructured {
@@ -437,60 +359,10 @@ func (kafka *Kafka) DeleteAllConnectors(resourceNamePrefix string) error {
 	return nil
 }
 
-func (kafka *Kafka) DeleteConnector(name string) error {
-	if name == "" {
-		return nil
-	}
-
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-
-	connector := &unstructured.Unstructured{}
-	connector.SetName(name)
-	connector.SetNamespace(kafka.Parameters.ConnectClusterNamespace.String())
-	connector.SetGroupVersionKind(connectorGVK)
-
-	//check the Connect REST API every second for 10 seconds to see if the connector is really deleted.
-	//This is necessary because there is a race condition in Kafka Connect. If a connector
-	//and topic is deleted in rapid succession, the Kafka Connect tasks get stuck trying to connect to a topic
-	//that doesn't exist.
-	delay := time.Millisecond * 100
-	attempts := 200
-	connectorIsDeleted := false
-	missingCount := 0
-	for i := 0; i < attempts; i++ {
-		if err := kafka.Client.Delete(ctx, connector); err != nil && !k8errors.IsNotFound(err) {
-			return err
-		}
-
-		connectorExists, err := kafka.CheckConnectorExistsViaREST(name)
-		if err != nil {
-			return err
-		}
-
-		if !connectorExists {
-			missingCount = missingCount + 1
-		}
-
-		if missingCount > 5 {
-			connectorIsDeleted = true
-			break
-		}
-
-		time.Sleep(delay)
-	}
-
-	if !connectorIsDeleted {
-		return errors.New(fmt.Sprintf("connector %s wasn't deleted after 10 seconds", name))
-	}
-
-	return nil
-}
-
 func (kafka *Kafka) GetConnectorStatus(connectorName string) (map[string]interface{}, error) {
 	url := fmt.Sprintf(
 		"%s/connectors/%s/status",
-		kafka.connectUrl(), connectorName)
+		kafka.ConnectUrl(), connectorName)
 	res, err := http.Get(url)
 	if err != nil {
 		return nil, err

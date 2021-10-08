@@ -84,7 +84,7 @@ func (d *ReconcileMethods) Scrub() (err error) {
 		d.iteration.GetInstance().Kind+"."+d.iteration.GetInstance().Name, validVersions)
 	custodian.AddComponent(components.NewAvroSchema("", nil))
 	custodian.AddComponent(components.NewKafkaTopic())
-	custodian.AddComponent(components.NewDebeziumConnector())
+	custodian.AddComponent(&components.DebeziumConnector{})
 	err = custodian.Scrub()
 	if err != nil {
 		return errors.Wrap(err, 0)

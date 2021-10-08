@@ -11,6 +11,7 @@ import (
 var log = logger.NewLogger("kafka")
 
 type Kafka struct {
+	GenericKafka
 	Namespace     string
 	OwnerScheme   *runtime.Scheme
 	Client        client.Client
@@ -18,4 +19,10 @@ type Kafka struct {
 	ParametersMap map[string]interface{}
 	Recorder      record.EventRecorder
 	Test          bool
+}
+
+type GenericKafka struct {
+	Client           client.Client
+	ConnectNamespace string
+	ConnectCluster   string
 }

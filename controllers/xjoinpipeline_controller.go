@@ -117,6 +117,11 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		ParametersMap: xjoinConfig.ParametersMap,
 		Recorder:      i.Recorder,
 		Test:          r.Test,
+		GenericKafka: kafka.GenericKafka{
+			Client:           i.Client,
+			ConnectNamespace: i.Parameters.ConnectClusterNamespace.String(),
+			ConnectCluster:   i.Parameters.ConnectCluster.String(),
+		},
 	}
 
 	i.InventoryDb = database.NewDatabase(database.DBParams{

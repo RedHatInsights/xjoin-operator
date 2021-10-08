@@ -1,0 +1,28 @@
+apiVersion: v1
+data:
+  debezium.connector.template: >
+    {
+      "tasks.max": "{{.DebeziumTasksMax}}",
+      "database.hostname": "{{.DatabaseHostname}}",
+      "database.port": "{{.DatabasePort}}",
+      "database.user": "{{.DatabaseUsername}}",
+      "database.password": "{{.DatabasePassword}}",
+      "database.dbname": "{{.DatabaseName}}",
+      "database.server.name": "{{.DatabaseServerName}}",
+      "database.sslmode": "{{.DatabaseSSLMode}}",
+      "database.sslrootcert": "{{.DatabaseSSLRootCert}}",
+      "table.whitelist": "{{.DatabaseTable}}",
+      "plugin.name": "pgoutput",
+      "transforms": "unwrap",
+      "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+      "transforms.unwrap.delete.handling.mode": "rewrite",
+      "errors.log.enable": {{.DebeziumErrorsLogEnable}},
+      "errors.log.include.messages": true,
+      "slot.name": "{{.ReplicationSlotName}}",
+      "max.queue.size": {{.DebeziumQueueSize}},
+      "max.batch.size": {{.DebeziumMaxBatchSize}},
+      "poll.interval.ms": {{.DebeziumPollIntervalMS}}
+    }
+kind: ConfigMap
+metadata:
+  name: xjoin-generic

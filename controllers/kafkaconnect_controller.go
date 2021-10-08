@@ -56,6 +56,11 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 		ParametersMap: xjoinConfig.ParametersMap,
 		Recorder:      r.Recorder,
 		Test:          r.Test,
+		GenericKafka: kafka.GenericKafka{
+			Client:           r.Client,
+			ConnectNamespace: r.parameters.ConnectClusterNamespace.String(),
+			ConnectCluster:   r.parameters.ConnectCluster.String(),
+		},
 	}
 
 	r.log = reqLogger

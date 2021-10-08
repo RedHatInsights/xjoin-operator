@@ -82,7 +82,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 	configManager, err := config.NewManager(config.ManagerOptions{
 		Client:         r.Client,
 		Parameters:     p,
-		ConfigMapNames: []string{"xjoin"},
+		ConfigMapNames: []string{"xjoin-generic"},
 		SecretNames:    nil,
 		Namespace:      instance.Namespace,
 		Spec:           instance.Spec,

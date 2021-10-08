@@ -213,3 +213,16 @@ func readSecretValue(secret v1.Secret, keys []string) (value string) {
 	}
 	return
 }
+
+func ParametersToMap(p interface{}) map[string]interface{} {
+	m := make(map[string]interface{})
+	value := reflect.ValueOf(p)
+	typeOfValue := value.Type()
+
+	for j := 0; j < value.NumField(); j++ {
+		parameter := value.Field(j).Interface().(Parameter)
+		m[typeOfValue.Field(j).Name] = parameter.Value()
+	}
+
+	return m
+}

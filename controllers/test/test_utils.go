@@ -196,6 +196,11 @@ func Before() (*Iteration, error) {
 		Client:        i.XJoinReconciler.Client,
 		Parameters:    i.Parameters,
 		ParametersMap: i.ParametersMap,
+		GenericKafka: kafka.GenericKafka{
+			Client:           i.XJoinReconciler.Client,
+			ConnectNamespace: i.Parameters.ConnectClusterNamespace.String(),
+			ConnectCluster:   i.Parameters.ConnectCluster.String(),
+		},
 	}
 
 	i.DbClient = database.NewDatabase(database.DBParams{

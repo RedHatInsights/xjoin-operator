@@ -9,6 +9,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	. "github.com/redhatinsights/xjoin-operator/controllers/datasource"
+	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -90,7 +91,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 	configManager, err := config.NewManager(config.ManagerOptions{
 		Client:         r.Client,
 		Parameters:     p,
-		ConfigMapNames: []string{"xjoin"},
+		ConfigMapNames: []string{"xjoin-generic"},
 		SecretNames:    nil,
 		Namespace:      instance.Namespace,
 		Spec:           instance.Spec,
@@ -129,10 +130,20 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return result, errors.Wrap(err, 0)
 	}
 
+	kafkaClient := kafka.GenericKafka{
+		ConnectNamespace: p.ConnectClusterNamespace.String(),
+		ConnectCluster:   p.ConnectCluster.String(),
+		Client:           i.Client,
+	}
+
 	componentManager := components.NewComponentManager(instance.Kind+"."+instance.Spec.Name, p.Version.String())
 	componentManager.AddComponent(components.NewAvroSchema(avroSchema, nil))
 	componentManager.AddComponent(components.NewKafkaTopic())
-	componentManager.AddComponent(components.NewDebeziumConnector())
+	componentManager.AddComponent(&components.DebeziumConnector{
+		TemplateParameters: config.ParametersToMap(*p),
+		KafkaClient:        kafkaClient,
+		Template:           p.DebeziumConnectorTemplate.String(),
+	})
 
 	if instance.GetDeletionTimestamp() != nil {
 		reqLogger.Info("Starting finalizer")
