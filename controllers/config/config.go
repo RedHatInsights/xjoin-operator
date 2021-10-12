@@ -2,8 +2,8 @@ package config
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"github.com/go-errors/errors"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -149,21 +149,21 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 	if config.instance.Spec.ConnectClusterNamespace == nil {
 		err = config.Parameters.ConnectClusterNamespace.SetValue(config.instance.Namespace)
 		if err != nil {
-			return
+			return errors.Wrap(err, 0)
 		}
 	}
 
 	if config.instance.Spec.KafkaClusterNamespace == nil {
 		err = config.Parameters.KafkaClusterNamespace.SetValue(config.instance.Namespace)
 		if err != nil {
-			return
+			return errors.Wrap(err, 0)
 		}
 	}
 
 	if config.instance.Spec.ElasticSearchNamespace == nil {
 		err = config.Parameters.ElasticSearchNamespace.SetValue(config.instance.Namespace)
 		if err != nil {
-			return
+			return errors.Wrap(err, 0)
 		}
 	}
 
@@ -174,16 +174,16 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 		connect,
 		client.InNamespace(config.Parameters.ConnectClusterNamespace.String()))
 	if err != nil {
-		return
+		return errors.Wrap(err, 0)
 	}
 
 	if len(connect.Items) != 1 {
-		return errors.New("invalid number of connect instances found: " + strconv.Itoa(len(connect.Items)))
+		return errors.Wrap(errors.New("invalid number of connect instances found: "+strconv.Itoa(len(connect.Items))), 0)
 	}
 
 	err = config.Parameters.ConnectCluster.SetValue(connect.Items[0].GetName())
 	if err != nil {
-		return
+		return errors.Wrap(err, 0)
 	}
 
 	var kafkaGVK = schema.GroupVersionKind{
@@ -200,39 +200,42 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 		kafka,
 		client.InNamespace(config.Parameters.KafkaClusterNamespace.String()))
 	if err != nil {
-		return
+		return errors.Wrap(err, 0)
 	}
 
 	if len(kafka.Items) != 1 {
-		return errors.New("invalid number of kafka instances found: " + strconv.Itoa(len(kafka.Items)))
+		return errors.Wrap(errors.New("invalid number of kafka instances found: "+strconv.Itoa(len(kafka.Items))), 0)
 	}
 
 	err = config.Parameters.KafkaCluster.SetValue(kafka.Items[0].GetName())
 	if err != nil {
-		return
+		return errors.Wrap(err, 0)
 	}
 
 	err = config.Parameters.ElasticSearchURL.SetValue(
 		"http://xjoin-elasticsearch-es-default." + config.Parameters.ElasticSearchNamespace.String() + ".svc:9200")
 	if err != nil {
-		return
+		return errors.Wrap(err, 0)
 	}
 
 	err = config.Parameters.ElasticSearchUsername.SetValue("elastic")
 	if err != nil {
-		return
+		return errors.Wrap(err, 0)
 	}
 
 	esSecret, err := utils.FetchSecret(
 		config.client, config.Parameters.ElasticSearchNamespace.String(), "xjoin-elasticsearch-es-elastic-user", ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(err, 0)
 	}
 
 	password, err := config.readSecretValue(esSecret, []string{"elastic"})
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	err = config.Parameters.ElasticSearchPassword.SetValue(password)
 	if err != nil {
-		return
+		return errors.Wrap(err, 0)
 	}
 
 	config.ParametersMap["KafkaClusterNamespace"] = config.Parameters.KafkaClusterNamespace.String()
@@ -354,9 +357,13 @@ func (config *Config) getIntValue(key string, defaultValue int) (int, error) {
 
 func (config *Config) readSecretValue(secret *corev1.Secret, keys []string) (value string, err error) {
 	for _, key := range keys {
-		value = string(secret.Data[key])
-		if value != "" {
-			break
+		if secret != nil && secret.Data != nil {
+			value = string(secret.Data[key])
+			if value != "" {
+				break
+			}
+		} else {
+			return "", errors.Wrap(errors.New("Missing Data field from secret."), 0)
 		}
 	}
 	return

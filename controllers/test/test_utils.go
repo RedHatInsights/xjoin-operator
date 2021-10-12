@@ -191,15 +191,13 @@ func Before() (*Iteration, error) {
 
 	i.EsClient = es
 
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
 	i.KafkaClient = kafka.Kafka{
 		Namespace:     i.NamespacedName.Namespace,
 		Client:        i.XJoinReconciler.Client,
 		Parameters:    i.Parameters,
 		ParametersMap: i.ParametersMap,
 		GenericKafka: kafka.GenericKafka{
-			Context:          ctx,
+			Context:          context.Background(),
 			Client:           i.XJoinReconciler.Client,
 			ConnectNamespace: i.Parameters.ConnectClusterNamespace.String(),
 			ConnectCluster:   i.Parameters.ConnectCluster.String(),
