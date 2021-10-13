@@ -176,7 +176,6 @@ objects:
       name: xjoin-subscription
     spec:
       channel: alpha
-      startingCSV: 0.1.301-gita0d2fa8
       name: xjoin-operator
       source: xjoin-operator-source
       sourceNamespace: ${SOURCE_NAMESPACE}
