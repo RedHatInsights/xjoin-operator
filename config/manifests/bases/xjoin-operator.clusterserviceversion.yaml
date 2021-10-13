@@ -4,7 +4,6 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-    olm.skipRange: '>=v0.1.48-gitbd26aed <=v0.1.295-gitf64dac1'
     operators.operatorframework.io/builder: operator-sdk-v1.12.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
   name: xjoin-operator.v0.0.0

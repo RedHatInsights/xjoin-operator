@@ -65,15 +65,24 @@ if [ $exists -eq 1 ]; then
   docker rm tmp_$$
 fi
 
+log "Resetting index"
+./opm index rm -f $CATALOG_IMAGE:latest -c docker --tag $CATALOG_IMAGE:latest -o xjoin-operator
+docker push $CATALOG_IMAGE:latest
+export SKIP_VERSION=$version
+prev_version=""
+unset REPLACE_VERSION
+
 # Build/push the new bundle
 log "Creating bundle $BUNDLE_IMAGE:$current_commit"
 if [[ $prev_version != "" ]]; then
+  log "Setting REPLACE_VERSION"
   export REPLACE_VERSION=$prev_version
 fi
 export BUNDLE_IMAGE_TAG=$current_commit
 export VERSION=$version
 curl -L https://github.com/operator-framework/operator-sdk/releases/download/v1.12.0/operator-sdk_linux_amd64 -o ./operator-sdk
 curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv4.3.0/kustomize_v4.3.0_linux_amd64.tar.gz
+curl -L https://github.com/mikefarah/yq/releases/download/v4.13.4/yq_linux_amd64 -o ./yq
 tar -xvf kustomize_v4.3.0_linux_amd64.tar.gz
 chmod +x ./operator-sdk
 chmod +x ./kustomize
