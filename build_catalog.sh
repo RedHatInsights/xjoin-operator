@@ -88,6 +88,7 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v1.
 curl -LO https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv4.3.0/kustomize_v4.3.0_linux_amd64.tar.gz
 curl -L https://github.com/mikefarah/yq/releases/download/v4.13.4/yq_linux_amd64 -o ./yq
 tar -xvf kustomize_v4.3.0_linux_amd64.tar.gz
+chmod +x ./yq
 chmod +x ./operator-sdk
 chmod +x ./kustomize
 export PATH=$PATH:.
