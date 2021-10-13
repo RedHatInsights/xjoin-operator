@@ -31,6 +31,10 @@ current_commit=$(git rev-parse --short=7 HEAD)
 version="0.1.$num_commits-git$current_commit"
 opm_version="1.14.0"
 
+# Download opm build
+curl -L https://github.com/operator-framework/operator-registry/releases/download/v$opm_version/linux-amd64-opm -o ./opm
+chmod u+x ./opm
+
 # workaround for https://github.com/golang/go/issues/38373
 GO_VERSION="1.15.14"
 GOUNPACK=$(mktemp -d)
@@ -96,10 +100,6 @@ docker push $BUNDLE_IMAGE:$current_commit
 # pushing the latest tag here will mean subsequent runs will be extracting a bundle
 # version that isn't referenced in the catalog.  This will result in all future
 # catalog creation failing to be created.
-
-# Download opm build
-curl -L https://github.com/operator-framework/operator-registry/releases/download/v$opm_version/linux-amd64-opm -o ./opm
-chmod u+x ./opm
 
 # Create/push a new catalog via opm
 log "Pulling existing latest catalog $CATALOG_IMAGE"
