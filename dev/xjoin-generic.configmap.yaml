@@ -21,7 +21,79 @@ data:
       "slot.name": "{{.ReplicationSlotName}}",
       "max.queue.size": {{.DebeziumQueueSize}},
       "max.batch.size": {{.DebeziumMaxBatchSize}},
-      "poll.interval.ms": {{.DebeziumPollIntervalMS}}
+      "poll.interval.ms": {{.DebeziumPollIntervalMS}},
+      "key.converter": "io.confluent.connect.avro.AvroConverter",
+      "key.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}",
+      "value.converter": "io.confluent.connect.avro.AvroConverter",
+      "value.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}"
+    }
+  elasticsearch.connector.template: >
+    {
+      "tasks.max": "{{.ElasticSearchTasksMax}}",
+      "topics": "{{.Topic}}",
+      "key.ignore": "false",
+      "connection.url": "{{.ElasticSearchURL}}",
+      {{if .ElasticSearchUsername}}"connection.username": "{{.ElasticSearchUsername}}",{{end}}
+      {{if .ElasticSearchPassword}}"connection.password": "{{.ElasticSearchPassword}}",{{end}}
+      "type.name": "_doc",
+      "transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString",
+      "transforms.valueToKey.type":"org.apache.kafka.connect.transforms.ValueToKey",
+      "transforms.valueToKey.fields":"id",
+      "transforms.extractKey.type":"org.apache.kafka.connect.transforms.ExtractField$Key",
+      "transforms.extractKey.field":"id",
+      "transforms.expandJSON.type": "com.redhat.insights.expandjsonsmt.ExpandJSON$Value",
+      "transforms.expandJSON.sourceFields": "tags",
+      "transforms.deleteIf.type": "com.redhat.insights.deleteifsmt.DeleteIf$Value",
+      "transforms.deleteIf.field": "__deleted",
+      "transforms.deleteIf.value": "true",
+      "transforms.flattenList.type": "com.redhat.insights.flattenlistsmt.FlattenList$Value",
+      "transforms.flattenList.sourceField": "tags",
+      "transforms.flattenList.outputField": "tags_structured",
+      "transforms.flattenList.mode": "keys",
+      "transforms.flattenList.keys": "namespace,key,value",
+      "transforms.flattenListString.type": "com.redhat.insights.flattenlistsmt.FlattenList$Value",
+      "transforms.flattenListString.sourceField": "tags",
+      "transforms.flattenListString.outputField": "tags_string",
+      "transforms.flattenListString.mode": "join",
+      "transforms.flattenListString.delimiterJoin": "/",
+      "transforms.flattenListString.encode": true,
+      "behavior.on.null.values":"delete",
+      "behavior.on.malformed.documents": "warn",
+      "auto.create.indices.at.start": false,
+      "schema.ignore": true,
+      "max.in.flight.requests": {{.ElasticSearchMaxInFlightRequests}},
+      "errors.log.enable": {{.ElasticSearchErrorsLogEnable}},
+      "errors.log.include.messages": true,
+      "max.retries": {{.ElasticSearchMaxRetries}},
+      "retry.backoff.ms": {{.ElasticSearchRetryBackoffMS}},
+      "batch.size": {{.ElasticSearchBatchSize}},
+      "max.buffered.records": {{.ElasticSearchMaxBufferedRecords}},
+      "linger.ms": {{.ElasticSearchLingerMS}},
+      "key.converter": "io.confluent.connect.avro.AvroConverter",
+      "key.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}",
+      "value.converter": "io.confluent.connect.avro.AvroConverter",
+      "value.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}"
+    }
+  elasticsearch.index.template: >
+    {
+      "settings": {
+          "index": {
+              "number_of_shards": "{{.ElasticSearchIndexShards}}",
+              "number_of_replicas": "{{.ElasticSearchIndexReplicas}}",
+              "max_result_window": 50000
+          },
+          "analysis": {
+              "normalizer": {
+                  "case_insensitive": {
+                      "filter": "lowercase"
+                  }
+              }
+          }
+      },
+      "mappings": {
+          "dynamic": false,
+          "properties": {{.ElasticSearchProperties}}
+      }
     }
 kind: ConfigMap
 metadata:

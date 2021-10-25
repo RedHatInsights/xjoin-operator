@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/riferrei/srclient"
@@ -25,7 +26,7 @@ func NewSchemaRegistry(connectionParams SchemaRegistryConnectionParams) *SchemaR
 }
 
 func (sr *SchemaRegistry) Init() {
-	sr.Client = srclient.CreateSchemaRegistryClient("http://localhost:8081")
+	sr.Client = srclient.CreateSchemaRegistryClient(sr.URL)
 }
 
 func (sr *SchemaRegistry) RegisterSchema(name string, schemaDefinition string, references []srclient.Reference) (id int, err error) {
@@ -65,4 +66,49 @@ func (sr *SchemaRegistry) GetSchema(subject string) (schema string, err error) {
 		return schema, errors.Wrap(err, 0)
 	}
 	return schemaObj.Schema(), nil
+}
+
+//ExpandReferences retrieves the full schema for each xjoinref field
+func (sr *SchemaRegistry) ExpandReferences(baseSchema string, references []srclient.Reference) (schema map[string]interface{}, err error) {
+	var baseSchemaMap map[string]interface{}
+	err = json.Unmarshal([]byte(baseSchema), &baseSchemaMap)
+	if err != nil {
+		return schema, errors.Wrap(err, 0)
+	}
+
+	for _, f := range baseSchemaMap["fields"].([]interface{}) {
+		field := f.(map[string]interface{})
+		if field["xjoin.type"] == "reference" {
+			ref, err := findReferenceByType(references, field["type"].(string))
+			if err != nil {
+				return schema, errors.Wrap(err, 0)
+			}
+			refSchema, err := sr.Client.GetLatestSchema(ref.Subject)
+			if err != nil {
+				return schema, errors.Wrap(err, 0)
+			}
+
+			var refSchemaMap map[string]interface{}
+			err = json.Unmarshal([]byte(refSchema.Schema()), &refSchemaMap)
+			if err != nil {
+				return schema, errors.Wrap(err, 0)
+			}
+
+			refSchemaMap["xjoin.type"] = field["xjoin.type"]
+			refSchemaMap["xjoin.fields"] = refSchemaMap["fields"]
+			delete(refSchemaMap, "fields")
+			field["type"] = refSchemaMap
+		}
+	}
+
+	return baseSchemaMap, nil
+}
+
+func findReferenceByType(references []srclient.Reference, refType string) (srclient.Reference, error) {
+	for _, ref := range references {
+		if ref.Name == refType {
+			return ref, nil
+		}
+	}
+	return srclient.Reference{}, errors.Wrap(errors.New("reference "+refType+"not found in list of references"), 0)
 }

@@ -16,16 +16,7 @@ type AvroSchema struct {
 	references []srclient.Reference
 }
 
-func NewAvroSchema(schema string, references []srclient.Reference) *AvroSchema {
-	registry := avro.NewSchemaRegistry(
-		avro.SchemaRegistryConnectionParams{
-			Protocol: "http",
-			Hostname: "confluent-schema-registry.test.svc",
-			Port:     "8081",
-		})
-
-	registry.Init()
-
+func NewAvroSchema(schema string, references []srclient.Reference, registry *avro.SchemaRegistry) *AvroSchema {
 	return &AvroSchema{
 		schema:     schema,
 		registry:   registry,

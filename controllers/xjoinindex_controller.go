@@ -82,8 +82,8 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 	configManager, err := config.NewManager(config.ManagerOptions{
 		Client:         r.Client,
 		Parameters:     p,
-		ConfigMapNames: []string{"xjoin"},
-		SecretNames:    nil,
+		ConfigMapNames: []string{"xjoin-generic"},
+		SecretNames:    []string{"xjoin-elasticsearch"},
 		Namespace:      instance.Namespace,
 		Spec:           instance.Spec,
 		Context:        ctx,

@@ -9,7 +9,7 @@ spec:
       "type": "record",
       "name": "testindex",
       "fields": [{
-        "xjoinref": true,
+        "xjoin.type": "reference",
         "type": "xjoin.datasource.test",
         "name": "host"
       }]

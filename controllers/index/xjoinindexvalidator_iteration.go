@@ -39,11 +39,10 @@ func (i *XJoinIndexValidatorIteration) Validate() (err error) {
 	//Get index avro schema, references
 	registry := avro.NewSchemaRegistry(
 		avro.SchemaRegistryConnectionParams{
-			Protocol: "http",
-			Hostname: "confluent-schema-registry.test.svc",
-			Port:     "8081",
+			Protocol: i.Parameters.SchemaRegistryProtocol.String(),
+			Hostname: i.Parameters.SchemaRegistryHost.String(),
+			Port:     i.Parameters.SchemaRegistryPort.String(),
 		})
-
 	registry.Init()
 
 	//name+version of IndexValidator is identical to IndexPipeline

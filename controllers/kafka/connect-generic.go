@@ -18,21 +18,40 @@ import (
 func (kafka *GenericKafka) CreateGenericDebeziumConnector(
 	name string, connectorTemplate string, connectorTemplateParameters map[string]interface{}) error {
 
-	tmpl, err := template.New("configTemplate").Parse(connectorTemplate)
+	connectorConfig, err := kafka.parseConnectorTemplate(connectorTemplate, connectorTemplateParameters)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	connectorObj := &unstructured.Unstructured{}
+	connectorObj.Object = map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"name":      name,
+			"namespace": kafka.ConnectNamespace,
+			"labels": map[string]interface{}{
+				LabelStrimziCluster: kafka.ConnectCluster,
+			},
+		},
+		"spec": map[string]interface{}{
+			"class":  "io.debezium.connector.postgresql.PostgresConnector",
+			"config": connectorConfig,
+			"pause":  false,
+		},
+	}
+
+	connectorObj.SetGroupVersionKind(connectorGVK)
+
+	err = kafka.Client.Create(kafka.Context, connectorObj)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 
-	var configTemplateBuffer bytes.Buffer
-	err = tmpl.Execute(&configTemplateBuffer, connectorTemplateParameters)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-	configTemplateParsed := configTemplateBuffer.String()
+	return nil
+}
 
-	var configTemplateInterface interface{}
+func (kafka *GenericKafka) CreateGenericElasticsearchConnector(
+	name string, connectorTemplate string, connectorTemplateParameters map[string]interface{}) error {
 
-	err = json.Unmarshal([]byte(strings.ReplaceAll(configTemplateParsed, "\n", "")), &configTemplateInterface)
+	connectorConfig, err := kafka.parseConnectorTemplate(connectorTemplate, connectorTemplateParameters)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -47,22 +66,43 @@ func (kafka *GenericKafka) CreateGenericDebeziumConnector(
 			},
 		},
 		"spec": map[string]interface{}{
-			"class":  "io.debezium.connector.postgresql.PostgresConnector",
-			"config": configTemplateInterface,
+			"class":  "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+			"config": connectorConfig,
 			"pause":  false,
 		},
 	}
 
 	connectorObj.SetGroupVersionKind(connectorGVK)
 
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-	err = kafka.Client.Create(ctx, connectorObj)
+	err = kafka.Client.Create(kafka.Context, connectorObj)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 
 	return nil
+}
+
+func (kafka *GenericKafka) parseConnectorTemplate(connectorTemplate string, connectorTemplateParameters map[string]interface{}) (interface{}, error) {
+	tmpl, err := template.New("configTemplate").Parse(connectorTemplate)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	var configTemplateBuffer bytes.Buffer
+	err = tmpl.Execute(&configTemplateBuffer, connectorTemplateParameters)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	configTemplateParsed := configTemplateBuffer.String()
+
+	var configTemplateInterface interface{}
+
+	err = json.Unmarshal([]byte(strings.ReplaceAll(configTemplateParsed, "\n", "")), &configTemplateInterface)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	return configTemplateInterface, nil
 }
 
 func (kafka *GenericKafka) DeleteConnector(name string) error {

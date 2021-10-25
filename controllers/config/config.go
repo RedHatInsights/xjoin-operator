@@ -178,7 +178,7 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 	}
 
 	if len(connect.Items) != 1 {
-		return errors.New("invalid number of connect instances found: "+strconv.Itoa(len(connect.Items)))
+		return errors.New("invalid number of connect instances found: " + strconv.Itoa(len(connect.Items)))
 	}
 
 	err = config.Parameters.ConnectCluster.SetValue(connect.Items[0].GetName())
@@ -204,7 +204,7 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 	}
 
 	if len(kafka.Items) != 1 {
-		return errors.New("invalid number of kafka instances found: "+strconv.Itoa(len(kafka.Items)))
+		return errors.New("invalid number of kafka instances found: " + strconv.Itoa(len(kafka.Items)))
 	}
 
 	err = config.Parameters.KafkaCluster.SetValue(kafka.Items[0].GetName())

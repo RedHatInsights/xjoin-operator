@@ -5,10 +5,13 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
+	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	. "github.com/redhatinsights/xjoin-operator/controllers/index"
+	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -90,8 +93,8 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	configManager, err := config.NewManager(config.ManagerOptions{
 		Client:         r.Client,
 		Parameters:     p,
-		ConfigMapNames: []string{"xjoin"},
-		SecretNames:    nil,
+		ConfigMapNames: []string{"xjoin-generic"},
+		SecretNames:    []string{"xjoin-elasticsearch"},
 		Namespace:      instance.Namespace,
 		Spec:           instance.Spec,
 		Context:        ctx,
@@ -128,10 +131,69 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return result, errors.Wrap(err, 0)
 	}
 
+	parametersMap := config.ParametersToMap(*p)
+
+	kafkaClient := kafka.GenericKafka{
+		Context:          ctx,
+		ConnectNamespace: p.ConnectClusterNamespace.String(),
+		ConnectCluster:   p.ConnectCluster.String(),
+		KafkaNamespace:   p.KafkaClusterNamespace.String(),
+		KafkaCluster:     p.KafkaCluster.String(),
+		Client:           i.Client,
+	}
+
+	kafkaTopic := &components.KafkaTopic{
+		TopicParameters: kafka.TopicParameters{
+			Replicas:           p.KafkaTopicReplicas.Int(),
+			Partitions:         p.KafkaTopicPartitions.Int(),
+			CleanupPolicy:      p.KafkaTopicCleanupPolicy.String(),
+			MinCompactionLagMS: p.KafkaTopicMinCompactionLagMS.String(),
+			RetentionBytes:     p.KafkaTopicRetentionBytes.String(),
+			RetentionMS:        p.KafkaTopicRetentionMS.String(),
+			MessageBytes:       p.KafkaTopicMessageBytes.String(),
+			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
+		},
+		KafkaClient: kafkaClient,
+	}
+
+	genericElasticsearch, err := elasticsearch.NewGenericElasticsearch(elasticsearch.GenericElasticSearchParameters{
+		Url:        p.ElasticSearchURL.String(),
+		Username:   p.ElasticSearchUsername.String(),
+		Password:   p.ElasticSearchPassword.String(),
+		Parameters: parametersMap,
+		Context:    i.Context,
+	})
+	if err != nil {
+		return result, errors.Wrap(err, 0)
+	}
+
+	registry := avro.NewSchemaRegistry(
+		avro.SchemaRegistryConnectionParams{
+			Protocol: p.SchemaRegistryProtocol.String(),
+			Hostname: p.SchemaRegistryHost.String(),
+			Port:     p.SchemaRegistryPort.String(),
+		})
+
+	registry.Init()
+	fullAvroSchema, err := registry.ExpandReferences(p.AvroSchema.String(), avroSchemaReferences)
+	if err != nil {
+		return result, errors.Wrap(err, 0)
+	}
+
 	componentManager := components.NewComponentManager(instance.Kind+"."+instance.Spec.Name, p.Version.String())
-	componentManager.AddComponent(components.NewElasticsearchConnector())
-	componentManager.AddComponent(components.NewElasticsearchIndex())
-	componentManager.AddComponent(components.NewAvroSchema(i.GetInstance().Spec.AvroSchema, avroSchemaReferences))
+	componentManager.AddComponent(&components.ElasticsearchIndex{
+		GenericElasticsearch: *genericElasticsearch,
+		Template:             p.ElasticSearchIndexTemplate.String(),
+		AvroSchema:           fullAvroSchema,
+	})
+	componentManager.AddComponent(kafkaTopic)
+	componentManager.AddComponent(&components.ElasticsearchConnector{
+		Template:           p.ElasticSearchConnectorTemplate.String(),
+		KafkaClient:        kafkaClient,
+		TemplateParameters: parametersMap,
+		Topic:              kafkaTopic.Name(),
+	})
+	componentManager.AddComponent(components.NewAvroSchema(i.GetInstance().Spec.AvroSchema, avroSchemaReferences, registry))
 
 	if instance.GetDeletionTimestamp() != nil {
 		reqLogger.Info("Starting finalizer")

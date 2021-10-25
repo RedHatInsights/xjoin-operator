@@ -1,16 +1,21 @@
 package components
 
-type ElasticsearchIndex struct {
-	name    string
-	version string
-}
+import (
+	"github.com/go-errors/errors"
+	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
+	"strings"
+)
 
-func NewElasticsearchIndex() *ElasticsearchIndex {
-	return &ElasticsearchIndex{}
+type ElasticsearchIndex struct {
+	name                 string
+	version              string
+	Template             string
+	AvroSchema           map[string]interface{}
+	GenericElasticsearch elasticsearch.GenericElasticsearch
 }
 
 func (es *ElasticsearchIndex) SetName(name string) {
-	es.name = name
+	es.name = strings.ToLower(name)
 }
 
 func (es *ElasticsearchIndex) SetVersion(version string) {
@@ -18,14 +23,22 @@ func (es *ElasticsearchIndex) SetVersion(version string) {
 }
 
 func (es *ElasticsearchIndex) Name() string {
-	return "ElasticsearchIndex"
+	return es.name + "." + es.version
 }
 
 func (es *ElasticsearchIndex) Create() (err error) {
+	err = es.GenericElasticsearch.CreateIndex(es.Name(), es.Template, es.AvroSchema)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	return
 }
 
 func (es *ElasticsearchIndex) Delete() (err error) {
+	err = es.GenericElasticsearch.DeleteIndexByFullName(es.Name())
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	return
 }
 
@@ -34,9 +47,17 @@ func (es *ElasticsearchIndex) CheckDeviation() (err error) {
 }
 
 func (es *ElasticsearchIndex) Exists() (exists bool, err error) {
+	exists, err = es.GenericElasticsearch.IndexExists(es.Name())
+	if err != nil {
+		return false, errors.Wrap(err, 0)
+	}
 	return
 }
 
 func (es *ElasticsearchIndex) ListInstalledVersions() (versions []string, err error) {
+	versions, err = es.GenericElasticsearch.ListIndicesForPrefix(es.name)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
 	return
 }

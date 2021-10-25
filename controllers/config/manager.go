@@ -74,16 +74,34 @@ func (m *Manager) Parse() error {
 
 	parameters := reflect.ValueOf(m.Parameters).Elem()
 	for i := 0; i < parameters.NumField(); i++ {
-		param := parameters.Field(i).Interface().(Parameter)
-		value, err := m.parseParameterValue(param)
-		if err != nil {
-			return errors.Wrap(err, 0)
+		if parameters.Field(i).Type() != reflect.TypeOf(Parameter{}) { //assume this is a composition struct
+			commonParams := parameters.Field(i)
+			for j := 0; j < commonParams.NumField(); j++ {
+				commonParam := commonParams.Field(j).Interface().(Parameter)
+				value, err := m.parseParameterValue(commonParam)
+				if err != nil {
+					return errors.Wrap(err, 0)
+				}
+				err = commonParam.SetValue(value)
+				if err != nil {
+					return errors.Wrap(err, 0)
+				}
+				commonParams.Field(j).Set(reflect.ValueOf(commonParam))
+			}
+			parameters.Field(i).Set(commonParams)
+		} else {
+			param := parameters.Field(i).Interface().(Parameter)
+			value, err := m.parseParameterValue(param)
+			if err != nil {
+				return errors.Wrap(err, 0)
+			}
+			err = param.SetValue(value)
+			if err != nil {
+				return errors.Wrap(err, 0)
+			}
+			parameters.Field(i).Set(reflect.ValueOf(param))
+
 		}
-		err = param.SetValue(value)
-		if err != nil {
-			return errors.Wrap(err, 0)
-		}
-		parameters.Field(i).Set(reflect.ValueOf(param))
 	}
 
 	return nil
@@ -163,7 +181,8 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 	if param.ConfigMapKey != "" && param.value == nil {
 		if _, hasKey := m.configMaps[param.ConfigMapName]; !hasKey {
 			return nil, errors.Wrap(errors.New(fmt.Sprintf(
-				"configmap %s was not found. Did you register it when initializing the config.Manager?", param.ConfigMapName)), 0)
+				"configmap %s was not found for key %s. Did you register it when initializing the config.Manager?",
+				param.ConfigMapName, param.ConfigMapKey)), 0)
 		}
 
 		if _, hasKey := m.configMaps[param.ConfigMapName].Data[param.ConfigMapKey]; !hasKey {
@@ -219,9 +238,18 @@ func ParametersToMap(p interface{}) map[string]interface{} {
 	value := reflect.ValueOf(p)
 	typeOfValue := value.Type()
 
-	for j := 0; j < value.NumField(); j++ {
-		parameter := value.Field(j).Interface().(Parameter)
-		m[typeOfValue.Field(j).Name] = parameter.Value()
+	for i := 0; i < value.NumField(); i++ {
+		if value.Field(i).Type() != reflect.TypeOf(Parameter{}) { //assume this is a composition struct
+			commonParams := value.Field(i)
+			for j := 0; j < commonParams.NumField(); j++ {
+				typeOfCommon := commonParams.Type()
+				parameter := commonParams.Field(j).Interface().(Parameter)
+				m[typeOfCommon.Field(j).Name] = parameter.Value()
+			}
+		} else {
+			parameter := value.Field(i).Interface().(Parameter)
+			m[typeOfValue.Field(i).Name] = parameter.Value()
+		}
 	}
 
 	return m

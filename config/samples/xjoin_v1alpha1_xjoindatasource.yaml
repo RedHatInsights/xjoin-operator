@@ -40,19 +40,23 @@ spec:
           "type": {
             "type": "string",
             "connect.version": 1,
-            "connect.name": "io.debezium.data.Uuid"
+            "connect.name": "io.debezium.data.Uuid",
+            "xjoin.type": "string"
           }
         },
         {
           "name": "account",
-          "type": "string"
+          "type": {
+            "type": "string",
+            "xjoin.type": "string"
+          }
         },
         {
           "name": "display_name",
-          "type": [
-              "null",
-              "string"
-          ],
+          "type": {
+            "type": "string",
+            "xjoin.type": "string"
+          },
           "default": null
         },
         {
@@ -60,7 +64,8 @@ spec:
           "type": {
             "type": "string",
             "connect.version": 1,
-            "connect.name": "io.debezium.time.ZonedTimestamp"
+            "connect.name": "io.debezium.time.ZonedTimestamp",
+            "xjoin.type": "date_nanos"
           }
         },
         {
@@ -68,31 +73,28 @@ spec:
           "type": {
             "type": "string",
             "connect.version": 1,
-            "connect.name": "io.debezium.time.ZonedTimestamp"
+            "connect.name": "io.debezium.time.ZonedTimestamp",
+            "xjoin.type": "date_nanos"
           }
         },
         {
           "name": "facts",
-          "type": [
-              "null",
-            {
-              "type": "string",
-              "connect.version": 1,
-              "connect.name": "io.debezium.data.Json"
-            }
-          ],
+          "type": {
+            "type": "string",
+            "connect.version": 1,
+            "connect.name": "io.debezium.data.Json",
+            "xjoin.type": "json"
+          },
           "default": null
         },
         {
           "name": "tags",
-          "type": [
-              "null",
-            {
-              "type": "string",
-              "connect.version": 1,
-              "connect.name": "io.debezium.data.Json"
-            }
-          ],
+          "type": {
+            "type": "string",
+            "connect.version": 1,
+            "connect.name": "io.debezium.data.Json",
+            "xjoin.type": "json"
+          },
           "default": null
         },
         {
@@ -100,55 +102,211 @@ spec:
           "type": {
             "type": "string",
             "connect.version": 1,
-            "connect.name": "io.debezium.data.Json"
+            "connect.name": "io.debezium.data.Json",
+            "xjoin.type": "json",
+            "xjoin.fields": [
+              {
+                "name": "fqdn",
+                "type": {
+                  "xjoin.type": "string"
+                }
+              },
+              {
+                "name": "insights_id",
+    "type": {
+                "xjoin.type": "string"
+    }
+              },
+              {
+                "name": "satellite_id",
+    "type": {
+                "xjoin.type": "string"
+    }
+              }
+            ]
           }
         },
         {
           "name": "system_profile_facts",
-          "type": [
-              "null",
-            {
-              "type": "string",
-              "connect.version": 1,
-              "connect.name": "io.debezium.data.Json"
-            }
-          ],
+          "type": {
+            "type": "string",
+            "connect.version": 1,
+            "connect.name": "io.debezium.data.Json",
+            "xjoin.type": "json",
+            "xjoin.fields": [
+              {
+                "name": "arch",
+                "type": {
+                  "xjoin.type": "string"
+                }
+              },
+              {
+                "name": "os_release",
+                "type": {
+                  "xjoin.type": "string"
+                }
+              },
+              {
+                "name": "os_kernel_version",
+                "type": {
+                  "xjoin.type": "string"
+                }
+              },
+              {
+                "name": "infrastructure_type",
+                "type": {
+                  "xjoin.type": "string"
+                }
+              },
+              {
+                "name": "infrastructure_vendor",
+                "type": {
+                  "xjoin.type": "string"
+                }
+              },
+              {
+                "name": "sap_system",
+                "type": {
+                  "xjoin.type": "boolean"
+                }
+              },
+              {
+                "name": "sap_sids",
+                "type": {
+                  "xjoin.type": "string"
+                }
+              },
+              {
+                "name": "owner_id",
+                "type": {
+                  "xjoin.type": "string"
+                }
+              },
+              {
+                "name": "insights_client_version",
+                "type": {
+                  "xjoin.type": "string"
+                }
+              },
+              {
+                "name": "rhc_client_id",
+                "type": {
+                  "xjoin.type": "string"
+                }
+              },
+              {
+                "name": "is_marketplace",
+                "type": {
+                  "xjoin.type": "boolean"
+                }
+              },
+              {
+                "name": "operating_system",
+                "type": {
+                  "xjoin.type": "json",
+                  "xjoin.fields": [
+                    {
+                      "name": "major",
+                      "type": {
+                        "xjoin.type": "byte"
+                      }
+                    },
+                    {
+                      "name": "minor",
+                      "type": {
+                        "xjoin.type": "byte"
+                      }
+                    },
+                    {
+                      "name": "name",
+                      "type": {
+                        "xjoin.type": "string"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "ansible",
+                "type": {
+                  "xjoin.type": "json",
+                  "xjoin.fields": [
+                    {
+                      "name": "controller_version",
+                      "type": {
+                        "xjoin.type": "string"
+                      }
+                    },
+                    {
+                      "name": "hub_version",
+                      "type": {
+                        "xjoin.type": "string"
+                      }
+                    },
+                    {
+                      "name": "catalog_worker_version",
+                      "type": {
+                        "xjoin.type": "string"
+                      }
+                    },
+                    {
+                      "name": "sso_version",
+                      "type": {
+                        "xjoin.type": "string"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "host_type",
+                "type": {
+                  "xjoin.type": "string"
+                }
+              }
+            ]
+          },
           "default": null
         },
         {
           "name": "ansible_host",
-          "type": [
-              "null",
-              "string"
-          ],
+          "type": {
+            "type": "string",
+            "xjoin.type": "string"
+          },
           "default": null
         },
         {
           "name": "stale_timestamp",
           "type": {
             "type": "string",
+            "xjoin.type": "date_nanos",
             "connect.version": 1,
             "connect.name": "io.debezium.time.ZonedTimestamp"
           }
         },
         {
           "name": "reporter",
-          "type": "string"
+          "type": {
+            "type": "string",
+            "xjoin.type": "string"
+          }
         },
         {
           "name": "per_reporter_staleness",
           "type": {
             "type": "string",
             "connect.version": 1,
-            "connect.name": "io.debezium.data.Json"
+            "connect.name": "io.debezium.data.Json",
+            "xjoin.type": "json"
           }
         },
         {
           "name": "__deleted",
-          "type": [
-              "null",
-              "string"
-          ],
+          "type": {
+            "type": "string",
+            "xjoin.type": "date_nanos"
+          },
           "default": null
         }
       ],

@@ -2,6 +2,7 @@ package datasource
 
 import (
 	"github.com/go-errors/errors"
+	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 )
@@ -90,9 +91,17 @@ func (d *ReconcileMethods) Scrub() (err error) {
 		ConnectCluster:   d.iteration.Parameters.ConnectCluster.String(),
 	}
 
+	registry := avro.NewSchemaRegistry(
+		avro.SchemaRegistryConnectionParams{
+			Protocol: d.iteration.Parameters.SchemaRegistryProtocol.String(),
+			Hostname: d.iteration.Parameters.SchemaRegistryHost.String(),
+			Port:     d.iteration.Parameters.SchemaRegistryPort.String(),
+		})
+	registry.Init()
+
 	custodian := components.NewCustodian(
 		d.iteration.GetInstance().Kind+"."+d.iteration.GetInstance().Name, validVersions)
-	custodian.AddComponent(components.NewAvroSchema("", nil))
+	custodian.AddComponent(components.NewAvroSchema("", nil, registry))
 	custodian.AddComponent(&components.KafkaTopic{
 		KafkaClient: kafkaClient,
 	})

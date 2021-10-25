@@ -8,7 +8,6 @@ import (
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/go-errors/errors"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -63,19 +62,19 @@ func (es *ElasticSearch) SetResourceNamePrefix(updatedPrefix string) {
 }
 
 func parseResponse(res *esapi.Response) (int, map[string]interface{}, error) {
+	defer res.Body.Close()
 	if res.IsError() {
-		_, err := io.Copy(ioutil.Discard, res.Body)
+		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			return -1, nil, err
+			return -1, nil, errors.Wrap(err, 0)
 		}
-		return res.StatusCode, nil, errors.New(
-			fmt.Sprintf("Elasticsearch API error: %s, %s", strconv.Itoa(res.StatusCode), res.Body))
+		return res.StatusCode, nil, errors.Wrap(errors.New(
+			fmt.Sprintf("Elasticsearch API error: %s, %s", strconv.Itoa(res.StatusCode), string(bodyBytes))), 0)
 	}
 
 	bodyBytes, err := ioutil.ReadAll(res.Body)
-	err = res.Body.Close()
 	if err != nil {
-		return -1, nil, err
+		return -1, nil, errors.Wrap(err, 0)
 	}
 
 	var bodyMap map[string]interface{}
