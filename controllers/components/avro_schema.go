@@ -16,11 +16,17 @@ type AvroSchema struct {
 	references []srclient.Reference
 }
 
-func NewAvroSchema(schema string, references []srclient.Reference, registry *avro.SchemaRegistry) *AvroSchema {
+type AvroSchemaParameters struct {
+	Schema     string
+	Registry   *avro.SchemaRegistry
+	References []srclient.Reference
+}
+
+func NewAvroSchema(parameters AvroSchemaParameters) *AvroSchema {
 	return &AvroSchema{
-		schema:     schema,
-		registry:   registry,
-		references: references,
+		schema:     parameters.Schema,
+		registry:   parameters.Registry,
+		references: parameters.References,
 		id:         1, //valid avro ids start at 1
 	}
 }

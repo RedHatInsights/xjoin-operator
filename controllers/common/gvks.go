@@ -25,3 +25,9 @@ var DataSourcePipelineGVK = schema.GroupVersionKind{
 	Kind:    "XJoinDataSourcePipeline",
 	Version: "v1alpha1",
 }
+
+var DeploymentGVK = schema.GroupVersionKind{
+	Group:   "apps",
+	Kind:    "Deployment",
+	Version: "v1",
+}

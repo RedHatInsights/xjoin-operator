@@ -70,6 +70,16 @@ func (i *XJoinIndexPipelineIteration) ParseAvroSchemaReferences() (references []
 	return
 }
 
+func (i *XJoinIndexPipelineIteration) ParseSourceTopics(references []srclient.Reference) (sourceTopics string) {
+	for idx, reference := range references {
+		if idx != 0 {
+			sourceTopics = sourceTopics + ","
+		}
+		sourceTopics = sourceTopics + strings.ToLower(reference.Subject)
+	}
+	return
+}
+
 func (i XJoinIndexPipelineIteration) GetInstance() *v1alpha1.XJoinIndexPipeline {
 	return i.Instance.(*v1alpha1.XJoinIndexPipeline)
 }

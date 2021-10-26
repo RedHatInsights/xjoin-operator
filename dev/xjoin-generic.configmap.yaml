@@ -1,5 +1,6 @@
 apiVersion: v1
 data:
+  kafka.bootstrap.url: kafka-kafka-bootstrap.test.svc:9092
   debezium.connector.template: >
     {
       "tasks.max": "{{.DebeziumTasksMax}}",
@@ -13,7 +14,7 @@ data:
       "database.sslrootcert": "{{.DatabaseSSLRootCert}}",
       "table.whitelist": "{{.DatabaseTable}}",
       "plugin.name": "pgoutput",
-      "transforms": "unwrap",
+      "transforms": "unwrap, renameTopic",
       "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
       "transforms.unwrap.delete.handling.mode": "rewrite",
       "errors.log.enable": {{.DebeziumErrorsLogEnable}},
@@ -25,7 +26,10 @@ data:
       "key.converter": "io.confluent.connect.avro.AvroConverter",
       "key.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}",
       "value.converter": "io.confluent.connect.avro.AvroConverter",
-      "value.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}"
+      "value.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}",
+      "transforms.renameTopic.type": "org.apache.kafka.connect.transforms.RegexRouter",
+      "transforms.renameTopic.regex": ".*",
+      "transforms.renameTopic.replacement": "{{.TopicName}}"
     }
   elasticsearch.connector.template: >
     {

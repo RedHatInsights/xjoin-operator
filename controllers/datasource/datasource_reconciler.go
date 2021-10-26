@@ -101,7 +101,7 @@ func (d *ReconcileMethods) Scrub() (err error) {
 
 	custodian := components.NewCustodian(
 		d.iteration.GetInstance().Kind+"."+d.iteration.GetInstance().Name, validVersions)
-	custodian.AddComponent(components.NewAvroSchema("", nil, registry))
+	custodian.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{Registry: registry}))
 	custodian.AddComponent(&components.KafkaTopic{
 		KafkaClient: kafkaClient,
 	})

@@ -127,7 +127,7 @@ func (d *ReconcileMethods) Scrub() (err error) {
 
 	custodian := components.NewCustodian(
 		d.iteration.GetInstance().Kind+"."+d.iteration.GetInstance().Name, validVersions)
-	custodian.AddComponent(components.NewAvroSchema("", nil, registry))
+	custodian.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{Registry: registry}))
 	custodian.AddComponent(&components.ElasticsearchConnector{KafkaClient: kafkaClient})
 	custodian.AddComponent(&components.ElasticsearchIndex{
 		GenericElasticsearch: *genericElasticsearch,

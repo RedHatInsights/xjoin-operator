@@ -126,11 +126,6 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	avroSchemaReferences, err := i.ParseAvroSchemaReferences()
-	if err != nil {
-		return result, errors.Wrap(err, 0)
-	}
-
 	parametersMap := config.ParametersToMap(*p)
 
 	kafkaClient := kafka.GenericKafka{
@@ -167,6 +162,11 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return result, errors.Wrap(err, 0)
 	}
 
+	avroSchemaReferences, err := i.ParseAvroSchemaReferences()
+	if err != nil {
+		return result, errors.Wrap(err, 0)
+	}
+
 	registry := avro.NewSchemaRegistry(
 		avro.SchemaRegistryConnectionParams{
 			Protocol: p.SchemaRegistryProtocol.String(),
@@ -193,7 +193,20 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		TemplateParameters: parametersMap,
 		Topic:              kafkaTopic.Name(),
 	})
-	componentManager.AddComponent(components.NewAvroSchema(i.GetInstance().Spec.AvroSchema, avroSchemaReferences, registry))
+	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
+		Schema:     i.GetInstance().Spec.AvroSchema,
+		Registry:   registry,
+		References: avroSchemaReferences,
+	}))
+	componentManager.AddComponent(&components.XJoinCore{
+		Client:            i.Client,
+		Context:           i.Context,
+		SourceTopics:      i.ParseSourceTopics(avroSchemaReferences),
+		SinkTopic:         kafkaTopic.Name(),
+		KafkaBootstrap:    p.KafkaBootstrapURL.String(),
+		SchemaRegistryURL: p.SchemaRegistryProtocol.String() + "://" + p.SchemaRegistryHost.String() + ":" + p.SchemaRegistryPort.String(),
+		Namespace:         i.Instance.GetNamespace(),
+	})
 
 	if instance.GetDeletionTimestamp() != nil {
 		reqLogger.Info("Starting finalizer")

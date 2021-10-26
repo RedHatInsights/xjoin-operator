@@ -11,7 +11,6 @@ type KafkaTopic struct {
 	version         string
 	KafkaClient     kafka.GenericKafka
 	TopicParameters kafka.TopicParameters
-	Suffix          string
 }
 
 func (kt *KafkaTopic) SetName(name string) {
@@ -23,11 +22,7 @@ func (kt *KafkaTopic) SetVersion(version string) {
 }
 
 func (kt *KafkaTopic) Name() string {
-	name := kt.name + "." + kt.version
-	if kt.Suffix != "" {
-		name = name + "." + kt.Suffix
-	}
-	return name
+	return kt.name + "." + kt.version
 }
 
 func (kt *KafkaTopic) Create() (err error) {

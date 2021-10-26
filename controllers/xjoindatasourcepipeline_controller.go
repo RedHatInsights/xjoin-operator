@@ -150,7 +150,10 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 	registry.Init()
 
 	componentManager := components.NewComponentManager(instance.Kind+"."+instance.Spec.Name, p.Version.String())
-	componentManager.AddComponent(components.NewAvroSchema(avroSchema, nil, registry))
+	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
+		Schema:   avroSchema,
+		Registry: registry,
+	}))
 	componentManager.AddComponent(&components.KafkaTopic{
 		TopicParameters: kafka.TopicParameters{
 			Replicas:           p.KafkaTopicReplicas.Int(),
@@ -163,7 +166,6 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
 		},
 		KafkaClient: kafkaClient,
-		Suffix:      p.DatabaseTable.String(),
 	})
 	componentManager.AddComponent(&components.DebeziumConnector{
 		TemplateParameters: config.ParametersToMap(*p),

@@ -19,12 +19,8 @@ kubectl get xjoinindexpipeline -o custom-columns=name:metadata.name --no-headers
   kubectl delete xjoinindexpipeline "$indexpipeline"
 done
 
-echo "Deleting avro subjects.."
-curl localhost:8081/subjects | jq -c '.[]' | while read i; do
-    i="${i:1}"
-    i="${i::-1}"
-    echo "$i"
-    curl -X DELETE localhost:8081/subjects/$i
+kubectl get deployments -n test -o custom-columns=name:metadata.name --no-headers | grep xjoin-core | while read -r xjoincore ; do
+  kubectl delete deployment "$xjoincore"
 done
 
 echo "Deleting connectors.."
@@ -42,3 +38,20 @@ done
 kubectl -n test get KafkaTopic -o custom-columns=name:metadata.name | grep datasourcepipeline | while read -r topic ; do
     kubectl delete KafkaTopic "$topic" -n test
 done
+
+echo "Deleting avro subjects.."
+curl localhost:8081/subjects | jq -c '.[]' | while read i; do
+    i="${i:1}"
+    i="${i::-1}"
+    echo "$i"
+    curl -X DELETE localhost:8081/subjects/$i
+done
+
+# do this twice in case a referenced schema is deleted too early
+curl localhost:8081/subjects | jq -c '.[]' | while read i; do
+    i="${i:1}"
+    i="${i::-1}"
+    echo "$i"
+    curl -X DELETE localhost:8081/subjects/$i
+done
+

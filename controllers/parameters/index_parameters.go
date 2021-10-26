@@ -25,6 +25,7 @@ type IndexParameters struct {
 	ElasticSearchIndexReplicas       Parameter
 	ElasticSearchIndexShards         Parameter
 	ElasticSearchIndexTemplate       Parameter
+	KafkaBootstrapURL                Parameter
 }
 
 func BuildIndexParameters() *IndexParameters {
@@ -122,6 +123,12 @@ func BuildIndexParameters() *IndexParameters {
 			ConfigMapKey:  "elasticsearch.index.template",
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  "",
+		},
+		KafkaBootstrapURL: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "kafka.bootstrap.url",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "localhost:9092",
 		},
 	}
 
