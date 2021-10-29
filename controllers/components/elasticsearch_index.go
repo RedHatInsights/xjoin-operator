@@ -10,7 +10,7 @@ type ElasticsearchIndex struct {
 	name                 string
 	version              string
 	Template             string
-	AvroSchema           map[string]interface{}
+	Properties           string
 	GenericElasticsearch elasticsearch.GenericElasticsearch
 }
 
@@ -27,7 +27,7 @@ func (es *ElasticsearchIndex) Name() string {
 }
 
 func (es *ElasticsearchIndex) Create() (err error) {
-	err = es.GenericElasticsearch.CreateIndex(es.Name(), es.Template, es.AvroSchema)
+	err = es.GenericElasticsearch.CreateIndex(es.Name(), es.Template, es.Properties)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

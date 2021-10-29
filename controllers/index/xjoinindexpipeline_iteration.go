@@ -1,7 +1,9 @@
 package index
 
 import (
+	"container/list"
 	"encoding/json"
+	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/avro"
@@ -9,6 +11,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/riferrei/srclient"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 )
@@ -84,6 +87,131 @@ func (i *XJoinIndexPipelineIteration) ParseSourceTopics(references []srclient.Re
 
 		sourceTopics = sourceTopics + strings.ToLower(i.AvroSubjectToKafkaTopic(reference.Subject))
 	}
+	return
+}
+
+//ParseAvroSchema transforms an avro schema into elasticsearch mapping properties and a list of jsonFields
+func (i XJoinIndexPipelineIteration) ParseAvroSchema(
+	avroSchema map[string]interface{}) (properties string, jsonFields []string, err error) {
+
+	if avroSchema["fields"] == nil {
+		return properties, jsonFields, errors.Wrap(errors.New("fields missing from avro schema"), 0)
+	}
+
+	fields := avroSchema["fields"].([]interface{})
+	esProperties, jsonFields, err := parseAvroFields(fields, list.List{})
+	if err != nil {
+		return properties, jsonFields, errors.Wrap(err, 0)
+	}
+
+	propertiesBytes, err := json.Marshal(esProperties)
+	if err != nil {
+		return properties, jsonFields, errors.Wrap(err, 0)
+	}
+
+	return string(propertiesBytes), jsonFields, nil
+}
+
+func parseAvroFields(avroFields []interface{}, parent list.List) (map[string]interface{}, []string, error) {
+	esProperties := make(map[string]interface{})
+	var jsonFields []string
+
+	for _, f := range avroFields {
+		avroField := f.(map[string]interface{})
+		esProperty := make(map[string]interface{})
+
+		//determine this field's type
+		var avroFieldTypeObject map[string]interface{}
+		if reflect.TypeOf(avroField["type"]).Kind() == reflect.Slice {
+			/* This IF statement handles an array type, e.g.
+			"type": [
+				{
+					"type": "null"
+				},
+				{
+					"type": "string",
+					"xjoin.type": "string"
+				}
+			]
+			*/
+			avroFieldTypeArray := avroField["type"].([]interface{})
+			if reflect.TypeOf(avroFieldTypeArray[0]).Kind() != reflect.String || avroFieldTypeArray[0].(string) != "null" {
+				return nil, nil, errors.Wrap(errors.New("avro field's type must be [null, type_object{}]"), 0)
+			}
+
+			if reflect.TypeOf(avroFieldTypeArray[1]).Kind() == reflect.Map {
+				avroFieldTypeObject = avroFieldTypeArray[1].(map[string]interface{})
+			} else {
+				return nil, nil, errors.Wrap(errors.New(
+					"avro field's type must be an object or union of [null, object{}]"), 0)
+			}
+
+		} else if reflect.TypeOf(avroField["type"]).Kind() == reflect.Map {
+			/* This IF statement handles an object type, e.g.
+			   "type": {
+			       "type": "string",
+			       "xjoin.type": "date_nanos",
+				}
+			*/
+			avroFieldTypeObject = avroField["type"].(map[string]interface{})
+		} else {
+			return nil, nil, errors.Wrap(
+				errors.New(
+					fmt.Sprintf(
+						"avro field's type must be an object or union of [null, object{}], kind: %s", reflect.TypeOf(avroField["type"]).Kind())), 0)
+		}
+
+		esProperty["type"] = avroTypeToElasticsearchType(avroFieldTypeObject["xjoin.type"].(string))
+
+		//find json fields which need to be transformed from a string
+		if avroFieldTypeObject["xjoin.type"] == "json" && avroFieldTypeObject["type"] == "string" {
+			jsonFieldName := ""
+			for parentField := parent.Front(); parentField != nil; parentField = parentField.Next() {
+				jsonFieldName = parentField.Value.(string) + "."
+
+			}
+			jsonFieldName = jsonFieldName + avroField["name"].(string)
+			jsonFields = append(jsonFields, jsonFieldName)
+		}
+
+		//recurse through nested object types
+		if esProperty["type"] == "object" {
+			if avroFieldTypeObject["fields"] != nil {
+				newParent := parent
+				newParent.PushFront(avroField["name"])
+				nestedProperties, nestedJsonFields, err :=
+					parseAvroFields(avroFieldTypeObject["fields"].([]interface{}), newParent)
+				if err != nil {
+					return nil, nil, errors.Wrap(err, 0)
+				}
+				esProperty["properties"] = nestedProperties
+				jsonFields = append(jsonFields, nestedJsonFields...)
+			}
+		}
+
+		esProperties[avroField["name"].(string)] = esProperty
+	}
+	return esProperties, jsonFields, nil
+}
+
+func avroTypeToElasticsearchType(avroType string) (esType string) {
+	switch strings.ToLower(avroType) {
+	case "date_nanos":
+		esType = "date_nanos"
+	case "string":
+		esType = "keyword"
+	case "boolean":
+		esType = "boolean"
+	case "json":
+		esType = "object"
+	case "record":
+		esType = "object"
+	case "reference":
+		esType = "object"
+	default:
+		esType = "keyword" //TODO should this be default or error?
+	}
+
 	return
 }
 

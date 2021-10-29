@@ -11,7 +11,7 @@ import (
 	"github.com/go-errors/errors"
 	"io/ioutil"
 	"net/http"
-	"reflect"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -117,8 +117,78 @@ func (es GenericElasticsearch) ListIndicesForPrefix(prefix string) ([]string, er
 	return indices, nil
 }
 
+func (es GenericElasticsearch) CreatePipeline(name string, pipeline string) (err error) {
+	res, err := es.Client.Ingest.PutPipeline(
+		name, strings.NewReader(pipeline))
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	statusCode, _, err := parseResponse(res)
+	if err != nil || statusCode != 200 {
+		return errors.Wrap(err, 0)
+	}
+	return
+}
+
+func (es GenericElasticsearch) DeletePipeline(name string) (err error) {
+	_, err = es.Client.Ingest.DeletePipeline(name)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
+}
+
+func (es GenericElasticsearch) PipelineExists(name string) (exists bool, err error) {
+	req := esapi.IngestGetPipelineRequest{
+		DocumentID: name,
+	}
+
+	res, err := req.Do(es.Context, es.Client)
+	if err != nil {
+		return false, errors.Wrap(err, 0)
+	}
+
+	resCode, _, err := parseResponse(res)
+	if resCode == 404 {
+		return false, nil
+	} else if err != nil {
+		return false, errors.Wrap(err, 0)
+	} else {
+		return true, nil
+	}
+}
+
+func (es GenericElasticsearch) ListPipelinesForPrefix(prefix string) (esPipelines []string, err error) {
+	req := esapi.IngestGetPipelineRequest{
+		DocumentID: prefix + "*",
+	}
+
+	res, err := req.Do(es.Context, es.Client)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	resCode, body, err := parseResponse(res)
+
+	if resCode == 404 {
+		return esPipelines, nil
+	} else if resCode != 200 {
+		return nil, errors.Wrap(errors.New(fmt.Sprintf(
+			"Unable to list es pipelines. StatusCode: %s, Body: %s",
+			strconv.Itoa(res.StatusCode), body)), 0)
+	} else if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	for esPipelineName, _ := range body {
+		esPipelines = append(esPipelines, esPipelineName)
+	}
+
+	return
+}
+
 func (es GenericElasticsearch) CreateIndex(
-	indexName string, indexTemplate string, avroSchema map[string]interface{}) error {
+	indexName string, indexTemplate string, properties string) error {
 
 	tmpl, err := template.New("indexTemplate").Parse(indexTemplate)
 	if err != nil {
@@ -127,11 +197,8 @@ func (es GenericElasticsearch) CreateIndex(
 
 	params := es.Parameters
 	params["ElasticSearchIndex"] = indexName
-	properties, err := es.avroToProperties(avroSchema)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
 	params["ElasticSearchProperties"] = properties
+	params["ElasticSearchPipeline"] = indexName
 
 	var indexTemplateBuffer bytes.Buffer
 	err = tmpl.Execute(&indexTemplateBuffer, params)
@@ -157,106 +224,4 @@ func (es GenericElasticsearch) CreateIndex(
 		return errors.Wrap(err, 0)
 	}
 	return nil
-}
-
-//avroToProperties transforms an avro schema into elasticsearch mapping properties
-func (es GenericElasticsearch) avroToProperties(avroSchema map[string]interface{}) (properties string, err error) {
-	if avroSchema["fields"] == nil {
-		return properties, errors.Wrap(errors.New("fields missing from avro schema"), 0)
-	}
-
-	fields := avroSchema["fields"].([]interface{})
-	esProperties, err := parseAvroFields(fields)
-	if err != nil {
-		return properties, errors.Wrap(err, 0)
-	}
-
-	propertiesBytes, err := json.Marshal(esProperties)
-	if err != nil {
-		return properties, errors.Wrap(err, 0)
-	}
-
-	return string(propertiesBytes), nil
-}
-
-func parseAvroFields(avroFields []interface{}) (map[string]interface{}, error) {
-	esProperties := make(map[string]interface{})
-	for _, f := range avroFields {
-		avroField := f.(map[string]interface{})
-		esProperty := make(map[string]interface{})
-
-		var avroFieldTypeObject map[string]interface{}
-		if reflect.TypeOf(avroField["type"]).Kind() == reflect.Slice {
-			/* This IF statement handles an array type, e.g.
-			"type": [
-				"null",
-				{
-					"type": "string",
-					"xjoin.type": "string"
-				}
-			]
-			*/
-			avroFieldTypeArray := avroField["type"].([]interface{})
-			if reflect.TypeOf(avroFieldTypeArray[0]).Kind() != reflect.String || avroFieldTypeArray[0].(string) != "null" {
-				return nil, errors.Wrap(errors.New("avro field's type must be [null, type_object{}]"), 0)
-			}
-
-			if reflect.TypeOf(avroFieldTypeArray[1]).Kind() == reflect.Map {
-				avroFieldTypeObject = avroFieldTypeArray[1].(map[string]interface{})
-			} else {
-				return nil, errors.Wrap(errors.New(
-					"avro field's type must be an object or union of [null, object{}]"), 0)
-			}
-
-		} else if reflect.TypeOf(avroField["type"]).Kind() == reflect.Map {
-			/* This IF statement handles an object type, e.g.
-			   "type": {
-			       "type": "string",
-			       "xjoin.type": "date_nanos",
-				}
-			*/
-			avroFieldTypeObject = avroField["type"].(map[string]interface{})
-		} else {
-			return nil, errors.Wrap(
-				errors.New(
-					fmt.Sprintf(
-						"avro field's type must be an object or union of [null, object{}], kind: %s", reflect.TypeOf(avroField["type"]).Kind())), 0)
-		}
-
-		esProperty["type"] = avroTypeToElasticsearchType(avroFieldTypeObject["xjoin.type"].(string))
-
-		if esProperty["type"] == "object" {
-			if avroFieldTypeObject["xjoin.fields"] != nil {
-				nestedProperties, err := parseAvroFields(avroFieldTypeObject["xjoin.fields"].([]interface{}))
-				if err != nil {
-					return nil, errors.Wrap(err, 0)
-				}
-				esProperty["properties"] = nestedProperties
-			}
-		}
-
-		esProperties[avroField["name"].(string)] = esProperty
-	}
-	return esProperties, nil
-}
-
-func avroTypeToElasticsearchType(avroType string) (esType string) {
-	switch strings.ToLower(avroType) {
-	case "date_nanos":
-		esType = "date_nanos"
-	case "string":
-		esType = "keyword"
-	case "boolean":
-		esType = "boolean"
-	case "json":
-		esType = "object"
-	case "record":
-		esType = "object"
-	case "reference":
-		esType = "object"
-	default:
-		esType = "keyword" //TODO should this be default or error?
-	}
-
-	return
 }

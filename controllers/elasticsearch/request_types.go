@@ -53,3 +53,15 @@ type QueryHostIDsRange struct {
 		} `json:"range"`
 	} `json:"query"`
 }
+
+type PipelineProcessor struct {
+	Json struct {
+		If    string `json:"if,omitempty"`
+		Field string `json:"field,omitempty"`
+	} `json:"json,omitempty"`
+}
+
+type Pipeline struct {
+	Description string              `json:"description,omitempty"`
+	Processors  []PipelineProcessor `json:"processors,omitempty"`
+}

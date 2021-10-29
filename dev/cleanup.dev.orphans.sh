@@ -55,8 +55,17 @@ curl localhost:8081/subjects | jq -c '.[]' | while read i; do
     curl -X DELETE localhost:8081/subjects/$i
 done
 
+echo "Deleting replication slots"
 HBI_USER=$(kubectl get secret/host-inventory-db -o custom-columns=:data.username | base64 -d)
 HBI_NAME=$(kubectl get secret/host-inventory-db -o custom-columns=:data.name | base64 -d)
 psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -t -c "SELECT slot_name from pg_catalog.pg_replication_slots" | while read -r slot ; do
   psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "SELECT pg_drop_replication_slot('$slot');"
+done
+
+echo "Deleting ES indexes"
+ES_PASSWORD=$(kubectl get secret/xjoin-elasticsearch-es-elastic-user -o custom-columns=:data.elastic | base64 -d)
+curl -u "elastic:$ES_PASSWORD" http://localhost:9200/_cat/indices\?format\=json | jq '.[] | .index' | grep xjoinindexpipeline | while read -r index ; do
+  index="${index:1}"
+  index="${index::-1}"
+  curl -u "elastic:$ES_PASSWORD" -X DELETE "http://localhost:9200/$index"
 done

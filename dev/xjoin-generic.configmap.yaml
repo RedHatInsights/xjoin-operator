@@ -70,7 +70,8 @@ data:
           "index": {
               "number_of_shards": "{{.ElasticSearchIndexShards}}",
               "number_of_replicas": "{{.ElasticSearchIndexReplicas}}",
-              "max_result_window": 50000
+              "max_result_window": 50000,
+              "default_pipeline": "{{.ElasticSearchPipeline}}"
           },
           "analysis": {
               "normalizer": {
