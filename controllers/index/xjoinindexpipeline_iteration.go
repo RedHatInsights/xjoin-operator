@@ -28,7 +28,7 @@ func (i *XJoinIndexPipelineIteration) ParseAvroSchemaReferences() (references []
 	}
 
 	for _, field := range schemaObj.Fields {
-		dataSourceName := strings.Split(field.Type, "xjoin.datasource.")[1]
+		dataSourceName := strings.Split(field.Type, ".")[1] //TODO
 
 		//get data source obj from field.Ref
 		dataSource := &unstructured.Unstructured{}
@@ -60,7 +60,7 @@ func (i *XJoinIndexPipelineIteration) ParseAvroSchemaReferences() (references []
 
 		ref := srclient.Reference{
 			Name:    field.Type,
-			Subject: "XJoinDataSourcePipeline." + dataSourceName + "." + versionString,
+			Subject: "xjoindatasourcepipeline." + dataSourceName + "." + versionString + "-value",
 			Version: 1,
 		}
 
@@ -70,12 +70,19 @@ func (i *XJoinIndexPipelineIteration) ParseAvroSchemaReferences() (references []
 	return
 }
 
+func (i *XJoinIndexPipelineIteration) AvroSubjectToKafkaTopic(avroSubject string) (kafkaTopic string) {
+	//avro subjects have a -value suffix while kafka topics do not
+	//e.g. xjoindatasourcepipeline.hosts.123456789-value
+	return strings.Split(avroSubject, "-")[0]
+}
+
 func (i *XJoinIndexPipelineIteration) ParseSourceTopics(references []srclient.Reference) (sourceTopics string) {
 	for idx, reference := range references {
 		if idx != 0 {
 			sourceTopics = sourceTopics + ","
 		}
-		sourceTopics = sourceTopics + strings.ToLower(reference.Subject)
+
+		sourceTopics = sourceTopics + strings.ToLower(i.AvroSubjectToKafkaTopic(reference.Subject))
 	}
 	return
 }

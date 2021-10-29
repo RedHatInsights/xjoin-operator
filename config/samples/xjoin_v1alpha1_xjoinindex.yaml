@@ -10,7 +10,7 @@ spec:
       "name": "testindex",
       "fields": [{
         "xjoin.type": "reference",
-        "type": "xjoin.datasource.test",
+        "type": "xjoindatasourcepipeline.test.Value",
         "name": "host"
       }]
     }

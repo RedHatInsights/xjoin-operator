@@ -95,8 +95,6 @@ func (sr *SchemaRegistry) ExpandReferences(baseSchema string, references []srcli
 			}
 
 			refSchemaMap["xjoin.type"] = field["xjoin.type"]
-			refSchemaMap["xjoin.fields"] = refSchemaMap["fields"]
-			delete(refSchemaMap, "fields")
 			field["type"] = refSchemaMap
 		}
 	}

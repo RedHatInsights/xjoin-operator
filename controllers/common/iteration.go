@@ -59,6 +59,8 @@ func (i *Iteration) UpdateStatusAndRequeue() (reconcile.Result, error) {
 
 			return reconcile.Result{}, err
 		}
+
+		time.Sleep(1 * time.Second) //TODO: this is to prevent status conflicts. Find a better way to avoid the conflicts
 	}
 
 	return reconcile.Result{RequeueAfter: time.Second * 30}, nil

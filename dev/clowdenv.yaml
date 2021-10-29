@@ -71,7 +71,7 @@ objects:
           name: connect
           version: "2.7.0"
           replicas: 1
-          image: "quay.io/cloudservices/xjoin-kafka-connect-strimzi:latest"
+          image: "quay.io/ckyrouac/xjoin-kafka-connect-strimzi:latest"
       db:
         mode: local
         pvc: true
@@ -91,4 +91,4 @@ parameters:
   description: Name of the ClowdEnvironment
   required: true
 - name: PULL_SECRET_NAME
-  value: quay-cloudservices-pull
+  value: cloudservices-pull-secret

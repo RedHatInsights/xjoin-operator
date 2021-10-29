@@ -202,7 +202,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Client:            i.Client,
 		Context:           i.Context,
 		SourceTopics:      i.ParseSourceTopics(avroSchemaReferences),
-		SinkTopic:         kafkaTopic.Name(),
+		SinkTopic:         i.AvroSubjectToKafkaTopic(kafkaTopic.Name()),
 		KafkaBootstrap:    p.KafkaBootstrapURL.String(),
 		SchemaRegistryURL: p.SchemaRegistryProtocol.String() + "://" + p.SchemaRegistryHost.String() + ":" + p.SchemaRegistryPort.String(),
 		Namespace:         i.Instance.GetNamespace(),

@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/go-errors/errors"
@@ -184,11 +185,44 @@ func parseAvroFields(avroFields []interface{}) (map[string]interface{}, error) {
 		avroField := f.(map[string]interface{})
 		esProperty := make(map[string]interface{})
 
-		if reflect.TypeOf(avroField["type"]).Kind() != reflect.Map {
-			return nil, errors.Wrap(errors.New("field type must be an object"), 0)
+		var avroFieldTypeObject map[string]interface{}
+		if reflect.TypeOf(avroField["type"]).Kind() == reflect.Slice {
+			/* This IF statement handles an array type, e.g.
+			"type": [
+				"null",
+				{
+					"type": "string",
+					"xjoin.type": "string"
+				}
+			]
+			*/
+			avroFieldTypeArray := avroField["type"].([]interface{})
+			if reflect.TypeOf(avroFieldTypeArray[0]).Kind() != reflect.String || avroFieldTypeArray[0].(string) != "null" {
+				return nil, errors.Wrap(errors.New("avro field's type must be [null, type_object{}]"), 0)
+			}
+
+			if reflect.TypeOf(avroFieldTypeArray[1]).Kind() == reflect.Map {
+				avroFieldTypeObject = avroFieldTypeArray[1].(map[string]interface{})
+			} else {
+				return nil, errors.Wrap(errors.New(
+					"avro field's type must be an object or union of [null, object{}]"), 0)
+			}
+
+		} else if reflect.TypeOf(avroField["type"]).Kind() == reflect.Map {
+			/* This IF statement handles an object type, e.g.
+			   "type": {
+			       "type": "string",
+			       "xjoin.type": "date_nanos",
+				}
+			*/
+			avroFieldTypeObject = avroField["type"].(map[string]interface{})
+		} else {
+			return nil, errors.Wrap(
+				errors.New(
+					fmt.Sprintf(
+						"avro field's type must be an object or union of [null, object{}], kind: %s", reflect.TypeOf(avroField["type"]).Kind())), 0)
 		}
 
-		avroFieldTypeObject := avroField["type"].(map[string]interface{})
 		esProperty["type"] = avroTypeToElasticsearchType(avroFieldTypeObject["xjoin.type"].(string))
 
 		if esProperty["type"] == "object" {

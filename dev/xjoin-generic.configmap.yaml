@@ -14,7 +14,7 @@ data:
       "database.sslrootcert": "{{.DatabaseSSLRootCert}}",
       "table.whitelist": "{{.DatabaseTable}}",
       "plugin.name": "pgoutput",
-      "transforms": "unwrap, renameTopic",
+      "transforms": "unwrap, reroute",
       "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
       "transforms.unwrap.delete.handling.mode": "rewrite",
       "errors.log.enable": {{.DebeziumErrorsLogEnable}},
@@ -27,9 +27,12 @@ data:
       "key.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}",
       "value.converter": "io.confluent.connect.avro.AvroConverter",
       "value.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}",
-      "transforms.renameTopic.type": "org.apache.kafka.connect.transforms.RegexRouter",
-      "transforms.renameTopic.regex": ".*",
-      "transforms.renameTopic.replacement": "{{.TopicName}}"
+      "value.converter.auto.register.schemas": "false",
+      "value.converter.use.latest.version": "true",
+      "value.converter.enhanced.avro.schema.support": "true",
+      "transforms.reroute.type": "io.debezium.transforms.ByLogicalTableRouter",
+      "transforms.reroute.topic.regex": ".*",
+      "transforms.reroute.topic.replacement": "{{.TopicName}}"
     }
   elasticsearch.connector.template: >
     {
@@ -40,27 +43,9 @@ data:
       {{if .ElasticSearchUsername}}"connection.username": "{{.ElasticSearchUsername}}",{{end}}
       {{if .ElasticSearchPassword}}"connection.password": "{{.ElasticSearchPassword}}",{{end}}
       "type.name": "_doc",
-      "transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString",
-      "transforms.valueToKey.type":"org.apache.kafka.connect.transforms.ValueToKey",
-      "transforms.valueToKey.fields":"id",
-      "transforms.extractKey.type":"org.apache.kafka.connect.transforms.ExtractField$Key",
-      "transforms.extractKey.field":"id",
-      "transforms.expandJSON.type": "com.redhat.insights.expandjsonsmt.ExpandJSON$Value",
-      "transforms.expandJSON.sourceFields": "tags",
       "transforms.deleteIf.type": "com.redhat.insights.deleteifsmt.DeleteIf$Value",
       "transforms.deleteIf.field": "__deleted",
       "transforms.deleteIf.value": "true",
-      "transforms.flattenList.type": "com.redhat.insights.flattenlistsmt.FlattenList$Value",
-      "transforms.flattenList.sourceField": "tags",
-      "transforms.flattenList.outputField": "tags_structured",
-      "transforms.flattenList.mode": "keys",
-      "transforms.flattenList.keys": "namespace,key,value",
-      "transforms.flattenListString.type": "com.redhat.insights.flattenlistsmt.FlattenList$Value",
-      "transforms.flattenListString.sourceField": "tags",
-      "transforms.flattenListString.outputField": "tags_string",
-      "transforms.flattenListString.mode": "join",
-      "transforms.flattenListString.delimiterJoin": "/",
-      "transforms.flattenListString.encode": true,
       "behavior.on.null.values":"delete",
       "behavior.on.malformed.documents": "warn",
       "auto.create.indices.at.start": false,
@@ -73,9 +58,10 @@ data:
       "batch.size": {{.ElasticSearchBatchSize}},
       "max.buffered.records": {{.ElasticSearchMaxBufferedRecords}},
       "linger.ms": {{.ElasticSearchLingerMS}},
-      "key.converter": "io.confluent.connect.avro.AvroConverter",
-      "key.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}",
+      "key.converter": "org.apache.kafka.connect.storage.StringConverter",
       "value.converter": "io.confluent.connect.avro.AvroConverter",
+      "value.converter.auto.register.schemas": "false",
+      "value.converter.use.latest.version": "true",
       "value.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}"
     }
   elasticsearch.index.template: >

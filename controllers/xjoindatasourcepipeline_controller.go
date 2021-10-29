@@ -22,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"time"
 )
 
 const xjoindatasourcepipelineFinalizer = "finalizer.xjoin.datasourcepipeline.cloud.redhat.com"
@@ -126,11 +125,6 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	avroSchema, err := i.ParseAvroSchema()
-	if err != nil {
-		return result, errors.Wrap(err, 0)
-	}
-
 	kafkaClient := kafka.GenericKafka{
 		Context:          ctx,
 		ConnectNamespace: p.ConnectClusterNamespace.String(),
@@ -151,7 +145,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 
 	componentManager := components.NewComponentManager(instance.Kind+"."+instance.Spec.Name, p.Version.String())
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
-		Schema:   avroSchema,
+		Schema:   p.AvroSchema.String(),
 		Registry: registry,
 	}))
 	componentManager.AddComponent(&components.KafkaTopic{
@@ -198,5 +192,5 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	return reconcile.Result{RequeueAfter: time.Second * 30}, nil
+	return i.UpdateStatusAndRequeue()
 }

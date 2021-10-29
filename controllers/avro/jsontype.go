@@ -13,7 +13,9 @@ type IndexSchema struct {
 }
 
 type SourceSchema struct {
-	Type   string        `json:"type,omitempty"`
-	Name   string        `json:"name,omitempty"`
-	Fields []interface{} `json:"fields,omitempty"`
+	Type        string        `json:"type,omitempty"`
+	Name        string        `json:"name,omitempty"`
+	Namespace   string        `json:"namespace,omitempty"`
+	Fields      []interface{} `json:"fields,omitempty"`
+	ConnectName string        `json:"connect.name,omitempty"`
 }

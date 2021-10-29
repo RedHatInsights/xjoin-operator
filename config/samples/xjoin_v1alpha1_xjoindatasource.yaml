@@ -53,10 +53,15 @@ spec:
         },
         {
           "name": "display_name",
-          "type": {
-            "type": "string",
-            "xjoin.type": "string"
-          },
+          "type": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "xjoin.type": "string"
+            }
+          ],
           "default": null
         },
         {
@@ -79,22 +84,30 @@ spec:
         },
         {
           "name": "facts",
-          "type": {
-            "type": "string",
-            "connect.version": 1,
-            "connect.name": "io.debezium.data.Json",
-            "xjoin.type": "json"
-          },
+          "type": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "connect.version": 1,
+              "connect.name": "io.debezium.data.Json",
+              "xjoin.type": "json"
+            }],
           "default": null
         },
         {
           "name": "tags",
-          "type": {
-            "type": "string",
-            "connect.version": 1,
-            "connect.name": "io.debezium.data.Json",
-            "xjoin.type": "json"
-          },
+          "type": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "connect.version": 1,
+              "connect.name": "io.debezium.data.Json",
+              "xjoin.type": "json"
+            }],
           "default": null
         },
         {
@@ -113,167 +126,175 @@ spec:
               },
               {
                 "name": "insights_id",
-    "type": {
-                "xjoin.type": "string"
-    }
+                "type": {
+                  "xjoin.type": "string"
+                }
               },
               {
                 "name": "satellite_id",
-    "type": {
-                "xjoin.type": "string"
-    }
+                "type": {
+                  "xjoin.type": "string"
+                }
               }
             ]
           }
         },
         {
           "name": "system_profile_facts",
-          "type": {
-            "type": "string",
-            "connect.version": 1,
-            "connect.name": "io.debezium.data.Json",
-            "xjoin.type": "json",
-            "xjoin.fields": [
-              {
-                "name": "arch",
-                "type": {
-                  "xjoin.type": "string"
-                }
-              },
-              {
-                "name": "os_release",
-                "type": {
-                  "xjoin.type": "string"
-                }
-              },
-              {
-                "name": "os_kernel_version",
-                "type": {
-                  "xjoin.type": "string"
-                }
-              },
-              {
-                "name": "infrastructure_type",
-                "type": {
-                  "xjoin.type": "string"
-                }
-              },
-              {
-                "name": "infrastructure_vendor",
-                "type": {
-                  "xjoin.type": "string"
-                }
-              },
-              {
-                "name": "sap_system",
-                "type": {
-                  "xjoin.type": "boolean"
-                }
-              },
-              {
-                "name": "sap_sids",
-                "type": {
-                  "xjoin.type": "string"
-                }
-              },
-              {
-                "name": "owner_id",
-                "type": {
-                  "xjoin.type": "string"
-                }
-              },
-              {
-                "name": "insights_client_version",
-                "type": {
-                  "xjoin.type": "string"
-                }
-              },
-              {
-                "name": "rhc_client_id",
-                "type": {
-                  "xjoin.type": "string"
-                }
-              },
-              {
-                "name": "is_marketplace",
-                "type": {
-                  "xjoin.type": "boolean"
-                }
-              },
-              {
-                "name": "operating_system",
-                "type": {
-                  "xjoin.type": "json",
-                  "xjoin.fields": [
-                    {
-                      "name": "major",
-                      "type": {
-                        "xjoin.type": "byte"
+          "type": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "connect.version": 1,
+              "connect.name": "io.debezium.data.Json",
+              "xjoin.type": "json",
+              "xjoin.fields": [
+                {
+                  "name": "arch",
+                  "type": {
+                    "xjoin.type": "string"
+                  }
+                },
+                {
+                  "name": "os_release",
+                  "type": {
+                    "xjoin.type": "string"
+                  }
+                },
+                {
+                  "name": "os_kernel_version",
+                  "type": {
+                    "xjoin.type": "string"
+                  }
+                },
+                {
+                  "name": "infrastructure_type",
+                  "type": {
+                    "xjoin.type": "string"
+                  }
+                },
+                {
+                  "name": "infrastructure_vendor",
+                  "type": {
+                    "xjoin.type": "string"
+                  }
+                },
+                {
+                  "name": "sap_system",
+                  "type": {
+                    "xjoin.type": "boolean"
+                  }
+                },
+                {
+                  "name": "sap_sids",
+                  "type": {
+                    "xjoin.type": "string"
+                  }
+                },
+                {
+                  "name": "owner_id",
+                  "type": {
+                    "xjoin.type": "string"
+                  }
+                },
+                {
+                  "name": "insights_client_version",
+                  "type": {
+                    "xjoin.type": "string"
+                  }
+                },
+                {
+                  "name": "rhc_client_id",
+                  "type": {
+                    "xjoin.type": "string"
+                  }
+                },
+                {
+                  "name": "is_marketplace",
+                  "type": {
+                    "xjoin.type": "boolean"
+                  }
+                },
+                {
+                  "name": "operating_system",
+                  "type": {
+                    "xjoin.type": "json",
+                    "xjoin.fields": [
+                      {
+                        "name": "major",
+                        "type": {
+                          "xjoin.type": "byte"
+                        }
+                      },
+                      {
+                        "name": "minor",
+                        "type": {
+                          "xjoin.type": "byte"
+                        }
+                      },
+                      {
+                        "name": "name",
+                        "type": {
+                          "xjoin.type": "string"
+                        }
                       }
-                    },
-                    {
-                      "name": "minor",
-                      "type": {
-                        "xjoin.type": "byte"
+                    ]
+                  }
+                },
+                {
+                  "name": "ansible",
+                  "type": {
+                    "xjoin.type": "json",
+                    "xjoin.fields": [
+                      {
+                        "name": "controller_version",
+                        "type": {
+                          "xjoin.type": "string"
+                        }
+                      },
+                      {
+                        "name": "hub_version",
+                        "type": {
+                          "xjoin.type": "string"
+                        }
+                      },
+                      {
+                        "name": "catalog_worker_version",
+                        "type": {
+                          "xjoin.type": "string"
+                        }
+                      },
+                      {
+                        "name": "sso_version",
+                        "type": {
+                          "xjoin.type": "string"
+                        }
                       }
-                    },
-                    {
-                      "name": "name",
-                      "type": {
-                        "xjoin.type": "string"
-                      }
-                    }
-                  ]
+                    ]
+                  }
+                },
+                {
+                  "name": "host_type",
+                  "type": {
+                    "xjoin.type": "string"
+                  }
                 }
-              },
-              {
-                "name": "ansible",
-                "type": {
-                  "xjoin.type": "json",
-                  "xjoin.fields": [
-                    {
-                      "name": "controller_version",
-                      "type": {
-                        "xjoin.type": "string"
-                      }
-                    },
-                    {
-                      "name": "hub_version",
-                      "type": {
-                        "xjoin.type": "string"
-                      }
-                    },
-                    {
-                      "name": "catalog_worker_version",
-                      "type": {
-                        "xjoin.type": "string"
-                      }
-                    },
-                    {
-                      "name": "sso_version",
-                      "type": {
-                        "xjoin.type": "string"
-                      }
-                    }
-                  ]
-                }
-              },
-              {
-                "name": "host_type",
-                "type": {
-                  "xjoin.type": "string"
-                }
-              }
-            ]
-          },
+              ]
+          }],
           "default": null
         },
         {
           "name": "ansible_host",
-          "type": {
-            "type": "string",
-            "xjoin.type": "string"
-          },
+          "type": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "xjoin.type": "string"
+            }],
           "default": null
         },
         {
@@ -303,12 +324,15 @@ spec:
         },
         {
           "name": "__deleted",
-          "type": {
-            "type": "string",
-            "xjoin.type": "date_nanos"
-          },
+          "type": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "xjoin.type": "date_nanos"
+            }],
           "default": null
         }
-      ],
-      "connect.name": "xjoin.inventory.1630326061326535535.public.hosts.Value"
+      ]
     }

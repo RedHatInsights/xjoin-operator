@@ -1,6 +1,7 @@
 package components
 
 import (
+	"encoding/json"
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/riferrei/srclient"
@@ -32,7 +33,7 @@ func NewAvroSchema(parameters AvroSchemaParameters) *AvroSchema {
 }
 
 func (as *AvroSchema) SetName(name string) {
-	as.name = name
+	as.name = strings.ToLower(name)
 }
 
 func (as *AvroSchema) SetVersion(version string) {
@@ -40,11 +41,16 @@ func (as *AvroSchema) SetVersion(version string) {
 }
 
 func (as *AvroSchema) Name() string {
-	return as.name + "." + as.version
+	return as.name + "." + as.version + "-value"
 }
 
 func (as *AvroSchema) Create() (err error) {
-	id, err := as.registry.RegisterSchema(as.Name(), as.schema, as.references)
+	schema, err := as.ParseAvroSchema()
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	id, err := as.registry.RegisterSchema(as.Name(), schema, as.references)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -87,4 +93,22 @@ func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err e
 	}
 
 	return
+}
+
+func (as AvroSchema) ParseAvroSchema() (schema string, err error) {
+	var schemaObj avro.SourceSchema
+	err = json.Unmarshal([]byte(as.schema), &schemaObj)
+	if err != nil {
+		return schema, errors.Wrap(err, 0)
+	}
+
+	schemaObj.Namespace = as.name
+	schemaObj.Name = "Value"
+
+	schemaBytes, err := json.Marshal(schemaObj)
+	if err != nil {
+		return schema, errors.Wrap(err, 0)
+	}
+
+	return string(schemaBytes), err
 }
