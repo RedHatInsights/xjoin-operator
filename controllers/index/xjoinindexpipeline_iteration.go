@@ -234,8 +234,8 @@ func avroTypeToElasticsearchType(avroType string) (esType string) {
 
 func parseXJoinFlags(avroField map[string]interface{}, esProperty map[string]interface{}) (map[string]interface{}, error) {
 	if avroField["xjoin.case"] != nil {
-		if avroField["type"] != "keyword" {
-			return nil, errors.Wrap(errors.New("xjoin.case can only be applied to keyword fields"), 0)
+		if avroField["xjoin.type"] != "string" {
+			return nil, errors.Wrap(errors.New("xjoin.case can only be applied to string fields"), 0)
 		}
 
 		if avroField["xjoin.case"] == "insensitive" {
