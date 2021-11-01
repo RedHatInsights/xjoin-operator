@@ -8,6 +8,7 @@ spec:
     {
       "type": "record",
       "name": "testindex",
+      "xjoin.index": true,
       "fields": [{
         "xjoin.type": "reference",
         "type": "xjoindatasourcepipeline.test.Value",

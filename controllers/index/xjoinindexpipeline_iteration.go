@@ -120,6 +120,10 @@ func parseAvroFields(avroFields []interface{}, parent list.List) (map[string]int
 		avroField := f.(map[string]interface{})
 		esProperty := make(map[string]interface{})
 
+		if avroField["xjoin.index"] != nil && avroField["xjoin.index"].(bool) == false {
+			continue
+		}
+
 		//determine this field's type
 		var avroFieldTypeObject map[string]interface{}
 		if reflect.TypeOf(avroField["type"]).Kind() == reflect.Slice {
@@ -162,6 +166,10 @@ func parseAvroFields(avroFields []interface{}, parent list.List) (map[string]int
 		}
 
 		esProperty["type"] = avroTypeToElasticsearchType(avroFieldTypeObject["xjoin.type"].(string))
+		esProperty, err := parseXJoinFlags(avroFieldTypeObject, esProperty)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, 0)
+		}
 
 		//find json fields which need to be transformed from a string
 		if avroFieldTypeObject["xjoin.type"] == "json" && avroFieldTypeObject["type"] == "string" {
@@ -176,11 +184,20 @@ func parseAvroFields(avroFields []interface{}, parent list.List) (map[string]int
 
 		//recurse through nested object types
 		if esProperty["type"] == "object" {
+			//nested json objects are "type: string", "xjoin.type: json" with xjoin.fields
+			//top level records are "type: record" with standard avro fields
+			var nestedFields []interface{}
 			if avroFieldTypeObject["fields"] != nil {
+				nestedFields = avroFieldTypeObject["fields"].([]interface{})
+			} else if avroFieldTypeObject["xjoin.fields"] != nil {
+				nestedFields = avroFieldTypeObject["xjoin.fields"].([]interface{})
+			}
+
+			if nestedFields != nil {
 				newParent := parent
 				newParent.PushFront(avroField["name"])
 				nestedProperties, nestedJsonFields, err :=
-					parseAvroFields(avroFieldTypeObject["fields"].([]interface{}), newParent)
+					parseAvroFields(nestedFields, newParent)
 				if err != nil {
 					return nil, nil, errors.Wrap(err, 0)
 				}
@@ -213,6 +230,27 @@ func avroTypeToElasticsearchType(avroType string) (esType string) {
 	}
 
 	return
+}
+
+func parseXJoinFlags(avroField map[string]interface{}, esProperty map[string]interface{}) (map[string]interface{}, error) {
+	if avroField["xjoin.case"] != nil {
+		if avroField["type"] != "keyword" {
+			return nil, errors.Wrap(errors.New("xjoin.case can only be applied to keyword fields"), 0)
+		}
+
+		if avroField["xjoin.case"] == "insensitive" {
+			fields := make(map[string]interface{})
+			lowercaseField := make(map[string]interface{})
+			lowercaseField["type"] = "keyword"
+			lowercaseField["normalizer"] = "case_insensitive"
+			fields["lowercase"] = lowercaseField
+			esProperty["fields"] = fields
+		} else if avroField["xjoin.case"] != "sensitive" {
+			return nil, errors.Wrap(errors.New("xjoin.case must be one of [insensitive, sensitive]"), 0)
+		}
+	}
+
+	return esProperty, nil
 }
 
 func (i XJoinIndexPipelineIteration) GetInstance() *v1alpha1.XJoinIndexPipeline {

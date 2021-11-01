@@ -59,7 +59,8 @@ spec:
             },
             {
               "type": "string",
-              "xjoin.type": "string"
+              "xjoin.type": "string",
+              "xjoin.case": "insensitive"
             }
           ],
           "default": null
@@ -121,7 +122,8 @@ spec:
               {
                 "name": "fqdn",
                 "type": {
-                  "xjoin.type": "string"
+                  "xjoin.type": "string",
+                  "xjoin.case": "insensitive"
                 }
               },
               {
@@ -315,6 +317,7 @@ spec:
         },
         {
           "name": "per_reporter_staleness",
+          "xjoin.index": false,
           "type": {
             "type": "string",
             "connect.version": 1,
