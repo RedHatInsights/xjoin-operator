@@ -62,6 +62,7 @@ data:
       "value.converter": "io.confluent.connect.avro.AvroConverter",
       "value.converter.auto.register.schemas": "false",
       "value.converter.use.latest.version": "true",
+      "value.converter.enhanced.avro.schema.support": "true",
       "value.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}"
     }
   elasticsearch.index.template: >

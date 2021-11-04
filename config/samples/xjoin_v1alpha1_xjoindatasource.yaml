@@ -54,9 +54,7 @@ spec:
         {
           "name": "display_name",
           "type": [
-            {
-              "type": "null"
-            },
+            "null",
             {
               "type": "string",
               "xjoin.type": "string",
@@ -86,9 +84,7 @@ spec:
         {
           "name": "facts",
           "type": [
-            {
-              "type": "null"
-            },
+            "null",
             {
               "type": "string",
               "connect.version": 1,
@@ -100,9 +96,7 @@ spec:
         {
           "name": "tags",
           "type": [
-            {
-              "type": "null"
-            },
+            "null",
             {
               "type": "string",
               "connect.version": 1,
@@ -144,9 +138,7 @@ spec:
         {
           "name": "system_profile_facts",
           "type": [
-            {
-              "type": "null"
-            },
+            "null",
             {
               "type": "string",
               "connect.version": 1,
@@ -290,9 +282,7 @@ spec:
         {
           "name": "ansible_host",
           "type": [
-            {
-              "type": "null"
-            },
+            "null",
             {
               "type": "string",
               "xjoin.type": "string"

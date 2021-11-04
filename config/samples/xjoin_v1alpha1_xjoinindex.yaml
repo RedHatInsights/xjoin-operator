@@ -8,10 +8,33 @@ spec:
     {
       "type": "record",
       "name": "testindex",
-      "xjoin.index": true,
       "fields": [{
-        "xjoin.type": "reference",
-        "type": "xjoindatasourcepipeline.test.Value",
+        "type": {
+          "type": "xjoindatasourcepipeline.test.Value",
+          "xjoin.type": "reference"
+        },
         "name": "host"
+      }],
+      "xjoin.transformations": [{
+          "transformation": "object_to_array_of_objects",
+          "input.field": "host.tags",
+          "output.field": "host.tags_structured",
+          "transformation.parameters": {
+            "keys": "namespace,key,value"
+          }
+        }, {
+          "transformation": "object_to_array_of_strings",
+          "input.field": "host.tags",
+          "output.field": "host.tags_string",
+          "transformation.parameters": {
+            "delimiters": "/"
+          }
+        }, {
+          "transformation": "object_to_array_of_strings",
+          "input.field": "host.tags",
+          "output.field": "tags_search",
+          "transformation.parameters": {
+            "delimiters": ["/", "="]
+          }
       }]
     }

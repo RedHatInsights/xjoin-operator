@@ -45,7 +45,7 @@ func (as *AvroSchema) Name() string {
 }
 
 func (as *AvroSchema) Create() (err error) {
-	schema, err := as.ParseAvroSchema()
+	schema, err := as.SetSchemaNameNamespace()
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -95,8 +95,8 @@ func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err e
 	return
 }
 
-func (as AvroSchema) ParseAvroSchema() (schema string, err error) {
-	var schemaObj avro.SourceSchema
+func (as AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
+	var schemaObj avro.Schema
 	err = json.Unmarshal([]byte(as.schema), &schemaObj)
 	if err != nil {
 		return schema, errors.Wrap(err, 0)

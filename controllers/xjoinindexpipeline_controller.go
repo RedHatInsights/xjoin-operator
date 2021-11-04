@@ -164,25 +164,23 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return result, errors.Wrap(err, 0)
 	}
 
-	avroSchemaReferences, err := i.ParseAvroSchemaReferences()
-	if err != nil {
-		return result, errors.Wrap(err, 0)
-	}
-
 	registry := avro.NewSchemaRegistry(
 		avro.SchemaRegistryConnectionParams{
 			Protocol: p.SchemaRegistryProtocol.String(),
 			Hostname: p.SchemaRegistryHost.String(),
 			Port:     p.SchemaRegistryPort.String(),
 		})
-
 	registry.Init()
-	fullAvroSchema, err := registry.ExpandReferences(p.AvroSchema.String(), avroSchemaReferences)
-	if err != nil {
-		return result, errors.Wrap(err, 0)
-	}
 
-	esProperties, jsonFields, err := i.ParseAvroSchema(fullAvroSchema)
+	indexAvroSchemaParser := avro.IndexAvroSchemaParser{
+		AvroSchema:     p.AvroSchema.String(),
+		Client:         i.Client,
+		Context:        i.Context,
+		Namespace:      i.Instance.GetNamespace(),
+		Log:            i.Log,
+		SchemaRegistry: registry,
+	}
+	indexAvroSchema, err := indexAvroSchemaParser.Parse()
 	if err != nil {
 		return result, errors.Wrap(err, 0)
 	}
@@ -190,12 +188,12 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	componentManager := components.NewComponentManager(instance.Kind+"."+instance.Spec.Name, p.Version.String())
 	componentManager.AddComponent(&components.ElasticsearchPipeline{
 		GenericElasticsearch: *genericElasticsearch,
-		JsonFields:           jsonFields,
+		JsonFields:           indexAvroSchema.JSONFields,
 	})
 	componentManager.AddComponent(&components.ElasticsearchIndex{
 		GenericElasticsearch: *genericElasticsearch,
 		Template:             p.ElasticSearchIndexTemplate.String(),
-		Properties:           esProperties,
+		Properties:           indexAvroSchema.ESProperties,
 	})
 	componentManager.AddComponent(kafkaTopic)
 	componentManager.AddComponent(&components.ElasticsearchConnector{
@@ -207,13 +205,13 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
 		Schema:     i.GetInstance().Spec.AvroSchema,
 		Registry:   registry,
-		References: avroSchemaReferences,
+		References: indexAvroSchema.References,
 	}))
 	componentManager.AddComponent(&components.XJoinCore{
 		Client:            i.Client,
 		Context:           i.Context,
-		SourceTopics:      i.ParseSourceTopics(avroSchemaReferences),
-		SinkTopic:         i.AvroSubjectToKafkaTopic(kafkaTopic.Name()),
+		SourceTopics:      indexAvroSchema.SourceTopics,
+		SinkTopic:         indexAvroSchemaParser.AvroSubjectToKafkaTopic(kafkaTopic.Name()),
 		KafkaBootstrap:    p.KafkaBootstrapURL.String(),
 		SchemaRegistryURL: p.SchemaRegistryProtocol.String() + "://" + p.SchemaRegistryHost.String() + ":" + p.SchemaRegistryPort.String(),
 		Namespace:         i.Instance.GetNamespace(),
