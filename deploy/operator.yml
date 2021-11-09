@@ -155,90 +155,8 @@ parameters:
     value: "4"
   - name: MANAGER_POD_MEM_LIMIT
     value: "8Gi"
-
-objects:
-  - apiVersion: operators.coreos.com/v1
-    kind: OperatorGroup
-    metadata:
-      name: xjoin-operator-group
-
-  - apiVersion: operators.coreos.com/v1alpha1
-    kind: CatalogSource
-    metadata:
-      name: xjoin-operator-source
-    spec:
-      sourceType: grpc
-      image: ${IMAGE}:${IMAGE_TAG}
-
-  - apiVersion: operators.coreos.com/v1alpha1
-    kind: Subscription
-    metadata:
-      name: xjoin-subscription
-    spec:
-      channel: alpha
-      name: xjoin-operator
-      source: xjoin-operator-source
-      sourceNamespace: ${SOURCE_NAMESPACE}
-      config:
-        volumes:
-          - name: rds-client-ca
-            secret:
-              secretName: rds-client-ca
-              optional: true
-        volumeMounts:
-          - mountPath: /opt/kafka/external-configuration/rds-client-ca
-            name: rds-client-ca
-        env:
-          - name: LOG_LEVEL
-            value: "${LOG_LEVEL}"
-        resources:
-          limits:
-            cpu: ${MANAGER_POD_CPU_LIMIT}
-            memory: ${MANAGER_POD_MEM_LIMIT}
-          requests:
-            cpu: ${MANAGER_POD_CPU_REQUESTS}
-            memory: ${MANAGER_POD_MEM_REQUESTS}
-
-  - apiVersion: v1
-    kind: ConfigMap
-    metadata:
-      name: xjoin
-    data:
-      standard.interval: ${RECONCILE_INTERVAL}
-      validation.interval: ${VALIDATION_INTERVAL}
-      validation.attempts.threshold: ${VALIDATION_ATTEMPTS_THRESHOLD}
-      validation.percentage.threshold: ${VALIDATION_PERCENTAGE_THRESHOLD}
-      init.validation.interval: ${VALIDATION_INTERVAL_INIT}
-      init.validation.attempts.threshold: ${VALIDATION_ATTEMPTS_THRESHOLD_INIT}
-      init.validation.percentage.threshold: ${VALIDATION_PERCENTAGE_THRESHOLD_INIT}
-      connect.cluster: ${CONNECT_CLUSTER}
-      elasticsearch.connector.config: ${ES_CONNECTOR_CONFIG}
-      elasticsearch.connector.tasks.max: ${ES_CONNECTOR_TASKS_MAX}
-      elasticsearch.connector.max.in.flight.requests: ${ES_CONNECTOR_MAX_IN_FLIGHT_REQUESTS}
-      elasticsearch.connector.max.retries: ${ES_CONNECTOR_MAX_RETRIES}
-      elasticsearch.connector.retry.backoff.ms: ${ES_CONNECTOR_RETRY_BACKOFF_MS}
-      elasticsearch.connector.batch.size: ${ES_CONNECTOR_BATCH_SIZE}
-      elasticsearch.connector.max.buffered.records: ${ES_CONNECTOR_MAX_BUFFERED_RECORDS}
-      elasticsearch.connector.linger.ms: ${ES_CONNECTOR_LINGER_MS}
-      elasticsearch.index.replicas: ${ES_INDEX_REPLICAS}
-      elasticsearch.index.shards: ${ES_INDEX_SHARDS}
-      hbi.db.ssl.mode: ${HBI_DB_SSL_MODE}
-      hbi.db.ssl.root.cert: ${HBI_DB_SSL_ROOT_CERT}
-      debezium.connector.config: ${DEBEZIUM_CONNECTOR_CONFIG}
-      debezium.connector.tasks.max: ${DEBEZIUM_CONNECTOR_TASKS_MAX}
-      debezium.connector.max.batch.size: ${DEBEZIUM_CONNECTOR_MAX_BATCH_SIZE}
-      debezium.connector.max.queue.size: ${DEBEZIUM_CONNECTOR_MAX_QUEUE_SIZE}
-      debezium.connector.poll.interval.ms: ${DEBEZIUM_CONNECTOR_POLL_INTERVAL_MS}
-      kafka.topic.partitions: ${KAFKA_TOPIC_PARTITIONS}
-      kafka.topic.replicas: ${KAFKA_TOPIC_REPLICAS}
-      jenkins.managed.version: ${JENKINS_MANAGED_VERSION}
-      kafka.topic.retention.bytes: ${KAFKA_TOPIC_RETENTION_BYTES}
-      full.validation.num.threads: ${FULL_VALIDATION_NUM_THREADS}
-      full.validation.chunk.size: ${FULL_VALIDATION_CHUNK_SIZE}
-      full.validation.enabled: ${FULL_VALIDATION_ENABLED}
-      validation.period.minutes: ${VALIDATION_PERIOD_MINUTES}
-      validation.lag.compensation.seconds: ${VALIDATION_LAG_COMPENSATION_SECONDS}
-      elasticsearch.index.template: >-
+  - name: ELASTICSEARCH_INDEX_TEMPLATE
+    value: >-
         {
           "settings": {
             "index": {
@@ -348,6 +266,90 @@ objects:
               }
             }
           }}
+
+objects:
+  - apiVersion: operators.coreos.com/v1
+    kind: OperatorGroup
+    metadata:
+      name: xjoin-operator-group
+
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: CatalogSource
+    metadata:
+      name: xjoin-operator-source
+    spec:
+      sourceType: grpc
+      image: ${IMAGE}:${IMAGE_TAG}
+
+  - apiVersion: operators.coreos.com/v1alpha1
+    kind: Subscription
+    metadata:
+      name: xjoin-subscription
+    spec:
+      channel: alpha
+      name: xjoin-operator
+      source: xjoin-operator-source
+      sourceNamespace: ${SOURCE_NAMESPACE}
+      config:
+        volumes:
+          - name: rds-client-ca
+            secret:
+              secretName: rds-client-ca
+              optional: true
+        volumeMounts:
+          - mountPath: /opt/kafka/external-configuration/rds-client-ca
+            name: rds-client-ca
+        env:
+          - name: LOG_LEVEL
+            value: "${LOG_LEVEL}"
+        resources:
+          limits:
+            cpu: ${MANAGER_POD_CPU_LIMIT}
+            memory: ${MANAGER_POD_MEM_LIMIT}
+          requests:
+            cpu: ${MANAGER_POD_CPU_REQUESTS}
+            memory: ${MANAGER_POD_MEM_REQUESTS}
+
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: xjoin
+    data:
+      standard.interval: ${RECONCILE_INTERVAL}
+      validation.interval: ${VALIDATION_INTERVAL}
+      validation.attempts.threshold: ${VALIDATION_ATTEMPTS_THRESHOLD}
+      validation.percentage.threshold: ${VALIDATION_PERCENTAGE_THRESHOLD}
+      init.validation.interval: ${VALIDATION_INTERVAL_INIT}
+      init.validation.attempts.threshold: ${VALIDATION_ATTEMPTS_THRESHOLD_INIT}
+      init.validation.percentage.threshold: ${VALIDATION_PERCENTAGE_THRESHOLD_INIT}
+      connect.cluster: ${CONNECT_CLUSTER}
+      elasticsearch.connector.config: ${ES_CONNECTOR_CONFIG}
+      elasticsearch.connector.tasks.max: ${ES_CONNECTOR_TASKS_MAX}
+      elasticsearch.connector.max.in.flight.requests: ${ES_CONNECTOR_MAX_IN_FLIGHT_REQUESTS}
+      elasticsearch.connector.max.retries: ${ES_CONNECTOR_MAX_RETRIES}
+      elasticsearch.connector.retry.backoff.ms: ${ES_CONNECTOR_RETRY_BACKOFF_MS}
+      elasticsearch.connector.batch.size: ${ES_CONNECTOR_BATCH_SIZE}
+      elasticsearch.connector.max.buffered.records: ${ES_CONNECTOR_MAX_BUFFERED_RECORDS}
+      elasticsearch.connector.linger.ms: ${ES_CONNECTOR_LINGER_MS}
+      elasticsearch.index.replicas: ${ES_INDEX_REPLICAS}
+      elasticsearch.index.shards: ${ES_INDEX_SHARDS}
+      hbi.db.ssl.mode: ${HBI_DB_SSL_MODE}
+      hbi.db.ssl.root.cert: ${HBI_DB_SSL_ROOT_CERT}
+      debezium.connector.config: ${DEBEZIUM_CONNECTOR_CONFIG}
+      debezium.connector.tasks.max: ${DEBEZIUM_CONNECTOR_TASKS_MAX}
+      debezium.connector.max.batch.size: ${DEBEZIUM_CONNECTOR_MAX_BATCH_SIZE}
+      debezium.connector.max.queue.size: ${DEBEZIUM_CONNECTOR_MAX_QUEUE_SIZE}
+      debezium.connector.poll.interval.ms: ${DEBEZIUM_CONNECTOR_POLL_INTERVAL_MS}
+      kafka.topic.partitions: ${KAFKA_TOPIC_PARTITIONS}
+      kafka.topic.replicas: ${KAFKA_TOPIC_REPLICAS}
+      jenkins.managed.version: ${JENKINS_MANAGED_VERSION}
+      kafka.topic.retention.bytes: ${KAFKA_TOPIC_RETENTION_BYTES}
+      full.validation.num.threads: ${FULL_VALIDATION_NUM_THREADS}
+      full.validation.chunk.size: ${FULL_VALIDATION_CHUNK_SIZE}
+      full.validation.enabled: ${FULL_VALIDATION_ENABLED}
+      validation.period.minutes: ${VALIDATION_PERIOD_MINUTES}
+      validation.lag.compensation.seconds: ${VALIDATION_LAG_COMPENSATION_SECONDS}
+      elasticsearch.index.template: ${ELASTICSEARCH_INDEX_TEMPLATE}
 
   # TODO: move this into the bundle itself
   # depends on https://github.com/operator-framework/operator-sdk/pull/4137
