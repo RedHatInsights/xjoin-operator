@@ -419,7 +419,7 @@ func NewXJoinConfiguration() Parameters {
 					"script": {
 						"lang": "painless",
 						"if": "ctx.tags_structured != null",
-						"source": "ctx.tags_search = ctx.tags_structured.stream().map(t -> { StringBuilder builder = new StringBuilder(); if (t.namespace != null && t.namespace != 'null') { builder.append(t.namespace); } builder.append('/'); builder.append(t.key); builder.append('='); if (t.value != null) { builder.append(t.value); } return builder.toString() }).collect(Collectors.toList()); ctx.tags_search_combined = ctx.tags_search.stream().map(t -> {return t + "|" + t.toLowerCase()}).collect(Collectors.toList());"
+						"source": "ctx.tags_search = ctx.tags_structured.stream().map(t -> { StringBuilder builder = new StringBuilder(); if (t.namespace != null && t.namespace != 'null') { builder.append(t.namespace); } builder.append('/'); builder.append(t.key); builder.append('='); if (t.value != null) { builder.append(t.value); } return builder.toString() }).collect(Collectors.toList()); ctx.tags_search_combined = ctx.tags_search.stream().map(t -> {return t + "{C|L}" + t.toLowerCase()}).collect(Collectors.toList());"
 					}
 				}]
 			}`,
