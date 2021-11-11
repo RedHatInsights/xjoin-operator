@@ -263,6 +263,9 @@ parameters:
               },
               "tags_search": {
                 "type": "keyword"
+              },
+              "tags_search_combined": {
+                "type": "keyword"
               }
             }
           }}
