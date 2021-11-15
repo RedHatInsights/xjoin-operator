@@ -1,0 +1,7 @@
+[allowlist]
+  description = "Allowlist"
+  paths = [
+    '''controllers/parameters''',
+    '''controllers/config''',
+    '''dev/escerts/tls.key''',
+  ]
