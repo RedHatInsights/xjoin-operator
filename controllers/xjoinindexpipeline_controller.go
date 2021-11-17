@@ -173,12 +173,13 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	registry.Init()
 
 	indexAvroSchemaParser := avro.IndexAvroSchemaParser{
-		AvroSchema:     p.AvroSchema.String(),
-		Client:         i.Client,
-		Context:        i.Context,
-		Namespace:      i.Instance.GetNamespace(),
-		Log:            i.Log,
-		SchemaRegistry: registry,
+		AvroSchema:      p.AvroSchema.String(),
+		Client:          i.Client,
+		Context:         i.Context,
+		Namespace:       i.Instance.GetNamespace(),
+		Log:             i.Log,
+		SchemaRegistry:  registry,
+		SchemaNamespace: i.Instance.GetName(),
 	}
 	indexAvroSchema, err := indexAvroSchemaParser.Parse()
 	if err != nil {
@@ -203,9 +204,8 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Topic:              kafkaTopic.Name(),
 	})
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
-		Schema:     i.GetInstance().Spec.AvroSchema,
-		Registry:   registry,
-		References: indexAvroSchema.References,
+		Schema:   indexAvroSchema.AvroSchemaString,
+		Registry: registry,
 	}))
 	componentManager.AddComponent(&components.XJoinCore{
 		Client:            i.Client,
@@ -215,6 +215,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		KafkaBootstrap:    p.KafkaBootstrapURL.String(),
 		SchemaRegistryURL: p.SchemaRegistryProtocol.String() + "://" + p.SchemaRegistryHost.String() + ":" + p.SchemaRegistryPort.String(),
 		Namespace:         i.Instance.GetNamespace(),
+		Schema:            indexAvroSchema.AvroSchemaString,
 	})
 
 	if instance.GetDeletionTimestamp() != nil {

@@ -2,8 +2,10 @@ package avro
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/go-errors/errors"
 	"reflect"
+	"strings"
 )
 
 type Schema struct {
@@ -17,13 +19,15 @@ type Schema struct {
 }
 
 type Type struct {
-	Type           string  `json:"type,omitempty"`
-	Fields         []Field `json:"fields,omitempty"`
-	XJoinType      string  `json:"xjoin.type,omitempty"`
-	XJoinFields    []Field `json:"xjoin.fields,omitempty"`
-	ConnectVersion int     `json:"connect.version,omitempty"`
-	ConnectName    string  `json:"connect.name,omitempty"`
-	XJoinCase      string  `json:"xjoin.case,omitempty"`
+	Type           string      `json:"type,omitempty"`
+	Name           string      `json:"name,omitempty"`  //required for type=record
+	Items          TypeWrapper `json:"items,omitempty"` //required for type=array
+	Fields         []Field     `json:"fields,omitempty"`
+	XJoinType      string      `json:"xjoin.type,omitempty"`
+	XJoinFields    []Field     `json:"xjoin.fields,omitempty"`
+	ConnectVersion int         `json:"connect.version,omitempty"`
+	ConnectName    string      `json:"connect.name,omitempty"`
+	XJoinCase      string      `json:"xjoin.case,omitempty"`
 }
 
 type Field struct {
@@ -74,9 +78,9 @@ func (t TypeWrapper) MarshalJSON() ([]byte, error) {
 }
 
 func (t *TypeWrapper) UnmarshalJSON(typeBytes []byte) (err error) {
-	//first attempt to marshal into a string
-	//then attempt to marshal into a Type
-	//then attempt to marshal into []Type
+	//first attempt to unmarshal into a string
+	//then attempt to unmarshal into a Type
+	//then attempt to unmarshal into []Type
 	//if that fails return nil
 	var typeString string
 	err = json.Unmarshal(typeBytes, &typeString)
@@ -125,4 +129,54 @@ func (t *TypeWrapper) UnmarshalJSON(typeBytes []byte) (err error) {
 	}
 
 	return nil
+}
+
+func (s *Schema) AddField(name string, newField Field) (err error) {
+	nodeNames := strings.Split(name, ".")
+
+	currentNodeChildren := s.Fields
+	for idx, nodeName := range nodeNames {
+		node, err := s.getFieldByName(nodeName, currentNodeChildren)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+
+		if idx < len(nodeNames)-2 {
+			currentNodeChildren = node.Type[0].Fields //TODO handle multiple types, null check
+		} else {
+			//found the node to add field to
+			node.Type[0].Fields = append(node.Type[0].Fields, newField)
+			break
+		}
+	}
+
+	return
+}
+
+func (s *Schema) GetFieldByName(name string) (node Field, err error) {
+	nodeNames := strings.Split(name, ".")
+
+	currentNodeChildren := s.Fields
+	for idx, nodeName := range nodeNames {
+		node, err = s.getFieldByName(nodeName, currentNodeChildren)
+		if err != nil {
+			return node, errors.Wrap(err, 0)
+		}
+
+		if idx < len(nodeNames)-1 {
+			currentNodeChildren = node.Type[0].Fields //TODO handle multiple types, null check
+		}
+	}
+
+	return
+}
+
+func (s Schema) getFieldByName(name string, fields []Field) (fieldNode Field, err error) {
+	for _, field := range fields {
+		if field.Name == name {
+			return field, nil
+		}
+	}
+
+	return fieldNode, errors.Wrap(errors.New(fmt.Sprintf("Field %s not found in schema", name)), 0)
 }

@@ -20,19 +20,19 @@ spec:
           "input.field": "host.tags",
           "output.field": "host.tags_structured",
           "transformation.parameters": {
-            "keys": "namespace,key,value"
+            "keys": ["namespace", "key", "value"]
           }
         }, {
           "transformation": "object_to_array_of_strings",
           "input.field": "host.tags",
           "output.field": "host.tags_string",
           "transformation.parameters": {
-            "delimiters": "/"
+            "delimiters": ["/", "/"]
           }
         }, {
           "transformation": "object_to_array_of_strings",
           "input.field": "host.tags",
-          "output.field": "tags_search",
+          "output.field": "host.tags_search",
           "transformation.parameters": {
             "delimiters": ["/", "="]
           }

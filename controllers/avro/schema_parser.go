@@ -4,35 +4,44 @@ import (
 	"container/list"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/riferrei/srclient"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 )
 
+const (
+	OBJECT_TO_ARRAY_OF_OBJECTS = "object_to_array_of_objects"
+	OBJECT_TO_ARRAY_OF_STRINGS = "object_to_array_of_strings"
+)
+
 //IndexAvroSchema is a completely parsed representation of a xjoinindex avro schema
 type IndexAvroSchema struct {
-	AvroSchema   string
-	References   []srclient.Reference
-	ESProperties string
-	JSONFields   []string
-	SourceTopics string
+	AvroSchema       Schema
+	AvroSchemaString string
+	References       []srclient.Reference
+	ESProperties     string
+	JSONFields       []string
+	SourceTopics     string
 }
 
 type IndexAvroSchemaParser struct {
-	AvroSchema     string
-	Client         client.Client
-	Context        context.Context
-	Namespace      string
-	Log            log.Log
-	SchemaRegistry *SchemaRegistry
+	AvroSchema      string
+	Client          client.Client
+	Context         context.Context
+	Namespace       string
+	SchemaNamespace string
+	Log             log.Log
+	SchemaRegistry  *SchemaRegistry
 }
 
+//Parse AvroSchema string into various structures represented by IndexAvroSchema to be used in component creation
 func (d IndexAvroSchemaParser) Parse() (indexAvroSchema IndexAvroSchema, err error) {
-	indexAvroSchema.AvroSchema = d.AvroSchema
 	indexAvroSchema.References, err = d.parseAvroSchemaReferences()
 	if err != nil {
 		return indexAvroSchema, errors.Wrap(err, 0)
@@ -40,26 +49,136 @@ func (d IndexAvroSchemaParser) Parse() (indexAvroSchema IndexAvroSchema, err err
 
 	indexAvroSchema.SourceTopics = d.ParseSourceTopics(indexAvroSchema.References)
 
-	fullAvroSchema, err := d.expandReferences(d.AvroSchema, indexAvroSchema.References)
+	indexAvroSchema.AvroSchema, err = d.expandReferences(d.AvroSchema, indexAvroSchema.References)
 	if err != nil {
 		return indexAvroSchema, errors.Wrap(err, 0)
 	}
 
-	fullAvroSchema, err = d.applyTransformations(fullAvroSchema)
+	indexAvroSchema.AvroSchema, err = d.applyTransformations(indexAvroSchema.AvroSchema)
 	if err != nil {
 		return indexAvroSchema, errors.Wrap(err, 0)
 	}
 
-	indexAvroSchema.ESProperties, indexAvroSchema.JSONFields, err = d.transformToES(fullAvroSchema)
+	indexAvroSchema.ESProperties, indexAvroSchema.JSONFields, err = d.transformToES(indexAvroSchema.AvroSchema)
 	if err != nil {
 		return indexAvroSchema, errors.Wrap(err, 0)
 	}
+
+	indexAvroSchema.AvroSchema.Name = "Value"
+	indexAvroSchema.AvroSchema.Namespace = d.SchemaNamespace
+
+	avroSchemaString, err := json.Marshal(indexAvroSchema.AvroSchema)
+	if err != nil {
+		return indexAvroSchema, errors.Wrap(err, 0)
+	}
+	indexAvroSchema.AvroSchemaString = string(avroSchemaString)
 
 	return
 }
 
-//applyTransformations adds the fields defined in xjoin.transformations to the avroSchema
-func (d *IndexAvroSchemaParser) applyTransformations(avroSchema Schema) (transformedAvroSchema Schema, err error) {
+//applyTransformations adds the fields defined in xjoin.transformations to the Schema
+func (d IndexAvroSchemaParser) applyTransformations(avroSchema Schema) (transformedAvroSchema Schema, err error) {
+	for _, transformation := range avroSchema.Transformations {
+		switch transformation.Type {
+		case OBJECT_TO_ARRAY_OF_OBJECTS:
+			avroSchema, err = d.applyObjectToArrayOfObjectsTransformation(avroSchema, transformation)
+			if err != nil {
+				return transformedAvroSchema, errors.Wrap(err, 0)
+			}
+		case OBJECT_TO_ARRAY_OF_STRINGS:
+			avroSchema, err = d.applyObjectToArrayOfStringsTransformation(avroSchema, transformation)
+			if err != nil {
+				return transformedAvroSchema, errors.Wrap(err, 0)
+			}
+		}
+	}
+
+	return avroSchema, nil
+}
+
+func (d IndexAvroSchemaParser) applyObjectToArrayOfStringsTransformation(
+	avroSchema Schema, transformation Transformation) (Schema, error) {
+
+	stringType := Type{
+		Type: "string",
+	}
+
+	fieldNodes := strings.Split(transformation.OutputField, ".")
+	fieldName := fieldNodes[len(fieldNodes)-1]
+	fieldType := Type{
+		Type:      "array",
+		XJoinType: "array",
+		Items:     []Type{stringType},
+	}
+	field := Field{
+		Name: fieldName,
+		Type: []Type{fieldType},
+	}
+	err := avroSchema.AddField(transformation.OutputField, field)
+	if err != nil {
+		return avroSchema, errors.Wrap(err, 0)
+	}
+
+	return avroSchema, nil
+}
+
+func (d IndexAvroSchemaParser) applyObjectToArrayOfObjectsTransformation(
+	avroSchema Schema, transformation Transformation) (Schema, error) {
+
+	if transformation.Parameters["keys"] == nil || reflect.TypeOf(transformation.Parameters["keys"]).Kind() != reflect.Slice {
+		return avroSchema, errors.Wrap(errors.New(fmt.Sprintf(
+			"keys field missing from transformation: %s, output_field: %s", OBJECT_TO_ARRAY_OF_OBJECTS, transformation.OutputField)), 0)
+	}
+
+	var childFields []Field
+
+	for _, key := range transformation.Parameters["keys"].([]interface{}) {
+		if reflect.TypeOf(key).Kind() != reflect.String {
+			return avroSchema, errors.Wrap(errors.New(fmt.Sprintf(
+				"keys field must be an array of strings, output_field: %s", transformation.OutputField)), 0)
+		}
+
+		nullType := Type{
+			Type: "null",
+		}
+
+		childType := Type{
+			Type:      "string",
+			XJoinType: "string",
+		}
+		childFields = append(childFields, Field{
+			Name: key.(string),
+			Type: []Type{nullType, childType},
+		})
+	}
+
+	fieldNodes := strings.Split(transformation.OutputField, ".")
+	fieldName := fieldNodes[len(fieldNodes)-1]
+
+	childType := Type{
+		Type:      "record",
+		XJoinType: "json",
+		Name:      "children",
+		Fields:    childFields,
+	}
+
+	fieldType := Type{
+		Type:      "array",
+		XJoinType: "json",
+		Name:      fieldName,
+		Items:     []Type{childType},
+	}
+
+	field := Field{
+		Name: fieldName,
+		Type: []Type{fieldType},
+	}
+
+	err := avroSchema.AddField(transformation.OutputField, field)
+	if err != nil {
+		return avroSchema, errors.Wrap(err, 0)
+	}
+
 	return avroSchema, nil
 }
 
@@ -155,7 +274,7 @@ func parseAvroFields(avroFields []Field, parent list.List) (map[string]interface
 			avroFieldType = avroField.Type[0]
 		}
 
-		esProperty["type"] = avroTypeToElasticsearchType(avroFieldType.XJoinType)
+		esProperty["type"] = avroTypeToElasticsearchType(avroFieldType)
 		esProperty, err := parseXJoinFlags(avroFieldType, esProperty)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, 0)
@@ -201,8 +320,13 @@ func parseAvroFields(avroFields []Field, parent list.List) (map[string]interface
 	return esProperties, jsonFields, nil
 }
 
-func avroTypeToElasticsearchType(avroType string) (esType string) {
-	switch strings.ToLower(avroType) {
+func avroTypeToElasticsearchType(avroType Type) (esType string) {
+	typeString := avroType.XJoinType
+	if avroType.XJoinType == "array" {
+		typeString = avroType.Items[0].Type //TODO: handle multiple items?
+	}
+
+	switch strings.ToLower(typeString) {
 	case "date_nanos":
 		esType = "date_nanos"
 	case "string":
@@ -269,6 +393,7 @@ func (d IndexAvroSchemaParser) expandReferences(baseSchema string, references []
 			}
 
 			refSchemaType.XJoinType = field.Type[0].XJoinType
+			refSchemaType.Name = ref.Name
 			fullSchema.Fields[idx].Type = []Type{refSchemaType}
 		}
 	}
