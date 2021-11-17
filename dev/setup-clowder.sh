@@ -38,6 +38,8 @@ fi
 rm -r /tmp/kubesetup
 cd "$CURRENT_DIR" || exit 1
 
+oc apply -f https://raw.githubusercontent.com/RedHatInsights/ephemeral-namespace-operator/main/manifest.yaml
+
 # clowder CRDs
 print_start_message "Installing Clowder CRDs"
 kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/v0.20.0/clowder-manifest-v0.20.0.yaml --validate=false
