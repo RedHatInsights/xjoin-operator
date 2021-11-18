@@ -303,6 +303,7 @@ func NewXJoinConfiguration() Parameters {
 				  }}`,
 			Type:         reflect.String,
 			ConfigMapKey: "elasticsearch.index.template",
+			SpecKey:      "ElasticSearchIndexTemplate",
 		},
 		ElasticSearchConnectorTemplate: Parameter{
 			Type:         reflect.String,

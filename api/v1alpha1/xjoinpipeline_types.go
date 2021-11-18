@@ -55,6 +55,10 @@ type XJoinPipelineSpec struct {
 	ElasticSearchNamespace *string `json:"elasticSearchNamespace,omitempty"`
 
 	// +optional
+	// +kubebuilder:validation:MinLength:=1
+	ElasticSearchIndexTemplate *string `json:"elasticSearchIndexTemplate,omitempty"`
+
+	// +optional
 	Pause bool `json:"pause,omitempty"`
 
 	// +optional
