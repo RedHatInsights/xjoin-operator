@@ -27,9 +27,13 @@ KUBE_SETUP_PATH=$1
 CURRENT_DIR=$(pwd)
 mkdir /tmp/kubesetup
 cd /tmp/kubesetup || exit 1
+
 if [ -z "$KUBE_SETUP_PATH" ]; then
   echo "Using default kube_setup from github"
   curl https://raw.githubusercontent.com/RedHatInsights/clowder/master/build/kube_setup.sh -o /tmp/kubesetup/kube_setup.sh && chmod +x /tmp/kubesetup/kube_setup.sh
+  sed -i 's/^install_xjoin_operator//g' ./kube_setup.sh
+  sed -i 's/^install_cyndi_operator//g' ./kube_setup.sh
+  sed -i 's/^install_keda_operator//g' ./kube_setup.sh
   /tmp/kubesetup/kube_setup.sh
 else
   echo "Using local kube_setup: $KUBE_SETUP_PATH"
@@ -37,8 +41,6 @@ else
 fi
 rm -r /tmp/kubesetup
 cd "$CURRENT_DIR" || exit 1
-
-oc apply -f https://raw.githubusercontent.com/RedHatInsights/ephemeral-namespace-operator/main/manifest.yaml
 
 # clowder CRDs
 print_start_message "Installing Clowder CRDs"
