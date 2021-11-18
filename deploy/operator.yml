@@ -349,7 +349,6 @@ objects:
       full.validation.enabled: ${FULL_VALIDATION_ENABLED}
       validation.period.minutes: ${VALIDATION_PERIOD_MINUTES}
       validation.lag.compensation.seconds: ${VALIDATION_LAG_COMPENSATION_SECONDS}
-      elasticsearch.index.template: ${ELASTICSEARCH_INDEX_TEMPLATE}
 
   # TODO: move this into the bundle itself
   # depends on https://github.com/operator-framework/operator-sdk/pull/4137
