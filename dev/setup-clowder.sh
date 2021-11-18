@@ -48,6 +48,10 @@ kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/v0.
 print_start_message "Setting up pull secrets"
 dev/setup.sh --secret --project test
 
+# operator CRDs, configmap, XJoinPipeline
+print_start_message "Setting up XJoin operator"
+dev/setup.sh --xjoin-operator --dev --project test
+
 sleep 5
 
 # bonfire environment (kafka, connect, etc.)
@@ -72,10 +76,6 @@ psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE DATABASE t
 # elasticsearch
 print_start_message "Setting up elasticsearch"
 dev/setup.sh --elasticsearch --project test
-
-# operator CRDs, configmap, XJoinPipeline
-print_start_message "Setting up XJoin operator"
-dev/setup.sh --xjoin-operator --dev --project test
 
 # Confluent schema registry
 print_start_message "Installing Confluent Schema Registry"
