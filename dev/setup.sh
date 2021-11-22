@@ -19,7 +19,7 @@ function usage() {
 
 function args()
 {
-    options=$(getopt -o p:adehpsxf --long dev --long forward-ports --long xjoin-operator --long all --long elasticsearch --long project: --long secret --long help -- "$@")
+    options=$(getopt -o p:adehpsxfo --long olm --long dev --long forward-ports --long xjoin-operator --long all --long elasticsearch --long project: --long secret --long help -- "$@")
     [ $? -eq 0 ] || {
         echo "Incorrect option provided"
         exit 1
@@ -66,6 +66,12 @@ function args()
         --dev)
           SETUP_DEV=true
           ;;
+        -o)
+          SETUP_OLM=true
+          ;;
+        --olm)
+          SETUP_OLM=true
+          ;;
         -x)
           SETUP_XJOIN_OPERATOR=true
           ;;
@@ -103,7 +109,7 @@ if [ -z "$PROJECT_NAME" ]; then
   exit 1
 fi
 
-if [ -z "$SETUP_ALL" ] && [ -z "$SETUP_KAFKA" ] && [ -z "$SETUP_INVENTORY" ] && [ -z "$SETUP_ELASTICSEARCH" ] && [ -z "$SETUP_XJOIN_OPERATOR" ] && [ -z "$SETUP_PULL_SECRET" ]; then
+if [ -z "$SETUP_ALL" ] && [ -z "$SETUP_KAFKA" ] && [ -z "$SETUP_INVENTORY" ] && [ -z "$SETUP_ELASTICSEARCH" ] && [ -z "$SETUP_XJOIN_OPERATOR" ] && [ -z "$SETUP_PULL_SECRET" ] && [ -z "$SETUP_OLM" ]; then
   echo -e "ERROR: must select something to setup\n"
   usage
   exit 1
@@ -167,6 +173,19 @@ if [ "$SETUP_XJOIN_OPERATOR" = true ] || [ "$SETUP_ALL" = true ]; then
   fi
 
   kubectl apply -f config/samples/xjoin_v1alpha1_xjoinpipeline.yaml -n "$PROJECT_NAME"
+fi
+
+# OLM
+if [ "$SETUP_OLM" = true ] || [ "$SETUP_ALL" = true ]; then
+  echo "Installing OLM"
+  CURRENT_DIR=$(pwd)
+  mkdir /tmp/olm
+  cd /tmp/olm || exit 1
+  curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.19.1/install.sh -o install.sh
+  chmod +x install.sh
+  ./install.sh v0.19.1
+  rm -r /tmp/olm
+  cd "$CURRENT_DIR" || exit 1
 fi
 
 #forward-ports
