@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	k8slog "sigs.k8s.io/controller-runtime/pkg/log"
 	"time"
 
@@ -185,6 +186,15 @@ func main() {
 	// +kubebuilder:scaffold:builder
 
 	metrics.Init()
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		k8slog.Log.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		k8slog.Log.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
 
 	k8slog.Log.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
