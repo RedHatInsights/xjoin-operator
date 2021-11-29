@@ -27,7 +27,7 @@ kubectl port-forward "$KAFKA_SVC" 9092:9092 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$KAFKA_SVC" 29092:9092 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$XJOIN_SVC" 4000:4000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$HBI_SVC" 8000:8000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
-kubectl port-forward "$SCHEMA_REGISTRY_SVC" 8081:8081 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward "$SCHEMA_REGISTRY_SVC" 8082:8081 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 
 
 pgrep -fla "kubectl port-forward"

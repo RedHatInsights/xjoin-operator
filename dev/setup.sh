@@ -171,8 +171,6 @@ if [ "$SETUP_XJOIN_OPERATOR" = true ] || [ "$SETUP_ALL" = true ]; then
   if [ "$SETUP_DEV" = true ]; then
     make install
   fi
-
-  kubectl apply -f config/samples/xjoin_v1alpha1_xjoinpipeline.yaml -n "$PROJECT_NAME"
 fi
 
 # OLM
