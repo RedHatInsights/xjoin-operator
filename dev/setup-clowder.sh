@@ -75,6 +75,9 @@ psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "ALTER ROLE insigh
 psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE PUBLICATION dbz_publication FOR TABLE hosts;"
 psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE DATABASE test WITH TEMPLATE '$HBI_NAME';"
 
+print_start_message "Setting up elasticsearch password"
+dev/setup.sh --elasticsearch --project test
+
 # Confluent schema registry
 print_start_message "Installing Confluent Schema Registry"
 kubectl apply -f dev/generic.refactor/confluent-schema-registry.yaml -n test

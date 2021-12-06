@@ -77,15 +77,15 @@ func main() {
 	leaseDuration := 90 * time.Second
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		Port:               9443,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "222b734b.cloud.redhat.com",
-		RenewDeadline:      &renewDeadline,
-		LeaseDuration:      &leaseDuration,
+		Scheme:                 scheme,
+		MetricsBindAddress:     metricsAddr,
+		Port:                   9443,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "222b734b.cloud.redhat.com",
+		RenewDeadline:          &renewDeadline,
+		LeaseDuration:          &leaseDuration,
 		HealthProbeBindAddress: probeAddr,
-		Logger:             k8slog.Log,
+		Logger:                 k8slog.Log,
 	})
 	if err != nil {
 		k8slog.Log.Error(err, "unable to start manager")

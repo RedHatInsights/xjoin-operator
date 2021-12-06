@@ -135,8 +135,8 @@ if [ "$SETUP_ELASTICSEARCH" = true ] || [ "$SETUP_ALL" = true ]; then
   echo "Setting up Elasticsearch"
   kubectl apply -f elasticsearch.secret.clowder.yml -n "$PROJECT_NAME"
 
-  kubectl create -n "$PROJECT_NAME" -f elasticsearch.yml
-  sleep 60
+#  kubectl create -n "$PROJECT_NAME" -f elasticsearch.yml
+#  sleep 60
   echo "Waiting for xjoin-elasticsearch to be ready"
   kubectl wait pods/xjoin-elasticsearch-es-default-0 --for=condition=Ready --timeout=150s -n "$PROJECT_NAME"
 
