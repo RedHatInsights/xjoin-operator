@@ -28,11 +28,11 @@ try {
 
     console.log(schemaPath)
 
-    if (schemaPath == undefined) {
+    if (typeof(schemaPath) != String) {
         schemaPath = './inventory-schemas/schemas/system_profile/v1.yaml'
     }
 
-    let schemaFileContent = fs.readFileSync(myArgs[0], 'utf8');
+    let schemaFileContent = fs.readFileSync(schemaPath, 'utf8');
     let schemaData = yaml.safeLoad(schemaFileContent);
     let schema = schemaData["$defs"]["SystemProfile"]
 
