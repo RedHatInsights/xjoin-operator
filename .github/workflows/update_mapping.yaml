@@ -1,0 +1,51 @@
+# This workflow updates the operator configuration based on the latest version
+# of the system_profile schema from insights-schemas
+# It then opens a pull request on this repo with the changes and information
+# about the change that triggered the update
+
+name: update mapping
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update_mapping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out xjoin-config
+        uses: actions/checkout@v2
+      - name: Check out schema repo to copy current schema from
+        uses: actions/checkout@v2
+        with:
+          repository: RedHatInsights/inventory-schemas
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          path: ./inventory-schemas
+      - name: Set vars
+        id: vars
+        run: |
+          git config user.name 'GitHub Actions' 
+          git config user.email 'actions@github.com'
+          echo "::set-output name=schema_sha::$(git ls-remote https://github.com/RedHatInsights/inventory-schemas.git master | cut -c -7)"
+      - name: update mapping from schema
+        run: |
+          cd scripts
+          npm ci
+          node update_mapping.js ../inventory-schemas/schemas/system_profile/v1.yaml
+          git add -u
+          git commit -m "update mapping ${{ steps.vars.outputs.schema_sha }}"
+      - name: remove schema submodule
+        run: rm -r inventory-schemas
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          committer: GitHub <noreply@github.com>
+          author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+          signoff: false
+          branch: system_profile_schema_update
+          branch-suffix: short-commit-hash
+          delete-branch: true
+          title: '[Automated] Update mapping'
+          body: |
+            Updated the mapping based on the latest inventory-schemas change
