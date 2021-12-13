@@ -45,6 +45,7 @@ func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request,
 
 func (r *ValidationReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	reqLogger := logger.NewLogger("controller_validation", "Pipeline", request.Name, "Namespace", request.Namespace)
+	reqLogger.Info("Reconciling Validation")
 
 	i, err := r.setup(reqLogger, request, ctx)
 	defer i.Close()
