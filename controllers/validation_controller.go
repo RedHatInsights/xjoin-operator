@@ -71,12 +71,15 @@ func (r *ValidationReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 	reqLogger.Info("Checking for resource deviation")
 
 	if r.CheckResourceDeviation {
+		reqLogger.Info("Really checking for deviation")
 		problem, err := i.CheckForDeviation()
 		if err != nil {
 			i.Error(err, "Error checking for state deviation")
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		} else if problem != nil {
+			reqLogger.Info("Problem checking for deviation")
 			i.ProbeStateDeviationRefresh(problem.Error())
+			reqLogger.Info("Transitioning to new state")
 			i.Instance.TransitionToNew()
 			return i.UpdateStatusAndRequeue()
 		}
