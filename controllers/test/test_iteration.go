@@ -90,7 +90,13 @@ func (i *Iteration) getConnectorConfig(connectorName string) (map[string]interfa
 		i.Parameters.ConnectCluster.String(), i.Parameters.ConnectClusterNamespace.String(), connectorName)
 
 	//GET current config from Kafka Connect REST API
-	res, err := http.Get(configUrl)
+	httpClient := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest(http.MethodGet, configUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := httpClient.Do(req)
+
 	if err != nil {
 		return nil, err
 	}
