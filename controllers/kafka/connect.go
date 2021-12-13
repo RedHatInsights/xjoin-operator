@@ -360,25 +360,32 @@ func (kafka *Kafka) DeleteAllConnectors(resourceNamePrefix string) error {
 }
 
 func (kafka *Kafka) GetConnectorStatus(connectorName string) (map[string]interface{}, error) {
+	log.Info("Getting connector status for connector" + connectorName)
 	url := fmt.Sprintf(
 		"%s/connectors/%s/status",
 		kafka.ConnectUrl(), connectorName)
+	log.Info("connector status url: " + url)
 	res, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
+	log.Info("got status for url: " + url)
 	defer res.Body.Close()
 
 	var bodyMap map[string]interface{}
 	if res.StatusCode == 200 {
+		log.Info("Successfully got status for url: " + url)
 		body, err := ioutil.ReadAll(res.Body)
 		err = json.Unmarshal(body, &bodyMap)
 		if err != nil {
 			return nil, err
 		}
 	} else if res.StatusCode != 404 {
+		log.Info("error getting connector status at url: " + url)
 		return nil, errors.New(fmt.Sprintf("unable to get connector %s status", connectorName))
 	}
+
+	log.Info("connector not found at url: " + url)
 
 	return bodyMap, nil
 }
