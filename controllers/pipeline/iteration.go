@@ -551,6 +551,7 @@ func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, conne
 		return nil, nil
 	}
 
+	i.Log.Info("Getting connector")
 	connector, err := i.Kafka.GetConnector(connectorName)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
@@ -560,6 +561,7 @@ func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, conne
 		return nil, err
 	}
 
+	i.Log.Info("Checking if connector is failed")
 	isFailed, err := i.Kafka.IsFailed(connectorName)
 	if err != nil {
 		return nil, err
@@ -573,6 +575,7 @@ func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, conne
 		}
 	}
 
+	i.Log.Info("Checking connector cluster label")
 	if connector.GetLabels()[kafka.LabelStrimziCluster] != i.Parameters.ConnectCluster.String() {
 		return fmt.Errorf(
 			"connectCluster changed from %s to %s",
@@ -580,6 +583,7 @@ func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, conne
 			i.Parameters.ConnectCluster.String()), nil
 	}
 
+	i.Log.Info("Checking connector spec")
 	// compares the spec of the existing connector with the spec we would create if we were creating a new connector now
 	newConnector, err := i.Kafka.CreateDryConnectorByType(connectorType, i.Instance.Status.PipelineVersion)
 	if err != nil {
