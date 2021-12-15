@@ -12,174 +12,195 @@ parameters:
   - name: SOURCE_NAMESPACE
     value: xjoin
   - name: RECONCILE_INTERVAL
-    value: "120"
+    value: '120'
   - name: VALIDATION_INTERVAL
-    value: "600"
+    value: '600'
   - name: VALIDATION_INTERVAL_INIT
-    value: "120"
+    value: '120'
   - name: VALIDATION_PERCENTAGE_THRESHOLD
-    value: "5"
+    value: '5'
   - name: VALIDATION_PERCENTAGE_THRESHOLD_INIT
-    value: "5"
+    value: '5'
   - name: VALIDATION_ATTEMPTS_THRESHOLD
-    value: "10"
+    value: '10'
   - name: VALIDATION_ATTEMPTS_THRESHOLD_INIT
-    value: "60"
+    value: '60'
   - name: VALIDATION_PERIOD_MINUTES
-    value: "60"
+    value: '60'
   - name: VALIDATION_LAG_COMPENSATION_SECONDS
-    value: "600"
+    value: '600'
   - name: CONNECT_CLUSTER
-    value: "xjoin-kafka-connect-strimzi"
+    value: xjoin-kafka-connect-strimzi
   - name: ES_CONNECTOR_TASKS_MAX
-    value: "50"
+    value: '50'
   - name: JENKINS_MANAGED_VERSION
-    value: "v1.0"
+    value: v1.0
   - name: KAFKA_TOPIC_PARTITIONS
-    value: "500"
+    value: '500'
   - name: KAFKA_TOPIC_REPLICAS
-    value: "2"
+    value: '2'
   - name: ES_CONNECTOR_CONFIG
-    value: '{
-      "tasks.max": "{{.ElasticSearchTasksMax}}",
-      "topics": "{{.Topic}}",
-      "key.ignore": "false",
-      "connection.url": "${env:ELASTICSEARCH_ENDPOINT}",
-      {{if .ElasticSearchUsername}}"connection.username": "{{.ElasticSearchUsername}}",{{end}}
-      {{if .ElasticSearchPassword}}"connection.password": "{{.ElasticSearchPassword}}",{{end}}
-      "type.name": "_doc",
-      "transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString, renameTopic",
+    value: >-
+      { "tasks.max": "{{.ElasticSearchTasksMax}}", "topics": "{{.Topic}}",
+      "key.ignore": "false", "connection.url": "${env:ELASTICSEARCH_ENDPOINT}",
+      {{if .ElasticSearchUsername}}"connection.username":
+      "{{.ElasticSearchUsername}}",{{end}} {{if
+      .ElasticSearchPassword}}"connection.password":
+      "{{.ElasticSearchPassword}}",{{end}} "type.name": "_doc", "transforms":
+      "valueToKey, extractKey, expandJSON, deleteIf, flattenList,
+      flattenListString, renameTopic",
       "transforms.valueToKey.type":"org.apache.kafka.connect.transforms.ValueToKey",
       "transforms.valueToKey.fields":"id",
       "transforms.extractKey.type":"org.apache.kafka.connect.transforms.ExtractField$Key",
-      "transforms.extractKey.field":"id",
-      "transforms.expandJSON.type": "com.redhat.insights.expandjsonsmt.ExpandJSON$Value",
-      "transforms.expandJSON.sourceFields": "tags",
-      "transforms.deleteIf.type": "com.redhat.insights.deleteifsmt.DeleteIf$Value",
-      "transforms.deleteIf.field": "__deleted",
-      "transforms.deleteIf.value": "true",
-      "transforms.flattenList.type": "com.redhat.insights.flattenlistsmt.FlattenList$Value",
+      "transforms.extractKey.field":"id", "transforms.expandJSON.type":
+      "com.redhat.insights.expandjsonsmt.ExpandJSON$Value",
+      "transforms.expandJSON.sourceFields": "tags", "transforms.deleteIf.type":
+      "com.redhat.insights.deleteifsmt.DeleteIf$Value",
+      "transforms.deleteIf.field": "__deleted", "transforms.deleteIf.value":
+      "true", "transforms.flattenList.type":
+      "com.redhat.insights.flattenlistsmt.FlattenList$Value",
       "transforms.flattenList.sourceField": "tags",
       "transforms.flattenList.outputField": "tags_structured",
-      "transforms.flattenList.mode": "keys",
-      "transforms.flattenList.keys": "namespace,key,value",
-      "transforms.flattenListString.type": "com.redhat.insights.flattenlistsmt.FlattenList$Value",
+      "transforms.flattenList.mode": "keys", "transforms.flattenList.keys":
+      "namespace,key,value", "transforms.flattenListString.type":
+      "com.redhat.insights.flattenlistsmt.FlattenList$Value",
       "transforms.flattenListString.sourceField": "tags",
       "transforms.flattenListString.outputField": "tags_string",
       "transforms.flattenListString.mode": "join",
       "transforms.flattenListString.delimiterJoin": "/",
       "transforms.flattenListString.encode": true,
-      "transforms.renameTopic.type": "org.apache.kafka.connect.transforms.RegexRouter",
+      "transforms.renameTopic.type":
+      "org.apache.kafka.connect.transforms.RegexRouter",
       "transforms.renameTopic.regex": "{{.Topic}}",
       "transforms.renameTopic.replacement": "{{.RenameTopicReplacement}}",
-      "behavior.on.null.values":"delete",
-      "behavior.on.malformed.documents": "warn",
-      "auto.create.indices.at.start": false,
-      "schema.ignore": true,
+      "behavior.on.null.values":"delete", "behavior.on.malformed.documents":
+      "warn", "auto.create.indices.at.start": false, "schema.ignore": true,
       "max.in.flight.requests": {{.ElasticSearchMaxInFlightRequests}},
       "errors.log.enable": {{.ElasticSearchErrorsLogEnable}},
-      "errors.log.include.messages": true,
-      "max.retries": {{.ElasticSearchMaxRetries}},
-      "retry.backoff.ms": {{.ElasticSearchRetryBackoffMS}},
-      "batch.size": {{.ElasticSearchBatchSize}},
-      "max.buffered.records": {{.ElasticSearchMaxBufferedRecords}},
-      "linger.ms": {{.ElasticSearchLingerMS}}
-    }'
+      "errors.log.include.messages": true, "max.retries":
+      {{.ElasticSearchMaxRetries}}, "retry.backoff.ms":
+      {{.ElasticSearchRetryBackoffMS}}, "batch.size":
+      {{.ElasticSearchBatchSize}}, "max.buffered.records":
+      {{.ElasticSearchMaxBufferedRecords}}, "linger.ms":
+      {{.ElasticSearchLingerMS}} }
   - name: ES_CONNECTOR_MAX_IN_FLIGHT_REQUESTS
-    value: "1"
+    value: '1'
   - name: ES_CONNECTOR_MAX_RETRIES
-    value: "8"
+    value: '8'
   - name: ES_CONNECTOR_RETRY_BACKOFF_MS
-    value: "100"
+    value: '100'
   - name: ES_CONNECTOR_BATCH_SIZE
-    value: "100"
+    value: '100'
   - name: ES_CONNECTOR_MAX_BUFFERED_RECORDS
-    value: "500"
+    value: '500'
   - name: ES_CONNECTOR_LINGER_MS
-    value: "100"
+    value: '100'
   - name: ES_INDEX_REPLICAS
-    value: "1"
+    value: '1'
   - name: ES_INDEX_SHARDS
-    value: "3"
+    value: '3'
   - name: DEBEZIUM_CONNECTOR_CONFIG
-    value: '{
-      "tasks.max": "{{.DebeziumTasksMax}}",
-      "producer.override.max.request.size": "2097152",
-      "database.hostname": "${env:HOST_INVENTORY_DB_HOSTNAME}",
-      "database.port": "{{.HBIDBPort}}",
-      "database.user": "${env:HOST_INVENTORY_DB_USERNAME}",
-      "database.password": "${env:HOST_INVENTORY_DB_PASSWORD}",
-      "database.dbname": "${env:HOST_INVENTORY_DB_NAME}",
-      "database.server.name": "{{.ResourceNamePrefix}}.{{.Version}}",
-      "database.sslmode": "{{.HBIDBSSLMode}}",
-      "database.sslrootcert": "{{.HBIDBSSLRootCert}}",
-      "table.whitelist": "public.hosts",
-      "plugin.name": "pgoutput",
-      "transforms": "unwrap",
-      "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
-      "transforms.unwrap.delete.handling.mode": "rewrite",
-      "errors.log.enable": {{.DebeziumErrorsLogEnable}},
-      "errors.log.include.messages": true,
-      "slot.name": "{{.ReplicationSlotName}}",
-      "max.queue.size": {{.DebeziumQueueSize}},
-      "max.batch.size": {{.DebeziumMaxBatchSize}},
-      "poll.interval.ms": {{.DebeziumPollIntervalMS}}
-    }'
-  - name: DEBEZIUM_CONNECTOR_TASKS_MAX
-    value: "1"
-  - name: DEBEZIUM_CONNECTOR_MAX_BATCH_SIZE
-    value: "10"
-  - name: DEBEZIUM_CONNECTOR_MAX_QUEUE_SIZE
-    value: "1000"
-  - name: DEBEZIUM_CONNECTOR_POLL_INTERVAL_MS
-    value: "100"
-  - name: HBI_DB_SSL_ROOT_CERT
-    value: "/opt/kafka/external-configuration/rds-client-ca/rds-cacert"
-  - name: HBI_DB_SSL_MODE
-    value: "verify-full"
-  - name: LOG_LEVEL
-    value: "info"
-  - name: KAFKA_TOPIC_RETENTION_BYTES
-    value: "256000000"
-  - name: FULL_VALIDATION_NUM_THREADS
-    value: "10"
-  - name: FULL_VALIDATION_CHUNK_SIZE
-    value: "500"
-  - name: FULL_VALIDATION_ENABLED
-    value: "false"
-  - name: MANAGER_POD_CPU_REQUESTS
-    value: "250m"
-  - name: MANAGER_POD_MEM_REQUESTS
-    value: "512Mi"
-  - name: MANAGER_POD_CPU_LIMIT
-    value: "4"
-  - name: MANAGER_POD_MEM_LIMIT
-    value: "8Gi"
-  - name: ELASTICSEARCH_INDEX_TEMPLATE
     value: >-
-        {
-          "settings": {
-            "index": {
-              "number_of_shards": "{{.ElasticSearchIndexShards}}",
-              "number_of_replicas": "{{.ElasticSearchIndexReplicas}}",
-              "default_pipeline": "{{.ElasticSearchPipeline}}",
-              "max_result_window": 50000
-            },
-            "analysis": {
-              "normalizer": {
-                "case_insensitive": {
-                  "filter": "lowercase"
-                }
+      { "tasks.max": "{{.DebeziumTasksMax}}",
+      "producer.override.max.request.size": "2097152", "database.hostname":
+      "${env:HOST_INVENTORY_DB_HOSTNAME}", "database.port": "{{.HBIDBPort}}",
+      "database.user": "${env:HOST_INVENTORY_DB_USERNAME}", "database.password":
+      "${env:HOST_INVENTORY_DB_PASSWORD}", "database.dbname":
+      "${env:HOST_INVENTORY_DB_NAME}", "database.server.name":
+      "{{.ResourceNamePrefix}}.{{.Version}}", "database.sslmode":
+      "{{.HBIDBSSLMode}}", "database.sslrootcert": "{{.HBIDBSSLRootCert}}",
+      "table.whitelist": "public.hosts", "plugin.name": "pgoutput",
+      "transforms": "unwrap", "transforms.unwrap.type":
+      "io.debezium.transforms.ExtractNewRecordState",
+      "transforms.unwrap.delete.handling.mode": "rewrite", "errors.log.enable":
+      {{.DebeziumErrorsLogEnable}}, "errors.log.include.messages": true,
+      "slot.name": "{{.ReplicationSlotName}}", "max.queue.size":
+      {{.DebeziumQueueSize}}, "max.batch.size": {{.DebeziumMaxBatchSize}},
+      "poll.interval.ms": {{.DebeziumPollIntervalMS}} }
+  - name: DEBEZIUM_CONNECTOR_TASKS_MAX
+    value: '1'
+  - name: DEBEZIUM_CONNECTOR_MAX_BATCH_SIZE
+    value: '10'
+  - name: DEBEZIUM_CONNECTOR_MAX_QUEUE_SIZE
+    value: '1000'
+  - name: DEBEZIUM_CONNECTOR_POLL_INTERVAL_MS
+    value: '100'
+  - name: HBI_DB_SSL_ROOT_CERT
+    value: /opt/kafka/external-configuration/rds-client-ca/rds-cacert
+  - name: HBI_DB_SSL_MODE
+    value: verify-full
+  - name: LOG_LEVEL
+    value: info
+  - name: KAFKA_TOPIC_RETENTION_BYTES
+    value: '256000000'
+  - name: FULL_VALIDATION_NUM_THREADS
+    value: '10'
+  - name: FULL_VALIDATION_CHUNK_SIZE
+    value: '500'
+  - name: FULL_VALIDATION_ENABLED
+    value: 'false'
+  - name: MANAGER_POD_CPU_REQUESTS
+    value: 250m
+  - name: MANAGER_POD_MEM_REQUESTS
+    value: 512Mi
+  - name: MANAGER_POD_CPU_LIMIT
+    value: '4'
+  - name: MANAGER_POD_MEM_LIMIT
+    value: 8Gi
+  - |-
+    {
+      "settings": {
+        "index": {
+          "number_of_shards": "{{.ElasticSearchIndexShards}}",
+          "number_of_replicas": "{{.ElasticSearchIndexReplicas}}",
+          "default_pipeline": "{{.ElasticSearchPipeline}}",
+          "max_result_window": 50000
+        },
+        "analysis": {
+          "normalizer": {
+            "case_insensitive": {
+              "filter": "lowercase"
+            }
+          }
+        }
+      },
+      "mappings": {
+        "dynamic": false,
+        "properties": {
+          "ingest_timestamp": {
+            "type": "date"
+          },
+          "id": {
+            "type": "keyword"
+          },
+          "account": {
+            "type": "keyword"
+          },
+          "display_name": {
+            "type": "keyword",
+            "fields": {
+              "lowercase": {
+                "type": "keyword",
+                "normalizer": "case_insensitive"
               }
             }
           },
-          "mappings": {
-            "dynamic": false,
+          "created_on": {
+            "type": "date_nanos"
+          },
+          "modified_on": {
+            "type": "date_nanos"
+          },
+          "stale_timestamp": {
+            "type": "date_nanos"
+          },
+          "ansible_host": {
+            "type": "keyword"
+          },
+          "canonical_facts": {
+            "type": "object",
             "properties": {
-              "ingest_timestamp": {"type": "date"},
-              "id": { "type": "keyword" },
-              "account": { "type": "keyword" },
-              "display_name": {
+              "fqdn": {
                 "type": "keyword",
                 "fields": {
                   "lowercase": {
@@ -188,91 +209,266 @@ parameters:
                   }
                 }
               },
-              "created_on": { "type": "date_nanos" },
-              "modified_on": { "type": "date_nanos" },
-              "stale_timestamp": { "type": "date_nanos" },
-              "ansible_host": { "type": "keyword" },
-              "canonical_facts": {
-                "type": "object",
-                "properties": {
-                  "fqdn": {
-                    "type": "keyword",
-                    "fields": {
-                      "lowercase": {
-                        "type": "keyword",
-                        "normalizer": "case_insensitive"
-                      }
-                    }
-                  },
-                  "insights_id": { "type": "keyword"},
-                  "satellite_id": { "type": "keyword"},
-                  "provider_type": { "type": "keyword"},
-                  "provider_id": { "type": "keyword"}
-                }
-              },
-              "system_profile_facts": {
-                "type": "object",
-                "properties": {
-                  "arch": { "type": "keyword" },
-                  "os_release": { "type": "keyword" },
-                  "os_kernel_version": { "type": "keyword"},
-                  "infrastructure_type": { "type": "keyword" },
-                  "infrastructure_vendor": { "type": "keyword" },
-                  "sap_system": { "type": "boolean" },
-                  "sap_sids": { "type": "keyword" },
-                  "owner_id": { "type": "keyword"},
-                  "insights_client_version": { "type": "keyword" },
-                  "rhc_client_id": { "type": "keyword" },
-                  "is_marketplace": { "type": "boolean" },
-                  "operating_system": {
-                    "type": "object",
-                    "properties": {
-                      "major": {"type": "byte"},
-                      "minor": {"type": "byte"},
-                      "name": {"type": "keyword"}
-                    }
-                  },
-                  "ansible": {
-                    "type": "object",
-                    "properties": {
-                      "controller_version": {"type": "keyword"},
-                      "hub_version": {"type": "keyword"},
-                      "catalog_worker_version": {"type": "keyword"},
-                      "sso_version": {"type": "keyword"}
-                    }
-                  },
-                  "host_type": { "type": "keyword" }
-                }
-              },
-              "tags_structured": {
-                "type": "nested",
-                "properties": {
-                  "namespace": {
-                    "type": "keyword",
-                    "null_value": "$$_XJOIN_SEARCH_NULL_VALUE"
-                  },
-                  "key": { "type": "keyword" },
-                  "value": {
-                    "type": "keyword",
-                    "null_value": "$$_XJOIN_SEARCH_NULL_VALUE"
-                  }
-                }
-              },
-              "tags_string": {
+              "insights_id": {
                 "type": "keyword"
               },
-              "tags_search": {
+              "satellite_id": {
+                "type": "keyword"
+              },
+              "provider_type": {
+                "type": "keyword"
+              },
+              "provider_id": {
                 "type": "keyword"
               }
             }
-          }}
-
+          },
+          "system_profile_facts": {
+            "type": "object",
+            "properties": {
+              "owner_id": {
+                "type": "keyword"
+              },
+              "rhc_client_id": {
+                "type": "keyword"
+              },
+              "rhc_config_state": {
+                "type": "keyword"
+              },
+              "cpu_model": {
+                "type": "keyword"
+              },
+              "number_of_cpus": {
+                "type": "integer"
+              },
+              "number_of_sockets": {
+                "type": "integer"
+              },
+              "cores_per_socket": {
+                "type": "integer"
+              },
+              "system_memory_bytes": {
+                "type": "integer"
+              },
+              "infrastructure_type": {
+                "type": "keyword"
+              },
+              "infrastructure_vendor": {
+                "type": "keyword"
+              },
+              "network_interfaces": {
+                "type": "nested",
+                "include_in_parent": true
+              },
+              "disk_devices": {
+                "type": "nested",
+                "include_in_parent": true
+              },
+              "bios_vendor": {
+                "type": "keyword"
+              },
+              "bios_version": {
+                "type": "keyword"
+              },
+              "cpu_flags": {
+                "type": "keyword",
+                "include_in_parent": true
+              },
+              "operating_system": {
+                "type": "object",
+                "properties": {
+                  "major": {
+                    "type": "integer"
+                  },
+                  "minor": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "os_release": {
+                "type": "keyword"
+              },
+              "os_kernel_version": {
+                "type": "keyword"
+              },
+              "arch": {
+                "type": "keyword"
+              },
+              "kernel_modules": {
+                "type": "keyword",
+                "include_in_parent": true
+              },
+              "last_boot_time": {
+                "type": "keyword"
+              },
+              "subscription_status": {
+                "type": "keyword"
+              },
+              "subscription_auto_attach": {
+                "type": "keyword"
+              },
+              "katello_agent_running": {
+                "type": "boolean"
+              },
+              "satellite_managed": {
+                "type": "boolean"
+              },
+              "cloud_provider": {
+                "type": "keyword"
+              },
+              "dnf_modules": {
+                "type": "nested",
+                "include_in_parent": true
+              },
+              "installed_products": {
+                "type": "nested",
+                "include_in_parent": true
+              },
+              "insights_client_version": {
+                "type": "keyword"
+              },
+              "insights_egg_version": {
+                "type": "keyword"
+              },
+              "captured_date": {
+                "type": "keyword"
+              },
+              "installed_packages": {
+                "type": "keyword",
+                "include_in_parent": true
+              },
+              "gpg_pubkeys": {
+                "type": "keyword",
+                "include_in_parent": true
+              },
+              "installed_services": {
+                "type": "keyword",
+                "include_in_parent": true
+              },
+              "enabled_services": {
+                "type": "keyword",
+                "include_in_parent": true
+              },
+              "sap_system": {
+                "type": "boolean"
+              },
+              "sap_sids": {
+                "type": "keyword",
+                "include_in_parent": true
+              },
+              "sap_instance_number": {
+                "type": "keyword"
+              },
+              "sap_version": {
+                "type": "keyword"
+              },
+              "tuned_profile": {
+                "type": "keyword"
+              },
+              "selinux_current_mode": {
+                "type": "keyword"
+              },
+              "selinux_config_file": {
+                "type": "keyword"
+              },
+              "is_marketplace": {
+                "type": "boolean"
+              },
+              "host_type": {
+                "type": "keyword"
+              },
+              "greenboot_status": {
+                "type": "keyword"
+              },
+              "greenboot_fallback_detected": {
+                "type": "boolean"
+              },
+              "rpm_ostree_deployments": {
+                "type": "nested",
+                "include_in_parent": true
+              },
+              "rhsm": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "system_purpose": {
+                "type": "object",
+                "properties": {
+                  "usage": {
+                    "type": "keyword"
+                  },
+                  "role": {
+                    "type": "keyword"
+                  },
+                  "sla": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "ansible": {
+                "type": "object",
+                "properties": {
+                  "controller_version": {
+                    "type": "keyword"
+                  },
+                  "hub_version": {
+                    "type": "keyword"
+                  },
+                  "catalog_worker_version": {
+                    "type": "keyword"
+                  },
+                  "sso_version": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "mssql": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          },
+          "tags_structured": {
+            "type": "nested",
+            "properties": {
+              "namespace": {
+                "type": "keyword",
+                "null_value": "$$_XJOIN_SEARCH_NULL_VALUE"
+              },
+              "key": {
+                "type": "keyword"
+              },
+              "value": {
+                "type": "keyword",
+                "null_value": "$$_XJOIN_SEARCH_NULL_VALUE"
+              }
+            }
+          },
+          "tags_string": {
+            "type": "keyword"
+          },
+          "tags_search": {
+            "type": "keyword"
+          }
+        }
+      }
+    }
 objects:
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
     metadata:
       name: xjoin-operator-group
-
   - apiVersion: operators.coreos.com/v1alpha1
     kind: CatalogSource
     metadata:
@@ -280,7 +476,6 @@ objects:
     spec:
       sourceType: grpc
       image: ${IMAGE}:${IMAGE_TAG}
-
   - apiVersion: operators.coreos.com/v1alpha1
     kind: Subscription
     metadata:
@@ -301,7 +496,7 @@ objects:
             name: rds-client-ca
         env:
           - name: LOG_LEVEL
-            value: "${LOG_LEVEL}"
+            value: ${LOG_LEVEL}
         resources:
           limits:
             cpu: ${MANAGER_POD_CPU_LIMIT}
@@ -309,7 +504,6 @@ objects:
           requests:
             cpu: ${MANAGER_POD_CPU_REQUESTS}
             memory: ${MANAGER_POD_MEM_REQUESTS}
-
   - apiVersion: v1
     kind: ConfigMap
     metadata:
@@ -349,9 +543,7 @@ objects:
       full.validation.enabled: ${FULL_VALIDATION_ENABLED}
       validation.period.minutes: ${VALIDATION_PERIOD_MINUTES}
       validation.lag.compensation.seconds: ${VALIDATION_LAG_COMPENSATION_SECONDS}
-
-  # TODO: move this into the bundle itself
-  # depends on https://github.com/operator-framework/operator-sdk/pull/4137
+      elasticsearch.index.template: ${ELASTICSEARCH_INDEX_TEMPLATE}
   - apiVersion: v1
     kind: Service
     metadata:

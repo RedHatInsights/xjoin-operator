@@ -22,6 +22,30 @@ function remove_blocked_fields(schema) {
 }
 
 
+function getESIndexTemplate(parameters) {
+    let ESIndexTemplate = null;
+
+    parameters.forEach(parameter => {
+        if (parameter.name == "ELASTICSEARCH_INDEX_TEMPLATE") {
+            ESIndexTemplate = parameter.value;
+        }
+    });
+
+    return JSON.parse(ESIndexTemplate);
+}
+
+function setESIndexTemplate(parameters, new_template) {
+    new_template = JSON.stringify(new_template, null, 2);
+    let i = 0;
+
+    parameters.forEach(parameter => {
+        if (parameter.name == "ELASTICSEARCH_INDEX_TEMPLATE") {
+            parameters[i] = new_template;
+        }
+        i++;
+    });
+}
+
 try {
     var myArgs = process.argv.slice(2);
     schemaPath = myArgs[0];
@@ -33,14 +57,14 @@ try {
     }
 
     let schemaFileContent = fs.readFileSync(schemaPath, 'utf8');
-    let schemaData = yaml.safeLoad(schemaFileContent);
+    let schemaData = yaml.load(schemaFileContent);
     let schema = schemaData["$defs"]["SystemProfile"]
 
-    let mappingFilePath = '../deploy/operator.yml'
-    let mappingFileContent = fs.readFileSync(mappingFilePath, 'utf8');
-    let mappingData = yaml.safeLoad(mappingFileContent);
+    let deploymentFilePath = './deploy/operator.yml'
+    let deploymentFileContent = fs.readFileSync(deploymentFilePath, 'utf8');
+    let deploymentFileData = yaml.load(deploymentFileContent);
 
-    let template = JSON.parse(mappingData["objects"][3]["data"]["elasticsearch.index.template"]);
+    let ESIndexTemplate = getESIndexTemplate(deploymentFileData["parameters"])
 
     schema = remove_blocked_fields(schema);
     new_mapping = buildMappingsFor("system_profile_facts", schema);
@@ -48,10 +72,13 @@ try {
     console.log("new_mapping")
     console.log(new_mapping["mappings"]["system_profile_facts"])
 
-    template["mappings"]["properties"]["system_profile_facts"]["properties"] = new_mapping["mappings"]["system_profile_facts"]["properties"];
-    mappingData["objects"][3]["data"]["elasticsearch.index.template"] = JSON.stringify(template, null, 4);
+    console.log("es template")
+    console.log(ESIndexTemplate)
+
+    ESIndexTemplate["mappings"]["properties"]["system_profile_facts"]["properties"] = new_mapping["mappings"]["system_profile_facts"]["properties"];
+    setESIndexTemplate(deploymentFileData["parameters"], ESIndexTemplate)
     
-    fs.writeFileSync(mappingFilePath, yaml.dump(mappingData,{"quotingType": "d"} ));
+    fs.writeFileSync(deploymentFilePath, yaml.dump(deploymentFileData,{"quotingType": "d"} ));
 
 } catch (e) {
     console.log(e);
