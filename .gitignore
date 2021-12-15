@@ -31,7 +31,7 @@ bundle/manifests/xjoin-operator-xjoin-operator-metrics-reader_rbac.authorization
 bundle/manifests/xjoin-operator-controller-manager-metrics-service_v1_service.yaml
 config/manager/kustomization.yaml
 
-# Node JS things for the updater script
+# Node JS stuff for the updater script
 node_modules
 build
 npm-debug.log
