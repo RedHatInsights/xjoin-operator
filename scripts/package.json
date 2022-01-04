@@ -1,0 +1,15 @@
+{
+  "name": "scripts",
+  "version": "1.0.0",
+  "description": "scripts for xjoin operator",
+  "main": "update_mapping.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ryan Felton",
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "json-schema-to-es-mapping": "git+https://github.com/RedHatInsights/json-schema-to-es-mapping.git#master"
+  }
+}
