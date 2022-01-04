@@ -258,12 +258,10 @@ parameters:
                   "type": "keyword"
                 },
                 "network_interfaces": {
-                  "type": "nested",
-                  "include_in_parent": true
+                  "type": "nested"
                 },
                 "disk_devices": {
-                  "type": "nested",
-                  "include_in_parent": true
+                  "type": "nested"
                 },
                 "bios_vendor": {
                   "type": "keyword"
@@ -272,8 +270,7 @@ parameters:
                   "type": "keyword"
                 },
                 "cpu_flags": {
-                  "type": "keyword",
-                  "include_in_parent": true
+                  "type": "keyword"
                 },
                 "operating_system": {
                   "type": "object",
@@ -299,8 +296,7 @@ parameters:
                   "type": "keyword"
                 },
                 "kernel_modules": {
-                  "type": "keyword",
-                  "include_in_parent": true
+                  "type": "keyword"
                 },
                 "last_boot_time": {
                   "type": "keyword"
@@ -321,12 +317,10 @@ parameters:
                   "type": "keyword"
                 },
                 "dnf_modules": {
-                  "type": "nested",
-                  "include_in_parent": true
+                  "type": "nested"
                 },
                 "installed_products": {
-                  "type": "nested",
-                  "include_in_parent": true
+                  "type": "nested"
                 },
                 "insights_client_version": {
                   "type": "keyword"
@@ -338,27 +332,22 @@ parameters:
                   "type": "keyword"
                 },
                 "installed_packages": {
-                  "type": "keyword",
-                  "include_in_parent": true
+                  "type": "keyword"
                 },
                 "gpg_pubkeys": {
-                  "type": "keyword",
-                  "include_in_parent": true
+                  "type": "keyword"
                 },
                 "installed_services": {
-                  "type": "keyword",
-                  "include_in_parent": true
+                  "type": "keyword"
                 },
                 "enabled_services": {
-                  "type": "keyword",
-                  "include_in_parent": true
+                  "type": "keyword"
                 },
                 "sap_system": {
                   "type": "boolean"
                 },
                 "sap_sids": {
-                  "type": "keyword",
-                  "include_in_parent": true
+                  "type": "keyword"
                 },
                 "sap_instance_number": {
                   "type": "keyword"
@@ -388,8 +377,7 @@ parameters:
                   "type": "boolean"
                 },
                 "rpm_ostree_deployments": {
-                  "type": "nested",
-                  "include_in_parent": true
+                  "type": "nested"
                 },
                 "rhsm": {
                   "type": "object",

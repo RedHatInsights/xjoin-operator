@@ -10,6 +10,6 @@
   "license": "GPL-3.0-or-later",
   "dependencies": {
     "js-yaml": "^4.1.0",
-    "json-schema-to-es-mapping": "git+https://github.com/ryandillinfelton/json-schema-to-es-mapping.git"
+    "json-schema-to-es-mapping": "git+https://github.com/RedHatInsights/json-schema-to-es-mapping.git#master"
   }
 }
