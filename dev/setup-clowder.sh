@@ -106,3 +106,8 @@ kubectl wait --for=condition=Ready --selector="name=apicurio-registry-operator" 
 kubectl apply -f dev/apicurio.yaml -n test
 wait_for_pod_to_be_created example-apicurioregistry-kafkasql
 kubectl wait --for=condition=Ready --selector="app=example-apicurioregistry-kafkasql" pods -n test
+
+# XJoin API Gateway
+print_start_message "Setting up xjoin-api-gateway"
+bonfire deploy xjoin-api-gateway -n test
+kubectl wait --for=condition=ContainersReady=True --selector="app=xjoin-api-gateway" pods -n test

@@ -138,7 +138,7 @@ func BuildCommonParameters() CommonParameters {
 			Type:          reflect.String,
 			ConfigMapName: "xjoin-generic",
 			ConfigMapKey:  "schemaregistry.port",
-			DefaultValue:  "8081",
+			DefaultValue:  "9080",
 		},
 		AvroSchema: Parameter{
 			Type:         reflect.String,
