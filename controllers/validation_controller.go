@@ -9,12 +9,14 @@ import (
 	. "github.com/redhatinsights/xjoin-operator/controllers/pipeline"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"time"
 )
 
 type ValidationReconciler struct {
@@ -135,7 +137,8 @@ func (r *ValidationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(eventFilterPredicate()).
 		WithLogger(mgr.GetLogger()).
 		WithOptions(controller.Options{
-			Log: mgr.GetLogger(),
+			Log:         mgr.GetLogger(),
+			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		Complete(r)
 }
