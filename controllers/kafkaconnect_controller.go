@@ -75,7 +75,7 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 // Reconcile
 // This reconciles Kafka Connect is running and each active connector is running
 func (r *KafkaConnectReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
-	reqLogger := logger.NewLogger("controller_validation", "Pipeline", request.Name, "Namespace", request.Namespace)
+	reqLogger := logger.NewLogger("controller_kafkaconnect", "Pipeline", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling Kafka Connect")
 
 	err := r.Setup(reqLogger, request, ctx)
@@ -85,6 +85,7 @@ func (r *KafkaConnectReconciler) Reconcile(ctx context.Context, request ctrl.Req
 
 	//skip kafka connect reconciliation in ephemeral namespaces
 	if err != nil && r.parameters.Ephemeral.Bool() {
+		reqLogger.Info("Skipping kafkaconnect reconciliation")
 		return reconcile.Result{}, nil
 	}
 
