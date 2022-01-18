@@ -83,6 +83,11 @@ func (r *KafkaConnectReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		return reconcile.Result{}, err
 	}
 
+	//skip kafka connect reconciliation in ephemeral namespaces
+	if err != nil && !r.parameters.Ephemeral.Bool() {
+		return reconcile.Result{}, nil
+	}
+
 	err = r.reconcileKafkaConnect()
 	if err != nil {
 		reqLogger.Error(err, "Error while reconciling Kafka Connect")
