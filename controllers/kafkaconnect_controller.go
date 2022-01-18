@@ -84,7 +84,7 @@ func (r *KafkaConnectReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	}
 
 	//skip kafka connect reconciliation in ephemeral namespaces
-	if err != nil && r.parameters.Ephemeral.Bool() {
+	if r.parameters.Ephemeral.Bool() {
 		reqLogger.Info("Skipping kafkaconnect reconciliation")
 		return reconcile.Result{}, nil
 	}
