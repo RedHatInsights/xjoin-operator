@@ -42,9 +42,11 @@ fi
 rm -r /tmp/kubesetup
 cd "$CURRENT_DIR" || exit 1
 
+kubectl set env deployment/strimzi-cluster-operator -n strimzi STRIMZI_IMAGE_PULL_SECRETS=cloudservices-pull-secret
+
 # clowder CRDs
 print_start_message "Installing Clowder CRDs"
-kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/v0.20.0/clowder-manifest-v0.20.0.yaml --validate=false
+kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/v0.21.0/clowder-manifest-v0.21.0.yaml --validate=false
 
 # project and secrets
 print_start_message "Setting up pull secrets"
@@ -77,7 +79,3 @@ psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE DATABASE t
 
 print_start_message "Setting up elasticsearch password"
 dev/setup.sh --elasticsearch --project test
-
-# Confluent schema registry
-print_start_message "Installing Confluent Schema Registry"
-kubectl apply -f dev/generic.refactor/confluent-schema-registry.yaml -n test
