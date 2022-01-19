@@ -132,13 +132,13 @@ func BuildCommonParameters() CommonParameters {
 			Type:          reflect.String,
 			ConfigMapName: "xjoin-generic",
 			ConfigMapKey:  "schemaregistry.host",
-			DefaultValue:  "confluent-schema-registry.test.svc",
+			DefaultValue:  "example-apicurioregistry-kafkasql-service.test.svc",
 		},
 		SchemaRegistryPort: Parameter{
 			Type:          reflect.String,
 			ConfigMapName: "xjoin-generic",
 			ConfigMapKey:  "schemaregistry.port",
-			DefaultValue:  "9080",
+			DefaultValue:  "8080",
 		},
 		AvroSchema: Parameter{
 			Type:         reflect.String,

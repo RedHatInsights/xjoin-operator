@@ -77,7 +77,7 @@ func (xc XJoinCore) Create() (err error) {
 							},
 							{
 								"name":  "SCHEMA_REGISTRY_URL",
-								"value": xc.SchemaRegistryURL,
+								"value": xc.SchemaRegistryURL + "/apis/registry/v2",
 							},
 							{
 								"name":  "KAFKA_BOOTSTRAP",

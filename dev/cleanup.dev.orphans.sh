@@ -40,19 +40,32 @@ kubectl -n test get KafkaTopic -o custom-columns=name:metadata.name | grep datas
 done
 
 echo "Deleting avro subjects.."
-curl localhost:8081/subjects | jq -c '.[]' | while read i; do
-    i="${i:1}"
-    i="${i::-1}"
-    echo "$i"
-    curl -X DELETE localhost:8081/subjects/$i
-done
-
-# do this twice in case a referenced schema is deleted too early
-curl localhost:8081/subjects | jq -c '.[]' | while read i; do
-    i="${i:1}"
-    i="${i::-1}"
-    echo "$i"
-    curl -X DELETE localhost:8081/subjects/$i
+artifacts=$(curl "http://localhost:1080/apis/registry/v2/search/artifacts?limit=100" | jq '.artifacts|map(.id)|@sh')
+artifacts=($artifacts)
+total=${#artifacts[@]}
+for i in "${!artifacts[@]}"; do
+    if [ "$total" -eq 1 ]; then
+      artifact=${artifacts[$i]}
+      artifact="${artifact:2}"
+      artifact="${artifact::-2}"
+    elif [ "$i" -eq 0 ]; then
+      echo "At the start"
+      artifact=${artifacts[$i]}
+      artifact="${artifact:2}"
+      artifact="${artifact::-1}"
+    elif [ "$i" -eq "$total-1" ]; then
+      echo "At the end"
+      artifact=${artifacts[$i]}
+      artifact="${artifact:1}"
+      artifact="${artifact::-2}"
+    else
+      echo "In the middle"
+      artifact=${artifacts[$i]}
+      artifact="${artifact:1}"
+      artifact="${artifact::-1}"
+    fi
+    echo "$artifact"
+    curl -X DELETE http://localhost:1080/apis/registry/v1/artifacts/$artifact
 done
 
 echo "Deleting replication slots"
@@ -69,3 +82,6 @@ curl -u "elastic:$ES_PASSWORD" http://localhost:9200/_cat/indices\?format\=json 
   index="${index::-1}"
   curl -u "elastic:$ES_PASSWORD" -X DELETE "http://localhost:9200/$index"
 done
+
+echo "Deleting subgraph pods"
+kubectl delete deployments --selector='xjoin.index=xjoin-api-subgraph-xjoinindexpipeline-test'

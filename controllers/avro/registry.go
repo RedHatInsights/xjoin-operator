@@ -14,18 +14,23 @@ type SchemaRegistryConnectionParams struct {
 }
 
 type SchemaRegistry struct {
-	Client *srclient.SchemaRegistryClient
-	URL    string
+	Client          *srclient.SchemaRegistryClient
+	confluentApiUrl string
+	v1ApiUrl        string
+	v2ApiUrl        string
 }
 
 func NewSchemaRegistry(connectionParams SchemaRegistryConnectionParams) *SchemaRegistry {
+	baseUrl := fmt.Sprintf("%s://%s:%s", connectionParams.Protocol, connectionParams.Hostname, "1080")
 	return &SchemaRegistry{
-		URL: fmt.Sprintf("%s://%s:%s", connectionParams.Protocol, connectionParams.Hostname, connectionParams.Port),
+		confluentApiUrl: baseUrl + "/apis/ccompat/v6",
+		v1ApiUrl:        baseUrl + "/apis/registry/v1",
+		v2ApiUrl:        baseUrl + "/apis/registry/v2",
 	}
 }
 
 func (sr *SchemaRegistry) Init() {
-	sr.Client = srclient.CreateSchemaRegistryClient(sr.URL)
+	sr.Client = srclient.CreateSchemaRegistryClient(sr.confluentApiUrl)
 }
 
 func (sr *SchemaRegistry) RegisterSchema(name string, schemaDefinition string, references []srclient.Reference) (id int, err error) {
@@ -33,6 +38,7 @@ func (sr *SchemaRegistry) RegisterSchema(name string, schemaDefinition string, r
 	if err != nil {
 		return id, errors.Wrap(err, 0)
 	}
+
 	return schema.ID(), nil
 }
 

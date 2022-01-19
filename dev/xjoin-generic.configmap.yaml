@@ -23,12 +23,13 @@ data:
       "max.queue.size": {{.DebeziumQueueSize}},
       "max.batch.size": {{.DebeziumMaxBatchSize}},
       "poll.interval.ms": {{.DebeziumPollIntervalMS}},
-      "key.converter": "io.confluent.connect.avro.AvroConverter",
-      "key.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}",
-      "value.converter": "io.confluent.connect.avro.AvroConverter",
-      "value.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}",
-      "value.converter.auto.register.schemas": "false",
-      "value.converter.use.latest.version": "true",
+      "key.converter": "io.apicurio.registry.utils.converter.AvroConverter",
+      "key.converter.apicurio.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}/apis/registry/v2",
+      "key.converter.apicurio.registry.auto-register": "true",
+      "value.converter": "io.apicurio.registry.utils.converter.AvroConverter",
+      "value.converter.apicurio.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}/apis/registry/v2",
+      "value.converter.apicurio.registry.auto-register": "false",
+      "value.converter.apicurio.registry.find-latest": "true",
       "value.converter.enhanced.avro.schema.support": "true",
       "transforms.reroute.type": "io.debezium.transforms.ByLogicalTableRouter",
       "transforms.reroute.topic.regex": ".*",
@@ -59,11 +60,11 @@ data:
       "max.buffered.records": {{.ElasticSearchMaxBufferedRecords}},
       "linger.ms": {{.ElasticSearchLingerMS}},
       "key.converter": "org.apache.kafka.connect.storage.StringConverter",
-      "value.converter": "io.confluent.connect.avro.AvroConverter",
-      "value.converter.auto.register.schemas": "false",
-      "value.converter.use.latest.version": "true",
-      "value.converter.enhanced.avro.schema.support": "true",
-      "value.converter.schema.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}"
+      "value.converter": "io.apicurio.registry.utils.converter.AvroConverter",
+      "value.converter.apicurio.registry.auto-register": "false",
+      "value.converter.apicurio.registry.find-latest": "true",
+      "value.converter.apicurio.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}/apis/registry/v2",
+      "value.converter.enhanced.avro.schema.support": "true"
     }
   elasticsearch.index.template: >
     {

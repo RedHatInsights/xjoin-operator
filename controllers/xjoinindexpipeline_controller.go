@@ -153,13 +153,14 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		KafkaClient: kafkaClient,
 	}
 
-	genericElasticsearch, err := elasticsearch.NewGenericElasticsearch(elasticsearch.GenericElasticSearchParameters{
+	elasticSearchConnection := elasticsearch.GenericElasticSearchParameters{
 		Url:        p.ElasticSearchURL.String(),
 		Username:   p.ElasticSearchUsername.String(),
 		Password:   p.ElasticSearchPassword.String(),
 		Parameters: parametersMap,
 		Context:    i.Context,
-	})
+	}
+	genericElasticsearch, err := elasticsearch.NewGenericElasticsearch(elasticSearchConnection)
 	if err != nil {
 		return result, errors.Wrap(err, 0)
 	}
@@ -191,11 +192,13 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		GenericElasticsearch: *genericElasticsearch,
 		JsonFields:           indexAvroSchema.JSONFields,
 	})
-	componentManager.AddComponent(&components.ElasticsearchIndex{
+
+	elasticSearchIndexComponent := &components.ElasticsearchIndex{
 		GenericElasticsearch: *genericElasticsearch,
 		Template:             p.ElasticSearchIndexTemplate.String(),
 		Properties:           indexAvroSchema.ESProperties,
-	})
+	}
+	componentManager.AddComponent(elasticSearchIndexComponent)
 	componentManager.AddComponent(kafkaTopic)
 	componentManager.AddComponent(&components.ElasticsearchConnector{
 		Template:           p.ElasticSearchConnectorTemplate.String(),
@@ -216,6 +219,17 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		SchemaRegistryURL: p.SchemaRegistryProtocol.String() + "://" + p.SchemaRegistryHost.String() + ":" + p.SchemaRegistryPort.String(),
 		Namespace:         i.Instance.GetNamespace(),
 		Schema:            indexAvroSchema.AvroSchemaString,
+	})
+	componentManager.AddComponent(&components.XJoinAPISubGraph{
+		Client:                i.Client,
+		Context:               i.Context,
+		Namespace:             i.Instance.GetNamespace(),
+		AvroSchema:            indexAvroSchema.AvroSchemaString,
+		Registry:              registry,
+		ElasticSearchURL:      p.ElasticSearchURL.String(),
+		ElasticSearchUsername: p.ElasticSearchUsername.String(),
+		ElasticSearchPassword: p.ElasticSearchPassword.String(),
+		ElasticSearchIndex:    elasticSearchIndexComponent.Name(),
 	})
 
 	if instance.GetDeletionTimestamp() != nil {

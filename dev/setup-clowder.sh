@@ -98,9 +98,10 @@ kubectl apply -f dev/generic.refactor/confluent-schema-registry.yaml -n test
 
 # APICurio operator
 print_start_message "Installing Apicurio"
-kubectl create -f https://operatorhub.io/install/apicurio-registry.yaml
+kubectl create namespace apicurio-registry-operator-namespace
+curl -sSL "https://raw.githubusercontent.com/Apicurio/apicurio-registry-operator/v1.0.0/docs/resources/install.yaml" | sed "s/apicurio-registry-operator-namespace/test/g" | kubectl apply -f - -n test
 wait_for_pod_to_be_created apicurio-registry-operator
-kubectl wait --for=condition=Ready --selector="name=apicurio-registry-operator" pods -n operators
+kubectl wait --for=condition=Ready --selector="name=apicurio-registry-operator" pods -n test
 
 # APICurio resource
 kubectl apply -f dev/apicurio.yaml -n test
