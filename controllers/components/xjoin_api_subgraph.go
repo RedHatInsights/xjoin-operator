@@ -70,6 +70,13 @@ func (x XJoinAPISubGraph) Create() (err error) {
 				},
 				"spec": map[string]interface{}{
 					"containers": []map[string]interface{}{{
+						"ports": []map[string]interface{}{
+							{
+								"containerPort": "8000",
+								"name":          "web",
+								"protocol":      "TCP",
+							},
+						},
 						"env": []map[string]interface{}{
 							{
 								"name":  "AVRO_SCHEMA",
