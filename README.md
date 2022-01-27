@@ -128,7 +128,7 @@ docker login -u=$QUAY_USERNAME -p $QUAY_PASSWORD
 ./dev/install.operator.with.operator.sdk.sh
 ```
 
-`./dev/uninstall.operator.with.operator.sdk.sh` to uninstall.
+`./dev/uninstall.operator.with.operator.sdk.sh ` to uninstall.
 
 ### Running tests
 
