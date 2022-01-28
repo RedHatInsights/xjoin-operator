@@ -205,18 +205,18 @@ spec:
                 type: string
               activeVersionIsValid:
                 type: boolean
-              dataSourceVersion:
-                type: string
               refreshingVersion:
                 type: string
               refreshingVersionIsValid:
                 type: boolean
+              specHash:
+                type: string
             required:
             - activeVersion
             - activeVersionIsValid
-            - dataSourceVersion
             - refreshingVersion
             - refreshingVersionIsValid
+            - specHash
             type: object
         type: object
     served: true

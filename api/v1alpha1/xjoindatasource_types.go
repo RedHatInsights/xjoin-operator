@@ -22,7 +22,7 @@ type XJoinDataSourceStatus struct {
 	ActiveVersionIsValid     bool   `json:"activeVersionIsValid"`
 	RefreshingVersion        string `json:"refreshingVersion"`
 	RefreshingVersionIsValid bool   `json:"refreshingVersionIsValid"`
-	DataSourceVersion        string `json:"dataSourceVersion"`
+	SpecHash                 string `json:"specHash"`
 }
 
 // +kubebuilder:object:root=true
@@ -35,6 +35,14 @@ type XJoinDataSource struct {
 
 	Spec   XJoinDataSourceSpec   `json:"spec,omitempty"`
 	Status XJoinDataSourceStatus `json:"status,omitempty"`
+}
+
+func (in *XJoinDataSource) GetSpec() interface{} {
+	return in.Spec
+}
+
+func (in *XJoinDataSource) GetSpecHash() string {
+	return in.Status.SpecHash
 }
 
 func (in *XJoinDataSource) GetActiveVersion() string {

@@ -127,7 +127,7 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 		}
 	}
 
-	//err = i.Validate()
+	err = i.Validate()
 	//if err != nil {
 	//	return result, errors.Wrap(err, 0)
 	//}

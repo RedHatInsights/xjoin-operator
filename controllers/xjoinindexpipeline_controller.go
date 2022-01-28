@@ -17,13 +17,16 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
 	"time"
 )
 
@@ -259,6 +262,46 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	err = componentManager.CreateAll()
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	//build list of datasources
+	dataSources := make(map[string]string)
+	for _, ref := range indexAvroSchema.References {
+		//get each datasource name and resource version
+		name := strings.Split(ref.Name, "xjoindatasourcepipeline.")[1]
+		name = strings.Split(name, ".Value")[0]
+		datasourceNamespacedName := types.NamespacedName{
+			Name:      name,
+			Namespace: i.Instance.GetNamespace(),
+		}
+		datasource, err := utils.FetchXJoinDataSource(i.Client, datasourceNamespacedName, ctx)
+		if err != nil {
+			return reconcile.Result{}, errors.Wrap(err, 0)
+		}
+		dataSources[name] = datasource.ResourceVersion
+	}
+
+	//update parent status
+	indexNamespacedName := types.NamespacedName{
+		Name:      instance.OwnerReferences[0].Name,
+		Namespace: i.Instance.GetNamespace(),
+	}
+	xjoinIndex, err := utils.FetchXJoinIndex(i.Client, indexNamespacedName, ctx)
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	if !reflect.DeepEqual(xjoinIndex.Status.DataSources, dataSources) {
+		xjoinIndex.Status.DataSources = dataSources
+
+		if err := i.Client.Status().Update(ctx, xjoinIndex); err != nil {
+			if k8errors.IsConflict(err) {
+				i.Log.Error(err, "Status conflict")
+				return reconcile.Result{}, err
+			}
+
+			return reconcile.Result{}, err
+		}
 	}
 
 	return reconcile.Result{RequeueAfter: time.Second * 30}, nil

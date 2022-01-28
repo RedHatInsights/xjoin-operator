@@ -71,8 +71,14 @@ done
 echo "Deleting replication slots"
 HBI_USER=$(kubectl get secret/host-inventory-db -o custom-columns=:data.username | base64 -d)
 HBI_NAME=$(kubectl get secret/host-inventory-db -o custom-columns=:data.name | base64 -d)
-psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -t -c "SELECT slot_name from pg_catalog.pg_replication_slots" | while read -r slot ; do
-  psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "SELECT pg_drop_replication_slot('$slot');"
+psql -U "$HBI_USER" -h localhost -p 5432 -d "$HBI_NAME" -t -c "SELECT slot_name from pg_catalog.pg_replication_slots" | while read -r slot ; do
+  psql -U "$HBI_USER" -h localhost -p 5432 -d "$HBI_NAME" -c "SELECT pg_drop_replication_slot('$slot');"
+done
+
+CATS_USER=$(kubectl get secret/cats-db -o custom-columns=:data.username | base64 -d)
+CATS_NAME=$(kubectl get secret/cats-db -o custom-columns=:data.name | base64 -d)
+psql -U "$CATS_USER" -h localhost -p 5433 -d "$CATS_NAME" -t -c "SELECT slot_name from pg_catalog.pg_replication_slots" | while read -r slot ; do
+  psql -U "$CATS_USER" -h localhost -p 5433 -d "$CATS_NAME" -c "SELECT pg_drop_replication_slot('$slot');"
 done
 
 echo "Deleting ES indexes"
@@ -85,3 +91,4 @@ done
 
 echo "Deleting subgraph pods"
 kubectl delete deployments --selector='xjoin.index=xjoin-api-subgraph-xjoinindexpipeline-test'
+kubectl delete deployments --selector='xjoin.index=xjoin-api-subgraph-xjoinindexpipeline-cats'

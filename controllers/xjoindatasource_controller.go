@@ -105,12 +105,13 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return
 	}
 
+	originalInstance := instance.DeepCopy()
 	i := XJoinDataSourceIteration{
 		Parameters: *p,
 		Iteration: common.Iteration{
 			Context:          ctx,
 			Instance:         instance,
-			OriginalInstance: instance.DeepCopy(),
+			OriginalInstance: originalInstance,
 			Client:           r.Client,
 			Log:              reqLogger,
 		},
@@ -122,9 +123,20 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	dataSourceReconciler := NewReconcileMethods(i)
 	reconciler := common.NewReconciler(dataSourceReconciler, instance, reqLogger)
-	err = reconciler.Reconcile()
+	err = reconciler.Reconcile(false)
 	if err != nil {
 		return result, errors.Wrap(err, 0)
+	}
+
+	instance.Status.SpecHash, err = utils.SpecHash(instance.Spec)
+	if err != nil {
+		return result, errors.Wrap(err, 0)
+	}
+
+	//TODO actually validate
+	if originalInstance.Status.RefreshingVersion != "" {
+		instance.Status.ActiveVersionIsValid = true
+		instance.Status.ActiveVersion = instance.Status.RefreshingVersion
 	}
 
 	return i.UpdateStatusAndRequeue()
