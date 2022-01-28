@@ -205,6 +205,8 @@ spec:
                 type: string
               activeVersionIsValid:
                 type: boolean
+              dataSourceVersion:
+                type: string
               refreshingVersion:
                 type: string
               refreshingVersionIsValid:
@@ -212,6 +214,7 @@ spec:
             required:
             - activeVersion
             - activeVersionIsValid
+            - dataSourceVersion
             - refreshingVersion
             - refreshingVersionIsValid
             type: object

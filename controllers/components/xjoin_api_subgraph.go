@@ -72,7 +72,7 @@ func (x XJoinAPISubGraph) Create() (err error) {
 					"containers": []map[string]interface{}{{
 						"ports": []map[string]interface{}{
 							{
-								"containerPort": "8000",
+								"containerPort": 8000,
 								"name":          "web",
 								"protocol":      "TCP",
 							},

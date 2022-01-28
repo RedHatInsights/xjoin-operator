@@ -5,26 +5,13 @@ import (
 )
 
 type XJoinDataSourceSpec struct {
-	// +optional
-	AvroSchema string `json:"avroSchema,omitempty"`
-
-	// +optional
+	AvroSchema       string                   `json:"avroSchema,omitempty"`
 	DatabaseHostname *StringOrSecretParameter `json:"databaseHostname,omitempty"`
-
-	// +optional
-	DatabasePort *StringOrSecretParameter `json:"databasePort,omitempty"`
-
-	// +optional
+	DatabasePort     *StringOrSecretParameter `json:"databasePort,omitempty"`
 	DatabaseUsername *StringOrSecretParameter `json:"databaseUsername,omitempty"`
-
-	// +optional
 	DatabasePassword *StringOrSecretParameter `json:"databasePassword,omitempty"`
-
-	// +optional
-	DatabaseName *StringOrSecretParameter `json:"databaseName,omitempty"`
-
-	// +optional
-	DatabaseTable *StringOrSecretParameter `json:"databaseTable,omitempty"`
+	DatabaseName     *StringOrSecretParameter `json:"databaseName,omitempty"`
+	DatabaseTable    *StringOrSecretParameter `json:"databaseTable,omitempty"`
 
 	// +optional
 	Pause bool `json:"pause,omitempty"`
@@ -35,6 +22,7 @@ type XJoinDataSourceStatus struct {
 	ActiveVersionIsValid     bool   `json:"activeVersionIsValid"`
 	RefreshingVersion        string `json:"refreshingVersion"`
 	RefreshingVersionIsValid bool   `json:"refreshingVersionIsValid"`
+	DataSourceVersion        string `json:"dataSourceVersion"`
 }
 
 // +kubebuilder:object:root=true

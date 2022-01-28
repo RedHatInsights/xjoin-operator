@@ -1,0 +1,19 @@
+apiVersion: xjoin.cloud.redhat.com/v1alpha1
+kind: XJoinIndex
+metadata:
+  name: cats
+spec:
+  pause: false
+  avroSchema: >
+    {
+      "type": "record",
+      "name": "catsindex",
+      "fields": [{
+        "type": {
+          "type": "xjoindatasourcepipeline.cats.Value",
+          "xjoin.type": "reference"
+        },
+        "name": "cat"
+      }],
+      "xjoin.transformations": []
+    }

@@ -10,7 +10,7 @@ function wait_for_pod_to_be_created() {
   POD_NAME=$1
   # shellcheck disable=SC2034
   for i in {1..120}; do
-    CURIO_OPERATOR_POD=$(kubectl get pods -n operators --selector="name=$POD_NAME" -o name)
+    CURIO_OPERATOR_POD=$(kubectl get pods --selector="name=$POD_NAME" -o name)
     if [ -z "$CURIO_OPERATOR_POD" ]; then
       sleep 1
     else
@@ -58,7 +58,7 @@ kubectl set env deployment/strimzi-cluster-operator -n strimzi STRIMZI_IMAGE_PUL
 
 # clowder CRDs
 print_start_message "Installing Clowder CRDs"
-kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/v0.21.0/clowder-manifest-v0.21.0.yaml --validate=false
+kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/v0.28.0/clowder-manifest-v0.28.0.yaml --validate=false
 
 # project and secrets
 print_start_message "Setting up pull secrets"
@@ -67,6 +67,7 @@ dev/setup.sh --secret --project test
 # operator CRDs, configmap, XJoinPipeline
 print_start_message "Setting up XJoin operator"
 dev/setup.sh --xjoin-operator --dev --project test
+kubectl apply -f dev/xjoin-generic.configmap.yaml -n test
 
 sleep 5
 
@@ -88,6 +89,12 @@ psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE USER insig
 psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "ALTER ROLE insights REPLICATION LOGIN;"
 psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE PUBLICATION dbz_publication FOR TABLE hosts;"
 psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE DATABASE test WITH TEMPLATE '$HBI_NAME';"
+
+# cats resources
+print_start_message "Setting up cats"
+kubectl apply -f dev/demo/cats.db.yaml
+kubectl wait --for=condition=ContainersReady=True --selector="app=cats,service=db" pods -n test
+dev/forward-ports-clowder.sh test
 
 print_start_message "Setting up elasticsearch password"
 dev/setup.sh --elasticsearch --project test

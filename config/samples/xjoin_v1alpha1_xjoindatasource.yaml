@@ -1,7 +1,7 @@
 apiVersion: xjoin.cloud.redhat.com/v1alpha1
 kind: XJoinDataSource
 metadata:
-  name: test
+  name: hosts
 spec:
   pause: false
   databaseHostname:

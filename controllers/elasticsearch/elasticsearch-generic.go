@@ -188,7 +188,7 @@ func (es GenericElasticsearch) ListPipelinesForPrefix(prefix string) (esPipeline
 }
 
 func (es GenericElasticsearch) CreateIndex(
-	indexName string, indexTemplate string, properties string) error {
+	indexName string, indexTemplate string, properties string, withPipeline bool) error {
 
 	tmpl, err := template.New("indexTemplate").Parse(indexTemplate)
 	if err != nil {
@@ -198,7 +198,12 @@ func (es GenericElasticsearch) CreateIndex(
 	params := es.Parameters
 	params["ElasticSearchIndex"] = indexName
 	params["ElasticSearchProperties"] = properties
-	params["ElasticSearchPipeline"] = indexName
+
+	if withPipeline {
+		params["ElasticSearchPipeline"] = indexName
+	} else {
+		params["ElasticSearchPipeline"] = "_none"
+	}
 
 	var indexTemplateBuffer bytes.Buffer
 	err = tmpl.Execute(&indexTemplateBuffer, params)

@@ -188,15 +188,19 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	}
 
 	componentManager := components.NewComponentManager(instance.Kind+"."+instance.Spec.Name, p.Version.String())
-	componentManager.AddComponent(&components.ElasticsearchPipeline{
-		GenericElasticsearch: *genericElasticsearch,
-		JsonFields:           indexAvroSchema.JSONFields,
-	})
+
+	if indexAvroSchema.JSONFields != nil {
+		componentManager.AddComponent(&components.ElasticsearchPipeline{
+			GenericElasticsearch: *genericElasticsearch,
+			JsonFields:           indexAvroSchema.JSONFields,
+		})
+	}
 
 	elasticSearchIndexComponent := &components.ElasticsearchIndex{
 		GenericElasticsearch: *genericElasticsearch,
 		Template:             p.ElasticSearchIndexTemplate.String(),
 		Properties:           indexAvroSchema.ESProperties,
+		WithPipeline:         indexAvroSchema.JSONFields != nil,
 	}
 	componentManager.AddComponent(elasticSearchIndexComponent)
 	componentManager.AddComponent(kafkaTopic)

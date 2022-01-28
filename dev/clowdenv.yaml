@@ -18,6 +18,8 @@ objects:
         cpu: 100m
         memory: 64Mi
     providers:
+      deployment:
+        omitPullPolicy: true
       pullSecrets:
         - name: ${PULL_SECRET_NAME}
           namespace: ${NAMESPACE}

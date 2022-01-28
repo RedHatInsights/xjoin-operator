@@ -1,7 +1,7 @@
 apiVersion: xjoin.cloud.redhat.com/v1alpha1
 kind: XJoinIndex
 metadata:
-  name: test
+  name: hosts
 spec:
   pause: false
   avroSchema: >
@@ -10,7 +10,7 @@ spec:
       "name": "testindex",
       "fields": [{
         "type": {
-          "type": "xjoindatasourcepipeline.test.Value",
+          "type": "xjoindatasourcepipeline.hosts.Value",
           "xjoin.type": "reference"
         },
         "name": "host"

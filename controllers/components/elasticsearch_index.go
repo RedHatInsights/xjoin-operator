@@ -12,6 +12,7 @@ type ElasticsearchIndex struct {
 	Template             string
 	Properties           string
 	GenericElasticsearch elasticsearch.GenericElasticsearch
+	WithPipeline         bool
 }
 
 func (es *ElasticsearchIndex) SetName(name string) {
@@ -27,7 +28,7 @@ func (es *ElasticsearchIndex) Name() string {
 }
 
 func (es *ElasticsearchIndex) Create() (err error) {
-	err = es.GenericElasticsearch.CreateIndex(es.Name(), es.Template, es.Properties)
+	err = es.GenericElasticsearch.CreateIndex(es.Name(), es.Template, es.Properties, es.WithPipeline)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
