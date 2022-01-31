@@ -99,10 +99,6 @@ dev/forward-ports-clowder.sh test
 print_start_message "Setting up elasticsearch password"
 dev/setup.sh --elasticsearch --project test
 
-# Confluent schema registry
-print_start_message "Installing Confluent Schema Registry"
-kubectl apply -f dev/generic.refactor/confluent-schema-registry.yaml -n test
-
 # APICurio operator
 print_start_message "Installing Apicurio"
 kubectl create namespace apicurio-registry-operator-namespace

@@ -19,6 +19,11 @@ kubectl get xjoinindexpipeline -o custom-columns=name:metadata.name --no-headers
   kubectl delete xjoinindexpipeline "$indexpipeline"
 done
 
+kubectl get xjoinindexvalidator -o custom-columns=name:metadata.name --no-headers | while read -r indexvalidator ; do
+  kubectl patch xjoinindexvalidator "$indexvalidator" -p '{"metadata":{"finalizers":null}}' --type=merge
+  kubectl delete xjoinindexvalidator "$indexvalidator"
+done
+
 kubectl get deployments -n test -o custom-columns=name:metadata.name --no-headers | grep xjoin-core | while read -r xjoincore ; do
   kubectl delete deployment "$xjoincore"
 done
@@ -90,5 +95,5 @@ curl -u "elastic:$ES_PASSWORD" http://localhost:9200/_cat/indices\?format\=json 
 done
 
 echo "Deleting subgraph pods"
-kubectl delete deployments --selector='xjoin.index=xjoin-api-subgraph-xjoinindexpipeline-test'
+kubectl delete deployments --selector='xjoin.index=xjoin-api-subgraph-xjoinindexpipeline-hosts'
 kubectl delete deployments --selector='xjoin.index=xjoin-api-subgraph-xjoinindexpipeline-cats'

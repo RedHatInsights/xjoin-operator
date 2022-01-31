@@ -1,5 +1,7 @@
 apiVersion: v1
 data:
+  schemaregistry.host: "apicurio.test.svc"
+  schemaregistry.port: "1080"
   kafka.bootstrap.url: kafka-kafka-bootstrap.test.svc:9092
   debezium.connector.template: >
     {

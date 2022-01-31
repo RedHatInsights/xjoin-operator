@@ -1,3 +1,4 @@
+---
 apiVersion: registry.apicur.io/v1
 kind: ApicurioRegistry
 metadata:
@@ -7,3 +8,30 @@ spec:
     kafkasql:
       bootstrapServers: 'kafka-kafka-bootstrap.test.svc:9092'
     persistence: kafkasql
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    apicur.io/name: example-apicurioregistry-kafkasql
+    apicur.io/type: apicurio-registry
+    apicur.io/version: 2.0.0.Final
+    app: example-apicurioregistry-kafkasql
+    app.kubernetes.io/instance: example-apicurioregistry-kafkasql
+    app.kubernetes.io/managed-by: apicurio-registry-operator
+    app.kubernetes.io/name: apicurio-registry
+    app.kubernetes.io/version: 2.0.0.Final
+  name: apicurio
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - port: 1080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: example-apicurioregistry-kafkasql
+  sessionAffinity: None
+  type: ClusterIP

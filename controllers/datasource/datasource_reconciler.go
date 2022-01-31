@@ -2,9 +2,9 @@ package datasource
 
 import (
 	"github.com/go-errors/errors"
-	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
+	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 )
 
 type ReconcileMethods struct {
@@ -91,8 +91,8 @@ func (d *ReconcileMethods) Scrub() (err error) {
 		ConnectCluster:   d.iteration.Parameters.ConnectCluster.String(),
 	}
 
-	registry := avro.NewSchemaRegistry(
-		avro.SchemaRegistryConnectionParams{
+	registry := schemaregistry.NewSchemaRegistryConfluentClient(
+		schemaregistry.ConnectionParams{
 			Protocol: d.iteration.Parameters.SchemaRegistryProtocol.String(),
 			Hostname: d.iteration.Parameters.SchemaRegistryHost.String(),
 			Port:     d.iteration.Parameters.SchemaRegistryPort.String(),

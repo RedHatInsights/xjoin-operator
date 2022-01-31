@@ -5,7 +5,6 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
@@ -13,6 +12,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
+	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -137,8 +137,8 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		Client:           i.Client,
 	}
 
-	registry := avro.NewSchemaRegistry(
-		avro.SchemaRegistryConnectionParams{
+	registry := schemaregistry.NewSchemaRegistryConfluentClient(
+		schemaregistry.ConnectionParams{
 			Protocol: p.SchemaRegistryProtocol.String(),
 			Hostname: p.SchemaRegistryHost.String(),
 			Port:     p.SchemaRegistryPort.String(),
