@@ -2,11 +2,11 @@ package index
 
 import (
 	"github.com/go-errors/errors"
-	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
+	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 )
 
 type ReconcileMethods struct {
@@ -116,23 +116,41 @@ func (d *ReconcileMethods) Scrub() (err error) {
 		return errors.Wrap(err, 0)
 	}
 
-	registry := avro.NewSchemaRegistry(
-		avro.SchemaRegistryConnectionParams{
-			Protocol: d.iteration.Parameters.SchemaRegistryProtocol.String(),
-			Hostname: d.iteration.Parameters.SchemaRegistryHost.String(),
-			Port:     d.iteration.Parameters.SchemaRegistryPort.String(),
-		})
-
-	registry.Init()
+	schemaRegistryConnectionParams := schemaregistry.ConnectionParams{
+		Protocol: d.iteration.Parameters.SchemaRegistryProtocol.String(),
+		Hostname: d.iteration.Parameters.SchemaRegistryHost.String(),
+		Port:     d.iteration.Parameters.SchemaRegistryPort.String(),
+	}
+	registryConfluentClient := schemaregistry.NewSchemaRegistryConfluentClient(schemaRegistryConnectionParams)
+	registryConfluentClient.Init()
+	registryRestClient := schemaregistry.NewSchemaRegistryRestClient(schemaRegistryConnectionParams)
 
 	custodian := components.NewCustodian(
 		d.iteration.GetInstance().Kind+"."+d.iteration.GetInstance().Name, validVersions)
-	custodian.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{Registry: registry}))
-	custodian.AddComponent(&components.ElasticsearchConnector{KafkaClient: kafkaClient})
+	custodian.AddComponent(&components.ElasticsearchPipeline{
+		GenericElasticsearch: *genericElasticsearch,
+	})
 	custodian.AddComponent(&components.ElasticsearchIndex{
 		GenericElasticsearch: *genericElasticsearch,
 	})
 	custodian.AddComponent(&components.KafkaTopic{KafkaClient: kafkaClient})
+	custodian.AddComponent(&components.ElasticsearchConnector{KafkaClient: kafkaClient})
+	custodian.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
+		Registry: registryConfluentClient}))
+	custodian.AddComponent(components.NewGraphQLSchema(components.GraphQLSchemaParameters{
+		Registry: registryRestClient,
+	}))
+	custodian.AddComponent(&components.XJoinCore{
+		Client:    d.iteration.Client,
+		Context:   d.iteration.Context,
+		Namespace: d.iteration.GetInstance().Namespace,
+	})
+	custodian.AddComponent(&components.XJoinAPISubGraph{
+		Client:    d.iteration.Client,
+		Context:   d.iteration.Context,
+		Registry:  registryConfluentClient,
+		Namespace: d.iteration.GetInstance().Namespace,
+	})
 	err = custodian.Scrub()
 	if err != nil {
 		return errors.Wrap(err, 0)

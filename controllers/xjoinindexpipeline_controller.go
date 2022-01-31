@@ -14,6 +14,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
+	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -168,13 +169,14 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return result, errors.Wrap(err, 0)
 	}
 
-	registry := avro.NewSchemaRegistry(
-		avro.SchemaRegistryConnectionParams{
-			Protocol: p.SchemaRegistryProtocol.String(),
-			Hostname: p.SchemaRegistryHost.String(),
-			Port:     p.SchemaRegistryPort.String(),
-		})
-	registry.Init()
+	schemaRegistryConnectionParams := schemaregistry.ConnectionParams{
+		Protocol: p.SchemaRegistryProtocol.String(),
+		Hostname: p.SchemaRegistryHost.String(),
+		Port:     p.SchemaRegistryPort.String(),
+	}
+	confluentClient := schemaregistry.NewSchemaRegistryConfluentClient(schemaRegistryConnectionParams)
+	confluentClient.Init()
+	registryRestClient := schemaregistry.NewSchemaRegistryRestClient(schemaRegistryConnectionParams)
 
 	indexAvroSchemaParser := avro.IndexAvroSchemaParser{
 		AvroSchema:      p.AvroSchema.String(),
@@ -182,7 +184,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Context:         i.Context,
 		Namespace:       i.Instance.GetNamespace(),
 		Log:             i.Log,
-		SchemaRegistry:  registry,
+		SchemaRegistry:  confluentClient,
 		SchemaNamespace: i.Instance.GetName(),
 	}
 	indexAvroSchema, err := indexAvroSchemaParser.Parse()
@@ -215,7 +217,10 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	})
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
 		Schema:   indexAvroSchema.AvroSchemaString,
-		Registry: registry,
+		Registry: confluentClient,
+	}))
+	componentManager.AddComponent(components.NewGraphQLSchema(components.GraphQLSchemaParameters{
+		Registry: registryRestClient,
 	}))
 	componentManager.AddComponent(&components.XJoinCore{
 		Client:            i.Client,
@@ -232,7 +237,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Context:               i.Context,
 		Namespace:             i.Instance.GetNamespace(),
 		AvroSchema:            indexAvroSchema.AvroSchemaString,
-		Registry:              registry,
+		Registry:              confluentClient,
 		ElasticSearchURL:      p.ElasticSearchURL.String(),
 		ElasticSearchUsername: p.ElasticSearchUsername.String(),
 		ElasticSearchPassword: p.ElasticSearchPassword.String(),

@@ -3,8 +3,8 @@ package components
 import (
 	"context"
 	"github.com/go-errors/errors"
-	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
@@ -18,7 +18,7 @@ type XJoinAPISubGraph struct {
 	Context               context.Context
 	Namespace             string
 	AvroSchema            string
-	Registry              *avro.SchemaRegistry
+	Registry              *schemaregistry.ConfluentClient
 	ElasticSearchUsername string
 	ElasticSearchPassword string
 	ElasticSearchURL      string

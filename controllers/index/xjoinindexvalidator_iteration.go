@@ -3,9 +3,9 @@ package index
 import (
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
+	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,8 +37,8 @@ func (i *XJoinIndexValidatorIteration) Finalize() (err error) {
 
 func (i *XJoinIndexValidatorIteration) Validate() (err error) {
 	//Get index avro schema, references
-	registry := avro.NewSchemaRegistry(
-		avro.SchemaRegistryConnectionParams{
+	registry := schemaregistry.NewSchemaRegistryConfluentClient(
+		schemaregistry.ConnectionParams{
 			Protocol: i.Parameters.SchemaRegistryProtocol.String(),
 			Hostname: i.Parameters.SchemaRegistryHost.String(),
 			Port:     i.Parameters.SchemaRegistryPort.String(),

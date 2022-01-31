@@ -8,6 +8,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/log"
+	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"github.com/riferrei/srclient"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"reflect"
@@ -37,7 +38,7 @@ type IndexAvroSchemaParser struct {
 	Namespace       string
 	SchemaNamespace string
 	Log             log.Log
-	SchemaRegistry  *SchemaRegistry
+	SchemaRegistry  *schemaregistry.ConfluentClient
 }
 
 //Parse AvroSchema string into various structures represented by IndexAvroSchema to be used in component creation
@@ -200,7 +201,7 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 		dataSource.SetGroupVersionKind(common.DataSourceGVK)
 		err = d.Client.Get(d.Context, client.ObjectKey{Name: dataSourceName, Namespace: d.Namespace}, dataSource)
 		if err != nil {
-			return references, errors.Wrap(err, 0)
+			return references, errors.Wrap(err, 0) //TODO: simplify this error message
 		}
 
 		status := dataSource.Object["status"]

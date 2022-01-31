@@ -186,3 +186,27 @@ func (i *Iteration) ReconcileChild(child Child) (err error) {
 
 	return
 }
+
+func (i *Iteration) DeleteAllResourceTypeWithComponentName(gvk schema.GroupVersionKind, componentName string) (err error) {
+	resources := &unstructured.UnstructuredList{}
+	resources.SetGroupVersionKind(gvk)
+	labels := client.MatchingLabels{COMPONENT_NAME_LABEL: componentName}
+
+	err = i.Client.List(i.Context, resources, labels)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	for _, item := range resources.Items {
+		resource := &unstructured.Unstructured{}
+		resource.SetGroupVersionKind(gvk)
+		resource.SetNamespace(i.Instance.GetNamespace())
+		resource.SetName(item.GetName())
+		err = i.Client.Delete(i.Context, resource)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+
+	return
+}
