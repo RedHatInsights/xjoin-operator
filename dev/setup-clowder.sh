@@ -78,7 +78,7 @@ kubectl apply -f dev/xjoin-generic.configmap.yaml -n test
 print_start_message "Setting up bonfire environment"
 bonfire process-env -n test -u cloudservices -f ./dev/clowdenv.yaml | oc apply -f - -n test
 wait_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-zookeeper
-wati_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-kafka
+wait_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-kafka
 wait_for_pod_to_be_running strimzi.io/cluster=connect
 
 # inventory resources
@@ -107,7 +107,7 @@ if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   # cats resources
   print_start_message "Setting up cats"
   kubectl apply -f dev/demo/cats.db.yaml
-  kubectl wait --for=condition=ContainersReady=True --selector="app=cats,service=db" pods -n test
+  wait_for_pod_to_be_running app=cats,service=db
   dev/forward-ports-clowder.sh test
 
   # APICurio operator
@@ -116,13 +116,13 @@ if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   curl -sSL "https://raw.githubusercontent.com/Apicurio/apicurio-registry-operator/v1.0.0/docs/resources/install.yaml" | sed "s/apicurio-registry-operator-namespace/test/g" | kubectl apply -f - -n test
   wait_for_pod_to_be_running name=apicurio-registry-operator
 
+  # XJoin API Gateway
+  print_start_message "Setting up xjoin-api-gateway"
+  bonfire process xjoin-api-gateway -n test --no-get-dependencies -p xjoin-api-gateway/SCHEMA_REGISTRY_HOSTNAME=apicurio -p xjoin-api-gateway/SCHEMA_REGISTRY_PORT=1080 | oc apply -f - -n test
+  wait_for_pod_to_be_running app=xjoin-api-gateway
+
   # APICurio resource
   kubectl apply -f dev/apicurio.yaml -n test
   wait_for_pod_to_be_running name=example-apicurioregistry-kafkasql
-
-  # XJoin API Gateway
-  print_start_message "Setting up xjoin-api-gateway"
-  bonfire process xjoin-api-gateway -n test --no-get-dependencies | oc apply -f - -n test
-  wait_for_pod_to_be_running app=xjoin-api-gateway
 fi
 
