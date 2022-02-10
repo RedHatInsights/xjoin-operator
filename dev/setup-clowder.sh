@@ -8,32 +8,38 @@ function print_start_message() {
   echo -e "********************************************************************************\n"
 }
 
-function wait_for_pod_to_be_created() {
+function wait_for_pod_to_be_running() {
   SELECTOR=$1
+  echo -e "waiting for resource to be created: $SELECTOR"
   # shellcheck disable=SC2034
-  for i in {1..120}; do
+  for i in {1..240}; do
     POD=$(kubectl get pods --selector="$SELECTOR" -o name)
     if [ -z "$POD" ]; then
       sleep 1
     else
+        echo -e "resource created: $SELECTOR"
         break
     fi
   done
+
+  echo -e "waiting for resource to be ready: $SELECTOR"
+  kubectl wait --for=condition=ContainersReady=True --selector="$SELECTOR" pods -n test --timeout=600s
 }
 
 kubectl create ns test
 
-# OLM
-print_start_message "Installing OLM"
-CURRENT_DIR=$(pwd)
-mkdir /tmp/olm
-cd /tmp/olm || exit 1
-curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.18.3/install.sh -o install.sh
-chmod +x install.sh
-./install.sh v0.18.3
-rm -r /tmp/olm
-cd "$CURRENT_DIR" || exit 1
-sleep 1
+if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
+  # OLM
+  print_start_message "Installing OLM"
+  CURRENT_DIR=$(pwd)
+  mkdir /tmp/olm
+  cd /tmp/olm || exit 1
+  curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.18.3/install.sh -o install.sh
+  chmod +x install.sh
+  ./install.sh v0.18.3
+  rm -r /tmp/olm
+  cd "$CURRENT_DIR" || exit 1
+fi
 
 # kube_setup.sh
 print_start_message "Running kube-setup.sh"
@@ -68,29 +74,22 @@ print_start_message "Setting up XJoin operator"
 dev/setup.sh --xjoin-operator --dev --project test
 kubectl apply -f dev/xjoin-generic.configmap.yaml -n test
 
-sleep 2
-
 # bonfire environment (kafka, connect, etc.)
 print_start_message "Setting up bonfire environment"
 bonfire process-env -n test -u cloudservices -f ./dev/clowdenv.yaml | oc apply -f - -n test
-wait_for_pod_to_be_created name=kafka-zookeeper-0
-wait_for_pod_to_be_created name=kafka-kafka-0
-kubectl wait --for=condition=ContainersReady=True --selector="strimzi.io/cluster=kafka" pods -n test
-
-sleep 2
+wait_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-zookeeper
+wati_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-kafka
+wait_for_pod_to_be_running strimzi.io/cluster=connect
 
 # inventory resources
 print_start_message "Setting up host-inventory"
 bonfire process host-inventory -n test --no-get-dependencies | oc apply -f - -n test
-wait_for_pod_to_be_created app=host-inventory,service=db
-kubectl wait --for=condition=ContainersReady=True --selector="app=host-inventory,service=db" pods -n test
+wait_for_pod_to_be_running app=host-inventory,service=db
 
 # xjoin resources
 bonfire process xjoin -n test --no-get-dependencies | oc apply -f - -n test
-wait_for_pod_to_be_created elasticsearch.k8s.elastic.co/cluster-name=xjoin-elasticsearch
-wait_for_pod_to_be_created pod=xjoin-search-api
-kubectl wait --for=condition=ContainersReady=True --selector="pod=xjoin-search-api" pods -n test
-kubectl wait --for=condition=ContainersReady=True --selector="elasticsearch.k8s.elastic.co/cluster-name=xjoin-elasticsearch" pods -n test
+wait_for_pod_to_be_running elasticsearch.k8s.elastic.co/cluster-name=xjoin-elasticsearch
+wait_for_pod_to_be_running pod=xjoin-search-api
 
 dev/forward-ports-clowder.sh test
 HBI_USER=$(kubectl -n test get secret/host-inventory-db -o custom-columns=:data.username | base64 -d)
@@ -115,17 +114,15 @@ if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   print_start_message "Installing Apicurio"
   kubectl create namespace apicurio-registry-operator-namespace
   curl -sSL "https://raw.githubusercontent.com/Apicurio/apicurio-registry-operator/v1.0.0/docs/resources/install.yaml" | sed "s/apicurio-registry-operator-namespace/test/g" | kubectl apply -f - -n test
-  wait_for_pod_to_be_created name=apicurio-registry-operator
-  kubectl wait --for=condition=Ready --selector="name=apicurio-registry-operator" pods -n test
+  wait_for_pod_to_be_running name=apicurio-registry-operator
 
   # APICurio resource
   kubectl apply -f dev/apicurio.yaml -n test
-  wait_for_pod_to_be_created name=example-apicurioregistry-kafkasql
-  kubectl wait --for=condition=Ready --selector="app=example-apicurioregistry-kafkasql" pods -n test
+  wait_for_pod_to_be_running name=example-apicurioregistry-kafkasql
 
   # XJoin API Gateway
   print_start_message "Setting up xjoin-api-gateway"
-  bonfire deploy xjoin-api-gateway -n test --no-get-dependencies
-  kubectl wait --for=condition=ContainersReady=True --selector="app=xjoin-api-gateway" pods -n test
+  bonfire process xjoin-api-gateway -n test --no-get-dependencies | oc apply -f - -n test
+  wait_for_pod_to_be_running app=xjoin-api-gateway
 fi
 
