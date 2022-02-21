@@ -13,7 +13,7 @@ function wait_for_pod_to_be_running() {
   echo -e "waiting for resource to be created: $SELECTOR"
   # shellcheck disable=SC2034
   for i in {1..240}; do
-    POD=$(kubectl get pods --selector="$SELECTOR" -o name)
+    POD=$(kubectl get pods --selector="$SELECTOR" -o name -n test)
     if [ -z "$POD" ]; then
       sleep 1
     else
@@ -106,19 +106,19 @@ dev/setup.sh --elasticsearch --project test
 if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   # cats resources
   print_start_message "Setting up cats"
-  kubectl apply -f dev/demo/cats.db.yaml
+  kubectl apply -f dev/demo/cats.db.yaml -n test
   wait_for_pod_to_be_running app=cats,service=db
   dev/forward-ports-clowder.sh test
 
   # APICurio operator
   print_start_message "Installing Apicurio"
-  kubectl create namespace apicurio-registry-operator-namespace
+  kubectl create namespace apicurio-registry-operator-namespace -n test
   curl -sSL "https://raw.githubusercontent.com/Apicurio/apicurio-registry-operator/v1.0.0/docs/resources/install.yaml" | sed "s/apicurio-registry-operator-namespace/test/g" | kubectl apply -f - -n test
   wait_for_pod_to_be_running name=apicurio-registry-operator
 
   # XJoin API Gateway
   print_start_message "Setting up xjoin-api-gateway"
-  bonfire process xjoin-api-gateway -n test --no-get-dependencies -p xjoin-api-gateway/SCHEMA_REGISTRY_HOSTNAME=apicurio -p xjoin-api-gateway/SCHEMA_REGISTRY_PORT=1080 | oc apply -f - -n test
+  bonfire process xjoin-api-gateway -n test --no-get-dependencies -p xjoin-api-gateway/SCHEMA_REGISTRY_HOSTNAME=apicurio.test.svc -p xjoin-api-gateway/SCHEMA_REGISTRY_PORT=1080 | oc apply -f - -n test
   wait_for_pod_to_be_running app=xjoin-api-gateway
 
   # APICurio resource
