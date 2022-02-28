@@ -88,11 +88,11 @@ func (x XJoinAPISubGraph) Create() (err error) {
 							},
 							{
 								"name":  "SCHEMA_REGISTRY_HOSTNAME",
-								"value": "example-apicurioregistry-kafkasql-service.test.svc",
+								"value": "apicurio.test.svc",
 							},
 							{
 								"name":  "SCHEMA_REGISTRY_PORT",
-								"value": "8080",
+								"value": "1080",
 							},
 							{
 								"name":  "ELASTIC_SEARCH_URL",

@@ -19,15 +19,16 @@ type Schema struct {
 }
 
 type Type struct {
-	Type           string      `json:"type,omitempty"`
-	Name           string      `json:"name,omitempty"`  //required for type=record
-	Items          TypeWrapper `json:"items,omitempty"` //required for type=array
-	Fields         []Field     `json:"fields,omitempty"`
-	XJoinType      string      `json:"xjoin.type,omitempty"`
-	XJoinFields    []Field     `json:"xjoin.fields,omitempty"`
-	ConnectVersion int         `json:"connect.version,omitempty"`
-	ConnectName    string      `json:"connect.name,omitempty"`
-	XJoinCase      string      `json:"xjoin.case,omitempty"`
+	Type             string      `json:"type,omitempty"`
+	Name             string      `json:"name,omitempty"`  //required for type=record
+	Items            TypeWrapper `json:"items,omitempty"` //required for type=array
+	Fields           []Field     `json:"fields,omitempty"`
+	XJoinType        string      `json:"xjoin.type,omitempty"`
+	XJoinFields      []Field     `json:"xjoin.fields,omitempty"`
+	ConnectVersion   int         `json:"connect.version,omitempty"`
+	ConnectName      string      `json:"connect.name,omitempty"`
+	XJoinCase        string      `json:"xjoin.case,omitempty"`
+	XJoinEnumeration bool        `json:"xjoin.enumeration,omitempty"`
 }
 
 type Field struct {

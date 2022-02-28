@@ -148,43 +148,50 @@ spec:
                 {
                   "name": "arch",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
                   "name": "os_release",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
                   "name": "os_kernel_version",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
                   "name": "infrastructure_type",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
                   "name": "infrastructure_vendor",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
                   "name": "sap_system",
                   "type": {
-                    "xjoin.type": "boolean"
+                    "xjoin.type": "boolean",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
                   "name": "sap_sids",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
@@ -196,7 +203,8 @@ spec:
                 {
                   "name": "insights_client_version",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
@@ -208,7 +216,8 @@ spec:
                 {
                   "name": "is_marketplace",
                   "type": {
-                    "xjoin.type": "boolean"
+                    "xjoin.type": "boolean",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
@@ -219,19 +228,22 @@ spec:
                       {
                         "name": "major",
                         "type": {
-                          "xjoin.type": "byte"
+                          "xjoin.type": "byte",
+                          "xjoin.enumeration": true
                         }
                       },
                       {
                         "name": "minor",
                         "type": {
-                          "xjoin.type": "byte"
+                          "xjoin.type": "byte",
+                          "xjoin.enumeration": true
                         }
                       },
                       {
                         "name": "name",
                         "type": {
-                          "xjoin.type": "string"
+                          "xjoin.type": "string",
+                          "xjoin.enumeration": true
                         }
                       }
                     ]
@@ -245,25 +257,29 @@ spec:
                       {
                         "name": "controller_version",
                         "type": {
-                          "xjoin.type": "string"
+                          "xjoin.type": "string",
+                          "xjoin.enumeration": true
                         }
                       },
                       {
                         "name": "hub_version",
                         "type": {
-                          "xjoin.type": "string"
+                          "xjoin.type": "string",
+                          "xjoin.enumeration": true
                         }
                       },
                       {
                         "name": "catalog_worker_version",
                         "type": {
-                          "xjoin.type": "string"
+                          "xjoin.type": "string",
+                          "xjoin.enumeration": true
                         }
                       },
                       {
                         "name": "sso_version",
                         "type": {
-                          "xjoin.type": "string"
+                          "xjoin.type": "string",
+                          "xjoin.enumeration": true
                         }
                       }
                     ]
@@ -272,7 +288,8 @@ spec:
                 {
                   "name": "host_type",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 }
               ]
@@ -285,7 +302,8 @@ spec:
             "null",
             {
               "type": "string",
-              "xjoin.type": "string"
+              "xjoin.type": "string",
+              "xjoin.enumeration": true
             }],
           "default": null
         },
@@ -302,12 +320,12 @@ spec:
           "name": "reporter",
           "type": {
             "type": "string",
-            "xjoin.type": "string"
+            "xjoin.type": "string",
+            "xjoin.enumeration": true
           }
         },
         {
           "name": "per_reporter_staleness",
-          "xjoin.index": false,
           "type": {
             "type": "string",
             "connect.version": 1,
