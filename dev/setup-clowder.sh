@@ -123,6 +123,6 @@ if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
 
   # APICurio resource
   kubectl apply -f dev/apicurio.yaml -n test
-  wait_for_pod_to_be_running name=example-apicurioregistry-kafkasql
+  wait_for_pod_to_be_running apicur.io/name=example-apicurioregistry-kafkasql
 fi
 
