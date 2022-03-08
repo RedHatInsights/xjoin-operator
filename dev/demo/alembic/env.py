@@ -34,8 +34,8 @@ def get_env(key, fallback):
 
 
 config.set_main_option('sqlalchemy.url', 'postgresql://' +
-                       get_env('DB_USER', '') + ':' +
-                       get_env('DB_PASSWORD', '') + '@' +
+                       get_env('CATS_DB_USER', '') + ':' +
+                       get_env('CATS_DB_PASSWORD', '') + '@' +
                        get_env('DB_HOST', 'localhost') + ':' +
                        str(get_env('DB_PORT', 5433)) + '/cats')
 

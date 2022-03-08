@@ -48,7 +48,8 @@ spec:
           "name": "name",
           "type": {
             "type": "string",
-            "xjoin.type": "string"
+            "xjoin.type": "string",
+            "xjoin.enumeration": true
           }
         },
         {

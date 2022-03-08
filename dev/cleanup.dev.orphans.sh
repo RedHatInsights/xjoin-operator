@@ -95,5 +95,12 @@ curl -u "elastic:$ES_PASSWORD" http://localhost:9200/_cat/indices\?format\=json 
 done
 
 echo "Deleting subgraph pods"
-kubectl delete deployments --selector='xjoin.index=xjoin-api-subgraph-xjoinindexpipeline-hosts'
-kubectl delete deployments --selector='xjoin.index=xjoin-api-subgraph-xjoinindexpipeline-cats'
+kubectl delete deployments --selector='xjoin.index=xjoinindexpipeline-hosts'
+kubectl delete deployments --selector='xjoin.index=xjoinindexpipeline-cats'
+kubectl delete deployments --selector='xjoin.index=xjoinindexpipeline-cats'
+kubectl delete deployments --selector='xjoin.index=xjoinindexpipeline-hosts-hbi-tags'
+
+kubectl delete services --selector='xjoin.index=xjoinindexpipeline-hosts'
+kubectl delete services --selector='xjoin.index=xjoinindexpipeline-cats'
+kubectl delete services --selector='xjoin.index=xjoinindexpipeline-cats'
+kubectl delete services --selector='xjoin.index=xjoinindexpipeline-hosts-hbi-tags'
