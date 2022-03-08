@@ -6,7 +6,8 @@ import (
 
 type XJoinIndexSpec struct {
 	// +kubebuilder:validation:Required
-	AvroSchema string `json:"avroSchema,omitempty"`
+	AvroSchema           string                `json:"avroSchema,omitempty"`
+	CustomSubgraphImages []CustomSubgraphImage `json:"customSubgraphImages,omitempty"`
 
 	// +optional
 	Pause bool `json:"pause,omitempty"`
@@ -33,6 +34,14 @@ type XJoinIndex struct {
 
 	Spec   XJoinIndexSpec   `json:"spec,omitempty"`
 	Status XJoinIndexStatus `json:"status,omitempty"`
+}
+
+type CustomSubgraphImage struct {
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// +kubebuilder:validation:Required
+	Image string `json:"image"`
 }
 
 func (in *XJoinIndex) GetDataSources() map[string]string {

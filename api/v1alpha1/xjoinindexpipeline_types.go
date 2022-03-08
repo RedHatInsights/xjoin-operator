@@ -15,6 +15,9 @@ type XJoinIndexPipelineSpec struct {
 	AvroSchema string `json:"avroSchema,omitempty"`
 
 	// +optional
+	CustomSubgraphImages []CustomSubgraphImage `json:"customSubgraphImages,omitempty"`
+
+	// +optional
 	Pause bool `json:"pause,omitempty"`
 }
 

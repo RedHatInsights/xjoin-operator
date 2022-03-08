@@ -12,22 +12,32 @@ type GraphQLSchema struct {
 	restClient *schemaregistry.RestClient
 	name       string
 	version    string
+	suffix     string
 }
 
 type GraphQLSchemaParameters struct {
 	Schema   string
 	Registry *schemaregistry.RestClient
+	Suffix   string
 }
 
 func NewGraphQLSchema(parameters GraphQLSchemaParameters) *GraphQLSchema {
 	return &GraphQLSchema{
 		schema:     parameters.Schema,
 		restClient: parameters.Registry,
+		suffix:     parameters.Suffix,
 	}
+}
+
+func (as GraphQLSchema) NameSuffix() string {
+	return as.suffix
 }
 
 func (as *GraphQLSchema) SetName(name string) {
 	as.name = strings.ToLower(name)
+	if as.suffix != "" {
+		as.name = as.name + "-" + as.suffix
+	}
 }
 
 func (as *GraphQLSchema) SetVersion(version string) {

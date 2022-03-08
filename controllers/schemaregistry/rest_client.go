@@ -85,7 +85,7 @@ func (c *RestClient) RegisterGraphQLSchema(name string) (id string, err error) {
 	}
 
 	//add labels
-	url := "http://xjoin-api-subgraph-" + strings.ReplaceAll(name, ".", "-") + ".test.svc:4000/graphql" //TODO url is static
+	url := "http://" + strings.ReplaceAll(name, ".", "-") + ".test.svc:4000/graphql" //TODO url is static
 	labelsBody := make(map[string]interface{})
 	labelsBody["labels"] = []string{"xjoin-subgraph-url=" + url, "graphql"}
 	labelsBodyJson, err := json.Marshal(labelsBody)

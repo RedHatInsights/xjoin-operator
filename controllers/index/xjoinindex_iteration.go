@@ -26,10 +26,11 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 			},
 		},
 		"spec": map[string]interface{}{
-			"name":       name,
-			"version":    version,
-			"avroSchema": i.Parameters.AvroSchema.String(),
-			"pause":      i.Parameters.Pause.Bool(),
+			"name":                 name,
+			"version":              version,
+			"avroSchema":           i.Parameters.AvroSchema.String(),
+			"pause":                i.Parameters.Pause.Bool(),
+			"customSubgraphImages": i.Parameters.CustomSubgraphImages.Value(),
 		},
 	}
 	dataSourcePipeline.SetGroupVersionKind(common.IndexPipelineGVK)

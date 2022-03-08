@@ -219,9 +219,10 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Schema:   indexAvroSchema.AvroSchemaString,
 		Registry: confluentClient,
 	}))
-	componentManager.AddComponent(components.NewGraphQLSchema(components.GraphQLSchemaParameters{
+	graphqlSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{
 		Registry: registryRestClient,
-	}))
+	})
+	componentManager.AddComponent(graphqlSchemaComponent)
 	componentManager.AddComponent(&components.XJoinCore{
 		Client:            i.Client,
 		Context:           i.Context,
@@ -242,7 +243,31 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		ElasticSearchUsername: p.ElasticSearchUsername.String(),
 		ElasticSearchPassword: p.ElasticSearchPassword.String(),
 		ElasticSearchIndex:    elasticSearchIndexComponent.Name(),
+		Image:                 "quay.io/ckyrouac/xjoin-api-subgraph:latest", //TODO
+		GraphQLSchemaName:     graphqlSchemaComponent.Name(),
 	})
+
+	for _, customSubgraphImage := range instance.Spec.CustomSubgraphImages {
+		customSubgraphGraphQLSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{
+			Registry: registryRestClient,
+			Suffix:   customSubgraphImage.Name,
+		})
+		componentManager.AddComponent(customSubgraphGraphQLSchemaComponent)
+		componentManager.AddComponent(&components.XJoinAPISubGraph{
+			Client:                i.Client,
+			Context:               i.Context,
+			Namespace:             i.Instance.GetNamespace(),
+			AvroSchema:            indexAvroSchema.AvroSchemaString,
+			Registry:              confluentClient,
+			ElasticSearchURL:      p.ElasticSearchURL.String(),
+			ElasticSearchUsername: p.ElasticSearchUsername.String(),
+			ElasticSearchPassword: p.ElasticSearchPassword.String(),
+			ElasticSearchIndex:    elasticSearchIndexComponent.Name(),
+			Image:                 customSubgraphImage.Image,
+			Suffix:                customSubgraphImage.Name,
+			GraphQLSchemaName:     customSubgraphGraphQLSchemaComponent.Name(),
+		})
+	}
 
 	if instance.GetDeletionTimestamp() != nil {
 		reqLogger.Info("Starting finalizer")

@@ -23,11 +23,18 @@ type XJoinAPISubGraph struct {
 	ElasticSearchPassword string
 	ElasticSearchURL      string
 	ElasticSearchIndex    string
+	Image                 string
+	Suffix                string
+	GraphQLSchemaName     string
 }
 
 func (x *XJoinAPISubGraph) SetName(name string) {
 	x.schemaName = strings.ToLower(strings.ReplaceAll(name, ".", "-"))
-	x.name = "xjoin-api-subgraph-" + x.schemaName
+	x.name = x.schemaName
+
+	if x.Suffix != "" {
+		x.name = x.name + "-" + x.Suffix
+	}
 }
 
 func (x *XJoinAPISubGraph) SetVersion(version string) {
@@ -110,8 +117,12 @@ func (x XJoinAPISubGraph) Create() (err error) {
 								"name":  "ELASTIC_SEARCH_INDEX",
 								"value": x.ElasticSearchIndex,
 							},
+							{
+								"name":  "GRAPHQL_SCHEMA_NAME",
+								"value": x.GraphQLSchemaName,
+							},
 						},
-						"image":           "quay.io/ckyrouac/xjoin-api-subgraph:latest",
+						"image":           x.Image,
 						"imagePullPolicy": "Always",
 						"name":            x.Name(),
 						"resources": map[string]interface{}{
