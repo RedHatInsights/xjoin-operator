@@ -29,6 +29,7 @@ type Type struct {
 	ConnectName      string      `json:"connect.name,omitempty"`
 	XJoinCase        string      `json:"xjoin.case,omitempty"`
 	XJoinEnumeration bool        `json:"xjoin.enumeration,omitempty"`
+	XJoinPrimaryKey  bool        `json:"xjoin.primary.key,omitempty"`
 }
 
 type Field struct {
