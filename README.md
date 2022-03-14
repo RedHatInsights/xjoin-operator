@@ -36,11 +36,12 @@ The operator defines two controllers that reconcile a XJoinPipeline
 
 ## Development
 ### Setting up the development environment using Clowder
-1. Set up a local Kubernetes environment. Known to work with the following:
+1. Install the latest version of [bonfire](https://github.com/RedHatInsights/bonfire)
+2. Set up a local Kubernetes environment. Known to work with the following:
    - [CodeReady Containers](https://developers.redhat.com/products/codeready-containers/overview)
    - [MiniKube](https://minikube.sigs.k8s.io/docs/start/)
 
-1. Configure Kubernetes to use at least 16G of memory and 6 cpus. This is known to work although you can try with less.
+3. Configure Kubernetes to use at least 16G of memory and 6 cpus. This is known to work, although you can try with less.
     ```
     ./crc config set memory 16384
     ./crc config set cpus 6
@@ -50,7 +51,7 @@ The operator defines two controllers that reconcile a XJoinPipeline
     minikube config set memory 16384
     ```
 
-1. Start Kubernetes
+4. Start Kubernetes
     ```
     ./crc start
     ```
@@ -58,26 +59,32 @@ The operator defines two controllers that reconcile a XJoinPipeline
     minikube start
     ```
 
-1. If using CRC
+5. If using CRC
    - When prompted for a pull secret paste it (you obtained pull secret on step 1 when downloading CRC)
    - Log in to the cluster as kubeadmin (oc login -u kubeadmin -p ...)
      You'll find the exact command to use in the CRC startup log
 
-1. Login to https://quay.io and https://registry.redhat.io
+6. Login to https://quay.io and https://registry.redhat.io
    - `docker login -u=<quay-username> -p="password" quay.io`
    - `docker login https://registry.redhat.io`
 
-1. Append the following line into `/etc/hosts`
+7. Append the following line into `/etc/hosts`
     ```
     127.0.0.1 inventory-db xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http
     ```
 
-1. `./dev/setup-clowder.sh`
+8. `./dev/setup-clowder.sh`
+
+### Forward ports
+To access the services within the Kubernetes cluster there is a script to forward ports to each of the useful services:
+```bash
+./dev/forward-ports-clowder.sh
+```
    
 ### Reset the development environment
 The Openshift environment can be deleted with this script:
-```
-dev/teardown.sh
+```bash
+./dev/teardown.sh
 ```
 
 Afterwards, the environment can be setup again without restarting Kubernetes via `dev/setup.sh`.
