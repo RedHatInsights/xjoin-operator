@@ -369,31 +369,38 @@ func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
 			return nil, err
 		}
 
-		systemProfileJson, err := parseJsonField(host.SystemProfileFacts.([]uint8))
-		if err != nil {
-			return nil, err
+		if host.SystemProfileFacts != nil {
+			systemProfileJson, err := parseJsonField(host.SystemProfileFacts.([]uint8))
+			if err != nil {
+				return nil, err
+			}
+			host.SystemProfileFacts = systemProfileJson
 		}
-		host.SystemProfileFacts = systemProfileJson
 
-		canonicalFactsJson, err := parseJsonField(host.CanonicalFacts.([]uint8))
-		if err != nil {
-			return nil, err
+		if host.CanonicalFacts != nil {
+			canonicalFactsJson, err := parseJsonField(host.CanonicalFacts.([]uint8))
+			if err != nil {
+				return nil, err
+			}
+			host.CanonicalFacts = canonicalFactsJson
 		}
-		host.CanonicalFacts = canonicalFactsJson
 
-		factsJson, err := parseJsonField(host.Facts.([]uint8))
-		if err != nil {
-			return nil, err
+		if host.Facts != nil {
+			factsJson, err := parseJsonField(host.Facts.([]uint8))
+			if err != nil {
+				return nil, err
+			}
+			host.Facts = factsJson
 		}
-		host.Facts = factsJson
 
-		tagsJson, err := parseJsonField(host.Tags.([]uint8))
-		if err != nil {
-			return nil, err
+		if host.Tags != nil {
+			tagsJson, err := parseJsonField(host.Tags.([]uint8))
+			if err != nil {
+				return nil, err
+			}
+			host.Tags = tagsJson
+			host.TagsStructured, host.TagsString, host.TagsSearch = tagsStructured(tagsJson)
 		}
-		host.Tags = tagsJson
-
-		host.TagsStructured, host.TagsString, host.TagsSearch = tagsStructured(tagsJson)
 
 		response = append(response, host)
 	}
