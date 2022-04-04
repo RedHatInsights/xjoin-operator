@@ -97,11 +97,11 @@ kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/v0.
 
 # project and secrets
 print_start_message "Setting up pull secrets"
-dev/setup.sh --secret --project test
+dev/setup.sh -s -p test
 
 # operator CRDs, configmap, XJoinPipeline
 print_start_message "Setting up XJoin operator"
-dev/setup.sh --xjoin-operator --dev --project test
+dev/setup.sh -x -d -p test
 kubectl apply -f dev/xjoin-generic.configmap.yaml -n test
 
 # bonfire environment (kafka, connect, etc.)
@@ -132,7 +132,7 @@ psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE DATABASE t
 
 # elasticsearch
 print_start_message "Setting up elasticsearch password"
-dev/setup.sh --elasticsearch --project test
+dev/setup.sh -e -p test
 
 if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   # APICurio operator
