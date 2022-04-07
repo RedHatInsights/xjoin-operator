@@ -442,6 +442,11 @@ func NewXJoinConfiguration() Parameters {
 						"if": "ctx.tags_structured != null",
 						"source": "ctx.tags_search = ctx.tags_structured.stream().map(t -> { StringBuilder builder = new StringBuilder(); if (t.namespace != null && t.namespace != 'null') { builder.append(t.namespace); } builder.append('/'); builder.append(t.key); builder.append('='); if (t.value != null) { builder.append(t.value); } return builder.toString() }).collect(Collectors.toList())"
 					}
+				}, {
+					"json" : {
+						"if" : "ctx.per_reporter_staleness != null",
+						"field" : "per_reporter_staleness"
+					}
 				}]
 			}`,
 		},

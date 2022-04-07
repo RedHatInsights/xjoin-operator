@@ -458,7 +458,7 @@ parameters:
               "type": "keyword"
             },
             "per_reporter_staleness": {
-              "type": "nested",
+              "type": "object",
               "properties": {
                 "reporter": {"type": "keyword"},
                 "last_check_in": {"type": "keyword"},
