@@ -53,7 +53,7 @@ parameters:
           "connection.password": "{{.ElasticSearchPassword}}",
         {{end}}
         "type.name": "_doc",
-        "transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString, flattenListPRS, renameTopic",
+        "transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString, renameTopic",
         "transforms.valueToKey.type": "org.apache.kafka.connect.transforms.ValueToKey",
         "transforms.valueToKey.fields": "id",
         "transforms.extractKey.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
