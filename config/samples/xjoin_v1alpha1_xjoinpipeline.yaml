@@ -3,8 +3,4 @@ kind: XJoinPipeline
 metadata:
   name: xjoinpipeline-sample
 spec:
-  # Add fields here
-  connectClusterNamespace: test
-  kafkaClusterNamespace: test
-  connectCluster: connect
-  kafkaCluster: kafka
+  ephemeral: true

@@ -14,10 +14,12 @@ import (
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"time"
 )
 
 type XJoinDataSourceReconciler struct {
@@ -53,7 +55,8 @@ func (r *XJoinDataSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&xjoin.XJoinDataSource{}).
 		WithLogger(mgr.GetLogger()).
 		WithOptions(controller.Options{
-			Log: mgr.GetLogger(),
+			Log:         mgr.GetLogger(),
+			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		Complete(r)
 }
@@ -102,12 +105,13 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return
 	}
 
+	originalInstance := instance.DeepCopy()
 	i := XJoinDataSourceIteration{
 		Parameters: *p,
 		Iteration: common.Iteration{
 			Context:          ctx,
 			Instance:         instance,
-			OriginalInstance: instance.DeepCopy(),
+			OriginalInstance: originalInstance,
 			Client:           r.Client,
 			Log:              reqLogger,
 		},
@@ -119,9 +123,20 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	dataSourceReconciler := NewReconcileMethods(i)
 	reconciler := common.NewReconciler(dataSourceReconciler, instance, reqLogger)
-	err = reconciler.Reconcile()
+	err = reconciler.Reconcile(false)
 	if err != nil {
 		return result, errors.Wrap(err, 0)
+	}
+
+	instance.Status.SpecHash, err = utils.SpecHash(instance.Spec)
+	if err != nil {
+		return result, errors.Wrap(err, 0)
+	}
+
+	//TODO actually validate
+	if originalInstance.Status.RefreshingVersion != "" {
+		instance.Status.ActiveVersionIsValid = true
+		instance.Status.ActiveVersion = instance.Status.RefreshingVersion
 	}
 
 	return i.UpdateStatusAndRequeue()

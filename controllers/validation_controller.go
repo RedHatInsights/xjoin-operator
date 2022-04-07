@@ -9,12 +9,14 @@ import (
 	. "github.com/redhatinsights/xjoin-operator/controllers/pipeline"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"time"
 )
 
 type ValidationReconciler struct {
@@ -45,6 +47,7 @@ func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request,
 
 func (r *ValidationReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	reqLogger := logger.NewLogger("controller_validation", "Pipeline", request.Name, "Namespace", request.Namespace)
+	reqLogger.Info("Reconciling Validation")
 
 	i, err := r.setup(reqLogger, request, ctx)
 	defer i.Close()
@@ -70,12 +73,15 @@ func (r *ValidationReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 	reqLogger.Info("Checking for resource deviation")
 
 	if r.CheckResourceDeviation {
+		reqLogger.Info("Really checking for deviation")
 		problem, err := i.CheckForDeviation()
 		if err != nil {
 			i.Error(err, "Error checking for state deviation")
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		} else if problem != nil {
+			reqLogger.Info("Problem checking for deviation")
 			i.ProbeStateDeviationRefresh(problem.Error())
+			reqLogger.Info("Transitioning to new state")
 			i.Instance.TransitionToNew()
 			return i.UpdateStatusAndRequeue()
 		}
@@ -131,7 +137,8 @@ func (r *ValidationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(eventFilterPredicate()).
 		WithLogger(mgr.GetLogger()).
 		WithOptions(controller.Options{
-			Log: mgr.GetLogger(),
+			Log:         mgr.GetLogger(),
+			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		Complete(r)
 }

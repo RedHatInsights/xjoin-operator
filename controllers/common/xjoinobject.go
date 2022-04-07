@@ -16,4 +16,6 @@ type XJoinObject interface {
 	SetRefreshingVersion(version string)
 	GetRefreshingVersionIsValid() bool
 	SetRefreshingVersionIsValid(valid bool)
+	GetSpecHash() string
+	GetSpec() interface{}
 }

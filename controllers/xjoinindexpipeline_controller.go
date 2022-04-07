@@ -14,15 +14,20 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
+	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
+	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
 	"time"
 )
 
@@ -61,7 +66,8 @@ func (r *XJoinIndexPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		For(&xjoin.XJoinIndexPipeline{}).
 		WithLogger(mgr.GetLogger()).
 		WithOptions(controller.Options{
-			Log: mgr.GetLogger(),
+			Log:         mgr.GetLogger(),
+			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		Complete(r)
 }
@@ -151,50 +157,57 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		KafkaClient: kafkaClient,
 	}
 
-	genericElasticsearch, err := elasticsearch.NewGenericElasticsearch(elasticsearch.GenericElasticSearchParameters{
+	elasticSearchConnection := elasticsearch.GenericElasticSearchParameters{
 		Url:        p.ElasticSearchURL.String(),
 		Username:   p.ElasticSearchUsername.String(),
 		Password:   p.ElasticSearchPassword.String(),
 		Parameters: parametersMap,
 		Context:    i.Context,
-	})
+	}
+	genericElasticsearch, err := elasticsearch.NewGenericElasticsearch(elasticSearchConnection)
 	if err != nil {
 		return result, errors.Wrap(err, 0)
 	}
 
-	avroSchemaReferences, err := i.ParseAvroSchemaReferences()
-	if err != nil {
-		return result, errors.Wrap(err, 0)
+	schemaRegistryConnectionParams := schemaregistry.ConnectionParams{
+		Protocol: p.SchemaRegistryProtocol.String(),
+		Hostname: p.SchemaRegistryHost.String(),
+		Port:     p.SchemaRegistryPort.String(),
 	}
+	confluentClient := schemaregistry.NewSchemaRegistryConfluentClient(schemaRegistryConnectionParams)
+	confluentClient.Init()
+	registryRestClient := schemaregistry.NewSchemaRegistryRestClient(schemaRegistryConnectionParams)
 
-	registry := avro.NewSchemaRegistry(
-		avro.SchemaRegistryConnectionParams{
-			Protocol: p.SchemaRegistryProtocol.String(),
-			Hostname: p.SchemaRegistryHost.String(),
-			Port:     p.SchemaRegistryPort.String(),
-		})
-
-	registry.Init()
-	fullAvroSchema, err := registry.ExpandReferences(p.AvroSchema.String(), avroSchemaReferences)
-	if err != nil {
-		return result, errors.Wrap(err, 0)
+	indexAvroSchemaParser := avro.IndexAvroSchemaParser{
+		AvroSchema:      p.AvroSchema.String(),
+		Client:          i.Client,
+		Context:         i.Context,
+		Namespace:       i.Instance.GetNamespace(),
+		Log:             i.Log,
+		SchemaRegistry:  confluentClient,
+		SchemaNamespace: i.Instance.GetName(),
 	}
-
-	esProperties, jsonFields, err := i.ParseAvroSchema(fullAvroSchema)
+	indexAvroSchema, err := indexAvroSchemaParser.Parse()
 	if err != nil {
 		return result, errors.Wrap(err, 0)
 	}
 
 	componentManager := components.NewComponentManager(instance.Kind+"."+instance.Spec.Name, p.Version.String())
-	componentManager.AddComponent(&components.ElasticsearchPipeline{
-		GenericElasticsearch: *genericElasticsearch,
-		JsonFields:           jsonFields,
-	})
-	componentManager.AddComponent(&components.ElasticsearchIndex{
+
+	if indexAvroSchema.JSONFields != nil {
+		componentManager.AddComponent(&components.ElasticsearchPipeline{
+			GenericElasticsearch: *genericElasticsearch,
+			JsonFields:           indexAvroSchema.JSONFields,
+		})
+	}
+
+	elasticSearchIndexComponent := &components.ElasticsearchIndex{
 		GenericElasticsearch: *genericElasticsearch,
 		Template:             p.ElasticSearchIndexTemplate.String(),
-		Properties:           esProperties,
-	})
+		Properties:           indexAvroSchema.ESProperties,
+		WithPipeline:         indexAvroSchema.JSONFields != nil,
+	}
+	componentManager.AddComponent(elasticSearchIndexComponent)
 	componentManager.AddComponent(kafkaTopic)
 	componentManager.AddComponent(&components.ElasticsearchConnector{
 		Template:           p.ElasticSearchConnectorTemplate.String(),
@@ -203,19 +216,58 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Topic:              kafkaTopic.Name(),
 	})
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
-		Schema:     i.GetInstance().Spec.AvroSchema,
-		Registry:   registry,
-		References: avroSchemaReferences,
+		Schema:   indexAvroSchema.AvroSchemaString,
+		Registry: confluentClient,
 	}))
+	graphqlSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{
+		Registry: registryRestClient,
+	})
+	componentManager.AddComponent(graphqlSchemaComponent)
 	componentManager.AddComponent(&components.XJoinCore{
 		Client:            i.Client,
 		Context:           i.Context,
-		SourceTopics:      i.ParseSourceTopics(avroSchemaReferences),
-		SinkTopic:         i.AvroSubjectToKafkaTopic(kafkaTopic.Name()),
+		SourceTopics:      indexAvroSchema.SourceTopics,
+		SinkTopic:         indexAvroSchemaParser.AvroSubjectToKafkaTopic(kafkaTopic.Name()),
 		KafkaBootstrap:    p.KafkaBootstrapURL.String(),
 		SchemaRegistryURL: p.SchemaRegistryProtocol.String() + "://" + p.SchemaRegistryHost.String() + ":" + p.SchemaRegistryPort.String(),
 		Namespace:         i.Instance.GetNamespace(),
+		Schema:            indexAvroSchema.AvroSchemaString,
 	})
+	componentManager.AddComponent(&components.XJoinAPISubGraph{
+		Client:                i.Client,
+		Context:               i.Context,
+		Namespace:             i.Instance.GetNamespace(),
+		AvroSchema:            indexAvroSchema.AvroSchemaString,
+		Registry:              confluentClient,
+		ElasticSearchURL:      p.ElasticSearchURL.String(),
+		ElasticSearchUsername: p.ElasticSearchUsername.String(),
+		ElasticSearchPassword: p.ElasticSearchPassword.String(),
+		ElasticSearchIndex:    elasticSearchIndexComponent.Name(),
+		Image:                 "quay.io/ckyrouac/xjoin-api-subgraph:latest", //TODO
+		GraphQLSchemaName:     graphqlSchemaComponent.Name(),
+	})
+
+	for _, customSubgraphImage := range instance.Spec.CustomSubgraphImages {
+		customSubgraphGraphQLSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{
+			Registry: registryRestClient,
+			Suffix:   customSubgraphImage.Name,
+		})
+		componentManager.AddComponent(customSubgraphGraphQLSchemaComponent)
+		componentManager.AddComponent(&components.XJoinAPISubGraph{
+			Client:                i.Client,
+			Context:               i.Context,
+			Namespace:             i.Instance.GetNamespace(),
+			AvroSchema:            indexAvroSchema.AvroSchemaString,
+			Registry:              confluentClient,
+			ElasticSearchURL:      p.ElasticSearchURL.String(),
+			ElasticSearchUsername: p.ElasticSearchUsername.String(),
+			ElasticSearchPassword: p.ElasticSearchPassword.String(),
+			ElasticSearchIndex:    elasticSearchIndexComponent.Name(),
+			Image:                 customSubgraphImage.Image,
+			Suffix:                customSubgraphImage.Name,
+			GraphQLSchemaName:     customSubgraphGraphQLSchemaComponent.Name(),
+		})
+	}
 
 	if instance.GetDeletionTimestamp() != nil {
 		reqLogger.Info("Starting finalizer")
@@ -240,6 +292,46 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	err = componentManager.CreateAll()
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	//build list of datasources
+	dataSources := make(map[string]string)
+	for _, ref := range indexAvroSchema.References {
+		//get each datasource name and resource version
+		name := strings.Split(ref.Name, "xjoindatasourcepipeline.")[1]
+		name = strings.Split(name, ".Value")[0]
+		datasourceNamespacedName := types.NamespacedName{
+			Name:      name,
+			Namespace: i.Instance.GetNamespace(),
+		}
+		datasource, err := utils.FetchXJoinDataSource(i.Client, datasourceNamespacedName, ctx)
+		if err != nil {
+			return reconcile.Result{}, errors.Wrap(err, 0)
+		}
+		dataSources[name] = datasource.ResourceVersion
+	}
+
+	//update parent status
+	indexNamespacedName := types.NamespacedName{
+		Name:      instance.OwnerReferences[0].Name,
+		Namespace: i.Instance.GetNamespace(),
+	}
+	xjoinIndex, err := utils.FetchXJoinIndex(i.Client, indexNamespacedName, ctx)
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	if !reflect.DeepEqual(xjoinIndex.Status.DataSources, dataSources) {
+		xjoinIndex.Status.DataSources = dataSources
+
+		if err := i.Client.Status().Update(ctx, xjoinIndex); err != nil {
+			if k8errors.IsConflict(err) {
+				i.Log.Error(err, "Status conflict")
+				return reconcile.Result{}, err
+			}
+
+			return reconcile.Result{}, err
+		}
 	}
 
 	return reconcile.Result{RequeueAfter: time.Second * 30}, nil

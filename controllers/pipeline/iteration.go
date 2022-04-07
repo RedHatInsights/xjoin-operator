@@ -91,6 +91,7 @@ func (i *ReconcileIteration) SetActiveResources() {
 }
 
 func (i *ReconcileIteration) UpdateStatusAndRequeue() (reconcile.Result, error) {
+	i.Log.Info("Checking status")
 	// Update Status.ActiveIndexName to reflect the active index regardless of what happened in this Reconcile() invocation
 	currentIndices, err := i.ESClient.GetCurrentIndicesWithAlias(i.Instance.Status.ActiveAliasName)
 	if err != nil {
@@ -107,6 +108,7 @@ func (i *ReconcileIteration) UpdateStatusAndRequeue() (reconcile.Result, error) 
 	// Only issue status update if Reconcile actually modified Status
 	// This prevents write conflicts between the controllers
 	if !cmp.Equal(i.Instance.Status, i.OriginalInstance.Status) {
+		i.Log.Info("Updating status")
 		i.Debug("Updating status")
 
 		ctx, cancel := utils.DefaultContext()
@@ -454,6 +456,7 @@ func (i *ReconcileIteration) CheckForDeviation() (problem error, err error) {
 }
 
 func (i *ReconcileIteration) CheckESPipelineDeviation() (problem error, err error) {
+	i.Log.Info("Checking espipeline deviation")
 	if i.Instance.Status.PipelineVersion == "" {
 		return nil, nil
 	}
@@ -471,6 +474,7 @@ func (i *ReconcileIteration) CheckESPipelineDeviation() (problem error, err erro
 }
 
 func (i *ReconcileIteration) CheckESIndexDeviation() (problem error, err error) {
+	i.Log.Info("Checking es index deviation")
 	if i.Instance.Status.PipelineVersion == "" {
 		return nil, nil
 	}
@@ -490,6 +494,7 @@ func (i *ReconcileIteration) CheckESIndexDeviation() (problem error, err error) 
 }
 
 func (i *ReconcileIteration) CheckTopicDeviation() (problem error, err error) {
+	i.Log.Info("Checking topic deviation")
 	if i.Instance.Status.PipelineVersion == "" {
 		return nil, nil
 	}
@@ -540,10 +545,13 @@ func (i *ReconcileIteration) CheckTopicDeviation() (problem error, err error) {
 }
 
 func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, connectorType string) (problem error, err error) {
+	i.Log.Info("Checking connector deviation. name: " + connectorName + " type: " + connectorType)
+
 	if connectorName == "" {
 		return nil, nil
 	}
 
+	i.Log.Info("Getting connector")
 	connector, err := i.Kafka.GetConnector(connectorName)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
@@ -553,6 +561,7 @@ func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, conne
 		return nil, err
 	}
 
+	i.Log.Info("Checking if connector is failed")
 	isFailed, err := i.Kafka.IsFailed(connectorName)
 	if err != nil {
 		return nil, err
@@ -566,6 +575,7 @@ func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, conne
 		}
 	}
 
+	i.Log.Info("Checking connector cluster label")
 	if connector.GetLabels()[kafka.LabelStrimziCluster] != i.Parameters.ConnectCluster.String() {
 		return fmt.Errorf(
 			"connectCluster changed from %s to %s",
@@ -573,6 +583,7 @@ func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, conne
 			i.Parameters.ConnectCluster.String()), nil
 	}
 
+	i.Log.Info("Checking connector spec")
 	// compares the spec of the existing connector with the spec we would create if we were creating a new connector now
 	newConnector, err := i.Kafka.CreateDryConnectorByType(connectorType, i.Instance.Status.PipelineVersion)
 	if err != nil {

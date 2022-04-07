@@ -1,0 +1,28 @@
+#rough avro schema with a join
+apiVersion: xjoin.cloud.redhat.com/v1alpha1
+kind: XJoinIndex
+metadata:
+  name: test
+spec:
+  pause: false
+  avroSchema: >
+    {
+      "type": "record",
+      "name": "advisor.record",
+      "fields": [{
+        "xjoin.type": "reference",
+        "type": "xjoindatasourcepipeline.advisor.record.Value",
+        "xjoin.joins": [{
+          "xjoin.type": "reference",
+          "type": "xjoindatasourcepipeline.host.Value",
+          "name": "host",
+          "xjoin.parent.key": "host_id",
+          "xjoin.key": "id"
+        }, {
+          "xjoin.type": "reference",
+          "type": "xjoindatasourcepipeline.rule.Value",
+          "name": "rule",
+          "xjoin.parent.key": "rule_id",
+          "xjoin.key": "id"
+        }]
+    }

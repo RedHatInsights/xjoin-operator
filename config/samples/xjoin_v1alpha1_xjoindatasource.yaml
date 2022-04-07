@@ -1,7 +1,7 @@
 apiVersion: xjoin.cloud.redhat.com/v1alpha1
 kind: XJoinDataSource
 metadata:
-  name: test
+  name: hosts
 spec:
   pause: false
   databaseHostname:
@@ -41,7 +41,8 @@ spec:
             "type": "string",
             "connect.version": 1,
             "connect.name": "io.debezium.data.Uuid",
-            "xjoin.type": "string"
+            "xjoin.type": "string",
+            "xjoin.primary.key": true
           }
         },
         {
@@ -54,9 +55,7 @@ spec:
         {
           "name": "display_name",
           "type": [
-            {
-              "type": "null"
-            },
+            "null",
             {
               "type": "string",
               "xjoin.type": "string",
@@ -86,9 +85,7 @@ spec:
         {
           "name": "facts",
           "type": [
-            {
-              "type": "null"
-            },
+            "null",
             {
               "type": "string",
               "connect.version": 1,
@@ -100,9 +97,7 @@ spec:
         {
           "name": "tags",
           "type": [
-            {
-              "type": "null"
-            },
+            "null",
             {
               "type": "string",
               "connect.version": 1,
@@ -144,9 +139,7 @@ spec:
         {
           "name": "system_profile_facts",
           "type": [
-            {
-              "type": "null"
-            },
+            "null",
             {
               "type": "string",
               "connect.version": 1,
@@ -156,43 +149,50 @@ spec:
                 {
                   "name": "arch",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
                   "name": "os_release",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
                   "name": "os_kernel_version",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
                   "name": "infrastructure_type",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
                   "name": "infrastructure_vendor",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
                   "name": "sap_system",
                   "type": {
-                    "xjoin.type": "boolean"
+                    "xjoin.type": "boolean",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
                   "name": "sap_sids",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
@@ -204,7 +204,8 @@ spec:
                 {
                   "name": "insights_client_version",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
@@ -216,7 +217,8 @@ spec:
                 {
                   "name": "is_marketplace",
                   "type": {
-                    "xjoin.type": "boolean"
+                    "xjoin.type": "boolean",
+                    "xjoin.enumeration": true
                   }
                 },
                 {
@@ -227,19 +229,22 @@ spec:
                       {
                         "name": "major",
                         "type": {
-                          "xjoin.type": "byte"
+                          "xjoin.type": "byte",
+                          "xjoin.enumeration": true
                         }
                       },
                       {
                         "name": "minor",
                         "type": {
-                          "xjoin.type": "byte"
+                          "xjoin.type": "byte",
+                          "xjoin.enumeration": true
                         }
                       },
                       {
                         "name": "name",
                         "type": {
-                          "xjoin.type": "string"
+                          "xjoin.type": "string",
+                          "xjoin.enumeration": true
                         }
                       }
                     ]
@@ -253,25 +258,29 @@ spec:
                       {
                         "name": "controller_version",
                         "type": {
-                          "xjoin.type": "string"
+                          "xjoin.type": "string",
+                          "xjoin.enumeration": true
                         }
                       },
                       {
                         "name": "hub_version",
                         "type": {
-                          "xjoin.type": "string"
+                          "xjoin.type": "string",
+                          "xjoin.enumeration": true
                         }
                       },
                       {
                         "name": "catalog_worker_version",
                         "type": {
-                          "xjoin.type": "string"
+                          "xjoin.type": "string",
+                          "xjoin.enumeration": true
                         }
                       },
                       {
                         "name": "sso_version",
                         "type": {
-                          "xjoin.type": "string"
+                          "xjoin.type": "string",
+                          "xjoin.enumeration": true
                         }
                       }
                     ]
@@ -280,7 +289,8 @@ spec:
                 {
                   "name": "host_type",
                   "type": {
-                    "xjoin.type": "string"
+                    "xjoin.type": "string",
+                    "xjoin.enumeration": true
                   }
                 }
               ]
@@ -290,12 +300,11 @@ spec:
         {
           "name": "ansible_host",
           "type": [
-            {
-              "type": "null"
-            },
+            "null",
             {
               "type": "string",
-              "xjoin.type": "string"
+              "xjoin.type": "string",
+              "xjoin.enumeration": true
             }],
           "default": null
         },
@@ -312,17 +321,18 @@ spec:
           "name": "reporter",
           "type": {
             "type": "string",
-            "xjoin.type": "string"
+            "xjoin.type": "string",
+            "xjoin.enumeration": true
           }
         },
         {
           "name": "per_reporter_staleness",
-          "xjoin.index": false,
           "type": {
             "type": "string",
             "connect.version": 1,
             "connect.name": "io.debezium.data.Json",
-            "xjoin.type": "json"
+            "xjoin.type": "json",
+            "xjoin.index": "false"
           }
         }
       ]

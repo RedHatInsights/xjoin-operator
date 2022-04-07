@@ -1,0 +1,66 @@
+apiVersion: xjoin.cloud.redhat.com/v1alpha1
+kind: XJoinDataSource
+metadata:
+  name: cats
+spec:
+  pause: false
+  databaseHostname:
+    valueFrom:
+      secretKeyRef:
+        name: cats-db
+        key: hostname
+  databasePort:
+    valueFrom:
+      secretKeyRef:
+        name: cats-db
+        key: port
+  databaseUsername:
+    valueFrom:
+      secretKeyRef:
+        name: cats-db
+        key: username
+  databasePassword:
+    valueFrom:
+      secretKeyRef:
+        name: cats-db
+        key: password
+  databaseName:
+    valueFrom:
+      secretKeyRef:
+        name: cats-db
+        key: name
+  databaseTable:
+    value: "public.cats"
+  avroSchema: >
+    {
+      "type": "record",
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "type": "string",
+            "connect.version": 1,
+            "connect.name": "io.debezium.data.Uuid",
+            "xjoin.type": "string"
+          }
+        },
+        {
+          "name": "name",
+          "type": {
+            "type": "string",
+            "xjoin.type": "string",
+            "xjoin.enumeration": true
+          }
+        },
+        {
+          "name": "eyecolor",
+          "type": [
+            "null",
+            {
+              "type": "string",
+              "xjoin.type": "string"
+            }],
+          "default": null
+        }
+      ]
+    }

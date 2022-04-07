@@ -19,6 +19,7 @@ type XJoinCore struct {
 	KafkaBootstrap    string
 	SchemaRegistryURL string
 	Namespace         string
+	Schema            string
 }
 
 func (xc *XJoinCore) SetName(name string) {
@@ -76,11 +77,15 @@ func (xc XJoinCore) Create() (err error) {
 							},
 							{
 								"name":  "SCHEMA_REGISTRY_URL",
-								"value": xc.SchemaRegistryURL,
+								"value": xc.SchemaRegistryURL + "/apis/registry/v2",
 							},
 							{
 								"name":  "KAFKA_BOOTSTRAP",
 								"value": xc.KafkaBootstrap,
+							},
+							{
+								"name":  "SINK_SCHEMA",
+								"value": xc.Schema,
 							},
 						},
 						"image":           "quay.io/ckyrouac/xjoin-core:latest",

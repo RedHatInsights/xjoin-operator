@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	k8slog "sigs.k8s.io/controller-runtime/pkg/log"
 	"time"
 
@@ -53,7 +54,9 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
+	var probeAddr string
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -74,14 +77,15 @@ func main() {
 	leaseDuration := 90 * time.Second
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		Port:               9443,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "222b734b.cloud.redhat.com",
-		RenewDeadline:      &renewDeadline,
-		LeaseDuration:      &leaseDuration,
-		Logger:             k8slog.Log,
+		Scheme:                 scheme,
+		MetricsBindAddress:     metricsAddr,
+		Port:                   9443,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "222b734b.cloud.redhat.com",
+		RenewDeadline:          &renewDeadline,
+		LeaseDuration:          &leaseDuration,
+		HealthProbeBindAddress: probeAddr,
+		Logger:                 k8slog.Log,
 	})
 	if err != nil {
 		k8slog.Log.Error(err, "unable to start manager")
@@ -185,6 +189,15 @@ func main() {
 	// +kubebuilder:scaffold:builder
 
 	metrics.Init()
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		k8slog.Log.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		k8slog.Log.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
 
 	k8slog.Log.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

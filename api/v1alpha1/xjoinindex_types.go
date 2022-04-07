@@ -6,7 +6,8 @@ import (
 
 type XJoinIndexSpec struct {
 	// +kubebuilder:validation:Required
-	AvroSchema string `json:"avroSchema,omitempty"`
+	AvroSchema           string                `json:"avroSchema,omitempty"`
+	CustomSubgraphImages []CustomSubgraphImage `json:"customSubgraphImages,omitempty"`
 
 	// +optional
 	Pause bool `json:"pause,omitempty"`
@@ -17,6 +18,10 @@ type XJoinIndexStatus struct {
 	ActiveVersionIsValid     bool   `json:"activeVersionIsValid"`
 	RefreshingVersion        string `json:"refreshingVersion"`
 	RefreshingVersionIsValid bool   `json:"refreshingVersionIsValid"`
+	SpecHash                 string `json:"specHash"`
+
+	//+optional
+	DataSources map[string]string `json:"dataSources"` //map of datasource name to datasource resource version
 }
 
 // +kubebuilder:object:root=true
@@ -29,6 +34,34 @@ type XJoinIndex struct {
 
 	Spec   XJoinIndexSpec   `json:"spec,omitempty"`
 	Status XJoinIndexStatus `json:"status,omitempty"`
+}
+
+type CustomSubgraphImage struct {
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// +kubebuilder:validation:Required
+	Image string `json:"image"`
+}
+
+func (in *XJoinIndex) GetDataSources() map[string]string {
+	return in.Status.DataSources
+}
+
+func (in *XJoinIndex) GetDataSourceNames() []string {
+	keys := make([]string, 0, len(in.Status.DataSources))
+	for key := range in.Status.DataSources {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+func (in *XJoinIndex) GetSpec() interface{} {
+	return in.Spec
+}
+
+func (in *XJoinIndex) GetSpecHash() string {
+	return in.Status.SpecHash
 }
 
 func (in *XJoinIndex) GetActiveVersion() string {

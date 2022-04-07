@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-errors/errors"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"hash/fnv"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -38,6 +39,12 @@ func FetchXJoinIndex(c client.Client, namespacedName types.NamespacedName, ctx c
 	instance := &xjoin.XJoinIndex{}
 	err := c.Get(ctx, namespacedName, instance)
 	return instance, err
+}
+
+func FetchXJoinIndexes(c client.Client, ctx context.Context) (*xjoin.XJoinIndexList, error) {
+	list := &xjoin.XJoinIndexList{}
+	err := c.List(ctx, list)
+	return list, err
 }
 
 func FetchXJoinIndexPipeline(c client.Client, namespacedName types.NamespacedName, ctx context.Context) (*xjoin.XJoinIndexPipeline, error) {
@@ -83,6 +90,17 @@ func SecretHash(secret *corev1.Secret) (string, error) {
 	return fmt.Sprint(algorithm.Sum32()), err
 }
 
+func SpecHash(spec interface{}) (string, error) {
+	jsonVal, err := json.Marshal(spec)
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
+
+	algorithm := fnv.New32a()
+	_, err = algorithm.Write(jsonVal)
+	return fmt.Sprint(algorithm.Sum32()), err
+}
+
 func ConfigMapHash(cm *corev1.ConfigMap, ignoredKeys ...string) (string, error) {
 	if cm == nil {
 		return "-1", nil
@@ -105,7 +123,7 @@ func FetchSecret(c client.Client, namespace string, name string, ctx context.Con
 	secret := &corev1.Secret{}
 	err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, secret)
 
-	if statusError, isStatus := err.(*errors.StatusError); isStatus && statusError.Status().Reason == metav1.StatusReasonNotFound {
+	if statusError, isStatus := err.(*k8errors.StatusError); isStatus && statusError.Status().Reason == metav1.StatusReasonNotFound {
 		log.Info("Secret not found.", "namespace", namespace, "name", name)
 		return nil, nil
 	}

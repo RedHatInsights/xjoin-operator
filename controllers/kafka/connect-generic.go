@@ -159,7 +159,14 @@ func (kafka *GenericKafka) CheckConnectorExistsViaREST(name string) (bool, error
 	url := fmt.Sprintf(
 		"%s/connectors/%s",
 		kafka.ConnectUrl(), name)
-	res, err := http.Get(url)
+
+	httpClient := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return false, err
+	}
+	res, err := httpClient.Do(req)
+
 	if err != nil {
 		return false, err
 	}

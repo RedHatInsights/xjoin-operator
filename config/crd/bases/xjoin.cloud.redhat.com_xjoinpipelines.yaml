@@ -46,6 +46,9 @@ spec:
               connectClusterNamespace:
                 minLength: 1
                 type: string
+              elasticSearchIndexTemplate:
+                minLength: 1
+                type: string
               elasticSearchNamespace:
                 minLength: 1
                 type: string

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/avro"
+	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"github.com/riferrei/srclient"
 	"strings"
 )
@@ -11,7 +12,7 @@ import (
 type AvroSchema struct {
 	schema     string
 	id         int
-	registry   *avro.SchemaRegistry
+	registry   *schemaregistry.ConfluentClient
 	name       string
 	version    string
 	references []srclient.Reference
@@ -19,7 +20,7 @@ type AvroSchema struct {
 
 type AvroSchemaParameters struct {
 	Schema     string
-	Registry   *avro.SchemaRegistry
+	Registry   *schemaregistry.ConfluentClient
 	References []srclient.Reference
 }
 
@@ -45,12 +46,12 @@ func (as *AvroSchema) Name() string {
 }
 
 func (as *AvroSchema) Create() (err error) {
-	schema, err := as.ParseAvroSchema()
+	schema, err := as.SetSchemaNameNamespace()
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 
-	id, err := as.registry.RegisterSchema(as.Name(), schema, as.references)
+	id, err := as.registry.RegisterAvroSchema(as.Name(), schema, as.references)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -60,11 +61,19 @@ func (as *AvroSchema) Create() (err error) {
 }
 
 func (as *AvroSchema) Delete() (err error) {
-	return as.registry.DeleteSchema(as.Name())
+	err = as.registry.DeleteSchema(as.Name())
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
 }
 
 func (as *AvroSchema) DeleteByVersion(version string) (err error) {
-	return as.registry.DeleteSchema(as.name + "." + version)
+	err = as.registry.DeleteSchema(as.name + "." + version)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
 }
 
 func (as *AvroSchema) CheckDeviation() (err error) {
@@ -95,8 +104,8 @@ func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err e
 	return
 }
 
-func (as AvroSchema) ParseAvroSchema() (schema string, err error) {
-	var schemaObj avro.SourceSchema
+func (as AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
+	var schemaObj avro.Schema
 	err = json.Unmarshal([]byte(as.schema), &schemaObj)
 	if err != nil {
 		return schema, errors.Wrap(err, 0)

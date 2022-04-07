@@ -1,0 +1,50 @@
+---
+apiVersion: cloud.redhat.com/v1alpha1
+kind: ClowdApp
+metadata:
+  name: cats
+spec:
+  deployments:
+  - name: migrate
+    podSpec:
+      image: quay.io/ckyrouac/xjoin-demo:latest
+      command:
+        - /bin/bash
+        - -c
+        - 'sleep 9999999'
+      initContainers:
+        - command:
+            - alembic
+            - upgrade
+            - head
+          inheritEnv: true
+      env:
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: cats-db
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cats-db
+              key: password
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: cats-db
+              key: name
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: cats-db
+              key: hostname
+        - name: DB_PORT
+          valueFrom:
+            secretKeyRef:
+              name: cats-db
+              key: port
+  envName: env-test
+  database:
+    name: cats
+    version: 12

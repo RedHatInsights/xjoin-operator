@@ -9,6 +9,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"time"
 
@@ -74,12 +75,18 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 // Reconcile
 // This reconciles Kafka Connect is running and each active connector is running
 func (r *KafkaConnectReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
-	reqLogger := logger.NewLogger("controller_validation", "Pipeline", request.Name, "Namespace", request.Namespace)
+	reqLogger := logger.NewLogger("controller_kafkaconnect", "Pipeline", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling Kafka Connect")
 
 	err := r.Setup(reqLogger, request, ctx)
 	if err != nil {
 		return reconcile.Result{}, err
+	}
+
+	//skip kafka connect reconciliation in ephemeral namespaces
+	if r.parameters.Ephemeral.Bool() {
+		reqLogger.Info("Skipping kafkaconnect reconciliation")
+		return reconcile.Result{}, nil
 	}
 
 	err = r.reconcileKafkaConnect()
@@ -116,7 +123,8 @@ func (r *KafkaConnectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(eventFilterPredicate()).
 		WithLogger(mgr.GetLogger()).
 		WithOptions(controller.Options{
-			Log: mgr.GetLogger(),
+			Log:         mgr.GetLogger(),
+			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		Complete(r)
 }

@@ -26,6 +26,7 @@ type IndexParameters struct {
 	ElasticSearchIndexShards         Parameter
 	ElasticSearchIndexTemplate       Parameter
 	KafkaBootstrapURL                Parameter
+	CustomSubgraphImages             Parameter
 }
 
 func BuildIndexParameters() *IndexParameters {
@@ -129,6 +130,11 @@ func BuildIndexParameters() *IndexParameters {
 			ConfigMapKey:  "kafka.bootstrap.url",
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  "localhost:9092",
+		},
+		CustomSubgraphImages: Parameter{
+			Type:         reflect.Slice,
+			SpecKey:      "CustomSubgraphImages",
+			DefaultValue: nil,
 		},
 	}
 

@@ -116,7 +116,14 @@ func (kafka *Kafka) GetTaskStatus(connectorName string, taskId float64) (map[str
 	url := fmt.Sprintf(
 		"%s/connectors/%s/tasks/%.0f/status",
 		kafka.ConnectUrl(), connectorName, taskId)
-	res, err := http.Get(url)
+
+	httpClient := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := httpClient.Do(req)
+
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +222,13 @@ func (kafka *Kafka) RestartConnector(connectorName string) error {
 func (kafka *Kafka) CheckIfConnectIsResponding() (bool, error) {
 	for j := 0; j < 10; j++ {
 		url := kafka.ConnectUrl() + "/connectors"
-		res, err := http.Get(url)
+
+		httpClient := &http.Client{Timeout: 15 * time.Second}
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		if err != nil {
+			return false, err
+		}
+		res, err := httpClient.Do(req)
 
 		//ignore errors and try again
 		if err != nil {
@@ -238,9 +251,13 @@ func (kafka *Kafka) CheckIfConnectIsResponding() (bool, error) {
 			//if there are connectors, make sure they can be retrieved
 			if len(bodyArr) > 0 {
 				connectorUrl := url + "/" + bodyArr[0]
-				res, _ = http.Get(connectorUrl) //ignore errors and try again
+				req2, err := http.NewRequest(http.MethodGet, connectorUrl, nil)
+				if err != nil {
+					return false, err
+				}
+				res2, _ := httpClient.Do(req2)
 
-				if res != nil && res.StatusCode == 200 {
+				if res2 != nil && res2.StatusCode == 200 {
 					return true, nil
 				}
 			} else {
@@ -258,7 +275,14 @@ func (kafka *Kafka) ListConnectorsREST(prefix string) ([]string, error) {
 	url := fmt.Sprintf(
 		"%s/connectors",
 		kafka.ConnectUrl())
-	res, err := http.Get(url)
+
+	httpClient := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := httpClient.Do(req)
+
 	if err != nil {
 		return nil, err
 	}
@@ -360,25 +384,39 @@ func (kafka *Kafka) DeleteAllConnectors(resourceNamePrefix string) error {
 }
 
 func (kafka *Kafka) GetConnectorStatus(connectorName string) (map[string]interface{}, error) {
+	log.Info("Getting connector status for connector" + connectorName)
 	url := fmt.Sprintf(
 		"%s/connectors/%s/status",
 		kafka.ConnectUrl(), connectorName)
-	res, err := http.Get(url)
+	log.Info("connector status url: " + url)
+
+	httpClient := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
+	res, err := httpClient.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+	log.Info("got status for url: " + url)
 	defer res.Body.Close()
 
 	var bodyMap map[string]interface{}
 	if res.StatusCode == 200 {
+		log.Info("Successfully got status for url: " + url)
 		body, err := ioutil.ReadAll(res.Body)
 		err = json.Unmarshal(body, &bodyMap)
 		if err != nil {
 			return nil, err
 		}
 	} else if res.StatusCode != 404 {
+		log.Info("error getting connector status at url: " + url)
 		return nil, errors.New(fmt.Sprintf("unable to get connector %s status", connectorName))
 	}
+
+	log.Info("connector not found at url: " + url)
 
 	return bodyMap, nil
 }

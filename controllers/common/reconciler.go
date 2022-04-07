@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-errors/errors"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"strconv"
 	"time"
 )
@@ -37,19 +38,93 @@ func (r *Reconciler) Version() string {
 	return fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
 }
 
-func (r *Reconciler) Reconcile() (err error) {
-	//[REMOVED]
+func (r *Reconciler) doRefresh() (err error) {
+	r.log.Info("STATE: START REFRESH")
+
+	refreshingVersion := r.Version()
+	r.instance.SetRefreshingVersion(refreshingVersion)
+
+	err = r.methods.StartRefreshing(refreshingVersion)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
+}
+
+const (
+	START_REFRESH    string = "START_REFRESH"
+	REFRESHING              = "REFRESHING"
+	NEW                     = "NEW"
+	REMOVED                 = "REMOVED"
+	INITIAL_SYNC            = "INITIAL_SYNC"
+	VALID                   = "VALID"
+	REFRESH_COMPLETE        = "REFRESH_COMPLETE"
+)
+
+func (r *Reconciler) getState(specHash string) string {
 	if r.instance.GetDeletionTimestamp() != nil {
-		r.log.Debug("STATE: REMOVED")
+		return REMOVED
+	} else if (r.instance.GetActiveVersion() != "" &&
+		r.instance.GetActiveVersionIsValid() == false &&
+		r.instance.GetRefreshingVersion() == "") ||
+		(r.instance.GetSpecHash() != "" && r.instance.GetSpecHash() != specHash) {
+		return START_REFRESH
+	} else if r.instance.GetActiveVersion() == "" && r.instance.GetRefreshingVersion() == "" {
+		return NEW
+	} else if r.instance.GetActiveVersion() == "" &&
+		r.instance.GetRefreshingVersionIsValid() == false &&
+		r.instance.GetRefreshingVersion() != "" {
+		return INITIAL_SYNC
+	} else if r.instance.GetActiveVersion() != "" &&
+		r.instance.GetActiveVersionIsValid() == true {
+		return VALID
+	} else if r.instance.GetActiveVersion() != "" &&
+		r.instance.GetActiveVersionIsValid() == false &&
+		r.instance.GetRefreshingVersion() != "" &&
+		r.instance.GetRefreshingVersionIsValid() == false {
+		return REFRESHING
+	} else if r.instance.GetRefreshingVersion() != "" &&
+		r.instance.GetRefreshingVersionIsValid() == true {
+		return REFRESH_COMPLETE
+	} else {
+		return ""
+	}
+}
+
+func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
+	specHash, err := utils.SpecHash(r.instance.GetSpec())
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	state := r.getState(specHash)
+	if state != REFRESHING && forceRefresh {
+		state = START_REFRESH
+	}
+
+	switch state {
+	case REMOVED:
+		r.log.Info("STATE: REMOVED")
+
 		err = r.methods.Removed()
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
-	}
+	case START_REFRESH:
+		// active is invalid, not refreshing yet
+		// or spec hash mismatch
+		// or force_refresh is true
+		r.log.Info("STATE: START REFRESH")
 
-	//[NEW]
-	if r.instance.GetActiveVersion() == "" && r.instance.GetRefreshingVersion() == "" {
-		r.log.Debug("STATE: NEW")
+		refreshingVersion := r.Version()
+		r.instance.SetRefreshingVersion(refreshingVersion)
+
+		err = r.methods.StartRefreshing(refreshingVersion)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	case NEW:
+		r.log.Info("STATE: NEW")
 
 		refreshingVersion := r.Version()
 		r.instance.SetRefreshingVersion(refreshingVersion)
@@ -59,68 +134,29 @@ func (r *Reconciler) Reconcile() (err error) {
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
-	}
-
-	//[INITIAL SYNC]
-	if r.instance.GetActiveVersion() == "" &&
-		r.instance.GetRefreshingVersionIsValid() == false &&
-		r.instance.GetRefreshingVersion() != "" {
-
-		r.log.Debug("STATE: INITIAL_SYNC")
+	case INITIAL_SYNC:
+		r.log.Info("STATE: INITIAL_SYNC")
 		err = r.methods.InitialSync()
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
-	}
-
-	//[VALID] ACTIVE IS VALID
-	if r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionIsValid() == true {
-
-		r.log.Debug("STATE: VALID")
+	case VALID:
+		r.log.Info("STATE: VALID")
 
 		err = r.methods.Valid()
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
-	}
-
-	//[START REFRESHING] ACTIVE IS INVALID, NOT REFRESHING YET
-	if r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionIsValid() == false &&
-		r.instance.GetRefreshingVersion() == "" {
-
-		r.log.Debug("STATE: START REFRESH")
-		refreshingVersion := r.Version()
-		r.instance.SetRefreshingVersion(refreshingVersion)
-
-		err = r.methods.StartRefreshing(refreshingVersion)
-		if err != nil {
-			return errors.Wrap(err, 0)
-		}
-	}
-
-	//[REFRESHING] ACTIVE IS INVALID, REFRESHING IS INVALID
-	if r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionIsValid() == false &&
-		r.instance.GetRefreshingVersion() != "" &&
-		r.instance.GetRefreshingVersionIsValid() == false {
-
-		r.log.Debug("STATE: REFRESHING")
+	case REFRESHING:
+		// active is invalid, refreshing is invalid
+		r.log.Info("STATE: REFRESHING")
 
 		err = r.methods.Refreshing()
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
-	}
-
-	//[REFRESH COMPLETE] ACTIVE IS INVALID, REFRESHING IS VALID
-	if r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionIsValid() == false &&
-		r.instance.GetRefreshingVersion() != "" &&
-		r.instance.GetRefreshingVersionIsValid() == true {
-
-		r.log.Debug("STATE: REFRESH COMPLETE")
+	case REFRESH_COMPLETE:
+		r.log.Info("STATE: REFRESH COMPLETE")
 		err = r.methods.RefreshComplete()
 		if err != nil {
 			return errors.Wrap(err, 0)

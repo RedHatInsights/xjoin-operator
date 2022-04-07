@@ -65,17 +65,10 @@ func (i *XJoinDataSourceIteration) ReconcilePipelines() (err error) {
 
 func (i *XJoinDataSourceIteration) Finalize() (err error) {
 	i.Log.Info("Starting finalizer")
-	if i.GetInstance().Status.ActiveVersion != "" {
-		err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.ActiveVersion)
-		if err != nil {
-			return errors.Wrap(err, 0)
-		}
-	}
-	if i.GetInstance().Status.RefreshingVersion != "" {
-		err = i.DeleteDataSourcePipeline(i.GetInstance().Name, i.GetInstance().Status.RefreshingVersion)
-		if err != nil {
-			return errors.Wrap(err, 0)
-		}
+
+	err = i.DeleteAllResourceTypeWithComponentName(common.DataSourcePipelineGVK, i.GetInstance().GetName())
+	if err != nil {
+		return errors.Wrap(err, 0)
 	}
 
 	controllerutil.RemoveFinalizer(i.Instance, i.GetFinalizerName())
