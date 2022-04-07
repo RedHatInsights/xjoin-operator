@@ -462,7 +462,7 @@ parameters:
               "properties": {
                 "reporter": {"type": "keyword"},
                 "last_check_in": {"type": "keyword"},
-                "stale_timestamp": {"type": "date-nanos"},
+                "stale_timestamp": {"type": "date_nanos"},
                 "check_in_succeeded": {"type": "boolean"}
               }
             }
