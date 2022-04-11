@@ -32,7 +32,7 @@ function delete_clowdapp_dependencies() {
 
   # shellcheck disable=SC2034
   for i in {1..60}; do
-    if kubectl get clowdapp/"$CLOWDAPP" -o=json | jq '.spec.dependencies = null' | kubectl apply -f -; then
+    if kubectl get clowdapp/"$CLOWDAPP" -o=json -n test | jq '.spec.dependencies = null' | kubectl apply -n test -f -; then
       break
     fi
     sleep 1
