@@ -80,7 +80,11 @@ cd /tmp/kubesetup || exit 1
 if [ -z "$KUBE_SETUP_PATH" ]; then
   echo "Using default kube_setup from github"
   curl https://raw.githubusercontent.com/RedHatInsights/clowder/master/build/kube_setup.sh -o /tmp/kubesetup/kube_setup.sh && chmod +x /tmp/kubesetup/kube_setup.sh
-  sed -i 's/^install_xjoin_operator//g' ./kube_setup.sh
+
+  if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
+    sed -i 's/^install_xjoin_operator//g' ./kube_setup.sh
+  fi
+  
   sed -i 's/^install_cyndi_operator//g' ./kube_setup.sh
   sed -i 's/^install_keda_operator//g' ./kube_setup.sh
   /tmp/kubesetup/kube_setup.sh
