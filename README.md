@@ -67,9 +67,17 @@ The operator defines two controllers that reconcile a XJoinPipeline
 6. Login to https://quay.io and https://registry.redhat.io
    - `docker login -u=<quay-username> -p="password" quay.io`
    - `docker login https://registry.redhat.io`
+   - For MacOS, do the following to place the creds in .docker/config.json, which are stored in `"credsStore": "desktop"|"osxkeystore"` and are not available for pulling images from private repos.
+      1. `docker logout quay.io`
+      1. `docker logout registry.redhat.io`
+      1. Remove the "credStore" block from .docker/config.json.
+      1. `docker login -u=<quay-username> -p="password" quay.io`
+      1. `docker login https://registry.redhat.io`
+      - NOTE: Manually creating the `.docker/config.json` and adding `"auth": base64-encoded username:password` does not work.
 
 7. Append the following line into `/etc/hosts`
     ```
+    127.0.0.1 kafka-kafka-0.kafka-kafka-brokers.test.svc
     127.0.0.1 inventory-db xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http
     ```
 
