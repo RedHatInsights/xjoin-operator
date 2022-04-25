@@ -298,6 +298,23 @@ func NewXJoinConfiguration() Parameters {
 					  },
 					  "tags_search": {
 						"type": "keyword"
+					  },
+					  "per_reporter_staleness_flat": {
+						"type": "nested",
+						"properties": {
+						  "reporter": {
+							"type": "keyword"
+						  },
+						  "last_check_in": {
+							"type": "keyword"
+						  },
+						  "stale_timestamp": {
+							"type": "keyword"
+						  },
+						  "check_in_succeeded": {
+							"type": "boolean"
+						  }
+						}
 					  }
 					}
 				  }}`,
@@ -316,13 +333,15 @@ func NewXJoinConfiguration() Parameters {
 				{{if .ElasticSearchUsername}}"connection.username": "{{.ElasticSearchUsername}}",{{end}}
 				{{if .ElasticSearchPassword}}"connection.password": "{{.ElasticSearchPassword}}",{{end}}
 				"type.name": "_doc",
-				"transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString, renameTopic",
+				"transforms": "valueToKey, extractKey, expandJSON, expandPRSJSON, deleteIf, flattenList, flattenListString, flattenPRS, renameTopic",
 				"transforms.valueToKey.type":"org.apache.kafka.connect.transforms.ValueToKey",
 				"transforms.valueToKey.fields":"id",
 				"transforms.extractKey.type":"org.apache.kafka.connect.transforms.ExtractField$Key",
 				"transforms.extractKey.field":"id",
 				"transforms.expandJSON.type": "com.redhat.insights.expandjsonsmt.ExpandJSON$Value",
 				"transforms.expandJSON.sourceFields": "tags",
+				"transforms.expandPRSJSON.type": "com.redhat.insights.expandjsonsmt.ExpandJSON$Value",
+				"transforms.expandPRSJSON.sourceFields": "per_reporter_staleness",
 				"transforms.deleteIf.type": "com.redhat.insights.deleteifsmt.DeleteIf$Value",
 				"transforms.deleteIf.field": "__deleted",
 				"transforms.deleteIf.value": "true",
@@ -337,6 +356,11 @@ func NewXJoinConfiguration() Parameters {
 				"transforms.flattenListString.mode": "join",
 				"transforms.flattenListString.delimiterJoin": "/",
 				"transforms.flattenListString.encode": true,
+				"transforms.flattenPRS.type": "com.redhat.insights.flattenlistsmt.FlattenList$Value",
+				"transforms.flattenPRS.sourceField": "per_reporter_staleness",
+				"transforms.flattenPRS.outputField": "per_reporter_staleness_flat",
+				"transforms.flattenPRS.mode": "object",
+				"transforms.flattenPRS.rootKey": "reporter",
 				"transforms.renameTopic.type": "org.apache.kafka.connect.transforms.RegexRouter",
 				"transforms.renameTopic.regex": "{{.Topic}}",
 				"transforms.renameTopic.replacement": "{{.RenameTopicReplacement}}",
@@ -441,11 +465,6 @@ func NewXJoinConfiguration() Parameters {
 						"lang": "painless",
 						"if": "ctx.tags_structured != null",
 						"source": "ctx.tags_search = ctx.tags_structured.stream().map(t -> { StringBuilder builder = new StringBuilder(); if (t.namespace != null && t.namespace != 'null') { builder.append(t.namespace); } builder.append('/'); builder.append(t.key); builder.append('='); if (t.value != null) { builder.append(t.value); } return builder.toString() }).collect(Collectors.toList())"
-					}
-				}, {
-					"json" : {
-						"if" : "ctx.per_reporter_staleness != null",
-						"field" : "per_reporter_staleness"
 					}
 				}]
 			}`,

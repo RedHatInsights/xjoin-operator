@@ -53,13 +53,15 @@ parameters:
           "connection.password": "{{.ElasticSearchPassword}}",
         {{end}}
         "type.name": "_doc",
-        "transforms": "valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString, renameTopic",
+        "transforms": "valueToKey, extractKey, expandJSON, expandPRSJSON, deleteIf, flattenList, flattenListString, flattenPRS, renameTopic",
         "transforms.valueToKey.type": "org.apache.kafka.connect.transforms.ValueToKey",
         "transforms.valueToKey.fields": "id",
         "transforms.extractKey.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
         "transforms.extractKey.field": "id",
         "transforms.expandJSON.type": "com.redhat.insights.expandjsonsmt.ExpandJSON$Value",
         "transforms.expandJSON.sourceFields": "tags",
+        "transforms.expandPRSJSON.type": "com.redhat.insights.expandjsonsmt.ExpandJSON$Value",
+        "transforms.expandPRSJSON.sourceFields": "per_reporter_staleness",
         "transforms.deleteIf.type": "com.redhat.insights.deleteifsmt.DeleteIf$Value",
         "transforms.deleteIf.field": "__deleted",
         "transforms.deleteIf.value": "true",
@@ -74,6 +76,11 @@ parameters:
         "transforms.flattenListString.mode": "join",
         "transforms.flattenListString.delimiterJoin": "/",
         "transforms.flattenListString.encode": true,
+        "transforms.flattenPRS.type": "com.redhat.insights.flattenlistsmt.FlattenList$Value",
+        "transforms.flattenPRS.sourceField": "per_reporter_staleness",
+        "transforms.flattenPRS.outputField": "per_reporter_staleness_flat",
+        "transforms.flattenPRS.mode": "object",
+        "transforms.flattenPRS.rootKey": "reporter",
         "transforms.renameTopic.type": "org.apache.kafka.connect.transforms.RegexRouter",
         "transforms.renameTopic.regex": "{{.Topic}}",
         "transforms.renameTopic.replacement": "{{.RenameTopicReplacement}}",
@@ -228,6 +235,23 @@ parameters:
                 },
                 "provider_id": {
                   "type": "keyword"
+                }
+              }
+            },
+            "per_reporter_staleness_flat": {
+              "type": "nested",
+              "properties": {
+                "reporter": {
+                "type": "keyword"
+                },
+                "last_check_in": {
+                "type": "keyword"
+                },
+                "stale_timestamp": {
+                "type": "keyword"
+                },
+                "check_in_succeeded": {
+                "type": "boolean"
                 }
               }
             },
@@ -456,15 +480,6 @@ parameters:
             },
             "tags_search": {
               "type": "keyword"
-            },
-            "per_reporter_staleness": {
-              "type": "object",
-              "properties": {
-                "reporter": {"type": "keyword"},
-                "last_check_in": {"type": "keyword"},
-                "stale_timestamp": {"type": "date_nanos"},
-                "check_in_succeeded": {"type": "boolean"}
-              }
             }
           }
         }
