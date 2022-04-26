@@ -58,7 +58,7 @@ objects:
         pvc: true
         cluster:
           name: kafka
-          version: "2.8.0"
+          version: "3.0.0"
           replicas: 1
           storageSize: 5Gi
           deleteClaim: true
@@ -71,9 +71,9 @@ objects:
             transaction.state.log.replication.factor: "1"
         connect:
           name: connect
-          version: "2.8.0"
+          version: "3.0.0"
           replicas: 1
-          image: "quay.io/ckyrouac/xjoin-kafka-connect-strimzi:latest"
+          image: "quay.io/cloudservices/xjoin-kafka-connect-strimzi:latest"
       db:
         mode: local
         pvc: true

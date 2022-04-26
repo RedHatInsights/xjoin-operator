@@ -32,5 +32,6 @@ kubectl port-forward "$KAFKA_SVC" 29092:9092 -n "$PROJECT_NAME" >/dev/null 2>&1 
 kubectl port-forward "$HBI_SVC" 8000:8000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$APICURIO_SVC" 1080:1080 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$XJOIN_API_GATEWAY" 8001:8000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward "$CONNECT_SVC" 5005:5005 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 
 pgrep -fla "kubectl port-forward"

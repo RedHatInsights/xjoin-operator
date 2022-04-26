@@ -117,6 +117,7 @@ spec:
               {
                 "name": "fqdn",
                 "type": {
+                  "type": "string",
                   "xjoin.type": "string",
                   "xjoin.case": "insensitive"
                 }
@@ -124,12 +125,14 @@ spec:
               {
                 "name": "insights_id",
                 "type": {
+                  "type": "string",
                   "xjoin.type": "string"
                 }
               },
               {
                 "name": "satellite_id",
                 "type": {
+                  "type": "string",
                   "xjoin.type": "string"
                 }
               }
@@ -149,6 +152,7 @@ spec:
                 {
                   "name": "arch",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "string",
                     "xjoin.enumeration": true
                   }
@@ -156,6 +160,7 @@ spec:
                 {
                   "name": "os_release",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "string",
                     "xjoin.enumeration": true
                   }
@@ -163,6 +168,7 @@ spec:
                 {
                   "name": "os_kernel_version",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "string",
                     "xjoin.enumeration": true
                   }
@@ -170,6 +176,7 @@ spec:
                 {
                   "name": "infrastructure_type",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "string",
                     "xjoin.enumeration": true
                   }
@@ -177,6 +184,7 @@ spec:
                 {
                   "name": "infrastructure_vendor",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "string",
                     "xjoin.enumeration": true
                   }
@@ -184,6 +192,7 @@ spec:
                 {
                   "name": "sap_system",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "boolean",
                     "xjoin.enumeration": true
                   }
@@ -191,6 +200,7 @@ spec:
                 {
                   "name": "sap_sids",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "string",
                     "xjoin.enumeration": true
                   }
@@ -198,12 +208,14 @@ spec:
                 {
                   "name": "owner_id",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "string"
                   }
                 },
                 {
                   "name": "insights_client_version",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "string",
                     "xjoin.enumeration": true
                   }
@@ -211,12 +223,14 @@ spec:
                 {
                   "name": "rhc_client_id",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "string"
                   }
                 },
                 {
                   "name": "is_marketplace",
                   "type": {
+                    "type": "boolean",
                     "xjoin.type": "boolean",
                     "xjoin.enumeration": true
                   }
@@ -224,11 +238,13 @@ spec:
                 {
                   "name": "operating_system",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "json",
                     "xjoin.fields": [
                       {
                         "name": "major",
                         "type": {
+                          "type": "string",
                           "xjoin.type": "byte",
                           "xjoin.enumeration": true
                         }
@@ -236,6 +252,7 @@ spec:
                       {
                         "name": "minor",
                         "type": {
+                          "type": "string",
                           "xjoin.type": "byte",
                           "xjoin.enumeration": true
                         }
@@ -243,6 +260,7 @@ spec:
                       {
                         "name": "name",
                         "type": {
+                          "type": "string",
                           "xjoin.type": "string",
                           "xjoin.enumeration": true
                         }
@@ -253,11 +271,13 @@ spec:
                 {
                   "name": "ansible",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "json",
                     "xjoin.fields": [
                       {
                         "name": "controller_version",
                         "type": {
+                          "type": "string",
                           "xjoin.type": "string",
                           "xjoin.enumeration": true
                         }
@@ -265,6 +285,7 @@ spec:
                       {
                         "name": "hub_version",
                         "type": {
+                          "type": "string",
                           "xjoin.type": "string",
                           "xjoin.enumeration": true
                         }
@@ -272,6 +293,7 @@ spec:
                       {
                         "name": "catalog_worker_version",
                         "type": {
+                          "type": "string",
                           "xjoin.type": "string",
                           "xjoin.enumeration": true
                         }
@@ -279,6 +301,7 @@ spec:
                       {
                         "name": "sso_version",
                         "type": {
+                          "type": "string",
                           "xjoin.type": "string",
                           "xjoin.enumeration": true
                         }
@@ -289,6 +312,7 @@ spec:
                 {
                   "name": "host_type",
                   "type": {
+                    "type": "string",
                     "xjoin.type": "string",
                     "xjoin.enumeration": true
                   }

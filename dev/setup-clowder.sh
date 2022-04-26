@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# make sure the internal network is reachable
+RESPONSE_CODE=$(curl --write-out %{http_code} --silent --output /dev/null app-interface.apps.appsrep05ue1.zqxk.p1.openshiftapps.com)
+
+if [[ "$RESPONSE_CODE" -gt 399 ]]; then
+  echo -e "Response code from app-interface: ${RESPONSE_CODE}"
+  echo -e "Unable to connect to app-interface. Are you in the VPN?"
+  exit 1
+fi
+
+
 INCLUDE_EXTRA_STUFF=$1
 PLATFORM=`uname -a | cut -f1 -d' '`
 
@@ -94,6 +104,7 @@ if [ -z "$KUBE_SETUP_PATH" ]; then
     fi
     sed -i 's/^install_cyndi_operator//g' ./kube_setup.sh
     sed -i 's/^install_keda_operator//g' ./kube_setup.sh
+    sed -i 's/minikube kubectl --/kubectl/g' ./kube_setup.sh # this allows connecting to remote minikube instances
   fi
 
   /tmp/kubesetup/kube_setup.sh
@@ -106,7 +117,7 @@ kubectl set env deployment/strimzi-cluster-operator -n strimzi STRIMZI_IMAGE_PUL
 
 # clowder CRDs
 print_start_message "Installing Clowder CRDs"
-kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/v0.29.0/clowder-manifest-v0.29.0.yaml --validate=false
+kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/v0.30.0/clowder-manifest-v0.30.0.yaml --validate=false
 
 # project and secrets
 print_start_message "Setting up pull secrets"
