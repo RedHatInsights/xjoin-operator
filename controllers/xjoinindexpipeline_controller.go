@@ -77,6 +77,8 @@ func (r *XJoinIndexPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error 
 // +kubebuilder:rbac:groups=kafka.strimzi.io,resources=kafkatopics;kafkatopics/finalizers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kafka.strimzi.io,resources=kafkaconnects;kafkas,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=configmaps;pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=services;events,verbs=get;list;watch;create;delete;update
+// +kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;list;watch;create;delete;update
 
 func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := xjoinlogger.NewLogger("controller_xjoinindexpipeline", "IndexPipeline", request.Name, "Namespace", request.Namespace)
