@@ -92,7 +92,7 @@ func (r *XJoinIndexReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // +kubebuilder:rbac:groups=xjoin.cloud.redhat.com,resources=xjoinindices;xjoinindices/status;xjoinindices/finalizers,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=configmaps;pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=configmaps;pods;deployments,verbs=get;list;watch
 
 func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := xjoinlogger.NewLogger("controller_xjoinindex", "Index", request.Name, "Namespace", request.Namespace)
