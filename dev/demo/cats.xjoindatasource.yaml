@@ -41,7 +41,8 @@ spec:
             "type": "string",
             "connect.version": 1,
             "connect.name": "io.debezium.data.Uuid",
-            "xjoin.type": "string"
+            "xjoin.type": "string",
+            "xjoin.primary.key": true
           }
         },
         {
