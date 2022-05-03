@@ -78,7 +78,7 @@ The operator defines two controllers that reconcile a XJoinPipeline
 7. Append the following line into `/etc/hosts`
     ```
     127.0.0.1 kafka-kafka-0.kafka-kafka-brokers.test.svc
-    127.0.0.1 inventory-db xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http
+    127.0.0.1 inventory-db host-inventory-db.test.svc xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http
     ```
 
 8. `./dev/setup-clowder.sh`
@@ -113,7 +113,7 @@ With the cluster set up it is now possible to install manifests and run the oper
 
 1. Finally, create a new pipeline
     ```
-    kubectl apply -f ../config/samples/xjoin_v1alpha1_xjoinpipeline.yaml
+    kubectl apply -f ../config/samples/xjoin_v1alpha1_xjoinpipeline.yaml -n test
     ```
 
 There is also `make delve` to debug the operator. After starting the Delve server process, connect to it with a Delve debugger.
