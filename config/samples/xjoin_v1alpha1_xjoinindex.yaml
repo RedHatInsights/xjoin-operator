@@ -39,12 +39,5 @@ spec:
           "transformation.parameters": {
             "delimiters": ["/", "="]
           }
-        }, {
-          "transformation": "object_to_array_of_strings",
-          "input.field": "host.tags",
-          "output.field": "host.tags_search_combined",
-          "transformation.parameters": {
-            "delimiters": ["c6509b6d-9646-4122-a16c-f536660c22ee"]
-          }
-      }]
+        }]
     }
