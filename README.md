@@ -78,7 +78,7 @@ The operator defines two controllers that reconcile a XJoinPipeline
 7. Append the following line into `/etc/hosts`
     ```
     127.0.0.1 kafka-kafka-0.kafka-kafka-brokers.test.svc
-    127.0.0.1 inventory-db host-inventory-db.test.svc xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http
+    127.0.0.1 host-inventory-db.test.svc xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http
     ```
 
 8. `./dev/setup-clowder.sh`

@@ -16,5 +16,4 @@ type Host struct {
 	TagsStructured     []map[string]string `json:"tags_structured"`
 	TagsString         []string            `json:"tags_string"`
 	TagsSearch         []string            `json:"tags_search"`
-	TagsSearchCombined []string            `json:"tags_search_combined"`
 }
