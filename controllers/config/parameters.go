@@ -214,6 +214,7 @@ func NewXJoinConfiguration() Parameters {
 					  "ingest_timestamp": {"type": "date"},
 					  "id": { "type": "keyword" },
 					  "account": { "type": "keyword" },
+					  "org_id": { "type": "keyword" },
 					  "display_name": {
 						"type": "keyword",
 						"fields": {
