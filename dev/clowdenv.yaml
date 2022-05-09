@@ -74,6 +74,13 @@ objects:
           version: "3.0.0"
           replicas: 1
           image: "quay.io/cloudservices/xjoin-kafka-connect-strimzi:latest"
+          resources:
+            limits:
+              cpu: 1
+              memory: 1Gi
+            requests:
+              cpu: 500m
+              memory: 512Mi
       db:
         mode: local
         pvc: true
