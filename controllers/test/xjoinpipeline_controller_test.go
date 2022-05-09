@@ -103,7 +103,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["transforms.extractKey.field"]).To(Equal("id"))
 			Expect(esConnectorConfig["transforms.flattenListString.type"]).To(Equal("com.redhat.insights.flattenlistsmt.FlattenList$Value"))
 			Expect(esConnectorConfig["transforms.valueToKey.type"]).To(Equal("org.apache.kafka.connect.transforms.ValueToKey"))
-			Expect(esConnectorConfig["transforms"]).To(Equal("valueToKey, extractKey, expandJSON, deleteIf, flattenList, flattenListString, renameTopic"))
+			Expect(esConnectorConfig["transforms"]).To(Equal("valueToKey, extractKey, expandJSON, expandPRSJSON, deleteIf, flattenList, flattenListString, flattenPRS, renameTopic"))
 			Expect(esConnectorConfig["transforms.flattenList.mode"]).To(Equal("keys"))
 			Expect(esConnectorConfig["transforms.flattenListString.encode"]).To(Equal(true))
 			Expect(esConnectorConfig["transforms.flattenListString.outputField"]).To(Equal("tags_string"))
