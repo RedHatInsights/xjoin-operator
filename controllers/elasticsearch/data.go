@@ -62,6 +62,7 @@ func sortHostFields(hosts []data.Host) []data.Host {
 		data.OrderedBy(data.NamespaceComparator, data.KeyComparator, data.ValueComparator).Sort(host.TagsStructured)
 		sort.Strings(host.TagsSearch)
 		sort.Strings(host.TagsString)
+		sort.Strings(host.TagsSearchCombined)
 	}
 
 	return hosts
