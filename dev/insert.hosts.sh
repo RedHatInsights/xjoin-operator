@@ -30,6 +30,7 @@ function add_host() {
   VALUE="(
   '$(uuidgen)',
   '5',
+  '5',
   'test',
   '2017-01-01 00:00:00',
   '$NOW',
