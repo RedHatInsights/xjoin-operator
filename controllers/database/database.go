@@ -5,17 +5,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"sort"
+	"strings"
+	"text/template"
+	"time"
+
 	"github.com/go-errors/errors"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
-	"net/url"
-	"sort"
-	"strings"
-	"text/template"
-	"time"
 )
 
 var log = logger.NewLogger("database")
@@ -341,7 +342,7 @@ func formatIdsList(ids []string) (string, error) {
 
 //TODO handle this dynamically with a schema
 func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
-	cols := "id,account,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter,tags"
+	cols := "id,account,org_id,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter,tags"
 
 	idsString, err := formatIdsList(ids)
 	if err != nil {

@@ -18,6 +18,11 @@
       "type": "string"
     },
     {
+      "name": "org_id",
+      "xjoin.name": "org_id",
+      "type": "string"
+    },
+    {
       "name": "display_name",
       "xjoin.name": "display_name",
       "type": [

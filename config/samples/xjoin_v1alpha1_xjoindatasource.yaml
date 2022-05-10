@@ -53,6 +53,13 @@ spec:
           }
         },
         {
+          "name": "org_id",
+          "type": {
+            "type": "string",
+            "xjoin.type": "string"
+          }
+        },
+        {
           "name": "display_name",
           "type": [
             "null",

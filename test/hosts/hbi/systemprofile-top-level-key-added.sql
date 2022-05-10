@@ -1,6 +1,7 @@
 INSERT INTO hosts (
     id,
     account,
+    org_id,
     display_name,
     created_on,
     modified_on,
@@ -12,6 +13,7 @@ INSERT INTO hosts (
     reporter)
 VALUES (
     '{{.ID}}',
+    '5',
     '5',
     'test',
     '2017-01-01 00:00:00',

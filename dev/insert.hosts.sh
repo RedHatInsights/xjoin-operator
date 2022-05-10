@@ -19,7 +19,7 @@ function ctrl_c() {
 function add_header() {
   FILE=$1
   SQL_STATEMENT="INSERT INTO hosts
-    (id, account, display_name, created_on, modified_on, facts, tags, canonical_facts, system_profile_facts, stale_timestamp, reporter)
+    (id, account, org_id, display_name, created_on, modified_on, facts, tags, canonical_facts, system_profile_facts, stale_timestamp, reporter)
     VALUES "
   echo "$SQL_STATEMENT" > "$FILE"
 }
@@ -29,6 +29,7 @@ function add_host() {
 
   VALUE="(
   '$(uuidgen)',
+  '5',
   '5',
   'test',
   '2017-01-01 00:00:00',

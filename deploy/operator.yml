@@ -191,6 +191,9 @@ parameters:
             "account": {
               "type": "keyword"
             },
+            "org_id": {
+              "type": "keyword"
+            },
             "display_name": {
               "type": "keyword",
               "fields": {

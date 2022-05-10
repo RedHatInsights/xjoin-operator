@@ -3,6 +3,7 @@ package data
 type Host struct {
 	ID                 *string             `json:"id" db:"id"`
 	Account            *string             `json:"account" db:"account"`
+	OrgId              *string             `json:"org_id" db:"org_id"`
 	DisplayName        *string             `json:"display_name" db:"display_name"`
 	CreatedOn          *string             `json:"created_on" db:"created_on"`
 	ModifiedOn         *string             `json:"modified_on" db:"modified_on"`
