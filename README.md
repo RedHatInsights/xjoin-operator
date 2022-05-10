@@ -51,7 +51,12 @@ The operator defines two controllers that reconcile a XJoinPipeline
     minikube config set memory 16384
     ```
 
-4. Start Kubernetes
+4. If using minikube, use the kvm2 driver. The docker driver is known to cause problems.
+   ```
+   minikube config set driver kvm2
+   ```
+   
+5. Start Kubernetes
     ```
     ./crc start
     ```
@@ -59,12 +64,12 @@ The operator defines two controllers that reconcile a XJoinPipeline
     minikube start
     ```
 
-5. If using CRC
+6. If using CRC
    - When prompted for a pull secret paste it (you obtained pull secret on step 1 when downloading CRC)
    - Log in to the cluster as kubeadmin (oc login -u kubeadmin -p ...)
      You'll find the exact command to use in the CRC startup log
 
-6. Login to https://quay.io and https://registry.redhat.io
+7. Login to https://quay.io and https://registry.redhat.io
    - `docker login -u=<quay-username> -p="password" quay.io`
    - `docker login https://registry.redhat.io`
    - For MacOS, do the following to place the creds in .docker/config.json, which are stored in `"credsStore": "desktop"|"osxkeystore"` and are not available for pulling images from private repos.
@@ -75,13 +80,13 @@ The operator defines two controllers that reconcile a XJoinPipeline
       1. `docker login https://registry.redhat.io`
       - NOTE: Manually creating the `.docker/config.json` and adding `"auth": base64-encoded username:password` does not work.
 
-7. Append the following line into `/etc/hosts`
+8. Append the following line into `/etc/hosts`
     ```
     127.0.0.1 kafka-kafka-0.kafka-kafka-brokers.test.svc
     127.0.0.1 inventory-db host-inventory-db.test.svc xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http
     ```
 
-8. `./dev/setup-clowder.sh`
+9. `./dev/setup-clowder.sh`
 
 ### Forward ports
 To access the services within the Kubernetes cluster there is a script to forward ports to each of the useful services:
@@ -148,6 +153,10 @@ docker login -u=$QUAY_USERNAME -p $QUAY_PASSWORD
 ### Running tests
 
 - The tests require an initialized Kubernetes environment. See [Setting up the development environment](#development).
+- Before running the tests, make sure the operator is not already running on your machine or in the cluster.
+  ```
+  kubectl scale --replicas=0 deployments/xjoin-operator-controller-manager -n xjoin-operator-system
+  ```
 - They can be executed via `make test`.
 - There is also `make delve-test` to run the tests in debug mode. Then `delve` can be used to connect to the test run.
 - The tests take a while to run. To whitelist one or a few tests, prepend `It` with an F. e.g. change `It("Creates a connector...` to `FIt("Creates a connector...) {`
