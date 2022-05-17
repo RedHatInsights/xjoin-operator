@@ -70,7 +70,7 @@ func sortHostFields(hosts []data.Host) []data.Host {
 
 func (es *ElasticSearch) getHostIDsQuery(index string, reqJSON []byte) ([]string, error) {
 	size := new(int)
-	*size = 10000
+	*size = 5000
 
 	searchReq := esapi.SearchRequest{
 		Index:  []string{index},
