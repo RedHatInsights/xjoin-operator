@@ -9,6 +9,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"io/ioutil"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -136,16 +137,36 @@ func (es *ElasticSearch) getHostIDsQuery(index string, reqJSON []byte) ([]string
 	return ids, nil
 }
 
-func (es *ElasticSearch) GetHostIDsByIdList(index string, ids []string) ([]string, error) {
-	log.Debug("Retrieving ids from ES: ", "ids list (max 50)", ids[:utils.Min(50, len(ids))], "total", len(ids))
-	var query QueryHostIDsList
-	query.Query.Bool.Filter.IDs.Values = ids
-	reqJSON, err := json.Marshal(query)
-	if err != nil {
-		return nil, err
+func (es *ElasticSearch) GetHostIDsByIdList(index string, ids []string) (completeList []string, err error) {
+	log.Info("Retrieving ids from ES: ", "ids list (max 50)", ids[:utils.Min(50, len(ids))], "total", len(ids))
+
+	chunkSize := float64(10000)
+	length := float64(len(ids))
+	numChunks := int(math.Ceil(length / chunkSize))
+
+	for i := 0; i < numChunks; i++ {
+		var query QueryHostIDsList
+
+		start := i * int(chunkSize)
+		end := ((i + 1) * int(chunkSize)) - 1
+		if len(ids) < end {
+			end = len(ids)
+		}
+
+		query.Query.Bool.Filter.IDs.Values = ids[start:end]
+		reqJSON, err := json.Marshal(query)
+		if err != nil {
+			return nil, err
+		}
+
+		idsChunk, err := es.getHostIDsQuery(index, reqJSON)
+		if err != nil {
+			return nil, err
+		}
+		completeList = append(completeList, idsChunk...)
 	}
 
-	return es.getHostIDsQuery(index, reqJSON)
+	return completeList, nil
 }
 
 func (es *ElasticSearch) GetHostIDsByModifiedOn(index string, start time.Time, end time.Time) ([]string, error) {
