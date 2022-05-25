@@ -177,11 +177,30 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 		return err
 	}
 
-	if len(connect.Items) != 1 {
+	connectClusterName := ""
+	if len(connect.Items) == 0 {
 		return errors.New("invalid number of connect instances found: " + strconv.Itoa(len(connect.Items)))
+	} else if len(connect.Items) > 1 {
+		for _, connectInstance := range connect.Items {
+			ownerRefs := connectInstance.GetOwnerReferences()
+
+			if ownerRefs != nil {
+				for _, ref := range ownerRefs {
+					if ref.Kind == "ClowdEnvironment" {
+						connectClusterName = connectInstance.GetName()
+					}
+				}
+			}
+		}
+
+		if connectClusterName == "" {
+			return errors.New("no kafka connect instance found. Is there a valid ClowdEnv setup?")
+		}
+	} else {
+		connectClusterName = connect.Items[0].GetName()
 	}
 
-	err = config.Parameters.ConnectCluster.SetValue(connect.Items[0].GetName())
+	err = config.Parameters.ConnectCluster.SetValue(connectClusterName)
 	if err != nil {
 		return err
 	}
