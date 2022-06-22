@@ -400,7 +400,7 @@ func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
 				return nil, err
 			}
 			host.Tags = tagsJson
-			host.TagsStructured, host.TagsString, host.TagsSearch, host.TagsSearchCombined = tagsStructured(tagsJson)
+			host.TagsStructured, host.TagsString, host.TagsSearch = tagsStructured(tagsJson)
 		}
 
 		response = append(response, host)
@@ -435,13 +435,11 @@ func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
 func tagsStructured(tagsJson map[string]interface{}) (
 	structuredTags []map[string]string,
 	stringsTags []string,
-	searchTags []string,
-	combinedTags []string) {
+	searchTags []string) {
 
 	structuredTags = make([]map[string]string, 0)
 	stringsTags = make([]string, 0)
 	searchTags = make([]string, 0)
-	combinedTags = make([]string, 0)
 
 	tagsJson = utils.SortMap(tagsJson)
 
@@ -474,10 +472,6 @@ func tagsStructured(tagsJson map[string]interface{}) (
 				searchTag = searchTag + "/" + keyName
 				searchTag = searchTag + "=" + val.(string)
 				searchTags = append(searchTags, searchTag)
-
-				combinedTag := searchTag
-				combinedTag = combinedTag + "c6509b6d-9646-4122-a16c-f536660c22ee" + strings.ToLower(combinedTag)
-				combinedTags = append(combinedTags, combinedTag)
 			}
 		}
 	}
@@ -485,7 +479,6 @@ func tagsStructured(tagsJson map[string]interface{}) (
 	data.OrderedBy(data.NamespaceComparator, data.KeyComparator, data.ValueComparator).Sort(structuredTags)
 	sort.Strings(stringsTags)
 	sort.Strings(searchTags)
-	sort.Strings(combinedTags)
 
-	return structuredTags, stringsTags, searchTags, combinedTags
+	return structuredTags, stringsTags, searchTags
 }
