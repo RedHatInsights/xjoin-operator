@@ -695,5 +695,22 @@ var _ = Describe("Validation controller", func() {
 			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
 		})
+
+		It("Correctly validates host with no tags", func() {
+			pipeline, err := i.CreateValidPipeline()
+			Expect(err).ToNot(HaveOccurred())
+			err = i.AssertValidationEvents(0)
+			Expect(err).ToNot(HaveOccurred())
+
+			hostId, err := i.InsertHostNow("no-tags")
+			Expect(err).ToNot(HaveOccurred())
+			err = i.IndexDocumentNow(pipeline.Status.PipelineVersion, hostId, "no-tags")
+			Expect(err).ToNot(HaveOccurred())
+
+			pipeline, err = i.ReconcileValidation()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pipeline.GetState()).To(Equal(xjoin.STATE_VALID))
+			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionTrue))
+		})
 	})
 })
