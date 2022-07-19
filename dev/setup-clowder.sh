@@ -75,9 +75,9 @@ if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   CURRENT_DIR=$(pwd)
   mkdir /tmp/olm
   cd /tmp/olm || exit 1
-  curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.18.3/install.sh -o install.sh
+  curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.21.2/install.sh -o install.sh
   chmod +x install.sh
-  ./install.sh v0.18.3
+  ./install.sh v0.21.2
   rm -r /tmp/olm
   cd "$CURRENT_DIR" || exit 1
 fi
@@ -159,15 +159,10 @@ print_start_message "Setting up elasticsearch password"
 dev/setup.sh -e -p test
 
 if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
-  # APICurio operator
+  # APICurio (the ApiCurio operator has not been released in over a year, this will manually create a deployment/service)
   print_start_message "Installing Apicurio"
-  kubectl create namespace apicurio-registry-operator-namespace -n test
-  curl -sSL "https://raw.githubusercontent.com/Apicurio/apicurio-registry-operator/v1.0.0/docs/resources/install.yaml" | sed "s/apicurio-registry-operator-namespace/test/g" | kubectl apply -f - -n test
-  wait_for_pod_to_be_running name=apicurio-registry-operator
-
-  # APICurio resource
-  kubectl apply -f dev/apicurio.yaml -n test
-  wait_for_pod_to_be_running apicur.io/name=example-apicurioregistry-kafkasql
+  kubectl apply -f ./dev/apicurio.yaml -n test
+  wait_for_pod_to_be_running name=apicurio
 
   # XJoin API Gateway
   print_start_message "Setting up xjoin-api-gateway"
