@@ -53,13 +53,6 @@ spec:
           }
         },
         {
-          "name": "org_id",
-          "type": {
-            "type": "string",
-            "xjoin.type": "string"
-          }
-        },
-        {
           "name": "display_name",
           "type": [
             "null",
@@ -364,6 +357,13 @@ spec:
             "connect.name": "io.debezium.data.Json",
             "xjoin.type": "json",
             "xjoin.index": "false"
+          }
+        },
+        {
+          "name": "org_id",
+          "type": {
+            "type": "string",
+            "xjoin.type": "string"
           }
         }
       ]
