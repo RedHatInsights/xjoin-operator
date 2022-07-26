@@ -43,7 +43,7 @@ endif
 
 # Run tests
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.21
+ENVTEST_K8S_VERSION = 1.24.1
 ENVTEST_ASSETS_DIR = $(shell pwd)/testbin
 test: generate fmt vet manifests
 	mkdir -p $(ENVTEST_ASSETS_DIR)
@@ -54,6 +54,22 @@ delve-test: generate fmt vet manifests
 	mkdir -p $(ENVTEST_ASSETS_DIR)
 	test -f $(ENVTEST_ASSETS_DIR)/setup-envtest.sh || curl -sSLo $(ENVTEST_ASSETS_DIR)/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.6.3/hack/setup-envtest.sh
 	source $(ENVTEST_ASSETS_DIR)/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); which dlv; dlv version; dlv test ./controllers/test --headless --accept-multiclient --listen=:2345 --api-version=2 -- --ginkgo.flakeAttempts=2
+
+# Generic tests using latest operator-sdk patterns
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+ENVTEST ?= $(LOCALBIN)/setup-envtest
+
+.PHONY: envtest
+envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
+$(ENVTEST): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+.PHONY: test
+generic-test: manifests generate fmt vet envtest ## Run tests.
+	#KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -v ./controllers -coverprofile cover.out
+	go test -v ./controllers -coverprofile cover.out
 
 ##@ Build
 

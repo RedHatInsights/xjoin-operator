@@ -2,6 +2,12 @@ package common
 
 import "k8s.io/apimachinery/pkg/runtime/schema"
 
+var IndexGVK = schema.GroupVersionKind{
+	Group:   "xjoin.cloud.redhat.com",
+	Kind:    "XJoinIndex",
+	Version: "v1alpha1",
+}
+
 var IndexPipelineGVK = schema.GroupVersionKind{
 	Group:   "xjoin.cloud.redhat.com",
 	Kind:    "XJoinIndexPipeline",

@@ -35,7 +35,7 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 	}
 	dataSourcePipeline.SetGroupVersionKind(common.IndexPipelineGVK)
 
-	err = i.CreateChildResource(dataSourcePipeline)
+	err = i.CreateChildResource(dataSourcePipeline, common.IndexGVK)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -60,7 +60,7 @@ func (i *XJoinIndexIteration) CreateIndexValidator(name string, version string) 
 		},
 	}
 	indexValidator.SetGroupVersionKind(common.IndexValidatorGVK)
-	err = i.CreateChildResource(indexValidator)
+	err = i.CreateChildResource(indexValidator, common.IndexGVK)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

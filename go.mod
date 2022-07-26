@@ -3,12 +3,14 @@ module github.com/redhatinsights/xjoin-operator
 go 1.16
 
 require (
+	github.com/RedHatInsights/strimzi-client-go v0.28.0
 	github.com/elastic/go-elasticsearch/v7 v7.1.0
 	github.com/go-errors/errors v1.4.0
 	github.com/go-logr/logr v0.3.0
 	github.com/go-test/deep v1.0.7
 	github.com/google/go-cmp v0.5.2
 	github.com/google/uuid v1.1.5
+	github.com/jarcoal/httpmock v1.2.0
 	github.com/jmoiron/sqlx v1.3.1
 	github.com/lib/pq v1.9.0
 	github.com/onsi/ginkgo v1.14.1

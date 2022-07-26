@@ -39,7 +39,7 @@ func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version
 		},
 	}
 	dataSourcePipeline.SetGroupVersionKind(common.DataSourcePipelineGVK)
-	err = i.CreateChildResource(dataSourcePipeline)
+	err = i.CreateChildResource(dataSourcePipeline, common.DataSourceGVK)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

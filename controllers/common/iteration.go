@@ -66,7 +66,7 @@ func (i *Iteration) UpdateStatusAndRequeue() (reconcile.Result, error) {
 	return reconcile.Result{RequeueAfter: time.Second * 30}, nil
 }
 
-func (i *Iteration) CreateChildResource(resourceDefinition unstructured.Unstructured) (err error) {
+func (i *Iteration) CreateChildResource(resourceDefinition unstructured.Unstructured, ownerGVK schema.GroupVersionKind) (err error) {
 	instanceVal := reflect.ValueOf(i.Instance).Elem()
 	apiVersion := instanceVal.FieldByName("APIVersion")
 	if !apiVersion.IsValid() {
@@ -83,8 +83,8 @@ func (i *Iteration) CreateChildResource(resourceDefinition unstructured.Unstruct
 	blockOwnerDeletion := true
 	controller := true
 	ownerReference := metav1.OwnerReference{
-		APIVersion:         apiVersion.Interface().(string),
-		Kind:               kind.Interface().(string),
+		APIVersion:         ownerGVK.Version,
+		Kind:               ownerGVK.Kind,
 		Name:               i.Instance.GetName(),
 		UID:                i.Instance.GetUID(),
 		Controller:         &controller,
