@@ -7,15 +7,18 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type ReconcileMethods struct {
 	iteration XJoinIndexIteration
+	gvk       schema.GroupVersionKind
 }
 
-func NewReconcileMethods(iteration XJoinIndexIteration) *ReconcileMethods {
+func NewReconcileMethods(iteration XJoinIndexIteration, gvk schema.GroupVersionKind) *ReconcileMethods {
 	return &ReconcileMethods{
 		iteration: iteration,
+		gvk:       gvk,
 	}
 }
 
@@ -126,7 +129,7 @@ func (d *ReconcileMethods) Scrub() (err error) {
 	registryRestClient := schemaregistry.NewSchemaRegistryRestClient(schemaRegistryConnectionParams)
 
 	custodian := components.NewCustodian(
-		d.iteration.GetInstance().Kind+"."+d.iteration.GetInstance().Name, validVersions)
+		d.gvk.Kind+"."+d.iteration.GetInstance().Name, validVersions)
 	custodian.AddComponent(&components.ElasticsearchPipeline{
 		GenericElasticsearch: *genericElasticsearch,
 	})

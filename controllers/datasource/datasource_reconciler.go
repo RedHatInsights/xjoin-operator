@@ -5,15 +5,18 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type ReconcileMethods struct {
 	iteration XJoinDataSourceIteration
+	gvk       schema.GroupVersionKind
 }
 
-func NewReconcileMethods(iteration XJoinDataSourceIteration) *ReconcileMethods {
+func NewReconcileMethods(iteration XJoinDataSourceIteration, gvk schema.GroupVersionKind) *ReconcileMethods {
 	return &ReconcileMethods{
 		iteration: iteration,
+		gvk:       gvk,
 	}
 }
 
@@ -100,7 +103,7 @@ func (d *ReconcileMethods) Scrub() (err error) {
 	registry.Init()
 
 	custodian := components.NewCustodian(
-		d.iteration.GetInstance().Kind+"."+d.iteration.GetInstance().Name, validVersions)
+		d.gvk.Kind+"."+d.iteration.GetInstance().Name, validVersions)
 	custodian.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{Registry: registry}))
 	custodian.AddComponent(&components.KafkaTopic{
 		KafkaClient: kafkaClient,

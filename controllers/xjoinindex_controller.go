@@ -13,6 +13,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -112,6 +113,10 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 
 	p := parameters.BuildIndexParameters()
 
+	if p.Pause.Bool() == true {
+		return
+	}
+
 	configManager, err := config.NewManager(config.ManagerOptions{
 		Client:         r.Client,
 		Parameters:     p,
@@ -122,15 +127,11 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		Context:        ctx,
 	})
 	if err != nil {
-		return
+		return result, errors.Wrap(err, 0)
 	}
 	err = configManager.Parse()
 	if err != nil {
-		return
-	}
-
-	if p.Pause.Bool() == true {
-		return
+		return result, errors.Wrap(err, 0)
 	}
 
 	originalInstance := instance.DeepCopy()
@@ -165,7 +166,12 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		}
 	}
 
-	indexReconcileMethods := NewReconcileMethods(i)
+	gvk := schema.GroupVersionKind{
+		Group:   "xjoin.cloud.redhat.com",
+		Version: "v1alpha1",
+		Kind:    "XJoinIndex",
+	}
+	indexReconcileMethods := NewReconcileMethods(i, gvk)
 	reconciler := common.NewReconciler(indexReconcileMethods, instance, reqLogger)
 	err = reconciler.Reconcile(forceRefresh)
 	if err != nil {
@@ -181,6 +187,10 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 	if originalInstance.Status.RefreshingVersion != "" {
 		instance.Status.ActiveVersionIsValid = true
 		instance.Status.ActiveVersion = instance.Status.RefreshingVersion
+	}
+
+	if i.GetInstance().Status.DataSources == nil {
+		i.GetInstance().Status.DataSources = map[string]string{}
 	}
 
 	return i.UpdateStatusAndRequeue()

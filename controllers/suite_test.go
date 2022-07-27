@@ -1,9 +1,12 @@
 package controllers
 
 import (
+	"context"
+	"github.com/go-errors/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"path/filepath"
 	"testing"
+	"time"
 
 	strimziApi "github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
 	. "github.com/onsi/ginkgo"
@@ -27,6 +30,27 @@ var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
 var namespace string
+
+var testLogger = logf.Log.WithName("test")
+
+//this is used to output stack traces when an error occurs
+func checkError(err error) {
+	if err != nil {
+		testLogger.Error(errors.Wrap(err, 0), "test failure")
+	}
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func k8sGet(key client.ObjectKey, obj client.Object) {
+	ctx := context.Background()
+	Eventually(func() bool {
+		err := k8sClient.Get(ctx, key, obj)
+		if err != nil {
+			return false
+		}
+		return true
+	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
+}
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)

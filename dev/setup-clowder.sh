@@ -162,7 +162,7 @@ if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   # APICurio (the ApiCurio operator has not been released in over a year, this will manually create a deployment/service)
   print_start_message "Installing Apicurio"
   kubectl apply -f ./dev/apicurio.yaml -n test
-  wait_for_pod_to_be_running name=apicurio
+  wait_for_pod_to_be_running app=apicurio
 
   # XJoin API Gateway
   print_start_message "Setting up xjoin-api-gateway"

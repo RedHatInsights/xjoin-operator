@@ -13,6 +13,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -82,6 +83,10 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	p := parameters.BuildDataSourceParameters()
 
+	if p.Pause.Bool() == true {
+		return
+	}
+
 	configManager, err := config.NewManager(config.ManagerOptions{
 		Client:         r.Client,
 		Parameters:     p,
@@ -101,10 +106,6 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return result, errors.Wrap(err, 0)
 	}
 
-	if p.Pause.Bool() == true {
-		return
-	}
-
 	originalInstance := instance.DeepCopy()
 	i := XJoinDataSourceIteration{
 		Parameters: *p,
@@ -121,7 +122,12 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	dataSourceReconciler := NewReconcileMethods(i)
+	gvk := schema.GroupVersionKind{
+		Group:   "xjoin.cloud.redhat.com",
+		Version: "v1alpha1",
+		Kind:    "XJoinDataSource",
+	}
+	dataSourceReconciler := NewReconcileMethods(i, gvk)
 	reconciler := common.NewReconciler(dataSourceReconciler, instance, reqLogger)
 	err = reconciler.Reconcile(false)
 	if err != nil {

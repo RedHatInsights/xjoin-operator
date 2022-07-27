@@ -3,14 +3,12 @@ package elasticsearch
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/go-errors/errors"
 	"io/ioutil"
-	"net/http"
 	"strconv"
 	"strings"
 	"text/template"
@@ -35,11 +33,11 @@ func NewGenericElasticsearch(params GenericElasticSearchParameters) (*GenericEla
 		Addresses: []string{params.Url},
 		Username:  params.Username,
 		Password:  params.Password,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: false,
-			},
-		},
+		//Transport: &http.Transport{
+		//	TLSClientConfig: &tls.Config{
+		//		InsecureSkipVerify: false,
+		//	},
+		//},
 	}
 	client, err := elasticsearch.NewClient(cfg)
 	if err != nil {
