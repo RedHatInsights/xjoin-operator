@@ -13,7 +13,6 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -166,12 +165,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		}
 	}
 
-	gvk := schema.GroupVersionKind{
-		Group:   "xjoin.cloud.redhat.com",
-		Version: "v1alpha1",
-		Kind:    "XJoinIndex",
-	}
-	indexReconcileMethods := NewReconcileMethods(i, gvk)
+	indexReconcileMethods := NewReconcileMethods(i, common.IndexGVK)
 	reconciler := common.NewReconciler(indexReconcileMethods, instance, reqLogger)
 	err = reconciler.Reconcile(forceRefresh)
 	if err != nil {

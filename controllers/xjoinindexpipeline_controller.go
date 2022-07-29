@@ -194,7 +194,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return result, errors.Wrap(err, 0)
 	}
 
-	componentManager := components.NewComponentManager(instance.Kind+"."+instance.Spec.Name, p.Version.String())
+	componentManager := components.NewComponentManager(common.IndexPipelineGVK.Kind+"."+instance.Spec.Name, p.Version.String())
 
 	if indexAvroSchema.JSONFields != nil {
 		componentManager.AddComponent(&components.ElasticsearchPipeline{

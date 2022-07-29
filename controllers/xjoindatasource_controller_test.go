@@ -17,8 +17,9 @@ import (
 )
 
 var _ = Describe("XJoinDataSource", func() {
+	var namespace string
 
-	var newXJoinDataSourceReconciler = func(namespace string) *XJoinDataSourceReconciler {
+	var newXJoinDataSourceReconciler = func() *XJoinDataSourceReconciler {
 		return NewXJoinDataSourceReconciler(
 			k8sClient,
 			scheme.Scheme,
@@ -85,7 +86,7 @@ var _ = Describe("XJoinDataSource", func() {
 	var reconcileDataSource = func(name string) v1alpha1.XJoinDataSource {
 		ctx := context.Background()
 
-		xjoinDataSourceReconciler := newXJoinDataSourceReconciler(namespace)
+		xjoinDataSourceReconciler := newXJoinDataSourceReconciler()
 
 		datasourceLookupKey := types.NamespacedName{Name: name, Namespace: namespace}
 		createdDatasource := &v1alpha1.XJoinDataSource{}
@@ -119,6 +120,10 @@ var _ = Describe("XJoinDataSource", func() {
 	BeforeEach(func() {
 		httpmock.Activate()
 		httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
+
+		var err error
+		namespace, err = NewNamespace()
+		checkError(err)
 	})
 
 	AfterEach(func() {

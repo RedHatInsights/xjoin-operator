@@ -74,6 +74,13 @@ func (kafka *GenericKafka) CreateGenericTopic(topicName string, topicParameters 
 		}
 
 		item := topics.Items[0]
+
+		//in tests the status will never be updated
+		//this pretends Strimzi created the topic and updated the status
+		if kafka.Test == true {
+			return true, nil
+		}
+
 		if item.Object["status"] == nil {
 			return false, nil
 		}

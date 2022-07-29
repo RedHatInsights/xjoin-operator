@@ -18,8 +18,9 @@ import (
 )
 
 var _ = Describe("XJoinIndex", func() {
+	var namespace string
 
-	var newXJoinIndexReconciler = func(namespace string) *XJoinIndexReconciler {
+	var newXJoinIndexReconciler = func() *XJoinIndexReconciler {
 		return NewXJoinIndexReconciler(
 			k8sClient,
 			scheme.Scheme,
@@ -98,7 +99,7 @@ var _ = Describe("XJoinIndex", func() {
 	var reconcileIndex = func(name string) v1alpha1.XJoinIndex {
 		ctx := context.Background()
 
-		xjoinIndexReconciler := newXJoinIndexReconciler(namespace)
+		xjoinIndexReconciler := newXJoinIndexReconciler()
 
 		indexLookupKey := types.NamespacedName{Name: name, Namespace: namespace}
 		createdIndex := &v1alpha1.XJoinIndex{}
@@ -150,6 +151,10 @@ var _ = Describe("XJoinIndex", func() {
 	BeforeEach(func() {
 		httpmock.Activate()
 		httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
+
+		var err error
+		namespace, err = NewNamespace()
+		checkError(err)
 	})
 
 	AfterEach(func() {

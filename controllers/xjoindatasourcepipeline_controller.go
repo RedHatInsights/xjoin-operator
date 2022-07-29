@@ -135,6 +135,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		KafkaNamespace:   p.KafkaClusterNamespace.String(),
 		KafkaCluster:     p.KafkaCluster.String(),
 		Client:           i.Client,
+		Test:             r.Test,
 	}
 
 	registry := schemaregistry.NewSchemaRegistryConfluentClient(
@@ -146,7 +147,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 
 	registry.Init()
 
-	componentManager := components.NewComponentManager(instance.Kind+"."+instance.Spec.Name, p.Version.String())
+	componentManager := components.NewComponentManager(common.DataSourcePipelineGVK.Kind+"."+instance.Spec.Name, p.Version.String())
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
 		Schema:   p.AvroSchema.String(),
 		Registry: registry,

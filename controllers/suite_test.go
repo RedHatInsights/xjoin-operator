@@ -3,8 +3,11 @@ package controllers
 import (
 	"context"
 	"github.com/go-errors/errors"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -29,7 +32,6 @@ import (
 var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
-var namespace string
 
 var testLogger = logf.Log.WithName("test")
 
@@ -60,9 +62,34 @@ func TestAPIs(t *testing.T) {
 		[]Reporter{printer.NewlineReporter{}})
 }
 
+func NewNamespace() (string, error) {
+	name := "test" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	namespace := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+	err := k8sClient.Create(context.Background(), &namespace)
+	if err != nil {
+		return "", err
+	}
+
+	configMap := v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "xjoin-generic",
+			Namespace: name,
+		},
+		Data: map[string]string{"kafka.cluster.namespace": name, "connect.cluster.namespace": name},
+	}
+	err = k8sClient.Create(context.Background(), &configMap)
+	if err != nil {
+		return "", err
+	}
+	return name, nil
+}
+
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
-	namespace = "default"
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{

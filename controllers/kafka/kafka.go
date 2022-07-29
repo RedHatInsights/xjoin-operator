@@ -29,4 +29,5 @@ type GenericKafka struct {
 	KafkaCluster     string
 	ConnectNamespace string
 	ConnectCluster   string
+	Test             bool
 }

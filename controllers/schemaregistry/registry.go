@@ -38,7 +38,7 @@ func (sr *ConfluentClient) RegisterAvroSchema(name string, schemaDefinition stri
 
 func (sr *ConfluentClient) CheckIfSchemaVersionExists(name string, version int) (exists bool, err error) {
 	_, err = sr.Client.GetSchemaByVersion(name, version)
-	if err != nil && strings.Index(err.Error(), "404 Not Found") == 0 {
+	if err != nil && (strings.Index(err.Error(), "404") == 0) { //TODO find a more reliable way to check if schema exists
 		return false, nil
 	} else if err != nil {
 		return false, errors.Wrap(err, 0)

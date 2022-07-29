@@ -32,9 +32,10 @@ func (kafka *GenericKafka) CreateGenericDebeziumConnector(
 			},
 		},
 		"spec": map[string]interface{}{
-			"class":  "io.debezium.connector.postgresql.PostgresConnector",
-			"config": connectorConfig,
-			"pause":  false,
+			"class":    "io.debezium.connector.postgresql.PostgresConnector",
+			"config":   connectorConfig,
+			"pause":    false,
+			"tasksMax": 1,
 		},
 	}
 
