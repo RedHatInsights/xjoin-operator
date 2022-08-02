@@ -1,11 +1,14 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"github.com/go-errors/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -34,6 +37,9 @@ var k8sClient client.Client
 var testEnv *envtest.Environment
 
 var testLogger = logf.Log.WithName("test")
+
+var k8sGetTimeout = 3 * time.Second
+var k8sGetInterval = 100 * time.Millisecond
 
 //this is used to output stack traces when an error occurs
 func checkError(err error) {
@@ -79,13 +85,43 @@ func NewNamespace() (string, error) {
 			Name:      "xjoin-generic",
 			Namespace: name,
 		},
-		Data: map[string]string{"kafka.cluster.namespace": name, "connect.cluster.namespace": name},
+		Data: map[string]string{
+			"kafka.cluster.namespace":   name,
+			"connect.cluster.namespace": name,
+			"schemaregistry.port":       "1080",
+			"schemaregistry.host":       "apicurio",
+		},
 	}
 	err = k8sClient.Create(context.Background(), &configMap)
 	if err != nil {
 		return "", err
 	}
+
+	secret := v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "xjoin-elasticsearch",
+			Namespace: name,
+		},
+		Type: "opaque",
+		StringData: map[string]string{
+			"endpoint": "http://localhost:9200",
+			"password": "xjoin1337",
+			"username": "xjoin",
+		},
+	}
+	err = k8sClient.Create(context.Background(), &secret)
+	checkError(err)
+
 	return name, nil
+}
+
+func LoadExpectedKafkaResourceConfig(filename string) *bytes.Buffer {
+	file, err := os.ReadFile(filename)
+	checkError(err)
+	buffer := bytes.NewBuffer([]byte{})
+	err = json.Compact(buffer, file)
+	checkError(err)
+	return buffer
 }
 
 var _ = BeforeSuite(func() {

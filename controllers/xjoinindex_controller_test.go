@@ -6,7 +6,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -35,14 +34,14 @@ var _ = Describe("XJoinIndex", func() {
 
 		httpmock.RegisterResponder(
 			"GET",
-			"http://example-apicurioregistry-kafkasql-service.test.svc:1080/apis/ccompat/v6/subjects",
+			"http://apicurio:1080/apis/ccompat/v6/subjects",
 			httpmock.NewStringResponder(200, `[]`))
 
-		responder, err := httpmock.NewJsonResponder(200, httpmock.File("./test/apicurio/response.json"))
+		responder, err := httpmock.NewJsonResponder(200, httpmock.File("./test/data/apicurio/empty-response.json"))
 		checkError(err)
 		httpmock.RegisterResponder(
 			"GET",
-			"http://example-apicurioregistry-kafkasql-service.test.svc:8080/apis/registry/v2/search/artifacts?limit=500&labels=graphql",
+			"http://apicurio:1080/apis/registry/v2/search/artifacts?limit=500&labels=graphql",
 			responder)
 
 		httpmock.RegisterResponder(
@@ -124,28 +123,10 @@ var _ = Describe("XJoinIndex", func() {
 		Expect(createdIndex.Finalizers).To(ContainElement("finalizer.xjoin.index.cloud.redhat.com"))
 
 		info := httpmock.GetCallCountInfo()
-		count := info["GET http://example-apicurioregistry-kafkasql-service.test.svc:1080/apis/ccompat/v6/subjects"]
+		count := info["GET http://apicurio:1080/apis/ccompat/v6/subjects"]
 		Expect(count).To(Equal(1))
 
 		return *createdIndex
-	}
-
-	var createElasticsearchSecret = func() {
-		ctx := context.Background()
-		secret := v1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "xjoin-elasticsearch",
-				Namespace: namespace,
-			},
-			Type: "opaque",
-			StringData: map[string]string{
-				"endpoint": "http://localhost:9200",
-				"password": "xjoin1337",
-				"username": "xjoin",
-			},
-		}
-		err := k8sClient.Create(ctx, &secret)
-		checkError(err)
 	}
 
 	BeforeEach(func() {
@@ -164,7 +145,6 @@ var _ = Describe("XJoinIndex", func() {
 	Context("Reconcile", func() {
 		It("Should create a XJoinIndexPipeline", func() {
 			indexName := "test-index"
-			createElasticsearchSecret()
 			createValidIndex(indexName)
 			createdIndex := reconcileIndex(indexName)
 			indexPipelineName := createdIndex.Name + "." + createdIndex.Status.RefreshingVersion

@@ -1,0 +1,10 @@
+{
+  "type": "record",
+  "name": "testindex",
+  "fields": [{
+    "type": {
+      "type": "xjoindatasourcepipeline.testdatasource.Value",
+      "xjoin.type": "reference"
+    }
+  }]
+}

@@ -240,7 +240,7 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 func (d IndexAvroSchemaParser) transformToES(avroSchema Schema) (properties string, jsonFields []string, err error) {
 
 	if avroSchema.Fields == nil {
-		return properties, jsonFields, errors.Wrap(errors.New("fields missing from avro schema"), 0)
+		return properties, jsonFields, errors.Wrap(errors.New("fields property is missing from avro schema"), 0)
 	}
 
 	esProperties, jsonFields, err := parseAvroFields(avroSchema.Fields, list.List{})

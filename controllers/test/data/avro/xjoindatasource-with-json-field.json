@@ -1,0 +1,26 @@
+{
+  "type": "record",
+  "name": "Value",
+  "namespace": "xjoindatasourcepipeline.testdatasource",
+  "fields": [
+    {
+      "name": "id",
+      "type": {
+        "type": "string",
+        "xjoin.type": "string",
+        "connect.version": 1,
+        "connect.name": "io.debezium.data.Uuid",
+        "xjoin.primary.key": true
+      }
+    },
+    {
+      "name": "facts",
+      "type": {
+          "type": "string",
+          "xjoin.type": "json",
+          "connect.version": 1,
+          "connect.name": "io.debezium.data.Json"
+        }
+    }
+  ]
+}

@@ -11,7 +11,7 @@
   "errors.log.include.messages": true,
   "key.converter": "io.apicurio.registry.utils.converter.AvroConverter",
   "key.converter.apicurio.registry.auto-register": "true",
-  "key.converter.apicurio.registry.url": "http://example-apicurioregistry-kafkasql-service.test.svc:8080/apis/registry/v2",
+  "key.converter.apicurio.registry.url": "http://apicurio:1080/apis/registry/v2",
   "max.batch.size": 10,
   "max.queue.size": 1000,
   "plugin.name": "pgoutput",
@@ -28,6 +28,6 @@
   "value.converter": "io.apicurio.registry.utils.converter.AvroConverter",
   "value.converter.apicurio.registry.auto-register": "false",
   "value.converter.apicurio.registry.find-latest": "true",
-  "value.converter.apicurio.registry.url": "http://example-apicurioregistry-kafkasql-service.test.svc:8080/apis/registry/v2",
+  "value.converter.apicurio.registry.url": "http://apicurio:1080/apis/registry/v2",
   "value.converter.enhanced.avro.schema.support": "true"
 }

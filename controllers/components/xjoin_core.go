@@ -141,6 +141,7 @@ func (xc XJoinCore) Exists() (exists bool, err error) {
 	deployments.SetGroupVersionKind(common.DeploymentGVK)
 	fields := client.MatchingFields{}
 	fields["metadata.name"] = xc.Name()
+	fields["metadata.namespace"] = xc.Namespace
 	err = xc.Client.List(xc.Context, deployments, fields)
 	if err != nil {
 		return false, errors.Wrap(err, 0)

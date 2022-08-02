@@ -123,8 +123,10 @@ func (es GenericElasticsearch) CreatePipeline(name string, pipeline string) (err
 	}
 
 	statusCode, _, err := parseResponse(res)
-	if err != nil || statusCode != 200 {
+	if err != nil {
 		return errors.Wrap(err, 0)
+	} else if statusCode != 200 {
+		return errors.Wrap(errors.New("Invalid status code when creating Elasticsearch Pipeline: "+strconv.Itoa(statusCode)), 0)
 	}
 	return
 }

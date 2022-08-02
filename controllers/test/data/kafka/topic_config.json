@@ -1,0 +1,7 @@
+{
+  "cleanup.policy": "compact,delete",
+  "max.message.bytes": "2097176",
+  "min.compaction.lag.ms": "3600000",
+  "retention.bytes": "5368709120",
+  "retention.ms": "2678400001"
+}

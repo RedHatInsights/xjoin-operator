@@ -92,17 +92,17 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 
 		httpmock.RegisterResponder(
 			"GET",
-			"http://example-apicurioregistry-kafkasql-service.test.svc:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/1",
+			"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/1",
 			httpmock.NewStringResponder(404, `{"message":"No version '1' found for artifact with ID 'xjoindatasourcepipeline.test-data-source-pipeline.1234-value' in group 'null'.","error_code":40402}`).Times(1))
 
 		httpmock.RegisterResponder(
 			"POST",
-			"http://example-apicurioregistry-kafkasql-service.test.svc:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions",
+			"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions",
 			httpmock.NewStringResponder(200, `{"createdBy":"","createdOn":"2022-07-27T17:28:11+0000","modifiedBy":"","modifiedOn":"2022-07-27T17:28:11+0000","id":1,"version":1,"type":"AVRO","globalId":1,"state":"ENABLED","groupId":"null","contentId":1,"references":[]}`))
 
 		httpmock.RegisterResponder(
 			"GET",
-			"http://example-apicurioregistry-kafkasql-service.test.svc:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/latest",
+			"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/latest",
 			httpmock.NewStringResponder(200, `{"schema":"{\"name\":\"Value\",\"namespace\":\"xjoindatasourcepipeline.test-data-source-pipeline\"}","schemaType":"AVRO","references":[]}`))
 
 		xjoinDataSourcePipelineReconciler := newXJoinDataSourcePipelineReconciler()
@@ -177,16 +177,11 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			Expect(debeziumConnector.Spec.Pause).To(Equal(&debeziumPause))
 			Expect(debeziumConnector.Spec.TasksMax).To(Equal(&debeziumTasksMax))
 
-			debeziumFile, err := os.ReadFile("./test/data/debezium_config.json")
-			checkError(err)
-			expectedDebeziumConfig := bytes.NewBuffer([]byte{})
-			err = json.Compact(expectedDebeziumConfig, debeziumFile)
-			checkError(err)
-
+			//config comparison
+			expectedDebeziumConfig := LoadExpectedKafkaResourceConfig("./test/data/kafka/debezium_config.json")
 			actualDebeziumConfig := bytes.NewBuffer([]byte{})
-			err = json.Compact(actualDebeziumConfig, debeziumConnector.Spec.Config.Raw)
+			err := json.Compact(actualDebeziumConfig, debeziumConnector.Spec.Config.Raw)
 			checkError(err)
-
 			Expect(actualDebeziumConfig).To(Equal(expectedDebeziumConfig))
 		})
 
@@ -195,15 +190,16 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			createValidDataSourcePipeline(dataSourcePipelineName)
 			reconcileDataSourcePipeline(dataSourcePipelineName)
 
+			//TODO validate the body of the request is correct
 			//validates the correct API calls were made
 			info := httpmock.GetCallCountInfo()
-			count := info["POST http://example-apicurioregistry-kafkasql-service.test.svc:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions"]
+			count := info["POST http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions"]
 			Expect(count).To(Equal(1))
 
-			count = info["GET http://example-apicurioregistry-kafkasql-service.test.svc:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/1"]
+			count = info["GET http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/1"]
 			Expect(count).To(Equal(1))
 
-			count = info["GET http://example-apicurioregistry-kafkasql-service.test.svc:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/latest"]
+			count = info["GET http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/latest"]
 			Expect(count).To(Equal(1))
 		})
 
@@ -234,7 +230,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			Expect(kafkaTopic.Spec.Replicas).To(Equal(&kafkaTopicReplicas))
 			Expect(kafkaTopic.Spec.TopicName).To(Equal(&kafkaTopicName))
 
-			topicConfigFile, err := os.ReadFile("./test/data/kafka_topic_config.json")
+			topicConfigFile, err := os.ReadFile("./test/data/kafka/kafka_topic_config.json")
 			checkError(err)
 			expectedKafkaTopicConfig := bytes.NewBuffer([]byte{})
 			err = json.Compact(expectedKafkaTopicConfig, topicConfigFile)

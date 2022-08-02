@@ -229,6 +229,7 @@ func (x XJoinAPISubGraph) Exists() (exists bool, err error) {
 	deployments.SetGroupVersionKind(common.DeploymentGVK)
 	fields := client.MatchingFields{}
 	fields["metadata.name"] = x.Name()
+	fields["metadata.namespace"] = x.Namespace
 	err = x.Client.List(x.Context, deployments, fields)
 	if err != nil {
 		return false, errors.Wrap(err, 0)

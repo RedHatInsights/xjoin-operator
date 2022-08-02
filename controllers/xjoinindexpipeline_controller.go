@@ -96,6 +96,13 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
+	if len(instance.OwnerReferences) < 1 {
+		return reconcile.Result{}, errors.Wrap(errors.New(
+			"Missing OwnerReference from xjoinindexpipeline. "+
+				"XJoinIndexPipeline resources must be managed by an XJoinIndex. "+
+				"XJoinIndexPipeline cannot be created individually."), 0)
+	}
+
 	p := parameters.BuildIndexParameters()
 
 	configManager, err := config.NewManager(config.ManagerOptions{
@@ -143,6 +150,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		KafkaNamespace:   p.KafkaClusterNamespace.String(),
 		KafkaCluster:     p.KafkaCluster.String(),
 		Client:           i.Client,
+		Test:             r.Test,
 	}
 
 	kafkaTopic := &components.KafkaTopic{
