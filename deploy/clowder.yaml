@@ -88,7 +88,7 @@ objects:
               "number_of_shards": "{{.ElasticSearchIndexShards}}",
               "number_of_replicas": "{{.ElasticSearchIndexReplicas}}",
               "default_pipeline": "{{.ElasticSearchPipeline}}",
-              "max_result_window": 50000
+              "max_result_window": 100000
             },
             "analysis": {
               "normalizer": {
