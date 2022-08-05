@@ -135,7 +135,9 @@ func (i *Iteration) ReconcileChild(child Child) (err error) {
 	children.SetGroupVersionKind(child.GetGVK())
 	labels := client.MatchingLabels{}
 	labels[COMPONENT_NAME_LABEL] = child.GetParentInstance().GetName()
-	err = i.Client.List(i.Context, children, labels)
+	fields := client.MatchingFields{}
+	fields["metadata.namespace"] = child.GetParentInstance().GetNamespace()
+	err = i.Client.List(i.Context, children, labels, fields)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -191,8 +193,9 @@ func (i *Iteration) DeleteAllResourceTypeWithComponentName(gvk schema.GroupVersi
 	resources := &unstructured.UnstructuredList{}
 	resources.SetGroupVersionKind(gvk)
 	labels := client.MatchingLabels{COMPONENT_NAME_LABEL: componentName}
+	fields := client.MatchingFields{"metadata.namespace": i.Instance.GetNamespace()}
 
-	err = i.Client.List(i.Context, resources, labels)
+	err = i.Client.List(i.Context, resources, labels, fields)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

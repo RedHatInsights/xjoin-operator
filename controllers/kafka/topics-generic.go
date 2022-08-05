@@ -62,6 +62,7 @@ func (kafka *GenericKafka) CreateGenericTopic(topicName string, topicParameters 
 
 		fields := client.MatchingFields{}
 		fields["metadata.name"] = topicName
+		fields["metadata.namespace"] = kafka.KafkaNamespace
 		labels := client.MatchingLabels{}
 		labels["name"] = topicName
 		err = kafka.Client.List(kafka.Context, topics, fields)

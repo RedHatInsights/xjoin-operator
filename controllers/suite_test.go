@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/go-errors/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -36,19 +35,6 @@ var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
 
-var testLogger = logf.Log.WithName("test")
-
-var k8sGetTimeout = 3 * time.Second
-var k8sGetInterval = 100 * time.Millisecond
-
-//this is used to output stack traces when an error occurs
-func checkError(err error) {
-	if err != nil {
-		testLogger.Error(errors.Wrap(err, 0), "test failure")
-	}
-	Expect(err).ToNot(HaveOccurred())
-}
-
 func k8sGet(key client.ObjectKey, obj client.Object) {
 	ctx := context.Background()
 	Eventually(func() bool {
@@ -57,7 +43,7 @@ func k8sGet(key client.ObjectKey, obj client.Object) {
 			return false
 		}
 		return true
-	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 }
 
 func TestAPIs(t *testing.T) {

@@ -158,7 +158,10 @@ func (xc XJoinCore) ListInstalledVersions() (versions []string, err error) {
 	deployments.SetGroupVersionKind(common.DeploymentGVK)
 	labels := client.MatchingLabels{}
 	labels["xjoin.index"] = xc.name
-	err = xc.Client.List(xc.Context, deployments, labels)
+	fields := client.MatchingFields{
+		"metadata.namespace": xc.Namespace,
+	}
+	err = xc.Client.List(xc.Context, deployments, labels, fields)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}

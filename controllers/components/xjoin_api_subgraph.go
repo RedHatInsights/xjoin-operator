@@ -245,9 +245,12 @@ func (x XJoinAPISubGraph) Exists() (exists bool, err error) {
 func (x XJoinAPISubGraph) ListInstalledVersions() (versions []string, err error) {
 	deployments := &unstructured.UnstructuredList{}
 	deployments.SetGroupVersionKind(common.DeploymentGVK)
+	fields := client.MatchingFields{
+		"metadata.namespace": x.Namespace,
+	}
 	labels := client.MatchingLabels{}
 	labels["xjoin.index"] = x.name
-	err = x.Client.List(x.Context, deployments, labels)
+	err = x.Client.List(x.Context, deployments, labels, fields)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
