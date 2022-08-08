@@ -42,6 +42,8 @@ type Iteration struct {
 	KafkaConnectReconciler *controllers.KafkaConnectReconciler
 	EsClient               *elasticsearch.ElasticSearch
 	KafkaClient            kafka.Kafka
+	KafkaConnectors        kafka.Connectors
+	KafkaTopics            kafka.Topics
 	Parameters             xjoinconfig.Parameters
 	ParametersMap          map[string]interface{}
 	DbClient               *database.Database
@@ -62,7 +64,7 @@ func (i *Iteration) CheckIfDependenciesAreResponding() bool {
 	if err != nil {
 		return false
 	}
-	isResponding, err := i.KafkaClient.CheckIfConnectIsResponding()
+	isResponding, err := i.KafkaConnectors.CheckIfConnectIsResponding()
 	if err != nil || !isResponding {
 		return false
 	}
@@ -319,7 +321,7 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 }
 
 func (i *Iteration) EditESConnectorToBeInvalid(pipelineVersion string) error {
-	connector, err := i.KafkaClient.GetConnector(i.KafkaClient.ESConnectorName(pipelineVersion))
+	connector, err := i.KafkaClient.GetConnector(i.KafkaConnectors.ESConnectorName(pipelineVersion))
 	if err != nil {
 		return err
 	}
@@ -598,7 +600,7 @@ func (i *Iteration) ExpectPipelineVersionToBeRemoved(pipelineVersion string) err
 		return errors.New("expected all replication slots to be removed for prefix: " + ResourceNamePrefix)
 	}
 
-	versions, err := i.KafkaClient.ListTopicNamesForPipelineVersion(pipelineVersion)
+	versions, err := i.KafkaTopics.ListTopicNamesForPipelineVersion(pipelineVersion)
 	if err != nil {
 		return err
 	}
@@ -606,7 +608,7 @@ func (i *Iteration) ExpectPipelineVersionToBeRemoved(pipelineVersion string) err
 		return errors.New("expected no topic names to exist for version: " + pipelineVersion)
 	}
 
-	connectors, err := i.KafkaClient.ListConnectorNamesForPipelineVersion(pipelineVersion)
+	connectors, err := i.KafkaConnectors.ListConnectorNamesForPipelineVersion(pipelineVersion)
 	if err != nil {
 		return err
 	}
@@ -1137,7 +1139,7 @@ func (i *Iteration) WaitForConnectorToBeCreated(connectorName string) error {
 func (i *Iteration) WaitForConnectorTaskToFail(connectorName string) error {
 	isFailed := false
 	for j := 0; j < 60; j++ {
-		tasks, err := i.KafkaClient.ListConnectorTasks(connectorName)
+		tasks, err := i.KafkaConnectors.ListConnectorTasks(connectorName)
 		if err != nil {
 			return err
 		}

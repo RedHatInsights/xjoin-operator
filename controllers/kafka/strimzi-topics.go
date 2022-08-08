@@ -24,31 +24,31 @@ var topicsGroupVersionKind = schema.GroupVersionKind{
 	Version: "v1beta2",
 }
 
-func (kafka *Kafka) TopicName(pipelineVersion string) string {
-	return fmt.Sprintf(kafka.Parameters.ResourceNamePrefix.String() + "." + pipelineVersion + ".public.hosts")
+func (t *StrimziTopics) TopicName(pipelineVersion string) string {
+	return fmt.Sprintf(t.Kafka.Parameters.ResourceNamePrefix.String() + "." + pipelineVersion + ".public.hosts")
 }
 
-func (kafka *Kafka) CreateTopicByFullName(topicName string, dryRun bool) (*unstructured.Unstructured, error) {
+func (t *StrimziTopics) CreateTopicByFullName(topicName string, dryRun bool) (*unstructured.Unstructured, error) {
 	topic := &unstructured.Unstructured{}
 	topic.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      topicName,
-			"namespace": kafka.Parameters.KafkaClusterNamespace.String(),
+			"namespace": t.Kafka.Parameters.KafkaClusterNamespace.String(),
 			"labels": map[string]interface{}{
-				"strimzi.io/cluster":   kafka.Parameters.KafkaCluster.String(),
-				"resource.name.prefix": kafka.Parameters.ResourceNamePrefix.String(),
+				"strimzi.io/cluster":   t.Kafka.Parameters.KafkaCluster.String(),
+				"resource.name.prefix": t.Kafka.Parameters.ResourceNamePrefix.String(),
 			},
 		},
 		"spec": map[string]interface{}{
-			"replicas":   kafka.Parameters.KafkaTopicReplicas.Int(),
-			"partitions": kafka.Parameters.KafkaTopicPartitions.Int(),
+			"replicas":   t.Kafka.Parameters.KafkaTopicReplicas.Int(),
+			"partitions": t.Kafka.Parameters.KafkaTopicPartitions.Int(),
 			"topicName":  topicName,
 			"config": map[string]interface{}{
-				"cleanup.policy":        kafka.Parameters.KafkaTopicCleanupPolicy.String(),
-				"min.compaction.lag.ms": kafka.Parameters.KafkaTopicMinCompactionLagMS.String(),
-				"retention.bytes":       kafka.Parameters.KafkaTopicRetentionBytes.String(),
-				"retention.ms":          kafka.Parameters.KafkaTopicRetentionMS.String(),
-				"max.message.bytes":     kafka.Parameters.KafkaTopicMessageBytes.String(),
+				"cleanup.policy":        t.Kafka.Parameters.KafkaTopicCleanupPolicy.String(),
+				"min.compaction.lag.ms": t.Kafka.Parameters.KafkaTopicMinCompactionLagMS.String(),
+				"retention.bytes":       t.Kafka.Parameters.KafkaTopicRetentionBytes.String(),
+				"retention.ms":          t.Kafka.Parameters.KafkaTopicRetentionMS.String(),
+				"max.message.bytes":     t.Kafka.Parameters.KafkaTopicMessageBytes.String(),
 			},
 		},
 	}
@@ -61,16 +61,16 @@ func (kafka *Kafka) CreateTopicByFullName(topicName string, dryRun bool) (*unstr
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err := kafka.Client.Create(ctx, topic)
+	err := t.Kafka.Client.Create(ctx, topic)
 	if err != nil {
 		return nil, err
 	}
 
-	if !kafka.Test {
+	if !t.Kafka.Test {
 		log.Info("Waiting for topic to be created.", "topic", topicName)
 
 		//wait for the topic to be created in Kafka (condition.status == ready)
-		err = wait.PollImmediate(time.Second, time.Duration(kafka.Parameters.KafkaTopicCreationTimeout.Int())*time.Second, func() (bool, error) {
+		err = wait.PollImmediate(time.Second, time.Duration(t.Kafka.Parameters.KafkaTopicCreationTimeout.Int())*time.Second, func() (bool, error) {
 			topics := &unstructured.UnstructuredList{}
 			topics.SetGroupVersionKind(topicsGroupVersionKind)
 
@@ -78,7 +78,7 @@ func (kafka *Kafka) CreateTopicByFullName(topicName string, dryRun bool) (*unstr
 			fields["metadata.name"] = topicName
 			labels := client.MatchingLabels{}
 			labels["name"] = topicName
-			err = kafka.Client.List(ctx, topics, fields)
+			err = t.Kafka.Client.List(ctx, topics, fields)
 			if err != nil {
 				return false, err
 			}
@@ -115,28 +115,28 @@ func (kafka *Kafka) CreateTopicByFullName(topicName string, dryRun bool) (*unstr
 	return topic, nil
 }
 
-func (kafka *Kafka) CreateTopic(pipelineVersion string, dryRun bool) (*unstructured.Unstructured, error) {
-	return kafka.CreateTopicByFullName(kafka.TopicName(pipelineVersion), dryRun)
+func (t *StrimziTopics) CreateTopic(pipelineVersion string, dryRun bool) (*unstructured.Unstructured, error) {
+	return t.CreateTopicByFullName(t.TopicName(pipelineVersion), dryRun)
 }
 
-func (kafka *Kafka) DeleteTopicByPipelineVersion(pipelineVersion string) error {
-	err := kafka.DeleteTopic(kafka.TopicName(pipelineVersion))
+func (t *StrimziTopics) DeleteTopicByPipelineVersion(pipelineVersion string) error {
+	err := t.Kafka.DeleteTopic(t.TopicName(pipelineVersion))
 	return err
 }
 
-func (kafka *Kafka) DeleteAllTopics() error {
+func (t *StrimziTopics) DeleteAllTopics() error {
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 
 	topic := &unstructured.Unstructured{}
-	topic.SetNamespace(kafka.Parameters.KafkaClusterNamespace.String())
+	topic.SetNamespace(t.Kafka.Parameters.KafkaClusterNamespace.String())
 	topic.SetGroupVersionKind(topicsGroupVersionKind)
 
-	err := kafka.Client.DeleteAllOf(
+	err := t.Kafka.Client.DeleteAllOf(
 		ctx,
 		topic,
-		client.InNamespace(kafka.Parameters.KafkaClusterNamespace.String()),
-		client.MatchingLabels{"resource.name.prefix": kafka.Parameters.ResourceNamePrefix.String()},
+		client.InNamespace(t.Kafka.Parameters.KafkaClusterNamespace.String()),
+		client.MatchingLabels{"resource.name.prefix": t.Kafka.Parameters.ResourceNamePrefix.String()},
 		client.GracePeriodSeconds(0))
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func (kafka *Kafka) DeleteAllTopics() error {
 
 	log.Info("Waiting for topics to be deleted")
 	err = wait.PollImmediate(time.Second, time.Duration(300)*time.Second, func() (bool, error) {
-		topics, err := kafka.ListTopicNamesForPrefix(kafka.Parameters.ResourceNamePrefix.String())
+		topics, err := t.Kafka.ListTopicNamesForPrefix(t.Kafka.Parameters.ResourceNamePrefix.String())
 		if err != nil {
 			return false, err
 		}
@@ -161,14 +161,14 @@ func (kafka *Kafka) DeleteAllTopics() error {
 	return nil
 }
 
-func (kafka *Kafka) ListTopicNamesForPipelineVersion(pipelineVersion string) ([]string, error) {
+func (t *StrimziTopics) ListTopicNamesForPipelineVersion(pipelineVersion string) ([]string, error) {
 	topics := &unstructured.UnstructuredList{}
 	topics.SetGroupVersionKind(topicsGroupVersionKind)
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err := kafka.Client.List(
-		ctx, topics, client.InNamespace(kafka.Parameters.KafkaClusterNamespace.String()))
+	err := t.Kafka.Client.List(
+		ctx, topics, client.InNamespace(t.Kafka.Parameters.KafkaClusterNamespace.String()))
 
 	var response []string
 	if topics.Items != nil {

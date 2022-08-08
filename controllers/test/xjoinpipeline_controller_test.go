@@ -50,7 +50,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
 
 			dbConnector, err := i.KafkaClient.GetConnector(
-				i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
+				i.KafkaConnectors.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(dbConnector.GetName()).To(Equal(ResourceNamePrefix + ".db." + pipeline.Status.PipelineVersion))
 			dbConnectorSpec := dbConnector.Object["spec"].(map[string]interface{})
@@ -77,7 +77,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(dbConnectorConfig["transforms.unwrap.type"]).To(Equal("io.debezium.transforms.ExtractNewRecordState"))
 
 			esConnector, err := i.KafkaClient.GetConnector(
-				i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion))
+				i.KafkaConnectors.ESConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnector.GetName()).To(Equal(ResourceNamePrefix + ".es." + pipeline.Status.PipelineVersion))
 			esConnectorSpec := esConnector.Object["spec"].(map[string]interface{})
@@ -135,8 +135,8 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(aliases).To(BeEmpty())
 
-			topics, err := i.KafkaClient.ListTopicNamesForPipelineVersion(pipeline.Status.PipelineVersion)
-			Expect(topics).To(ContainElement(i.KafkaClient.TopicName(pipeline.Status.PipelineVersion)))
+			topics, err := i.KafkaTopics.ListTopicNamesForPipelineVersion(pipeline.Status.PipelineVersion)
+			Expect(topics).To(ContainElement(i.KafkaTopics.TopicName(pipeline.Status.PipelineVersion)))
 		})
 
 		It("Creates ESPipeline for new xjoin pipeline", func() {
@@ -193,7 +193,7 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline, err := i.GetPipeline()
 			Expect(err).ToNot(HaveOccurred())
 			esConnector, err := i.KafkaClient.GetConnector(
-				i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion))
+				i.KafkaConnectors.ESConnectorName(pipeline.Status.PipelineVersion))
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnector.GetName()).To(Equal(ResourceNamePrefix + ".es." + pipeline.Status.PipelineVersion))
@@ -224,7 +224,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["linger.ms"]).To(Equal(val))
 
 			dbConnector, err := i.KafkaClient.GetConnector(
-				i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
+				i.KafkaConnectors.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(dbConnector.GetName()).To(Equal(ResourceNamePrefix + ".db." + pipeline.Status.PipelineVersion))
@@ -283,13 +283,13 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Removes stale connectors", func() {
-			_, err := i.KafkaClient.CreateDebeziumConnector("1", false)
+			_, err := i.KafkaConnectors.CreateDebeziumConnector("1", false)
 			Expect(err).ToNot(HaveOccurred())
-			_, err = i.KafkaClient.CreateDebeziumConnector("2", false)
+			_, err = i.KafkaConnectors.CreateDebeziumConnector("2", false)
 			Expect(err).ToNot(HaveOccurred())
-			_, err = i.KafkaClient.CreateESConnector("1", false)
+			_, err = i.KafkaConnectors.CreateESConnector("1", false)
 			Expect(err).ToNot(HaveOccurred())
-			_, err = i.KafkaClient.CreateESConnector("2", false)
+			_, err = i.KafkaConnectors.CreateESConnector("2", false)
 			Expect(err).ToNot(HaveOccurred())
 
 			connectors, err := i.KafkaClient.ListConnectors()
@@ -325,9 +325,9 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Removes stale topics", func() {
-			_, err := i.KafkaClient.CreateTopic("1", false)
+			_, err := i.KafkaTopics.CreateTopic("1", false)
 			Expect(err).ToNot(HaveOccurred())
-			_, err = i.KafkaClient.CreateTopic("2", false)
+			_, err = i.KafkaTopics.CreateTopic("2", false)
 			Expect(err).ToNot(HaveOccurred())
 
 			topics, err := i.KafkaClient.ListTopicNamesForPrefix(ResourceNamePrefix)
@@ -411,7 +411,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.InitialSyncInProgress).To(BeTrue())
 			Expect(pipeline.GetValid()).To(Equal(metav1.ConditionUnknown))
 
-			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err = i.KafkaConnectors.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 			hostId, err := i.InsertSimpleHost()
 			Expect(err).ToNot(HaveOccurred())
@@ -458,12 +458,12 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline, err := i.CreateValidPipeline()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(i.EsClient.ESIndexName(pipeline.Status.PipelineVersion)))
-			Expect(pipeline.Status.ActiveTopicName).To(Equal(i.KafkaClient.TopicName(pipeline.Status.PipelineVersion)))
+			Expect(pipeline.Status.ActiveTopicName).To(Equal(i.KafkaTopics.TopicName(pipeline.Status.PipelineVersion)))
 			Expect(pipeline.Status.ActiveAliasName).To(Equal(i.EsClient.AliasName()))
 			Expect(pipeline.Status.ActiveDebeziumConnectorName).To(
-				Equal(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion)))
+				Equal(i.KafkaConnectors.DebeziumConnectorName(pipeline.Status.PipelineVersion)))
 			Expect(pipeline.Status.ActiveESConnectorName).To(
-				Equal(i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion)))
+				Equal(i.KafkaConnectors.ESConnectorName(pipeline.Status.PipelineVersion)))
 		})
 	})
 
@@ -480,7 +480,7 @@ var _ = Describe("Pipeline operations", func() {
 				Expect(err).ToNot(HaveOccurred())
 				activeIndex := pipeline.Status.ActiveIndexName
 
-				err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+				err = i.KafkaConnectors.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 				Expect(err).ToNot(HaveOccurred())
 				hostId, err := i.InsertSimpleHost()
 				Expect(err).ToNot(HaveOccurred())
@@ -512,10 +512,10 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline, err := i.CreateValidPipeline()
 			Expect(err).ToNot(HaveOccurred())
 			activeIndexName := i.EsClient.ESIndexName(pipeline.Status.PipelineVersion)
-			activeTopicName := i.KafkaClient.TopicName(pipeline.Status.PipelineVersion)
+			activeTopicName := i.KafkaTopics.TopicName(pipeline.Status.PipelineVersion)
 			activeAliasName := i.EsClient.AliasName()
-			activeDebeziumConnectorName := i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion)
-			activeESConnectorName := i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion)
+			activeDebeziumConnectorName := i.KafkaConnectors.DebeziumConnectorName(pipeline.Status.PipelineVersion)
+			activeESConnectorName := i.KafkaConnectors.ESConnectorName(pipeline.Status.PipelineVersion)
 
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndexName))
 			Expect(pipeline.Status.ActiveTopicName).To(Equal(activeTopicName))
@@ -555,7 +555,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
-			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
+			connector, err := i.KafkaClient.GetConnector(i.KafkaConnectors.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			spec := connector.Object["spec"].(map[string]interface{})
 			config := spec["config"].(map[string]interface{})
@@ -587,7 +587,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
-			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
+			connector, err := i.KafkaClient.GetConnector(i.KafkaConnectors.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			spec := connector.Object["spec"].(map[string]interface{})
 			config := spec["config"].(map[string]interface{})
@@ -619,7 +619,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
 			//the new pipeline should use the updated username/password from the HBI DB secret
-			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
+			connector, err := i.KafkaClient.GetConnector(i.KafkaConnectors.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			connectorSpec := connector.Object["spec"].(map[string]interface{})
 			connectorConfig := connectorSpec["config"].(map[string]interface{})
@@ -645,7 +645,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
 
-			connector, err := i.KafkaClient.GetConnector(i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion))
+			connector, err := i.KafkaClient.GetConnector(i.KafkaConnectors.ESConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			connectorSpec := connector.Object["spec"].(map[string]interface{})
 			connectorConfig := connectorSpec["config"].(map[string]interface{})
@@ -671,7 +671,7 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline, err := i.CreateValidPipeline()
 			Expect(err).ToNot(HaveOccurred())
 			activeIndex := pipeline.Status.ActiveIndexName
-			err = i.KafkaClient.DeleteConnector(i.KafkaClient.ESConnectorName(pipeline.Status.PipelineVersion))
+			err = i.KafkaClient.DeleteConnector(i.KafkaConnectors.ESConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			pipeline, err = i.ExpectInitSyncUnknownReconcile()
 			Expect(err).ToNot(HaveOccurred())
@@ -685,7 +685,7 @@ var _ = Describe("Pipeline operations", func() {
 			pipeline, err := i.CreateValidPipeline()
 			Expect(err).ToNot(HaveOccurred())
 			activeIndex := pipeline.Status.ActiveIndexName
-			err = i.KafkaClient.DeleteConnector(i.KafkaClient.DebeziumConnectorName(pipeline.Status.PipelineVersion))
+			err = i.KafkaClient.DeleteConnector(i.KafkaConnectors.DebeziumConnectorName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			pipeline, err = i.ExpectInitSyncUnknownReconcile()
 			Expect(err).ToNot(HaveOccurred())
@@ -1013,7 +1013,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			//validate task is running
-			newTasks, err := i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveESConnectorName)
+			newTasks, err := i.KafkaConnectors.ListConnectorTasks(pipeline.Status.ActiveESConnectorName)
 			Expect(err).ToNot(HaveOccurred())
 			for _, task := range newTasks {
 				Expect(task["state"]).To(Equal("RUNNING"))
@@ -1061,7 +1061,7 @@ var _ = Describe("Pipeline operations", func() {
 
 			//give the connector time to realize it can't connect
 			time.Sleep(10 * time.Second)
-			err = i.KafkaClient.RestartTaskForConnector(pipeline.Status.ActiveDebeziumConnectorName, 0)
+			err = i.KafkaConnectors.RestartTaskForConnector(pipeline.Status.ActiveDebeziumConnectorName, 0)
 			Expect(err).ToNot(HaveOccurred())
 
 			//validate task is failed
@@ -1080,7 +1080,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			//validate task is running
-			newTasks, err := i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveESConnectorName)
+			newTasks, err := i.KafkaConnectors.ListConnectorTasks(pipeline.Status.ActiveESConnectorName)
 			Expect(err).ToNot(HaveOccurred())
 			for _, task := range newTasks {
 				Expect(task["state"]).To(Equal("RUNNING"))
@@ -1141,7 +1141,7 @@ var _ = Describe("Pipeline operations", func() {
 			time.Sleep(10 * time.Second)
 
 			//validate task is failed
-			tasks, err := i.KafkaClient.ListConnectorTasks(pipeline.Status.ActiveESConnectorName)
+			tasks, err := i.KafkaConnectors.ListConnectorTasks(pipeline.Status.ActiveESConnectorName)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(tasks)).To(BeNumerically(">", 0))
 			for _, task := range tasks {
@@ -1163,7 +1163,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			pipeline, err := i.ReconcileXJoinNonTest()
 			Expect(err).ToNot(HaveOccurred())
-			topic, err := i.KafkaClient.GetTopic(i.KafkaClient.TopicName(pipeline.Status.PipelineVersion))
+			topic, err := i.KafkaClient.GetTopic(i.KafkaTopics.TopicName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
 			status := topic.Object["status"].(map[string]interface{})
 			conditions := status["conditions"].([]interface{})
@@ -1195,7 +1195,7 @@ var _ = Describe("Pipeline operations", func() {
 				version := strconv.FormatInt(time.Now().UnixNano(), 10)
 
 				log.Info("CREATING TOPIC " + version)
-				_, err := i.KafkaClient.CreateTopic(version, false)
+				_, err := i.KafkaTopics.CreateTopic(version, false)
 				if err != nil {
 					return
 				}
@@ -1205,7 +1205,7 @@ var _ = Describe("Pipeline operations", func() {
 				//Expect(err).ToNot(HaveOccurred())
 
 				log.Info("CREATING ES CONNECTOR" + version)
-				_, err = i.KafkaClient.CreateESConnector(version, false)
+				_, err = i.KafkaConnectors.CreateESConnector(version, false)
 				Expect(err).ToNot(HaveOccurred())
 
 				//log.Info("DELETING DB CONNECTOR" + version)
@@ -1217,7 +1217,7 @@ var _ = Describe("Pipeline operations", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				log.Info("DELETING TOPIC" + version)
-				err = i.KafkaClient.DeleteTopicByPipelineVersion(version)
+				err = i.KafkaTopics.DeleteTopicByPipelineVersion(version)
 				Expect(err).ToNot(HaveOccurred())
 
 				time.Sleep(100 * time.Millisecond)

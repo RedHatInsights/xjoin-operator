@@ -40,9 +40,11 @@ type ReconcileIteration struct {
 
 	Parameters config.Parameters
 
-	ESClient    *elasticsearch.ElasticSearch
-	Kafka       kafka.Kafka
-	InventoryDb *database.Database
+	ESClient        *elasticsearch.ElasticSearch
+	Kafka           kafka.Kafka
+	KafkaTopics     kafka.Topics
+	KafkaConnectors kafka.Connectors
+	InventoryDb     *database.Database
 
 	GetRequeueInterval func(i *ReconcileIteration) (result int)
 }
@@ -82,10 +84,10 @@ func (i *ReconcileIteration) Debug(message string, keysAndValues ...interface{})
 func (i *ReconcileIteration) SetActiveResources() {
 	i.Instance.Status.ActivePipelineVersion = i.Instance.Status.PipelineVersion
 	i.Instance.Status.ActiveAliasName = i.ESClient.AliasName()
-	i.Instance.Status.ActiveDebeziumConnectorName = i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion)
-	i.Instance.Status.ActiveESConnectorName = i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion)
+	i.Instance.Status.ActiveDebeziumConnectorName = i.KafkaConnectors.DebeziumConnectorName(i.Instance.Status.PipelineVersion)
+	i.Instance.Status.ActiveESConnectorName = i.KafkaConnectors.ESConnectorName(i.Instance.Status.PipelineVersion)
 	i.Instance.Status.ActiveESPipelineName = i.ESClient.ESPipelineName(i.Instance.Status.PipelineVersion)
-	i.Instance.Status.ActiveTopicName = i.Kafka.TopicName(i.Instance.Status.PipelineVersion)
+	i.Instance.Status.ActiveTopicName = i.KafkaTopics.TopicName(i.Instance.Status.PipelineVersion)
 	i.Instance.Status.ActiveReplicationSlotName =
 		database.ReplicationSlotName(i.Parameters.ResourceNamePrefix.String(), i.Instance.Status.PipelineVersion)
 }
@@ -215,11 +217,11 @@ func (i *ReconcileIteration) DeleteStaleDependencies() (errors []error) {
 
 	//keep the in progress pipeline's resources and the active resources
 	if i.Instance.GetState() != xjoin.STATE_REMOVED && i.Instance.Status.PipelineVersion != "" {
-		connectorsToKeep = append(connectorsToKeep, i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion))
-		connectorsToKeep = append(connectorsToKeep, i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion))
+		connectorsToKeep = append(connectorsToKeep, i.KafkaConnectors.DebeziumConnectorName(i.Instance.Status.PipelineVersion))
+		connectorsToKeep = append(connectorsToKeep, i.KafkaConnectors.ESConnectorName(i.Instance.Status.PipelineVersion))
 		esPipelinesToKeep = append(esPipelinesToKeep, i.ESClient.ESPipelineName(i.Instance.Status.PipelineVersion))
 		esIndicesToKeep = append(esIndicesToKeep, i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion))
-		topicsToKeep = append(topicsToKeep, i.Kafka.TopicName(i.Instance.Status.PipelineVersion))
+		topicsToKeep = append(topicsToKeep, i.KafkaTopics.TopicName(i.Instance.Status.PipelineVersion))
 		replicationSlotsToKeep = append(replicationSlotsToKeep, database.ReplicationSlotName(
 			resourceNamePrefix, i.Instance.Status.PipelineVersion))
 	}
@@ -435,13 +437,13 @@ func (i *ReconcileIteration) CheckForDeviation() (problem error, err error) {
 
 	//Connectors
 	problem, err = i.CheckConnectorDeviation(
-		i.Kafka.ESConnectorName(i.Instance.Status.PipelineVersion), "es")
+		i.KafkaConnectors.ESConnectorName(i.Instance.Status.PipelineVersion), "es")
 	if err != nil || problem != nil {
 		return problem, err
 	}
 
 	problem, err = i.CheckConnectorDeviation(
-		i.Kafka.DebeziumConnectorName(i.Instance.Status.PipelineVersion), "debezium")
+		i.KafkaConnectors.DebeziumConnectorName(i.Instance.Status.PipelineVersion), "debezium")
 	if err != nil || problem != nil {
 		return problem, err
 	}
@@ -499,7 +501,7 @@ func (i *ReconcileIteration) CheckTopicDeviation() (problem error, err error) {
 		return nil, nil
 	}
 
-	topicName := i.Kafka.TopicName(i.Instance.Status.PipelineVersion)
+	topicName := i.KafkaTopics.TopicName(i.Instance.Status.PipelineVersion)
 	topic, err := i.Kafka.GetTopic(topicName)
 	if err != nil || topic == nil {
 		if k8errors.IsNotFound(err) {
@@ -517,7 +519,7 @@ func (i *ReconcileIteration) CheckTopicDeviation() (problem error, err error) {
 			i.Parameters.ConnectCluster.String()), nil
 	}
 
-	newTopic, err := i.Kafka.CreateTopic(i.Instance.Status.PipelineVersion, true)
+	newTopic, err := i.KafkaTopics.CreateTopic(i.Instance.Status.PipelineVersion, true)
 	if err != nil {
 		return nil, err
 	}
@@ -562,14 +564,14 @@ func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, conne
 	}
 
 	i.Log.Info("Checking if connector is failed")
-	isFailed, err := i.Kafka.IsFailed(connectorName)
+	isFailed, err := i.KafkaConnectors.IsFailed(connectorName)
 	if err != nil {
 		return nil, err
 	}
 
 	if isFailed {
 		i.Log.Warn("Connector is failed, restarting it.", "connector", connectorName)
-		err = i.Kafka.RestartConnector(connectorName)
+		err = i.KafkaConnectors.RestartConnector(connectorName)
 		if err != nil {
 			return fmt.Errorf("connector %s is in the FAILED state", connectorName), nil
 		}
@@ -585,7 +587,7 @@ func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, conne
 
 	i.Log.Info("Checking connector spec")
 	// compares the spec of the existing connector with the spec we would create if we were creating a new connector now
-	newConnector, err := i.Kafka.CreateDryConnectorByType(connectorType, i.Instance.Status.PipelineVersion)
+	newConnector, err := i.KafkaConnectors.CreateDryConnectorByType(connectorType, i.Instance.Status.PipelineVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -605,13 +607,13 @@ func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, conne
 }
 
 func (i *ReconcileIteration) DeleteResourceForPipeline(version string) error {
-	err := i.Kafka.DeleteTopicByPipelineVersion(version)
+	err := i.KafkaTopics.DeleteTopicByPipelineVersion(version)
 	if err != nil {
 		i.Error(err, "Error deleting topic")
 		return err
 	}
 
-	err = i.Kafka.DeleteConnectorsForPipelineVersion(version)
+	err = i.KafkaConnectors.DeleteConnectorsForPipelineVersion(version)
 	if err != nil {
 		i.Error(err, "Error deleting connectors")
 		return err

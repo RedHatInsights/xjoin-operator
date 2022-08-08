@@ -206,6 +206,15 @@ func Before() (*Iteration, error) {
 		},
 	}
 
+	i.KafkaTopics = &kafka.StrimziTopics{
+		Kafka: i.KafkaClient,
+	}
+
+	i.KafkaConnectors = &kafka.StrimziConnectors{
+		Kafka:  i.KafkaClient,
+		Topics: i.KafkaTopics,
+	}
+
 	i.DbClient = database.NewDatabase(database.DBParams{
 		Host:     i.Parameters.HBIDBHost.String(),
 		Port:     i.Parameters.HBIDBPort.String(),
@@ -275,15 +284,15 @@ func After(i *Iteration) error {
 	}
 
 	log.Info("Deleting connectors")
-	err = i.KafkaClient.DeleteAllConnectors(ResourceNamePrefix)
-	err = i.KafkaClient.DeleteAllConnectors("prefix.withadot")
-	err = i.KafkaClient.DeleteAllConnectors("prefixupdated")
+	err = i.KafkaConnectors.DeleteAllConnectors(ResourceNamePrefix)
+	err = i.KafkaConnectors.DeleteAllConnectors("prefix.withadot")
+	err = i.KafkaConnectors.DeleteAllConnectors("prefixupdated")
 	if err != nil {
 		return err
 	}
 
 	log.Info("Deleting topics")
-	err = i.KafkaClient.DeleteAllTopics()
+	err = i.KafkaTopics.DeleteAllTopics()
 	if err != nil {
 		return err
 	}
@@ -328,7 +337,7 @@ func After(i *Iteration) error {
 	err = attemptToRemoveReplicationSlots(i.DbClient)
 
 	if err != nil {
-		err = i.KafkaClient.RestartConnect()
+		err = i.KafkaConnectors.RestartConnect()
 		if err != nil {
 			return err
 		}

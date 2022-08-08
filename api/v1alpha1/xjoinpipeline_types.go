@@ -63,6 +63,9 @@ type XJoinPipelineSpec struct {
 
 	// +optional
 	Ephemeral bool `json:"ephemeral,omitempty"`
+
+	// +optional
+	ManagedKafka bool `json:"managedKafka,omitempty"`
 }
 
 // XJoinPipelineStatus defines the observed state of XJoinPipeline

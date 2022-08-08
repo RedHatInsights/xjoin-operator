@@ -66,6 +66,8 @@ spec:
               kafkaClusterNamespace:
                 minLength: 1
                 type: string
+              managedKafka:
+                type: boolean
               pause:
                 type: boolean
               resourceNamePrefix:

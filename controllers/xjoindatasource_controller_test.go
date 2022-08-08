@@ -34,7 +34,7 @@ var _ = Describe("XJoinDataSource", func() {
 				K8sClient: k8sClient,
 			}
 			createdDataSource := reconciler.ReconcileNew()
-		
+
 			dataSourcePipelineName := createdDataSource.Name + "." + createdDataSource.Status.RefreshingVersion
 			datasourcePipelineKey := types.NamespacedName{Name: dataSourcePipelineName, Namespace: namespace}
 			createdDatasourcePipeline := &v1alpha1.XJoinDataSourcePipeline{}

@@ -42,31 +42,31 @@ var connectorsGVK = schema.GroupVersionKind{
 	Version: "v1beta2",
 }
 
-func (kafka *Kafka) newESConnectorResource(pipelineVersion string) (*unstructured.Unstructured, error) {
-	m := kafka.ParametersMap
-	m["Topic"] = kafka.TopicName(pipelineVersion)
-	m["RenameTopicReplacement"] = fmt.Sprintf("%s.%s", kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
+func (c *StrimziConnectors) newESConnectorResource(pipelineVersion string) (*unstructured.Unstructured, error) {
+	m := c.Kafka.ParametersMap
+	m["Topic"] = c.Topics.TopicName(pipelineVersion)
+	m["RenameTopicReplacement"] = fmt.Sprintf("%s.%s", c.Kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
 
-	return kafka.newConnectorResource(
-		kafka.ESConnectorName(pipelineVersion),
+	return c.newConnectorResource(
+		c.ESConnectorName(pipelineVersion),
 		"io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
 		m,
-		kafka.Parameters.ElasticSearchConnectorTemplate.String())
+		c.Kafka.Parameters.ElasticSearchConnectorTemplate.String())
 }
 
-func (kafka *Kafka) newDebeziumConnectorResource(pipelineVersion string) (*unstructured.Unstructured, error) {
-	m := kafka.ParametersMap
+func (c *StrimziConnectors) newDebeziumConnectorResource(pipelineVersion string) (*unstructured.Unstructured, error) {
+	m := c.Kafka.ParametersMap
 	m["Version"] = pipelineVersion
-	m["ReplicationSlotName"] = database.ReplicationSlotName(kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
+	m["ReplicationSlotName"] = database.ReplicationSlotName(c.Kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
 
-	return kafka.newConnectorResource(
-		kafka.DebeziumConnectorName(pipelineVersion),
+	return c.newConnectorResource(
+		c.DebeziumConnectorName(pipelineVersion),
 		"io.debezium.connector.postgresql.PostgresConnector",
 		m,
-		kafka.Parameters.DebeziumTemplate.String())
+		c.Kafka.Parameters.DebeziumTemplate.String())
 }
 
-func (kafka *Kafka) newConnectorResource(
+func (c *StrimziConnectors) newConnectorResource(
 	name string,
 	class string,
 	connectorConfig map[string]interface{},
@@ -95,10 +95,10 @@ func (kafka *Kafka) newConnectorResource(
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      name,
-			"namespace": kafka.Parameters.ConnectClusterNamespace.String(),
+			"namespace": c.Kafka.Parameters.ConnectClusterNamespace.String(),
 			"labels": map[string]interface{}{
-				LabelStrimziCluster:    kafka.Parameters.ConnectCluster.String(),
-				"resource.name.prefix": kafka.Parameters.ResourceNamePrefix.String(),
+				LabelStrimziCluster:    c.Kafka.Parameters.ConnectCluster.String(),
+				"resource.name.prefix": c.Kafka.Parameters.ResourceNamePrefix.String(),
 			},
 		},
 		"spec": map[string]interface{}{
@@ -112,10 +112,10 @@ func (kafka *Kafka) newConnectorResource(
 	return u, nil
 }
 
-func (kafka *Kafka) GetTaskStatus(connectorName string, taskId float64) (map[string]interface{}, error) {
+func (c *StrimziConnectors) GetTaskStatus(connectorName string, taskId float64) (map[string]interface{}, error) {
 	url := fmt.Sprintf(
 		"%s/connectors/%s/tasks/%.0f/status",
-		kafka.ConnectUrl(), connectorName, taskId)
+		c.Kafka.ConnectUrl(), connectorName, taskId)
 
 	httpClient := &http.Client{Timeout: 15 * time.Second}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -137,8 +137,8 @@ func (kafka *Kafka) GetTaskStatus(connectorName string, taskId float64) (map[str
 	return bodyMap, nil
 }
 
-func (kafka *Kafka) ListConnectorTasks(connectorName string) ([]map[string]interface{}, error) {
-	connectorStatus, err := kafka.GetConnectorStatus(connectorName)
+func (c *StrimziConnectors) ListConnectorTasks(connectorName string) ([]map[string]interface{}, error) {
+	connectorStatus, err := c.GetConnectorStatus(connectorName)
 	if err != nil {
 		return nil, err
 	}
@@ -156,13 +156,13 @@ func (kafka *Kafka) ListConnectorTasks(connectorName string) ([]map[string]inter
 	return tasksMap, nil
 }
 
-func (kafka *Kafka) RestartTaskForConnector(connectorName string, taskId float64) error {
+func (c *StrimziConnectors) RestartTaskForConnector(connectorName string, taskId float64) error {
 	metrics.ConnectorTaskRestarted(connectorName)
 	log.Warn("Restarting connector task", "connector", connectorName, "taskId", taskId)
 
 	url := fmt.Sprintf(
 		"%s/connectors/%s/tasks/%.0f/restart",
-		kafka.ConnectUrl(),
+		c.Kafka.ConnectUrl(),
 		connectorName,
 		taskId)
 	res, err := http.Post(url, "application/json", nil)
@@ -178,13 +178,13 @@ func (kafka *Kafka) RestartTaskForConnector(connectorName string, taskId float64
 	return nil
 }
 
-func (kafka *Kafka) verifyTaskIsRunning(task map[string]interface{}, connectorName string) (bool, error) {
+func (c *StrimziConnectors) verifyTaskIsRunning(task map[string]interface{}, connectorName string) (bool, error) {
 	//try to restart the task 10 times
 	for i := 0; i < 10; i++ {
 		if task["state"] == running {
 			return true, nil
 		} else {
-			err := kafka.RestartTaskForConnector(connectorName, task["id"].(float64))
+			err := c.RestartTaskForConnector(connectorName, task["id"].(float64))
 
 			if err != nil {
 				return false, err
@@ -192,21 +192,21 @@ func (kafka *Kafka) verifyTaskIsRunning(task map[string]interface{}, connectorNa
 
 			time.Sleep(2 * time.Second)
 
-			task, err = kafka.GetTaskStatus(connectorName, task["id"].(float64))
+			task, err = c.GetTaskStatus(connectorName, task["id"].(float64))
 		}
 	}
 
 	return false, nil //restarts failed
 }
 
-func (kafka *Kafka) RestartConnector(connectorName string) error {
-	tasks, err := kafka.ListConnectorTasks(connectorName)
+func (c *StrimziConnectors) RestartConnector(connectorName string) error {
+	tasks, err := c.ListConnectorTasks(connectorName)
 	if err != nil {
 		return err
 	}
 
 	for _, task := range tasks {
-		taskIsValid, err := kafka.verifyTaskIsRunning(task, connectorName)
+		taskIsValid, err := c.verifyTaskIsRunning(task, connectorName)
 		if err != nil {
 			return err
 		} else if !taskIsValid {
@@ -219,9 +219,9 @@ func (kafka *Kafka) RestartConnector(connectorName string) error {
 
 // CheckIfConnectIsResponding
 // First validate /connectors responds. If there are existing connectors, validate one of those can be retrieved too.
-func (kafka *Kafka) CheckIfConnectIsResponding() (bool, error) {
+func (c *StrimziConnectors) CheckIfConnectIsResponding() (bool, error) {
 	for j := 0; j < 10; j++ {
-		url := kafka.ConnectUrl() + "/connectors"
+		url := c.Kafka.ConnectUrl() + "/connectors"
 
 		httpClient := &http.Client{Timeout: 15 * time.Second}
 		req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -271,10 +271,10 @@ func (kafka *Kafka) CheckIfConnectIsResponding() (bool, error) {
 	return false, nil
 }
 
-func (kafka *Kafka) ListConnectorsREST(prefix string) ([]string, error) {
+func (c *StrimziConnectors) ListConnectorsREST(prefix string) ([]string, error) {
 	url := fmt.Sprintf(
 		"%s/connectors",
-		kafka.ConnectUrl())
+		c.Kafka.ConnectUrl())
 
 	httpClient := &http.Client{Timeout: 15 * time.Second}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -309,14 +309,14 @@ func (kafka *Kafka) ListConnectorsREST(prefix string) ([]string, error) {
 	return connectorsFiltered, nil
 }
 
-func (kafka *Kafka) DeleteConnectorsForPipelineVersion(pipelineVersion string) error {
-	connectorsToDelete, err := kafka.ListConnectorNamesForPipelineVersion(pipelineVersion)
+func (c *StrimziConnectors) DeleteConnectorsForPipelineVersion(pipelineVersion string) error {
+	connectorsToDelete, err := c.ListConnectorNamesForPipelineVersion(pipelineVersion)
 	if err != nil {
 		return err
 	}
 
 	for _, connector := range connectorsToDelete {
-		err = kafka.DeleteConnector(connector)
+		err = c.Kafka.DeleteConnector(connector)
 		if err != nil {
 			return err
 		}
@@ -325,8 +325,8 @@ func (kafka *Kafka) DeleteConnectorsForPipelineVersion(pipelineVersion string) e
 	return nil
 }
 
-func (kafka *Kafka) ListConnectorNamesForPipelineVersion(pipelineVersion string) ([]string, error) {
-	connectors, err := kafka.ListConnectors()
+func (c *StrimziConnectors) ListConnectorNamesForPipelineVersion(pipelineVersion string) ([]string, error) {
+	connectors, err := c.Kafka.ListConnectors()
 	if err != nil {
 		return nil, err
 	}
@@ -347,17 +347,17 @@ func EmptyConnector() *unstructured.Unstructured {
 	return connector
 }
 
-func (kafka *Kafka) DeleteAllConnectors(resourceNamePrefix string) error {
+func (c *StrimziConnectors) DeleteAllConnectors(resourceNamePrefix string) error {
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 
 	connector := &unstructured.Unstructured{}
 	connector.SetGroupVersionKind(connectorsGVK)
 
-	err := kafka.Client.DeleteAllOf(
+	err := c.Kafka.Client.DeleteAllOf(
 		ctx,
 		connector,
-		client.InNamespace(kafka.Parameters.KafkaClusterNamespace.String()),
+		client.InNamespace(c.Kafka.Parameters.KafkaClusterNamespace.String()),
 		client.MatchingLabels{"resource.name.prefix": resourceNamePrefix})
 
 	if err != nil {
@@ -366,7 +366,7 @@ func (kafka *Kafka) DeleteAllConnectors(resourceNamePrefix string) error {
 
 	log.Info("Waiting for connectors to be deleted")
 	err = wait.PollImmediate(time.Second, time.Duration(300)*time.Second, func() (bool, error) {
-		connectors, err := kafka.ListConnectorsREST(resourceNamePrefix)
+		connectors, err := c.ListConnectorsREST(resourceNamePrefix)
 		if err != nil {
 			return false, err
 		}
@@ -383,11 +383,11 @@ func (kafka *Kafka) DeleteAllConnectors(resourceNamePrefix string) error {
 	return nil
 }
 
-func (kafka *Kafka) GetConnectorStatus(connectorName string) (map[string]interface{}, error) {
+func (c *StrimziConnectors) GetConnectorStatus(connectorName string) (map[string]interface{}, error) {
 	log.Info("Getting connector status for connector" + connectorName)
 	url := fmt.Sprintf(
 		"%s/connectors/%s/status",
-		kafka.ConnectUrl(), connectorName)
+		c.Kafka.ConnectUrl(), connectorName)
 	log.Info("connector status url: " + url)
 
 	httpClient := &http.Client{Timeout: 15 * time.Second}
@@ -421,8 +421,8 @@ func (kafka *Kafka) GetConnectorStatus(connectorName string) (map[string]interfa
 	return bodyMap, nil
 }
 
-func (kafka *Kafka) IsFailed(connectorName string) (bool, error) {
-	connectorStatus, err := kafka.GetConnectorStatus(connectorName)
+func (c *StrimziConnectors) IsFailed(connectorName string) (bool, error) {
+	connectorStatus, err := c.GetConnectorStatus(connectorName)
 	if err != nil {
 		return false, err
 	}
@@ -458,11 +458,11 @@ func (kafka *Kafka) IsFailed(connectorName string) (bool, error) {
 	return false, nil
 }
 
-func (kafka *Kafka) CreateESConnector(
+func (c *StrimziConnectors) CreateESConnector(
 	pipelineVersion string,
 	dryRun bool) (*unstructured.Unstructured, error) {
 
-	connector, err := kafka.newESConnectorResource(pipelineVersion)
+	connector, err := c.newESConnectorResource(pipelineVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -473,14 +473,14 @@ func (kafka *Kafka) CreateESConnector(
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	return connector, kafka.Client.Create(ctx, connector)
+	return connector, c.Kafka.Client.Create(ctx, connector)
 }
 
-func (kafka *Kafka) CreateDebeziumConnector(
+func (c *StrimziConnectors) CreateDebeziumConnector(
 	pipelineVersion string,
 	dryRun bool) (*unstructured.Unstructured, error) {
 
-	connector, err := kafka.newDebeziumConnectorResource(pipelineVersion)
+	connector, err := c.newDebeziumConnectorResource(pipelineVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -490,27 +490,27 @@ func (kafka *Kafka) CreateDebeziumConnector(
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	return connector, kafka.Client.Create(ctx, connector)
+	return connector, c.Kafka.Client.Create(ctx, connector)
 }
 
-func (kafka *Kafka) DebeziumConnectorName(pipelineVersion string) string {
-	return fmt.Sprintf("%s.db.%s", kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
+func (c *StrimziConnectors) DebeziumConnectorName(pipelineVersion string) string {
+	return fmt.Sprintf("%s.db.%s", c.Kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
 }
 
-func (kafka *Kafka) ESConnectorName(pipelineVersion string) string {
-	return fmt.Sprintf("%s.es.%s", kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
+func (c *StrimziConnectors) ESConnectorName(pipelineVersion string) string {
+	return fmt.Sprintf("%s.es.%s", c.Kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
 }
 
-func (kafka *Kafka) PauseElasticSearchConnector(pipelineVersion string) error {
-	return kafka.setElasticSearchConnectorPause(pipelineVersion, true)
+func (c *StrimziConnectors) PauseElasticSearchConnector(pipelineVersion string) error {
+	return c.setElasticSearchConnectorPause(pipelineVersion, true)
 }
 
-func (kafka *Kafka) ResumeElasticSearchConnector(pipelineVersion string) error {
-	return kafka.setElasticSearchConnectorPause(pipelineVersion, false)
+func (c *StrimziConnectors) ResumeElasticSearchConnector(pipelineVersion string) error {
+	return c.setElasticSearchConnectorPause(pipelineVersion, false)
 }
 
-func (kafka *Kafka) setElasticSearchConnectorPause(pipelineVersion string, pause bool) error {
-	connector, err := kafka.GetConnector(kafka.ESConnectorName(pipelineVersion))
+func (c *StrimziConnectors) setElasticSearchConnectorPause(pipelineVersion string, pause bool) error {
+	connector, err := c.Kafka.GetConnector(c.ESConnectorName(pipelineVersion))
 	if err != nil {
 		return err
 	}
@@ -519,7 +519,7 @@ func (kafka *Kafka) setElasticSearchConnectorPause(pipelineVersion string, pause
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err = kafka.Client.Update(ctx, connector)
+	err = c.Kafka.Client.Update(ctx, connector)
 	if err != nil {
 		return err
 	}
@@ -527,17 +527,17 @@ func (kafka *Kafka) setElasticSearchConnectorPause(pipelineVersion string, pause
 	return nil
 }
 
-func (kafka *Kafka) CreateDryConnectorByType(conType string, version string) (*unstructured.Unstructured, error) {
+func (c *StrimziConnectors) CreateDryConnectorByType(conType string, version string) (*unstructured.Unstructured, error) {
 	if conType == "es" {
-		return kafka.CreateESConnector(version, true)
+		return c.CreateESConnector(version, true)
 	} else if conType == "debezium" {
-		return kafka.CreateDebeziumConnector(version, true)
+		return c.CreateDebeziumConnector(version, true)
 	} else {
 		return nil, errors.New("invalid param. Must be one of [es, debezium]")
 	}
 }
 
-func (kafka *Kafka) updateConnectDepReplicas(newReplicas int64) (currentReplicas int64, err error) {
+func (c *StrimziConnectors) updateConnectDepReplicas(newReplicas int64) (currentReplicas int64, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*999)
 	defer cancel()
 
@@ -552,9 +552,9 @@ func (kafka *Kafka) updateConnectDepReplicas(newReplicas int64) (currentReplicas
 
 		deployment := &unstructured.Unstructured{}
 		deployment.SetGroupVersionKind(deploymentGVK)
-		err = kafka.Client.Get(
+		err = c.Kafka.Client.Get(
 			ctx,
-			client.ObjectKey{Name: kafka.Parameters.ConnectCluster.String() + "-connect", Namespace: kafka.Parameters.ConnectClusterNamespace.String()},
+			client.ObjectKey{Name: c.Kafka.Parameters.ConnectCluster.String() + "-connect", Namespace: c.Kafka.Parameters.ConnectClusterNamespace.String()},
 			deployment)
 		if err != nil {
 			return
@@ -568,7 +568,7 @@ func (kafka *Kafka) updateConnectDepReplicas(newReplicas int64) (currentReplicas
 		}
 		currentReplicas = spec["replicas"].(int64)
 		spec["replicas"] = newReplicas
-		err = kafka.Client.Update(ctx, deployment)
+		err = c.Kafka.Client.Update(ctx, deployment)
 		if err == nil {
 			break
 		}
@@ -576,7 +576,7 @@ func (kafka *Kafka) updateConnectDepReplicas(newReplicas int64) (currentReplicas
 	return
 }
 
-func (kafka *Kafka) RestartConnect() error {
+func (c *StrimziConnectors) RestartConnect() error {
 	metrics.ConnectRestarted()
 	log.Warn("Restarting Kafka Connect")
 
@@ -587,8 +587,8 @@ func (kafka *Kafka) RestartConnect() error {
 	pods := &corev1.PodList{}
 
 	labels := client.MatchingLabels{}
-	labels["app.kubernetes.io/part-of"] = "strimzi-" + kafka.Parameters.ConnectCluster.String()
-	err := kafka.Client.List(ctx, pods, labels)
+	labels["app.kubernetes.io/part-of"] = "strimzi-" + c.Kafka.Parameters.ConnectCluster.String()
+	err := c.Kafka.Client.List(ctx, pods, labels)
 	if err != nil {
 		return err
 	}
@@ -600,11 +600,11 @@ func (kafka *Kafka) RestartConnect() error {
 	//podLabels := pods.Items[0].GetLabels()
 	//currentHash := podLabels["pod-template-hash"]
 
-	currentReplicas, err := kafka.updateConnectDepReplicas(0)
+	currentReplicas, err := c.updateConnectDepReplicas(0)
 	if err != nil {
 		return err
 	}
-	_, err = kafka.updateConnectDepReplicas(currentReplicas)
+	_, err = c.updateConnectDepReplicas(currentReplicas)
 	if err != nil {
 		return err
 	}
@@ -623,11 +623,11 @@ func (kafka *Kafka) RestartConnect() error {
 
 		replicaset := &unstructured.UnstructuredList{}
 		replicaset.SetGroupVersionKind(replicasetGVK)
-		err = kafka.Client.List(ctx, pods, labels)
+		err = c.Kafka.Client.List(ctx, pods, labels)
 
 		labels := client.MatchingLabels{}
-		labels["app.kubernetes.io/part-of"] = "strimzi-" + kafka.Parameters.ConnectCluster.String()
-		err = kafka.Client.List(ctx, replicaset, labels)
+		labels["app.kubernetes.io/part-of"] = "strimzi-" + c.Kafka.Parameters.ConnectCluster.String()
+		err = c.Kafka.Client.List(ctx, replicaset, labels)
 		status := replicaset.Items[0].Object["status"].(map[string]interface{})
 		replicas := status["replicas"]
 		readyReplicas := status["readyReplicas"]
@@ -645,8 +645,8 @@ func (kafka *Kafka) RestartConnect() error {
 			defer cancel()
 
 			labels := client.MatchingLabels{}
-			labels["app.kubernetes.io/part-of"] = "strimzi-" + kafka.Parameters.ConnectCluster.String()
-			err = kafka.Client.List(ctx, pods, labels)
+			labels["app.kubernetes.io/part-of"] = "strimzi-" + c.Parameters.ConnectCluster.String()
+			err = c.Client.List(ctx, pods, labels)
 
 			//only check pods for new deployment
 			var newPods []corev1.Pod

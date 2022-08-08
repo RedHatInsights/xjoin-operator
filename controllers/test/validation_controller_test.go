@@ -54,7 +54,7 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
 
-			err = i.KafkaClient.PauseElasticSearchConnector(version)
+			err = i.KafkaConnectors.PauseElasticSearchConnector(version)
 			Expect(err).ToNot(HaveOccurred())
 
 			_, err = i.SyncHosts(version, 3)
@@ -79,7 +79,7 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
 
-			err = i.KafkaClient.PauseElasticSearchConnector(version)
+			err = i.KafkaConnectors.PauseElasticSearchConnector(version)
 			Expect(err).ToNot(HaveOccurred())
 
 			id1, err := i.InsertSimpleHost()
@@ -132,7 +132,7 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
 
-			err = i.KafkaClient.PauseElasticSearchConnector(version)
+			err = i.KafkaConnectors.PauseElasticSearchConnector(version)
 			Expect(err).ToNot(HaveOccurred())
 
 			id1, err := i.InsertSimpleHost()
@@ -182,7 +182,7 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
 
-			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err = i.KafkaConnectors.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 
 			//create 6 hosts in db, 5 in ES
@@ -218,7 +218,7 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
 
-			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err = i.KafkaConnectors.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 
 			//create 6 hosts in db, 5 in ES
@@ -253,7 +253,7 @@ var _ = Describe("Validation controller", func() {
 			pipeline, err := i.CreateValidPipeline()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err = i.KafkaConnectors.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 
 			_, err = i.InsertSimpleHost()
@@ -283,7 +283,7 @@ var _ = Describe("Validation controller", func() {
 			Expect(err).ToNot(HaveOccurred())
 			version := pipeline.Status.PipelineVersion
 
-			err = i.KafkaClient.PauseElasticSearchConnector(version)
+			err = i.KafkaConnectors.PauseElasticSearchConnector(version)
 			Expect(err).ToNot(HaveOccurred())
 
 			_, err = i.InsertSimpleHost()
@@ -324,7 +324,7 @@ var _ = Describe("Validation controller", func() {
 			pipeline, err := i.CreateValidPipeline()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err = i.KafkaConnectors.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 			_, err = i.InsertSimpleHost()
 			Expect(err).ToNot(HaveOccurred())
@@ -392,7 +392,7 @@ var _ = Describe("Validation controller", func() {
 			err = i.AssertValidationEvents(0)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err = i.KafkaConnectors.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 
 			hostId1, err := i.InsertSimpleHost()
@@ -432,7 +432,7 @@ var _ = Describe("Validation controller", func() {
 			err = i.AssertValidationEvents(0)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = i.KafkaClient.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
+			err = i.KafkaConnectors.PauseElasticSearchConnector(pipeline.Status.PipelineVersion)
 			Expect(err).ToNot(HaveOccurred())
 
 			hostId1, err := i.InsertSimpleHost()

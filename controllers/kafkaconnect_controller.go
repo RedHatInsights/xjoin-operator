@@ -22,10 +22,11 @@ import (
 
 type KafkaConnectReconciler struct {
 	XJoinPipelineReconciler
-	kafka      kafka.Kafka
-	parameters config.Parameters
-	log        logger.Log
-	instance   *xjoin.XJoinPipeline
+	kafka           kafka.Kafka
+	kafkaConnectors kafka.Connectors
+	parameters      config.Parameters
+	log             logger.Log
+	instance        *xjoin.XJoinPipeline
 }
 
 func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Request, ctx context.Context) error {
@@ -64,6 +65,13 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 			ConnectCluster:   r.parameters.ConnectCluster.String(),
 			KafkaNamespace:   r.parameters.KafkaClusterNamespace.String(),
 			KafkaCluster:     r.parameters.KafkaCluster.String(),
+		},
+	}
+
+	r.kafkaConnectors = &kafka.StrimziConnectors{
+		Kafka: r.kafka,
+		Topics: &kafka.StrimziTopics{
+			Kafka: r.kafka,
 		},
 	}
 
@@ -143,14 +151,14 @@ func NewKafkaConnectReconciler(
 }
 
 func (r *KafkaConnectReconciler) reconcileKafkaConnector(connectorName string) error {
-	isFailed, err := r.kafka.IsFailed(connectorName)
+	isFailed, err := r.kafkaConnectors.IsFailed(connectorName)
 	if err != nil {
 		return err
 	}
 
 	if isFailed {
 		r.log.Warn("Connector is failed, restarting it.", "connector", connectorName)
-		err = r.kafka.RestartConnector(connectorName)
+		err = r.kafkaConnectors.RestartConnector(connectorName)
 		if err != nil {
 			return err
 		}
@@ -160,13 +168,13 @@ func (r *KafkaConnectReconciler) reconcileKafkaConnector(connectorName string) e
 }
 
 func (r *KafkaConnectReconciler) reconcileKafkaConnect() error {
-	connectIsUp, err := r.kafka.CheckIfConnectIsResponding()
+	connectIsUp, err := r.kafkaConnectors.CheckIfConnectIsResponding()
 	if err != nil {
 		return err
 	}
 
 	if !connectIsUp {
-		err = r.kafka.RestartConnect()
+		err = r.kafkaConnectors.RestartConnect()
 		if err != nil {
 			return err
 		}

@@ -128,6 +128,21 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		},
 	}
 
+	if i.Instance.Spec.ManagedKafka == true {
+		i.KafkaTopics = &kafka.ManagedTopics{
+			Kafka: i.Kafka,
+		}
+	} else {
+		i.KafkaTopics = &kafka.StrimziTopics{
+			Kafka: i.Kafka,
+		}
+	}
+
+	i.KafkaConnectors = &kafka.StrimziConnectors{
+		Kafka:  i.Kafka,
+		Topics: i.KafkaTopics,
+	}
+
 	i.InventoryDb = database.NewDatabase(database.DBParams{
 		Host:        i.Parameters.HBIDBHost.String(),
 		User:        i.Parameters.HBIDBUser.String(),
@@ -242,7 +257,7 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 		}
 		i.ProbeStartingInitialSync()
 
-		_, err = i.Kafka.CreateTopic(pipelineVersion, false)
+		_, err = i.KafkaTopics.CreateTopic(pipelineVersion, false)
 		if err != nil {
 			i.Error(err, "Error creating Kafka topic")
 			return reconcile.Result{}, err
@@ -260,13 +275,13 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 			return reconcile.Result{}, err
 		}
 
-		_, err = i.Kafka.CreateDebeziumConnector(pipelineVersion, false)
+		_, err = i.KafkaConnectors.CreateDebeziumConnector(pipelineVersion, false)
 		if err != nil {
 			i.Error(err, "Error creating debezium connector")
 			return reconcile.Result{}, err
 		}
 
-		_, err = i.Kafka.CreateESConnector(pipelineVersion, false)
+		_, err = i.KafkaConnectors.CreateESConnector(pipelineVersion, false)
 		if err != nil {
 			i.Error(err, "Error creating ES connector")
 			return reconcile.Result{}, err
