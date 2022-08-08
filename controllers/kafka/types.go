@@ -35,11 +35,11 @@ type GenericKafka struct {
 
 type Topics interface {
 	TopicName(pipelineVersion string) string
-	CreateTopicByFullName(topicName string, dryRun bool) (*unstructured.Unstructured, error) //TODO
-	CreateTopic(pipelineVersion string, dryRun bool) (*unstructured.Unstructured, error)     //TODO
+	CreateTopic(pipelineVersion string, dryRun bool) error
 	DeleteTopicByPipelineVersion(pipelineVersion string) error
 	DeleteAllTopics() error
 	ListTopicNamesForPipelineVersion(pipelineVersion string) ([]string, error)
+	CheckDeviation(string) (error, error)
 }
 
 type StrimziTopics struct {

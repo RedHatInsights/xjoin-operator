@@ -501,49 +501,7 @@ func (i *ReconcileIteration) CheckTopicDeviation() (problem error, err error) {
 		return nil, nil
 	}
 
-	topicName := i.KafkaTopics.TopicName(i.Instance.Status.PipelineVersion)
-	topic, err := i.Kafka.GetTopic(topicName)
-	if err != nil || topic == nil {
-		if k8errors.IsNotFound(err) {
-			return fmt.Errorf(
-				"topic %s not found in %s",
-				topicName, i.Parameters.KafkaClusterNamespace), nil
-		}
-		return nil, err
-	}
-
-	if topic.GetLabels()[kafka.LabelStrimziCluster] != i.Parameters.KafkaCluster.String() {
-		return fmt.Errorf(
-			"kafkaCluster changed from %s to %s",
-			topic.GetLabels()[kafka.LabelStrimziCluster],
-			i.Parameters.ConnectCluster.String()), nil
-	}
-
-	newTopic, err := i.KafkaTopics.CreateTopic(i.Instance.Status.PipelineVersion, true)
-	if err != nil {
-		return nil, err
-	}
-
-	topicUnstructured := topic.UnstructuredContent()
-	newTopicUnstructured := newTopic.UnstructuredContent()
-
-	specDiff := cmp.Diff(
-		topicUnstructured["spec"].(map[string]interface{}),
-		newTopicUnstructured["spec"].(map[string]interface{}),
-		utils.NumberNormalizer)
-
-	if len(specDiff) > 0 {
-		return fmt.Errorf("topic spec has changed: %s", specDiff), nil
-	}
-
-	if topic.GetNamespace() != newTopic.GetNamespace() {
-		return fmt.Errorf(
-			"topic namespace has changed from: %s to %s",
-			topic.GetNamespace(),
-			newTopic.GetNamespace()), nil
-	}
-
-	return nil, nil
+	return i.KafkaTopics.CheckDeviation(i.Instance.Status.PipelineVersion)
 }
 
 func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, connectorType string) (problem error, err error) {

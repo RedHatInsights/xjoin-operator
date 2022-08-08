@@ -3,7 +3,9 @@ package kafka
 import (
 	"errors"
 	"fmt"
+	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -28,7 +30,7 @@ func (t *StrimziTopics) TopicName(pipelineVersion string) string {
 	return fmt.Sprintf(t.Kafka.Parameters.ResourceNamePrefix.String() + "." + pipelineVersion + ".public.hosts")
 }
 
-func (t *StrimziTopics) CreateTopicByFullName(topicName string, dryRun bool) (*unstructured.Unstructured, error) {
+func (t *StrimziTopics) createTopicByFullName(topicName string, dryRun bool) (*unstructured.Unstructured, error) {
 	topic := &unstructured.Unstructured{}
 	topic.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
@@ -115,8 +117,9 @@ func (t *StrimziTopics) CreateTopicByFullName(topicName string, dryRun bool) (*u
 	return topic, nil
 }
 
-func (t *StrimziTopics) CreateTopic(pipelineVersion string, dryRun bool) (*unstructured.Unstructured, error) {
-	return t.CreateTopicByFullName(t.TopicName(pipelineVersion), dryRun)
+func (t *StrimziTopics) CreateTopic(pipelineVersion string, dryRun bool) error {
+	_, err := t.createTopicByFullName(t.TopicName(pipelineVersion), dryRun)
+	return err
 }
 
 func (t *StrimziTopics) DeleteTopicByPipelineVersion(pipelineVersion string) error {
@@ -180,4 +183,50 @@ func (t *StrimziTopics) ListTopicNamesForPipelineVersion(pipelineVersion string)
 	}
 
 	return response, err
+}
+
+func (t *StrimziTopics) CheckDeviation(pipelineVersion string) (problem error, err error) {
+	topicName := t.TopicName(pipelineVersion)
+	topic, err := t.Kafka.GetTopic(topicName)
+	if err != nil || topic == nil {
+		if k8errors.IsNotFound(err) {
+			return fmt.Errorf(
+				"topic %s not found in %s",
+				topicName, t.Kafka.Parameters.KafkaClusterNamespace), nil
+		}
+		return nil, err
+	}
+
+	if topic.GetLabels()[LabelStrimziCluster] != t.Kafka.Parameters.KafkaCluster.String() {
+		return fmt.Errorf(
+			"kafkaCluster changed from %s to %s",
+			topic.GetLabels()[LabelStrimziCluster],
+			t.Kafka.Parameters.ConnectCluster.String()), nil
+	}
+
+	newTopic, err := t.createTopicByFullName(t.TopicName(pipelineVersion), true)
+	if err != nil {
+		return nil, err
+	}
+
+	topicUnstructured := topic.UnstructuredContent()
+	newTopicUnstructured := newTopic.UnstructuredContent()
+
+	specDiff := cmp.Diff(
+		topicUnstructured["spec"].(map[string]interface{}),
+		newTopicUnstructured["spec"].(map[string]interface{}),
+		utils.NumberNormalizer)
+
+	if len(specDiff) > 0 {
+		return fmt.Errorf("topic spec has changed: %s", specDiff), nil
+	}
+
+	if topic.GetNamespace() != newTopic.GetNamespace() {
+		return fmt.Errorf(
+			"topic namespace has changed from: %s to %s",
+			topic.GetNamespace(),
+			newTopic.GetNamespace()), nil
+	}
+
+	return nil, nil
 }
