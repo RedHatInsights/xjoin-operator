@@ -1,7 +1,9 @@
 package kafka
 
+import "fmt"
+
 func (t *ManagedTopics) TopicName(pipelineVersion string) string {
-	return ""
+	return fmt.Sprintf(t.Kafka.Parameters.ResourceNamePrefix.String() + "." + pipelineVersion + ".public.hosts")
 }
 
 func (t *ManagedTopics) CreateTopic(pipelineVersion string, dryRun bool) error {

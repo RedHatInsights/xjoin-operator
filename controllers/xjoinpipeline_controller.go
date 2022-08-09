@@ -128,9 +128,21 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		},
 	}
 
+	managedKafkaSecret := &v1.Secret{}
+	namespacedName := types.NamespacedName{
+		Name:      "managed-kafka-secret", //TODO
+		Namespace: i.Instance.Namespace,
+	}
+
+	err = r.Client.Get(ctx, namespacedName, managedKafkaSecret)
+	if err != nil {
+		return i, err
+	}
+
 	if i.Instance.Spec.ManagedKafka == true {
 		i.KafkaTopics = &kafka.ManagedTopics{
-			Kafka: i.Kafka,
+			Kafka:        i.Kafka,
+			ManagedKafka: kafka.NewManagedKafka(*managedKafkaSecret),
 		}
 	} else {
 		i.KafkaTopics = &kafka.StrimziTopics{

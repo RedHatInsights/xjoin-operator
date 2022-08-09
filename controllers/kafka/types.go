@@ -46,8 +46,17 @@ type StrimziTopics struct {
 	Kafka Kafka
 }
 
+type ManagedKafka struct {
+	username      string
+	password      string
+	hostname      string
+	adminHostname string
+	tokenURL      string
+}
+
 type ManagedTopics struct {
-	Kafka Kafka
+	Kafka        Kafka
+	ManagedKafka ManagedKafka
 }
 
 type Connectors interface {
