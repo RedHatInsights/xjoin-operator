@@ -8,6 +8,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/test"
 	"gopkg.in/h2non/gock.v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/tools/record"
 	"reflect"
 	"strconv"
@@ -330,7 +331,7 @@ var _ = Describe("Pipeline operations", func() {
 			err = i.KafkaTopics.CreateTopic("2", false)
 			Expect(err).ToNot(HaveOccurred())
 
-			topics, err := i.KafkaClient.ListTopicNamesForPrefix(ResourceNamePrefix)
+			topics, err := i.KafkaTopics.ListTopicNamesForPrefix(ResourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(topics)).To(Equal(2))
 
@@ -339,7 +340,7 @@ var _ = Describe("Pipeline operations", func() {
 			_, err = i.ReconcileXJoin()
 			Expect(err).ToNot(HaveOccurred())
 
-			topics, err = i.KafkaClient.ListTopicNamesForPrefix(ResourceNamePrefix)
+			topics, err = i.KafkaTopics.ListTopicNamesForPrefix(ResourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(topics)).To(Equal(1))
 		})
@@ -851,7 +852,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(slots)).To(Equal(0))
 
-			versions, err := i.KafkaClient.ListTopicNamesForPrefix(ResourceNamePrefix)
+			versions, err := i.KafkaTopics.ListTopicNamesForPrefix(ResourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(versions)).To(Equal(0))
 
@@ -1163,9 +1164,10 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			pipeline, err := i.ReconcileXJoinNonTest()
 			Expect(err).ToNot(HaveOccurred())
-			topic, err := i.KafkaClient.GetTopic(i.KafkaTopics.TopicName(pipeline.Status.PipelineVersion))
+			topic, err := i.KafkaTopics.GetTopic(i.KafkaTopics.TopicName(pipeline.Status.PipelineVersion))
 			Expect(err).ToNot(HaveOccurred())
-			status := topic.Object["status"].(map[string]interface{})
+			topicStruct := topic.(*unstructured.Unstructured)
+			status := topicStruct.Object["status"].(map[string]interface{})
 			conditions := status["conditions"].([]interface{})
 			readyCondition := conditions[0].(map[string]interface{})
 			Expect(readyCondition["status"]).To(Equal("True"))

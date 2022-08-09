@@ -25,3 +25,15 @@ func (t *ManagedTopics) ListTopicNamesForPipelineVersion(pipelineVersion string)
 func (t *ManagedTopics) CheckDeviation(pipelineVersion string) (problem error, err error) {
 	return nil, nil
 }
+
+func (t *ManagedTopics) ListTopicNamesForPrefix(prefix string) ([]string, error) {
+	return nil, nil
+}
+
+func (t *ManagedTopics) DeleteTopic(topicName string) error {
+	return nil
+}
+
+func (t *ManagedTopics) GetTopic(topicName string) (interface{}, error) {
+	return "", nil
+}

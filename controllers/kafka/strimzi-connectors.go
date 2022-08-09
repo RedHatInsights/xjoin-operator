@@ -644,7 +644,7 @@ func (c *StrimziConnectors) RestartConnect() error {
 			ctx, cancel = utils.DefaultContext()
 			defer cancel()
 
-			labels := client.MatchingLabels{}
+			labels := Client.MatchingLabels{}
 			labels["app.kubernetes.io/part-of"] = "strimzi-" + c.Parameters.ConnectCluster.String()
 			err = c.Client.List(ctx, pods, labels)
 

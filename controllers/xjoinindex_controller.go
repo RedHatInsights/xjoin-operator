@@ -142,6 +142,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 			OriginalInstance: originalInstance,
 			Client:           r.Client,
 			Log:              reqLogger,
+			Test:             r.Test,
 		},
 	}
 

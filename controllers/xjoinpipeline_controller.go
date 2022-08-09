@@ -127,26 +127,40 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 			KafkaCluster:     i.Parameters.KafkaCluster.String(),
 		},
 	}
-
-	managedKafkaSecret := &v1.Secret{}
-	namespacedName := types.NamespacedName{
-		Name:      "managed-kafka-secret", //TODO
-		Namespace: i.Instance.Namespace,
-	}
-
-	err = r.Client.Get(ctx, namespacedName, managedKafkaSecret)
-	if err != nil {
-		return i, err
-	}
-
 	if i.Instance.Spec.ManagedKafka == true {
+		managedKafkaSecret := &v1.Secret{}
+		namespacedName := types.NamespacedName{
+			Name:      "managed-kafka-secret", //TODO
+			Namespace: i.Instance.Namespace,
+		}
+
+		err = r.Client.Get(ctx, namespacedName, managedKafkaSecret)
+		if err != nil {
+			return i, err
+		}
+
 		i.KafkaTopics = &kafka.ManagedTopics{
 			Kafka:        i.Kafka,
 			ManagedKafka: kafka.NewManagedKafka(*managedKafkaSecret),
 		}
 	} else {
 		i.KafkaTopics = &kafka.StrimziTopics{
-			Kafka: i.Kafka,
+			TopicParameters: kafka.TopicParameters{
+				Replicas:           i.Parameters.KafkaTopicReplicas.Int(),
+				Partitions:         i.Parameters.KafkaTopicPartitions.Int(),
+				CleanupPolicy:      i.Parameters.KafkaTopicCleanupPolicy.String(),
+				MinCompactionLagMS: i.Parameters.KafkaTopicMinCompactionLagMS.String(),
+				RetentionBytes:     i.Parameters.KafkaTopicRetentionBytes.String(),
+				RetentionMS:        i.Parameters.KafkaTopicRetentionMS.String(),
+				MessageBytes:       i.Parameters.KafkaTopicMessageBytes.String(),
+				CreationTimeout:    i.Parameters.KafkaTopicCreationTimeout.Int(),
+			},
+			KafkaClusterNamespace: i.Parameters.KafkaClusterNamespace.String(),
+			KafkaCluster:          i.Parameters.KafkaCluster.String(),
+			Client:                i.Client,
+			Test:                  r.Test,
+			Context:               ctx,
+			ResourceNamePrefix:    i.Parameters.ResourceNamePrefix.String(),
 		}
 	}
 

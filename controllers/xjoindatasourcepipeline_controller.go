@@ -152,6 +152,25 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		Schema:   p.AvroSchema.String(),
 		Registry: registry,
 	}))
+
+	kafkaTopics := kafka.StrimziTopics{
+		TopicParameters: kafka.TopicParameters{
+			Replicas:           p.KafkaTopicReplicas.Int(),
+			Partitions:         p.KafkaTopicPartitions.Int(),
+			CleanupPolicy:      p.KafkaTopicCleanupPolicy.String(),
+			MinCompactionLagMS: p.KafkaTopicMinCompactionLagMS.String(),
+			RetentionBytes:     p.KafkaTopicRetentionBytes.String(),
+			RetentionMS:        p.KafkaTopicRetentionMS.String(),
+			MessageBytes:       p.KafkaTopicMessageBytes.String(),
+			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
+		},
+		KafkaClusterNamespace: p.KafkaClusterNamespace.String(),
+		KafkaCluster:          p.KafkaCluster.String(),
+		Client:                i.Client,
+		Test:                  r.Test,
+		Context:               ctx,
+		//ResourceNamePrefix:  this is not needed for generic topics
+	}
 	componentManager.AddComponent(&components.KafkaTopic{
 		TopicParameters: kafka.TopicParameters{
 			Replicas:           p.KafkaTopicReplicas.Int(),
@@ -163,8 +182,9 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 			MessageBytes:       p.KafkaTopicMessageBytes.String(),
 			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
 		},
-		KafkaClient: kafkaClient,
+		KafkaTopics: kafkaTopics,
 	})
+
 	componentManager.AddComponent(&components.DebeziumConnector{
 		TemplateParameters: config.ParametersToMap(*p),
 		KafkaClient:        kafkaClient,

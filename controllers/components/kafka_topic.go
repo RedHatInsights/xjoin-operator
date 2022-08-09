@@ -9,7 +9,7 @@ import (
 type KafkaTopic struct {
 	name            string
 	version         string
-	KafkaClient     kafka.GenericKafka
+	KafkaTopics     kafka.StrimziTopics
 	TopicParameters kafka.TopicParameters
 }
 
@@ -26,7 +26,7 @@ func (kt *KafkaTopic) Name() string {
 }
 
 func (kt *KafkaTopic) Create() (err error) {
-	err = kt.KafkaClient.CreateGenericTopic(kt.Name(), kt.TopicParameters)
+	err = kt.KafkaTopics.CreateGenericTopic(kt.Name(), kt.TopicParameters)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -34,7 +34,7 @@ func (kt *KafkaTopic) Create() (err error) {
 }
 
 func (kt *KafkaTopic) Delete() (err error) {
-	err = kt.KafkaClient.DeleteTopic(kt.Name())
+	err = kt.KafkaTopics.DeleteTopic(kt.Name())
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -46,7 +46,7 @@ func (kt *KafkaTopic) CheckDeviation() (err error) {
 }
 
 func (kt *KafkaTopic) Exists() (exists bool, err error) {
-	exists, err = kt.KafkaClient.CheckIfTopicExists(kt.Name())
+	exists, err = kt.KafkaTopics.CheckIfTopicExists(kt.Name())
 	if err != nil {
 		return false, errors.Wrap(err, 0)
 	}
@@ -54,7 +54,7 @@ func (kt *KafkaTopic) Exists() (exists bool, err error) {
 }
 
 func (kt *KafkaTopic) ListInstalledVersions() (versions []string, err error) {
-	topicNames, err := kt.KafkaClient.ListTopicNamesForPrefix(kt.name)
+	topicNames, err := kt.KafkaTopics.ListTopicNamesForPrefix(kt.name)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}

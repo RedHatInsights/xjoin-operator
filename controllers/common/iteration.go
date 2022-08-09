@@ -26,6 +26,7 @@ type Iteration struct {
 	Client           client.Client
 	Context          context.Context
 	Log              xjoinlogger.Log
+	Test             bool
 }
 
 func (i *Iteration) UpdateStatusAndRequeue() (reconcile.Result, error) {

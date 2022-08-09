@@ -207,7 +207,22 @@ func Before() (*Iteration, error) {
 	}
 
 	i.KafkaTopics = &kafka.StrimziTopics{
-		Kafka: i.KafkaClient,
+		TopicParameters: kafka.TopicParameters{
+			Replicas:           i.Parameters.KafkaTopicReplicas.Int(),
+			Partitions:         i.Parameters.KafkaTopicPartitions.Int(),
+			CleanupPolicy:      i.Parameters.KafkaTopicCleanupPolicy.String(),
+			MinCompactionLagMS: i.Parameters.KafkaTopicMinCompactionLagMS.String(),
+			RetentionBytes:     i.Parameters.KafkaTopicRetentionBytes.String(),
+			RetentionMS:        i.Parameters.KafkaTopicRetentionMS.String(),
+			MessageBytes:       i.Parameters.KafkaTopicMessageBytes.String(),
+			CreationTimeout:    i.Parameters.KafkaTopicCreationTimeout.Int(),
+		},
+		KafkaClusterNamespace: i.Parameters.KafkaClusterNamespace.String(),
+		KafkaCluster:          i.Parameters.KafkaCluster.String(),
+		Client:                i.XJoinReconciler.Client,
+		Test:                  true,
+		Context:               context.Background(),
+		ResourceNamePrefix:    i.Parameters.ResourceNamePrefix.String(),
 	}
 
 	i.KafkaConnectors = &kafka.StrimziConnectors{

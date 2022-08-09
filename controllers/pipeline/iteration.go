@@ -284,7 +284,7 @@ func (i *ReconcileIteration) DeleteStaleDependencies() (errors []error) {
 	}
 
 	//delete stale Kafka Topics
-	topics, err := i.Kafka.ListTopicNamesForPrefix(resourceNamePrefix)
+	topics, err := i.KafkaTopics.ListTopicNamesForPrefix(resourceNamePrefix)
 	if err != nil {
 		errors = append(errors, err)
 	} else {
@@ -292,7 +292,7 @@ func (i *ReconcileIteration) DeleteStaleDependencies() (errors []error) {
 		for _, topic := range topics {
 			if !utils.ContainsString(topicsToKeep, topic) && i.IsXJoinResource(topic) {
 				i.Log.Info("Removing stale topic", "topic", topic)
-				if err = i.Kafka.DeleteTopic(topic); err != nil {
+				if err = i.KafkaTopics.DeleteTopic(topic); err != nil {
 					staleResources = append(staleResources, "KafkaTopic/"+topic)
 					errors = append(errors, err)
 				}

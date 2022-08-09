@@ -105,9 +105,29 @@ func (d *ReconcileMethods) Scrub() (err error) {
 	custodian := components.NewCustodian(
 		d.gvk.Kind+"."+d.iteration.GetInstance().Name, validVersions)
 	custodian.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{Registry: registry}))
+
+	kafkaTopics := kafka.StrimziTopics{
+		TopicParameters: kafka.TopicParameters{
+			Replicas:           d.iteration.Parameters.KafkaTopicReplicas.Int(),
+			Partitions:         d.iteration.Parameters.KafkaTopicPartitions.Int(),
+			CleanupPolicy:      d.iteration.Parameters.KafkaTopicCleanupPolicy.String(),
+			MinCompactionLagMS: d.iteration.Parameters.KafkaTopicMinCompactionLagMS.String(),
+			RetentionBytes:     d.iteration.Parameters.KafkaTopicRetentionBytes.String(),
+			RetentionMS:        d.iteration.Parameters.KafkaTopicRetentionMS.String(),
+			MessageBytes:       d.iteration.Parameters.KafkaTopicMessageBytes.String(),
+			CreationTimeout:    d.iteration.Parameters.KafkaTopicCreationTimeout.Int(),
+		},
+		KafkaClusterNamespace: d.iteration.Parameters.KafkaClusterNamespace.String(),
+		KafkaCluster:          d.iteration.Parameters.KafkaCluster.String(),
+		Client:                d.iteration.Client,
+		Test:                  d.iteration.Test,
+		Context:               d.iteration.Context,
+		//ResourceNamePrefix:  this is not needed for generic topics
+	}
 	custodian.AddComponent(&components.KafkaTopic{
-		KafkaClient: kafkaClient,
+		KafkaTopics: kafkaTopics,
 	})
+
 	custodian.AddComponent(&components.DebeziumConnector{
 		KafkaClient: kafkaClient,
 	})

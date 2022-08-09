@@ -40,10 +40,19 @@ type Topics interface {
 	DeleteAllTopics() error
 	ListTopicNamesForPipelineVersion(pipelineVersion string) ([]string, error)
 	CheckDeviation(string) (error, error)
+	ListTopicNamesForPrefix(prefix string) ([]string, error)
+	DeleteTopic(topicName string) error
+	GetTopic(topicName string) (interface{}, error)
 }
 
 type StrimziTopics struct {
-	Kafka Kafka
+	TopicParameters       TopicParameters
+	KafkaClusterNamespace string
+	KafkaCluster          string
+	ResourceNamePrefix    string
+	Client                client.Client
+	Test                  bool
+	Context               context.Context
 }
 
 type ManagedKafka struct {

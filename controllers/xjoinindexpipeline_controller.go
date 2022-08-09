@@ -153,6 +153,24 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Test:             r.Test,
 	}
 
+	kafkaTopics := kafka.StrimziTopics{
+		TopicParameters: kafka.TopicParameters{
+			Replicas:           p.KafkaTopicReplicas.Int(),
+			Partitions:         p.KafkaTopicPartitions.Int(),
+			CleanupPolicy:      p.KafkaTopicCleanupPolicy.String(),
+			MinCompactionLagMS: p.KafkaTopicMinCompactionLagMS.String(),
+			RetentionBytes:     p.KafkaTopicRetentionBytes.String(),
+			RetentionMS:        p.KafkaTopicRetentionMS.String(),
+			MessageBytes:       p.KafkaTopicMessageBytes.String(),
+			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
+		},
+		KafkaClusterNamespace: p.KafkaClusterNamespace.String(),
+		KafkaCluster:          p.KafkaCluster.String(),
+		Client:                r.Client,
+		Test:                  r.Test,
+		Context:               ctx,
+	}
+
 	kafkaTopic := &components.KafkaTopic{
 		TopicParameters: kafka.TopicParameters{
 			Replicas:           p.KafkaTopicReplicas.Int(),
@@ -164,7 +182,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 			MessageBytes:       p.KafkaTopicMessageBytes.String(),
 			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
 		},
-		KafkaClient: kafkaClient,
+		KafkaTopics: kafkaTopics,
 	}
 
 	elasticSearchConnection := elasticsearch.GenericElasticSearchParameters{

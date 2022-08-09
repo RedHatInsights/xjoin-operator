@@ -68,11 +68,28 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 		},
 	}
 
-	r.kafkaConnectors = &kafka.StrimziConnectors{
-		Kafka: r.kafka,
-		Topics: &kafka.StrimziTopics{
-			Kafka: r.kafka,
+	kafkaTopics := &kafka.StrimziTopics{
+		TopicParameters: kafka.TopicParameters{
+			Replicas:           r.parameters.KafkaTopicReplicas.Int(),
+			Partitions:         r.parameters.KafkaTopicPartitions.Int(),
+			CleanupPolicy:      r.parameters.KafkaTopicCleanupPolicy.String(),
+			MinCompactionLagMS: r.parameters.KafkaTopicMinCompactionLagMS.String(),
+			RetentionBytes:     r.parameters.KafkaTopicRetentionBytes.String(),
+			RetentionMS:        r.parameters.KafkaTopicRetentionMS.String(),
+			MessageBytes:       r.parameters.KafkaTopicMessageBytes.String(),
+			CreationTimeout:    r.parameters.KafkaTopicCreationTimeout.Int(),
 		},
+		KafkaClusterNamespace: r.parameters.KafkaClusterNamespace.String(),
+		KafkaCluster:          r.parameters.KafkaCluster.String(),
+		Client:                r.Client,
+		Test:                  r.Test,
+		Context:               ctx,
+		ResourceNamePrefix:    r.parameters.ResourceNamePrefix.String(),
+	}
+
+	r.kafkaConnectors = &kafka.StrimziConnectors{
+		Kafka:  r.kafka,
+		Topics: kafkaTopics,
 	}
 
 	r.log = reqLogger
