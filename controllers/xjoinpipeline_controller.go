@@ -141,9 +141,9 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 
 	if i.Instance.Spec.ManagedKafka == true {
 		managedKafkaSecret := &v1.Secret{}
-		namespacedName := types.NamespacedName{
+		namespacedName := types.NamespacedName{ //TODO
 			Name:      "ephem-managed-kafka",
-			Namespace: i.Instance.Namespace,
+			Namespace: "xjoin",
 		}
 
 		err = r.Client.Get(ctx, namespacedName, managedKafkaSecret)
