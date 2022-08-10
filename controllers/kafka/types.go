@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -37,9 +38,9 @@ type Topics interface {
 	TopicName(pipelineVersion string) string
 	CreateTopic(pipelineVersion string, dryRun bool) error
 	DeleteTopicByPipelineVersion(pipelineVersion string) error
-	DeleteAllTopics() error
-	ListTopicNamesForPipelineVersion(pipelineVersion string) ([]string, error)
 	CheckDeviation(string) (error, error)
+	ListTopicNamesForPipelineVersion(pipelineVersion string) ([]string, error)
+	DeleteAllTopics() error
 	ListTopicNamesForPrefix(prefix string) ([]string, error)
 	DeleteTopic(topicName string) error
 	GetTopic(topicName string) (interface{}, error)
@@ -55,17 +56,20 @@ type StrimziTopics struct {
 	Context               context.Context
 }
 
-type ManagedKafka struct {
-	username      string
-	password      string
-	hostname      string
-	adminHostname string
-	tokenURL      string
+type ManagedTopicsOptions struct {
+	ResourceNamePrefix string
+	ClientId           string
+	ClientSecret       string
+	Hostname           string
+	AdminURL           string
+	TokenURL           string
+	TopicParameters    TopicParameters
 }
 
 type ManagedTopics struct {
-	Kafka        Kafka
-	ManagedKafka ManagedKafka
+	Options ManagedTopicsOptions
+	client  *http.Client
+	baseurl string
 }
 
 type Connectors interface {

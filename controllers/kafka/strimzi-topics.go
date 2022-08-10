@@ -127,6 +127,7 @@ func (t *StrimziTopics) DeleteTopicByPipelineVersion(pipelineVersion string) err
 	return err
 }
 
+//DeleteAllTopics is only used in tests
 func (t *StrimziTopics) DeleteAllTopics() error {
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
@@ -164,6 +165,7 @@ func (t *StrimziTopics) DeleteAllTopics() error {
 	return nil
 }
 
+//ListTopicNamesForPipelineVersion is only used in tests
 func (t *StrimziTopics) ListTopicNamesForPipelineVersion(pipelineVersion string) ([]string, error) {
 	topics := &unstructured.UnstructuredList{}
 	topics.SetGroupVersionKind(topicsGroupVersionKind)

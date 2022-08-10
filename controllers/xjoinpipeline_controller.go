@@ -127,10 +127,22 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 			KafkaCluster:     i.Parameters.KafkaCluster.String(),
 		},
 	}
+
+	topicParameters := kafka.TopicParameters{
+		Replicas:           i.Parameters.KafkaTopicReplicas.Int(),
+		Partitions:         i.Parameters.KafkaTopicPartitions.Int(),
+		CleanupPolicy:      i.Parameters.KafkaTopicCleanupPolicy.String(),
+		MinCompactionLagMS: i.Parameters.KafkaTopicMinCompactionLagMS.String(),
+		RetentionBytes:     i.Parameters.KafkaTopicRetentionBytes.String(),
+		RetentionMS:        i.Parameters.KafkaTopicRetentionMS.String(),
+		MessageBytes:       i.Parameters.KafkaTopicMessageBytes.String(),
+		CreationTimeout:    i.Parameters.KafkaTopicCreationTimeout.Int(),
+	}
+
 	if i.Instance.Spec.ManagedKafka == true {
 		managedKafkaSecret := &v1.Secret{}
 		namespacedName := types.NamespacedName{
-			Name:      "managed-kafka-secret", //TODO
+			Name:      "ephem-managed-kafka",
 			Namespace: i.Instance.Namespace,
 		}
 
@@ -139,22 +151,18 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 			return i, err
 		}
 
-		i.KafkaTopics = &kafka.ManagedTopics{
-			Kafka:        i.Kafka,
-			ManagedKafka: kafka.NewManagedKafka(*managedKafkaSecret),
-		}
+		i.KafkaTopics = kafka.NewManagedTopics(kafka.ManagedTopicsOptions{
+			ResourceNamePrefix: i.Parameters.ResourceNamePrefix.String(),
+			ClientId:           string(managedKafkaSecret.Data["client.id"]),
+			ClientSecret:       string(managedKafkaSecret.Data["client.secret"]),
+			Hostname:           string(managedKafkaSecret.Data["hostname"]),
+			AdminURL:           string(managedKafkaSecret.Data["admin.url"]),
+			TokenURL:           string(managedKafkaSecret.Data["token.url"]),
+			TopicParameters:    topicParameters,
+		})
 	} else {
 		i.KafkaTopics = &kafka.StrimziTopics{
-			TopicParameters: kafka.TopicParameters{
-				Replicas:           i.Parameters.KafkaTopicReplicas.Int(),
-				Partitions:         i.Parameters.KafkaTopicPartitions.Int(),
-				CleanupPolicy:      i.Parameters.KafkaTopicCleanupPolicy.String(),
-				MinCompactionLagMS: i.Parameters.KafkaTopicMinCompactionLagMS.String(),
-				RetentionBytes:     i.Parameters.KafkaTopicRetentionBytes.String(),
-				RetentionMS:        i.Parameters.KafkaTopicRetentionMS.String(),
-				MessageBytes:       i.Parameters.KafkaTopicMessageBytes.String(),
-				CreationTimeout:    i.Parameters.KafkaTopicCreationTimeout.Int(),
-			},
+			TopicParameters:       topicParameters,
 			KafkaClusterNamespace: i.Parameters.KafkaClusterNamespace.String(),
 			KafkaCluster:          i.Parameters.KafkaCluster.String(),
 			Client:                i.Client,
