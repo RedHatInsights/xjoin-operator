@@ -66,8 +66,7 @@ func (t *ManagedTopics) CreateTopic(pipelineVersion string, dryRun bool) error {
 
 	res, err := t.client.Post(t.baseurl, jsonContentType, bytes.NewReader(bodyBytes))
 
-	var bodyType map[string]interface{}
-	_, _, err = parseResponse(res, bodyType)
+	_, _, err = parseResponse(res)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -100,13 +99,23 @@ func (t *ManagedTopics) ListTopicNamesForPrefix(prefix string) ([]string, error)
 		return nil, errors.Wrap(err, 0)
 	}
 
-	var bodyType ManagedTopicResponse
-	_, bodyRaw, err := parseResponse(res, bodyType)
+	_, bodyBytes, err := parseResponse(res)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
 
-	body := bodyRaw.(ManagedTopicResponse)
+	var body ManagedTopicResponse
+	if len(bodyBytes) > 0 {
+		err = json.Unmarshal(bodyBytes, &body)
+		if err != nil {
+			err = errors.Wrap(err, 0)
+			log.Error(err,
+				"Unable to parse Managed Kafka response body to map",
+				"body", string(bodyBytes))
+			return nil, err
+		}
+	}
+
 	if body.Kind != "TopicList" {
 		return nil, errors.Wrap(errors.New("Invalid Kind ("+body.Kind+")in response from Managed Kafka API when listing topics"), 0)
 	}
@@ -139,8 +148,7 @@ func (t *ManagedTopics) DeleteTopic(topicName string) error {
 		return errors.Wrap(err, 0)
 	}
 
-	var bodyType map[string]interface{}
-	_, _, err = parseResponse(res, bodyType)
+	_, _, err = parseResponse(res)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -153,10 +161,21 @@ func (t *ManagedTopics) GetTopic(topicName string) (interface{}, error) {
 		return nil, errors.Wrap(err, 0)
 	}
 
-	var bodyType ManagedTopicItem
-	_, body, err := parseResponse(res, bodyType)
+	_, bodyBytes, err := parseResponse(res)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
+	}
+
+	var body ManagedTopicItem
+	if len(bodyBytes) > 0 {
+		err = json.Unmarshal(bodyBytes, &body)
+		if err != nil {
+			err = errors.Wrap(err, 0)
+			log.Error(err,
+				"Unable to parse Managed Kafka response body to map",
+				"body", string(bodyBytes))
+			return nil, err
+		}
 	}
 	return body, nil
 }
@@ -171,33 +190,22 @@ func (t *ManagedTopics) ListTopicNamesForPipelineVersion(pipelineVersion string)
 	return nil, nil
 }
 
-func parseResponse(res *http.Response, body interface{}) (int, interface{}, error) {
+func parseResponse(res *http.Response) (int, []byte, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode >= 300 {
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			return res.StatusCode, body, errors.Wrap(err, 0)
+			return res.StatusCode, nil, errors.Wrap(err, 0)
 		}
-		return res.StatusCode, body, errors.Wrap(errors.New(
+		return res.StatusCode, nil, errors.Wrap(errors.New(
 			fmt.Sprintf("Manged Kafka API error: %s, %s", strconv.Itoa(res.StatusCode), string(bodyBytes))), 0)
 	}
 
 	bodyBytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return res.StatusCode, body, errors.Wrap(err, 0)
+		return res.StatusCode, nil, errors.Wrap(err, 0)
 	}
 
-	if len(bodyBytes) > 0 {
-		err = json.Unmarshal(bodyBytes, &body)
-		if err != nil {
-			err = errors.Wrap(err, 0)
-			log.Error(err,
-				"Unable to parse Managed Kafka response body to map",
-				"body", string(bodyBytes))
-			return res.StatusCode, body, err
-		}
-	}
-
-	return res.StatusCode, body, nil
+	return res.StatusCode, bodyBytes, nil
 }
