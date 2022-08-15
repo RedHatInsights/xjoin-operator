@@ -52,9 +52,9 @@ func (t *ManagedTopics) CreateTopic(pipelineVersion string, dryRun bool) error {
 			}, {
 				Key:   "min.compaction.lag.ms",
 				Value: t.Options.TopicParameters.MinCompactionLagMS,
-			}, {
-				Key:   "max.message.bytes",
-				Value: t.Options.TopicParameters.MessageBytes,
+				//}, { //TODO: why is this not allowed?
+				//	Key:   "max.message.bytes",
+				//	Value: t.Options.TopicParameters.MessageBytes,
 			}},
 		},
 	}
