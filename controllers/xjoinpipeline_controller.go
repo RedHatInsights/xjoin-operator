@@ -139,7 +139,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		CreationTimeout:    i.Parameters.KafkaTopicCreationTimeout.Int(),
 	}
 
-	if i.Instance.Spec.ManagedKafka == true {
+	if i.Parameters.ManagedKafka.Bool() == true {
 		managedKafkaSecret := &v1.Secret{}
 		namespacedName := types.NamespacedName{ //TODO
 			Name:      "ephem-managed-kafka",

@@ -133,9 +133,51 @@ func (config *Config) parameterValue(param Parameter) (reflect.Value, error) {
 	return reflect.ValueOf(param), nil
 }
 
+func (config *Config) checkIfManagedKafka(ctx context.Context) (isManaged bool, err error) {
+	var clowdenvGVK = schema.GroupVersionKind{
+		Group:   "cloud.redhat.com",
+		Kind:    "ClowdEnvironment",
+		Version: "v1alpha1",
+	}
+	clowdenvList := &unstructured.UnstructuredList{}
+	clowdenvList.SetGroupVersionKind(clowdenvGVK)
+	err = config.client.List(ctx, clowdenvList, client.InNamespace(config.instance.Namespace))
+	if err != nil {
+		return false, errors.Wrap(err, 0)
+	}
+
+	if len(clowdenvList.Items) != 1 {
+		return false, errors.Wrap(errors.New(
+			"Invalid number of ClowdEnvironments found in namespace "+
+				config.instance.Namespace+": "+strconv.Itoa(len(clowdenvList.Items))), 0)
+	}
+
+	clowdenvSpec := clowdenvList.Items[0].Object["spec"].(map[string]interface{})
+	clowdenvProviders := clowdenvSpec["providers"].(map[string]interface{})
+	clowdenvKafka := clowdenvProviders["kafka"].(map[string]interface{})
+	clowdenvKafkaMode := clowdenvKafka["mode"].(string)
+
+	if clowdenvKafkaMode == "managed-ephem" {
+		isManaged = true
+	} else {
+		isManaged = false
+	}
+
+	return isManaged, err
+}
+
 //Unable to pass ephemeral environment's kafka/connect cluster name into the deployment template
 func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 	log.Info("Loading Kafka parameters for ephemeral environment: " + config.instance.Namespace)
+
+	isManagedKafka, err := config.checkIfManagedKafka(ctx)
+	if isManagedKafka {
+		//set config.parameters value to true
+		err = config.Parameters.ManagedKafka.SetValue(true)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
 
 	var connectGVK = schema.GroupVersionKind{
 		Group:   "kafka.strimzi.io",
@@ -205,30 +247,32 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 		return err
 	}
 
-	var kafkaGVK = schema.GroupVersionKind{
-		Group:   "kafka.strimzi.io",
-		Kind:    "KafkaList",
-		Version: "v1beta2",
-	}
+	if config.Parameters.ManagedKafka.Bool() == false {
+		var kafkaGVK = schema.GroupVersionKind{
+			Group:   "kafka.strimzi.io",
+			Kind:    "KafkaList",
+			Version: "v1beta2",
+		}
 
-	kafka := &unstructured.UnstructuredList{}
-	kafka.SetGroupVersionKind(kafkaGVK)
+		kafka := &unstructured.UnstructuredList{}
+		kafka.SetGroupVersionKind(kafkaGVK)
 
-	err = config.client.List(
-		ctx,
-		kafka,
-		client.InNamespace(config.Parameters.KafkaClusterNamespace.String()))
-	if err != nil {
-		return err
-	}
+		err = config.client.List(
+			ctx,
+			kafka,
+			client.InNamespace(config.Parameters.KafkaClusterNamespace.String()))
+		if err != nil {
+			return err
+		}
 
-	if len(kafka.Items) != 1 {
-		return errors.New("invalid number of kafka instances found: " + strconv.Itoa(len(kafka.Items)))
-	}
+		if len(kafka.Items) != 1 {
+			return errors.New("invalid number of kafka instances found: " + strconv.Itoa(len(kafka.Items)))
+		}
 
-	err = config.Parameters.KafkaCluster.SetValue(kafka.Items[0].GetName())
-	if err != nil {
-		return err
+		err = config.Parameters.KafkaCluster.SetValue(kafka.Items[0].GetName())
+		if err != nil {
+			return err
+		}
 	}
 
 	err = config.Parameters.ElasticSearchURL.SetValue(

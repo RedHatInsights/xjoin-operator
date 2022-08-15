@@ -117,7 +117,7 @@ kubectl set env deployment/strimzi-cluster-operator -n strimzi STRIMZI_IMAGE_PUL
 
 # clowder CRDs
 print_start_message "Installing Clowder CRDs"
-kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/v0.30.0/clowder-manifest-v0.30.0.yaml --validate=false
+kubectl apply -f https://github.com/RedHatInsights/clowder/releases/download/v0.45.0/clowder-manifest-v0.45.0.yaml --validate=false
 
 # project and secrets
 print_start_message "Setting up pull secrets"

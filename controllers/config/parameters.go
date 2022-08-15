@@ -76,6 +76,7 @@ type Parameters struct {
 	KafkaTopicMessageBytes               Parameter
 	KafkaTopicCreationTimeout            Parameter
 	KafkaConnectReconcileIntervalSeconds Parameter
+	ManagedKafka                         Parameter
 }
 
 func NewXJoinConfiguration() Parameters {
@@ -637,6 +638,11 @@ func NewXJoinConfiguration() Parameters {
 			Type:         reflect.String,
 			ConfigMapKey: "hbi.db.ssl.root.cert",
 			DefaultValue: "/opt/kafka/external-configuration/rds-client-ca/rds-cacert",
+		},
+		ManagedKafka: Parameter{
+			Type:         reflect.Bool,
+			DefaultValue: false,
+			SpecKey:      "ManagedKafka",
 		},
 	}
 }
