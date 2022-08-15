@@ -140,6 +140,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 	}
 
 	if i.Parameters.ManagedKafka.Bool() == true {
+		r.Log.Info("Loading Managed Kafka secret")
 		managedKafkaSecret := &v1.Secret{}
 		namespacedName := types.NamespacedName{ //TODO
 			Name:      "ephem-managed-kafka",
@@ -161,6 +162,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 			TopicParameters:    topicParameters,
 		})
 	} else {
+		r.Log.Info("Loading Strimzi parameters")
 		i.KafkaTopics = &kafka.StrimziTopics{
 			TopicParameters:       topicParameters,
 			KafkaClusterNamespace: i.Parameters.KafkaClusterNamespace.String(),

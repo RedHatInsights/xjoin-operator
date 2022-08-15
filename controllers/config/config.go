@@ -168,6 +168,7 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 
 	isManagedKafka, err := config.checkIfManagedKafka(ctx)
 	if isManagedKafka {
+		log.Info("Using Managed Kafka instance")
 		//set config.parameters value to true
 		err = config.Parameters.ManagedKafka.SetValue(true)
 		if err != nil {
@@ -243,7 +244,8 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 		return err
 	}
 
-	if config.Parameters.ManagedKafka.Bool() == false {
+	if isManagedKafka == false {
+		log.Info("Using Strimzi Kafka instance")
 		var kafkaGVK = schema.GroupVersionKind{
 			Group:   "kafka.strimzi.io",
 			Kind:    "KafkaList",
