@@ -64,6 +64,8 @@ func (t *ManagedTopics) CreateTopic(pipelineVersion string, dryRun bool) error {
 		return errors.Wrap(err, 0)
 	}
 
+	log.Info("Managed Kafka Create Topic Body: " + string(bodyBytes))
+
 	res, err := t.client.Post(t.baseurl, jsonContentType, bytes.NewReader(bodyBytes))
 
 	_, _, err = parseResponse(res)

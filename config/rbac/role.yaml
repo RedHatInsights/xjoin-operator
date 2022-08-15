@@ -177,3 +177,11 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+    - cloud.redhat.com
+  resources:
+    - clowdenvironment
+  verbs:
+    - get
+    - list
+    - watch
