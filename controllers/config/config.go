@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
@@ -139,20 +140,15 @@ func (config *Config) checkIfManagedKafka(ctx context.Context) (isManaged bool, 
 		Kind:    "ClowdEnvironment",
 		Version: "v1alpha1",
 	}
-	clowdenvList := &unstructured.UnstructuredList{}
-	clowdenvList.SetGroupVersionKind(clowdenvGVK)
-	err = config.client.List(ctx, clowdenvList, client.InNamespace(config.instance.Namespace))
+	clowdenv := unstructured.Unstructured{}
+	clowdenv.SetGroupVersionKind(clowdenvGVK)
+
+	err = config.client.Get(ctx, types.NamespacedName{Name: "env-" + config.instance.Namespace}, &clowdenv)
 	if err != nil {
 		return false, errors.Wrap(err, 0)
 	}
 
-	if len(clowdenvList.Items) != 1 {
-		return false, errors.Wrap(errors.New(
-			"Invalid number of ClowdEnvironments found in namespace "+
-				config.instance.Namespace+": "+strconv.Itoa(len(clowdenvList.Items))), 0)
-	}
-
-	clowdenvSpec := clowdenvList.Items[0].Object["spec"].(map[string]interface{})
+	clowdenvSpec := clowdenv.Object["spec"].(map[string]interface{})
 	clowdenvProviders := clowdenvSpec["providers"].(map[string]interface{})
 	clowdenvKafka := clowdenvProviders["kafka"].(map[string]interface{})
 	clowdenvKafkaMode := clowdenvKafka["mode"].(string)
