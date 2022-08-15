@@ -169,6 +169,9 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 	log.Info("Loading Kafka parameters for ephemeral environment: " + config.instance.Namespace)
 
 	isManagedKafka, err := config.checkIfManagedKafka(ctx)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	if isManagedKafka {
 		log.Info("Using Managed Kafka instance")
 		//set config.parameters value to true
