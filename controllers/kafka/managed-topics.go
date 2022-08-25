@@ -95,6 +95,19 @@ func (t *ManagedTopics) CheckDeviation(pipelineVersion string) (problem error, e
 	return nil, nil
 }
 
+func (t *ManagedTopics) ListTopics() ([]byte, error) {
+	res, err := t.client.Get(t.baseurl + "?size=100&page=1")
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	_, bodyBytes, err := parseResponse(res)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	return bodyBytes, nil
+}
+
 func (t *ManagedTopics) ListTopicNamesForPrefix(prefix string) ([]string, error) {
 	res, err := t.client.Get(t.baseurl + "?size=100&page=1&filter=" + prefix)
 	if err != nil {
