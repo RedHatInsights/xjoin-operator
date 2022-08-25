@@ -77,6 +77,8 @@ type Parameters struct {
 	KafkaTopicCreationTimeout            Parameter
 	KafkaConnectReconcileIntervalSeconds Parameter
 	ManagedKafka                         Parameter
+	ManagedKafkaSecretName               Parameter
+	ManagedKafkaSecretNamespace          Parameter
 }
 
 func NewXJoinConfiguration() Parameters {
@@ -643,6 +645,16 @@ func NewXJoinConfiguration() Parameters {
 			Type:         reflect.Bool,
 			DefaultValue: false,
 			SpecKey:      "ManagedKafka",
+		},
+		ManagedKafkaSecretName: Parameter{
+			Type:         reflect.String,
+			DefaultValue: "ephem-managed-kafka",
+			SpecKey:      "ManagedKafkaSecretName",
+		},
+		ManagedKafkaSecretNamespace: Parameter{
+			Type:         reflect.String,
+			DefaultValue: "xjoin",
+			SpecKey:      "ManagedKafkaSecretNamespace",
 		},
 	}
 }

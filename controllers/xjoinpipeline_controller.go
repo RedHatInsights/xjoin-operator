@@ -142,9 +142,9 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 	if i.Parameters.ManagedKafka.Bool() == true {
 		r.Log.Info("Loading Managed Kafka secret")
 		managedKafkaSecret := &v1.Secret{}
-		namespacedName := types.NamespacedName{ //TODO
-			Name:      "ephem-managed-kafka",
-			Namespace: "xjoin",
+		namespacedName := types.NamespacedName{
+			Name:      i.Parameters.ManagedKafkaSecretName.String(),
+			Namespace: i.Parameters.ManagedKafkaSecretNamespace.String(),
 		}
 
 		err = r.Client.Get(ctx, namespacedName, managedKafkaSecret)
