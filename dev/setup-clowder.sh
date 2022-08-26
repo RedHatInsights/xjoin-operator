@@ -176,5 +176,8 @@ if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   dev/forward-ports-clowder.sh test
 fi
 
+kubectl delete pods --selector='job=host-inventory-synchronizer' -n test
+kubectl delete pods --selector='job=host-inventory-org-id-populator' -n test
+
 dev/forward-ports-clowder.sh test
 print_start_message "Done!"
