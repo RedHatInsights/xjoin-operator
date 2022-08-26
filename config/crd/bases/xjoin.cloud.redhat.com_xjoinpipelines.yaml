@@ -68,6 +68,12 @@ spec:
                 type: string
               managedKafka:
                 type: boolean
+              managedKafkaSecretName:
+                minLength: 1
+                type: string
+              managedKafkaSecretNamespace:
+                minLength: 1
+                type: string
               pause:
                 type: boolean
               resourceNamePrefix:
