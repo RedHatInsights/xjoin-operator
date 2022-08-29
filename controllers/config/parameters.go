@@ -574,7 +574,7 @@ func NewXJoinConfiguration() Parameters {
 		KafkaTopicReplicas: Parameter{
 			Type:         reflect.Int,
 			ConfigMapKey: "kafka.topic.replicas",
-			DefaultValue: 1,
+			DefaultValue: 3,
 		},
 		KafkaTopicCleanupPolicy: Parameter{
 			Type:         reflect.String,

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-errors/errors"
+	"github.com/google/go-cmp/cmp"
+	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"golang.org/x/oauth2/clientcredentials"
 	"io/ioutil"
 	"net/http"
@@ -77,20 +79,71 @@ func (t *ManagedTopics) CreateTopic(pipelineVersion string, dryRun bool) error {
 }
 
 func (t *ManagedTopics) CheckDeviation(pipelineVersion string) (problem error, err error) {
-	/*
-		topic, err := t.GetTopic(t.TopicName(pipelineVersion))
-		if err != nil {
-			return nil, errors.Wrap(err, 0)
+	topic, err := t.GetTopic(t.TopicName(pipelineVersion))
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	existingTopic := topic.(ManagedTopicItem)
+
+	var existingTopicRetentionMs string
+	var existingTopicRetentionBytes string
+	var existingTopicCleanupPolicy string
+	var existingTopicMinCompactionLagMS string
+
+	for _, config := range existingTopic.Config {
+		switch config.Key {
+		case "retention.ms":
+			existingTopicRetentionMs = config.Value
+		case "retention.bytes":
+			existingTopicRetentionBytes = config.Value
+		case "cleanup.policy":
+			existingTopicCleanupPolicy = config.Value
+		case "min.compaction.lag.ms":
+			existingTopicMinCompactionLagMS = config.Value
 		}
+	}
 
-		existingTopicConfig := topic.(ManagedTopicItem).Config
-		newTopicConfig := []ManagedTopicConfig{}
+	existingTopicReplicas := len(existingTopic.Partitions[0].Replicas)
 
-		cmp.Diff(existingTopicConfig, newTopicConfig, utils.NumberNormalizer)
+	existingTopicSettings := ManagedTopicSettings{
+		NumPartitions: len(existingTopic.Partitions),
+		Replicas:      existingTopicReplicas,
+		Config: []ManagedTopicConfig{{
+			Key:   "retention.ms",
+			Value: existingTopicRetentionMs,
+		}, {
+			Key:   "retention.bytes",
+			Value: existingTopicRetentionBytes,
+		}, {
+			Key:   "cleanup.policy",
+			Value: existingTopicCleanupPolicy,
+		}, {
+			Key:   "min.compaction.lag.ms",
+			Value: existingTopicMinCompactionLagMS,
+		}}}
 
-	*/
+	newTopicSettings := ManagedTopicSettings{
+		NumPartitions: t.Options.TopicParameters.Partitions,
+		Replicas:      t.Options.TopicParameters.Replicas,
+		Config: []ManagedTopicConfig{{
+			Key:   "retention.ms",
+			Value: t.Options.TopicParameters.RetentionMS,
+		}, {
+			Key:   "retention.bytes",
+			Value: t.Options.TopicParameters.RetentionBytes,
+		}, {
+			Key:   "cleanup.policy",
+			Value: t.Options.TopicParameters.CleanupPolicy,
+		}, {
+			Key:   "min.compaction.lag.ms",
+			Value: t.Options.TopicParameters.MinCompactionLagMS,
+		}}}
 
-	//TODO: skip deviation check for now, assume if the topic is created it is valid
+	topicDiff := cmp.Diff(existingTopicSettings, newTopicSettings, utils.NumberNormalizer)
+
+	if len(topicDiff) > 0 {
+		return fmt.Errorf("topic settings changed: %s", topicDiff), nil
+	}
 
 	return nil, nil
 }
