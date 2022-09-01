@@ -124,7 +124,7 @@ func (t *ManagedTopics) CheckDeviation(pipelineVersion string) (problem error, e
 
 	newTopicSettings := ManagedTopicSettings{
 		NumPartitions: t.Options.TopicParameters.Partitions,
-		Replicas:      t.Options.TopicParameters.Replicas,
+		Replicas:      existingTopicReplicas, //TODO hack to skip checking replicas because managed kafka automatically sets replicas to 3
 		Config: []ManagedTopicConfig{{
 			Key:   "retention.ms",
 			Value: t.Options.TopicParameters.RetentionMS,
