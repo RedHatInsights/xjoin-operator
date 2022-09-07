@@ -229,7 +229,7 @@ func (i *ReconcileIteration) DeleteStaleDependencies() (errors []error) {
 	i.Log.Debug("ConnectorsToKeep", "connectors", connectorsToKeep)
 	i.Log.Debug("ESPipelinesToKeep", "pipelines", esPipelinesToKeep)
 	i.Log.Debug("ESIndicesToKeep", "indices", esIndicesToKeep)
-	i.Log.Debug("TopicsToKeep", "topics", topicsToKeep)
+	i.Log.Info("TopicsToKeep", "topics", topicsToKeep)
 	i.Log.Debug("ReplicationSlotsToKeep", "slots", replicationSlotsToKeep)
 
 	//delete stale Kafka Connectors
