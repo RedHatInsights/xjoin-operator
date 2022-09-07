@@ -206,6 +206,7 @@ func (t *ManagedTopics) DeleteTopicByPipelineVersion(pipelineVersion string) err
 }
 
 func (t *ManagedTopics) DeleteTopic(topicName string) error {
+	log.Info("Deleting topic: " + topicName)
 	req, err := http.NewRequest("DELETE", t.baseurl+"/"+topicName, nil)
 	if err != nil {
 		return errors.Wrap(err, 0)
