@@ -194,6 +194,9 @@ func (t *ManagedTopics) ListTopicNamesForPrefix(prefix string) ([]string, error)
 			response = append(response, topic.Name)
 		}
 	}
+
+	log.Info("ListTopicNamesForPrefix response: " + strings.Join(response, ","))
+
 	return response, nil
 }
 
