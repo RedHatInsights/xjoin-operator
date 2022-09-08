@@ -181,6 +181,13 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 		}
 	}
 
+	if config.Parameters.ManagedKafka.Bool() {
+		err = config.Parameters.ResourceNamePrefix.SetValue(config.instance.Namespace)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+
 	var connectGVK = schema.GroupVersionKind{
 		Group:   "kafka.strimzi.io",
 		Kind:    "KafkaConnectList",
