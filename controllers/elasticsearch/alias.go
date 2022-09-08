@@ -99,5 +99,9 @@ func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, erro
 }
 
 func (es *ElasticSearch) AliasName() string {
-	return es.resourceNamePrefix + ".hosts"
+	if es.parametersMap["ManagedKafka"] == true {
+		return "xjoin.inventory.hosts"
+	} else {
+		return es.resourceNamePrefix + ".hosts"
+	}
 }
