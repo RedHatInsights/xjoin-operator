@@ -180,13 +180,16 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
+		config.ParametersMap["ManagedKafka"] = true
 	}
 
 	if config.Parameters.ManagedKafka.Bool() {
-		err = config.Parameters.ResourceNamePrefix.SetValue(strings.ReplaceAll(config.instance.Namespace, "-", "."))
+		resourceNamePrefix := strings.ReplaceAll(config.instance.Namespace, "-", ".")
+		err = config.Parameters.ResourceNamePrefix.SetValue(resourceNamePrefix)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
+		config.ParametersMap["ResourceNamePrefix"] = resourceNamePrefix
 	}
 
 	var connectGVK = schema.GroupVersionKind{
