@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
+	"strings"
 )
 
 var log = logger.NewLogger("config")
@@ -182,7 +183,7 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 	}
 
 	if config.Parameters.ManagedKafka.Bool() {
-		err = config.Parameters.ResourceNamePrefix.SetValue(config.instance.Namespace)
+		err = config.Parameters.ResourceNamePrefix.SetValue(strings.ReplaceAll(config.instance.Namespace, "-", "."))
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
