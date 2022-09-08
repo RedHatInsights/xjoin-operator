@@ -72,9 +72,8 @@ fi
 ###############################
 #Uncomment to reset the catalog
 ###############################
-log "Bump"
 log "Resetting index"
-./opm index rm -f $CATALOG_IMAGE:latest -c docker --tag $CATALOG_IMAGE:latest -o xjoin-operator
+./opm index rm -f $CATALOG_IMAGE:latest -c docker --tag $CATALOG_IMAGE:latest -o xjoin
 docker push $CATALOG_IMAGE:latest
 export SKIP_VERSION=$version
 prev_version=""
