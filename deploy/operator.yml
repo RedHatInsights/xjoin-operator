@@ -39,6 +39,8 @@ parameters:
     value: '500'
   - name: KAFKA_TOPIC_REPLICAS
     value: '2'
+  - name: SCHEMA_REGISTRY_SECRET_NAME
+    value: 'service-registry-stage'
   - name: ES_CONNECTOR_CONFIG
     value: >-
       { 
@@ -570,6 +572,7 @@ objects:
       validation.period.minutes: ${VALIDATION_PERIOD_MINUTES}
       validation.lag.compensation.seconds: ${VALIDATION_LAG_COMPENSATION_SECONDS}
       elasticsearch.index.template: ${ELASTICSEARCH_INDEX_TEMPLATE}
+      schema.registry.secret.name: ${SCHEMA_REGISTRY_SECRET_NAME}
   - apiVersion: v1
     kind: Service
     metadata:
