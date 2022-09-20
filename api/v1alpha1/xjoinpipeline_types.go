@@ -74,6 +74,10 @@ type XJoinPipelineSpec struct {
 	// +optional
 	// +kubebuilder:validation:MinLength:=1
 	ManagedKafkaSecretNamespace *string `json:"managedKafkaSecretNamespace,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:MinLength:=1
+	SchemaRegistrySecretName *string `json:"schemaRegistrySecretName,omitempty"`
 }
 
 // XJoinPipelineStatus defines the observed state of XJoinPipeline

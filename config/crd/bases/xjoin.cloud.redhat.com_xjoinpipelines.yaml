@@ -79,6 +79,9 @@ spec:
               resourceNamePrefix:
                 minLength: 3
                 type: string
+              schemaRegistrySecretName:
+                minLength: 1
+                type: string
             type: object
           status:
             description: XJoinPipelineStatus defines the observed state of XJoinPipeline

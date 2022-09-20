@@ -24,13 +24,14 @@ var log = logger.NewLogger("config")
 var keysIgnoredByRefresh []string
 
 type Config struct {
-	hbiDBSecret         *corev1.Secret
-	elasticSearchSecret *corev1.Secret
-	instance            *xjoin.XJoinPipeline
-	configMap           *corev1.ConfigMap
-	Parameters          Parameters
-	ParametersMap       map[string]interface{}
-	client              client.Client
+	hbiDBSecret          *corev1.Secret
+	elasticSearchSecret  *corev1.Secret
+	schemaRegistrySecret *corev1.Secret
+	instance             *xjoin.XJoinPipeline
+	configMap            *corev1.ConfigMap
+	Parameters           Parameters
+	ParametersMap        map[string]interface{}
+	client               client.Client
 }
 
 func NewConfig(instance *xjoin.XJoinPipeline, client client.Client, ctx context.Context) (*Config, error) {
@@ -63,6 +64,16 @@ func NewConfig(instance *xjoin.XJoinPipeline, client client.Client, ctx context.
 	elasticSearchSecretName := elasticSearchSecretVal.Interface().(Parameter)
 	instance.Status.ElasticSearchSecretName = elasticSearchSecretName.String()
 	config.elasticSearchSecret, err = utils.FetchSecret(client, instance.Namespace, elasticSearchSecretName.String(), ctx)
+	if err != nil {
+		return &config, err
+	}
+
+	schemaRegistrySecretNameVal, err := config.parameterValue(config.Parameters.SchemaRegistrySecretName)
+	if err != nil {
+		return &config, err
+	}
+	schemaRegistrySecretName := schemaRegistrySecretNameVal.Interface().(Parameter)
+	config.schemaRegistrySecret, err = utils.FetchSecret(client, instance.Namespace, schemaRegistrySecretName.String(), ctx)
 	if err != nil {
 		return &config, err
 	}
@@ -101,6 +112,17 @@ func (config *Config) parameterValue(param Parameter) (reflect.Value, error) {
 
 	if param.Secret == secretTypes.hbiDB && config.hbiDBSecret != nil && param.value == nil {
 		value, err := config.readSecretValue(config.hbiDBSecret, param.SecretKey)
+		if err != nil {
+			return emptyValue, err
+		}
+		err = param.SetValue(value)
+		if err != nil {
+			return emptyValue, err
+		}
+	}
+
+	if param.Secret == secretTypes.schemaRegistry && config.schemaRegistrySecret != nil && param.value == nil {
+		value, err := config.readSecretValue(config.schemaRegistrySecret, param.SecretKey)
 		if err != nil {
 			return emptyValue, err
 		}

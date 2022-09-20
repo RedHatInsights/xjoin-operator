@@ -3,13 +3,15 @@ package config
 import "reflect"
 
 type secrets struct {
-	elasticSearch string
-	hbiDB         string
+	elasticSearch  string
+	hbiDB          string
+	schemaRegistry string
 }
 
 var secretTypes = secrets{
-	hbiDB:         "hbiDB",
-	elasticSearch: "elasticsearch",
+	hbiDB:          "hbiDB",
+	elasticSearch:  "elasticsearch",
+	schemaRegistry: "schemaregistry",
 }
 
 type Parameters struct {
@@ -79,6 +81,15 @@ type Parameters struct {
 	ManagedKafka                         Parameter
 	ManagedKafkaSecretName               Parameter
 	ManagedKafkaSecretNamespace          Parameter
+	SchemaRegistryProtocol               Parameter
+	SchemaRegistryHost                   Parameter
+	SchemaRegistryPort                   Parameter
+	SchemaRegistryUrl                    Parameter
+	SchemaRegistryClientId               Parameter
+	SchemaRegistryClientSecret           Parameter
+	SchemaRegistryTokenURL               Parameter
+	SchemaRegistryAuthRealm              Parameter
+	SchemaRegistrySecretName             Parameter
 }
 
 func NewXJoinConfiguration() Parameters {
@@ -655,6 +666,62 @@ func NewXJoinConfiguration() Parameters {
 			Type:         reflect.String,
 			DefaultValue: "xjoin",
 			SpecKey:      "ManagedKafkaSecretNamespace",
+		},
+
+		//avro schema
+		SchemaRegistryProtocol: Parameter{
+			Type:          reflect.String,
+			ConfigMapName: "xjoin",
+			ConfigMapKey:  "schemaregistry.protocol",
+			DefaultValue:  "http",
+		},
+		SchemaRegistryHost: Parameter{
+			Type:          reflect.String,
+			ConfigMapName: "xjoin",
+			ConfigMapKey:  "schemaregistry.host",
+			DefaultValue:  "apicurio.test.svc",
+		},
+		SchemaRegistryPort: Parameter{
+			Type:          reflect.String,
+			ConfigMapName: "xjoin",
+			ConfigMapKey:  "schemaregistry.port",
+			DefaultValue:  "1080",
+		},
+		SchemaRegistryUrl: Parameter{
+			Type:         reflect.String,
+			Secret:       secretTypes.schemaRegistry,
+			SecretKey:    []string{"core-registry-url"},
+			DefaultValue: "http://apicurio.test.svc:1080/apis/registry/v2",
+		},
+		SchemaRegistryClientId: Parameter{
+			Type:         reflect.String,
+			Secret:       secretTypes.schemaRegistry,
+			SecretKey:    []string{"client-id"},
+			DefaultValue: "",
+		},
+		SchemaRegistryClientSecret: Parameter{
+			Type:         reflect.String,
+			Secret:       secretTypes.schemaRegistry,
+			SecretKey:    []string{"client-secret"},
+			DefaultValue: "",
+		},
+		SchemaRegistryTokenURL: Parameter{
+			Type:         reflect.String,
+			Secret:       secretTypes.schemaRegistry,
+			SecretKey:    []string{"token-url"},
+			DefaultValue: "",
+		},
+		SchemaRegistryAuthRealm: Parameter{
+			Type:         reflect.String,
+			Secret:       secretTypes.schemaRegistry,
+			SecretKey:    []string{"auth-realm"},
+			DefaultValue: "",
+		},
+		SchemaRegistrySecretName: Parameter{
+			SpecKey:      "SchemaRegistrySecretName",
+			ConfigMapKey: "schema.registry.secret.name",
+			DefaultValue: "service-registry-ephem",
+			Type:         reflect.String,
 		},
 	}
 }
