@@ -15,7 +15,7 @@ parameters:
   - name: KAFKA_CLUSTER
     value: "platform-mq"
   - name: MANAGED_KAFKA
-    value: "true"
+    value: true
   - name: MANAGED_KAFKA_SECRET_NAME
     value: "app-oauth"
   - name: MANAGED_KAFKA_SECRET_NAMESPACE
@@ -33,6 +33,6 @@ objects:
       connectCluster: ${{CONNECT_CLUSTER}}
       kafkaCluster: ${{KAFKA_CLUSTER}}
       pause: false
-      managedKafka: ${MANAGED_KAFKA}
+      managedKafka: true
       managedKafkaSecretName: ${{MANAGED_KAFKA_SECRET_NAME}}
       managedKafkaSecretNamespace: ${{MANAGED_KAFKA_SECRET_NAMESPACE}}
