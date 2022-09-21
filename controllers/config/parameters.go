@@ -654,7 +654,7 @@ func NewXJoinConfiguration() Parameters {
 		},
 		ManagedKafka: Parameter{
 			Type:         reflect.Bool,
-			DefaultValue: true,
+			DefaultValue: false,
 			SpecKey:      "ManagedKafka",
 		},
 		ManagedKafkaSecretName: Parameter{
