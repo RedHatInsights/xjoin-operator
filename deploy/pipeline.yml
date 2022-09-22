@@ -33,6 +33,6 @@ objects:
       connectCluster: ${{CONNECT_CLUSTER}}
       kafkaCluster: ${{KAFKA_CLUSTER}}
       pause: false
-      managedKafka: '${{MANAGED_KAFKA}}'
+      managedKafka: ${{MANAGED_KAFKA}}
       managedKafkaSecretName: ${{MANAGED_KAFKA_SECRET_NAME}}
       managedKafkaSecretNamespace: ${{MANAGED_KAFKA_SECRET_NAMESPACE}}
