@@ -36,9 +36,9 @@ func (t *ManagedTopics) TopicName(pipelineVersion string) string {
 	return fmt.Sprintf(t.Options.ResourceNamePrefix + "." + pipelineVersion + ".public.hosts")
 }
 
-func (t *ManagedTopics) CreateTopic(pipelineVersion string, dryRun bool) error {
+func (t *ManagedTopics) CreateTopicByName(topicName string) error {
 	body := ManagedTopicRequest{
-		Name: t.TopicName(pipelineVersion),
+		Name: topicName,
 		Settings: ManagedTopicSettings{
 			NumPartitions: t.Options.TopicParameters.Partitions,
 			Replicas:      t.Options.TopicParameters.Replicas,
@@ -54,9 +54,6 @@ func (t *ManagedTopics) CreateTopic(pipelineVersion string, dryRun bool) error {
 			}, {
 				Key:   "min.compaction.lag.ms",
 				Value: t.Options.TopicParameters.MinCompactionLagMS,
-				//}, { //TODO: why is this not allowed?
-				//	Key:   "max.message.bytes",
-				//	Value: t.Options.TopicParameters.MessageBytes,
 			}},
 		},
 	}
@@ -76,6 +73,10 @@ func (t *ManagedTopics) CreateTopic(pipelineVersion string, dryRun bool) error {
 	}
 
 	return nil
+}
+
+func (t *ManagedTopics) CreateTopic(pipelineVersion string, dryRun bool) error {
+	return t.CreateTopicByName(t.TopicName(pipelineVersion))
 }
 
 func (t *ManagedTopics) CheckDeviation(pipelineVersion string) (problem error, err error) {
@@ -149,7 +150,7 @@ func (t *ManagedTopics) CheckDeviation(pipelineVersion string) (problem error, e
 }
 
 func (t *ManagedTopics) ListTopics() ([]byte, error) {
-	res, err := t.client.Get(t.baseurl + "?size=100&page=1")
+	res, err := t.client.Get(t.baseurl + "?size=100&page=1&filter=ckyrouac")
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
