@@ -17,9 +17,11 @@ parameters:
   - name: MANAGED_KAFKA
     value: "false"
   - name: MANAGED_KAFKA_SECRET_NAME
-    value: "app-oauth"
+    value: "stage-managed-kafka"
   - name: MANAGED_KAFKA_SECRET_NAMESPACE
     value: "xjoin-operator-stage"
+  - name: SCHEMA_REGISTRY_SECRET_NAME
+    value: "service-registry-stage"
 
 objects:
   - apiVersion: xjoin.cloud.redhat.com/v1alpha1
@@ -36,3 +38,4 @@ objects:
       managedKafka: ${{MANAGED_KAFKA}}
       managedKafkaSecretName: ${{MANAGED_KAFKA_SECRET_NAME}}
       managedKafkaSecretNamespace: ${{MANAGED_KAFKA_SECRET_NAMESPACE}}
+      schemaRegistrySecretName: ${{SCHEMA_REGISTRY_SECRET_NAME}}
