@@ -3,4 +3,11 @@ kind: XJoinPipeline
 metadata:
   name: xjoinpipeline-sample
 spec:
-  ephemeral: true
+  connectCluster: connect
+  connectClusterNamespace: test
+  kafkaCluster: kafka
+  kafkaClusterNamespace: test
+  managedKafka: false
+  managedKafkaSecretName: ephem-managed-kafka
+  managedKafkaSecretNamespace: test
+  pause: false
