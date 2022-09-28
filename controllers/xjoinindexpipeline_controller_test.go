@@ -549,17 +549,25 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 	Context("Reconcile Deletion", func() {
 		It("Should delete the Elasticsearch index", func() {
-			Skip("WIP")
+			name := "test-index-pipeline"
 			reconciler := XJoinIndexPipelineTestReconciler{
 				Namespace:      namespace,
-				Name:           "test-index-pipeline",
+				Name:           name,
 				ConfigFileName: "xjoinindex",
 				K8sClient:      k8sClient,
 			}
 			createdIndexPipeline := reconciler.ReconcileNew()
+
 			err := k8sClient.Delete(context.Background(), &createdIndexPipeline)
 			checkError(err)
 			reconciler.ReconcileDelete()
+
+			info := httpmock.GetCallCountInfo()
+			count := info["HEAD http://localhost:9200/xjoinindexpipeline."+name+".1234"]
+			Expect(count).To(Equal(1))
+
+			count = info["DELETE http://localhost:9200/xjoinindexpipeline."+name+".1234"]
+			Expect(count).To(Equal(1))
 		})
 
 		It("Should delete the Elasticsearch connector", func() {

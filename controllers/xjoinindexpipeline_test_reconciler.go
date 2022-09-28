@@ -76,7 +76,7 @@ func (x *XJoinIndexPipelineTestReconciler) registerDeleteMocks() {
 	httpmock.RegisterResponder(
 		"GET",
 		"http://connect-connect-api."+x.Namespace+".svc:8083/connectors/xjoinindexpipeline."+x.Name+".1234",
-		httpmock.NewStringResponder(200, `{}`))
+		httpmock.NewStringResponder(404, `{}`))
 
 	//gql schema mocks
 	httpmock.RegisterResponder(
@@ -112,6 +112,16 @@ func (x *XJoinIndexPipelineTestReconciler) registerDeleteMocks() {
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions/latest",
 		httpmock.NewStringResponder(200, `{}`))
+
+	httpmock.RegisterResponder(
+		"DELETE",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value",
+		httpmock.NewStringResponder(200, `{}`))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+".1234/versions",
+		httpmock.NewStringResponder(404, `{}`))
 }
 
 func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
