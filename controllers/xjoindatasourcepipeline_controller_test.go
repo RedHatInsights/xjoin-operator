@@ -145,4 +145,76 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			Expect(actualKafkaTopicConfig).To(Equal(expectedKafkaTopicConfig))
 		})
 	})
+
+	Context("Reconcile Deletion", func() {
+		It("Deletes the Debezium Kafka Connector", func() {
+			name := "test-data-source-pipeline"
+			reconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      name,
+				K8sClient: k8sClient,
+			}
+			createdDataSourcePipeline := reconciler.ReconcileNew()
+
+			connectors := &v1beta2.KafkaConnectorList{}
+			err := k8sClient.List(context.Background(), connectors)
+			checkError(err)
+			Expect(connectors.Items).To(HaveLen(1))
+
+			err = k8sClient.Delete(context.Background(), &createdDataSourcePipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://connect-connect-api."+namespace+".svc:8083/connectors/xjoindatasourcepipeline."+name+".1234"]
+			Expect(count).To(Equal(6))
+
+			connectors = &v1beta2.KafkaConnectorList{}
+			err = k8sClient.List(context.Background(), connectors)
+			checkError(err)
+			Expect(connectors.Items).To(HaveLen(0))
+		})
+
+		It("Deletes the Avro Schema", func() {
+			name := "test-data-source-pipeline"
+			reconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      name,
+				K8sClient: k8sClient,
+			}
+			createdDataSourcePipeline := reconciler.ReconcileNew()
+
+			err := k8sClient.Delete(context.Background(), &createdDataSourcePipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			info := httpmock.GetCallCountInfo()
+			count := info["DELETE http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+name+".1234-value"]
+			Expect(count).To(Equal(1))
+		})
+
+		It("Deletes the Kafka Topic", func() {
+			name := "test-data-source-pipeline"
+			reconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      name,
+				K8sClient: k8sClient,
+			}
+			createdDataSourcePipeline := reconciler.ReconcileNew()
+
+			topics := &v1beta2.KafkaTopicList{}
+			err := k8sClient.List(context.Background(), topics)
+			checkError(err)
+			Expect(topics.Items).To(HaveLen(1))
+
+			err = k8sClient.Delete(context.Background(), &createdDataSourcePipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			topics = &v1beta2.KafkaTopicList{}
+			err = k8sClient.List(context.Background(), topics)
+			checkError(err)
+			Expect(topics.Items).To(HaveLen(0))
+		})
+	})
 })

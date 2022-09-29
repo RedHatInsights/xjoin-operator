@@ -105,6 +105,17 @@ func (d *DatasourcePipelineTestReconciler) ReconcileNew() v1alpha1.XJoinDataSour
 	return *createdDataSourcePipeline
 }
 
+func (d *DatasourcePipelineTestReconciler) ReconcileDelete() {
+	d.registerDeleteMocks()
+	result := d.reconcile()
+	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 0}))
+
+	datasourcePipelineList := v1alpha1.XJoinDataSourcePipelineList{}
+	err := d.K8sClient.List(context.Background(), &datasourcePipelineList, client.InNamespace(d.Namespace))
+	checkError(err)
+	Expect(datasourcePipelineList.Items).To(HaveLen(0))
+}
+
 func (d *DatasourcePipelineTestReconciler) reconcile() reconcile.Result {
 	xjoinDataSourcePipelineReconciler := d.newXJoinDataSourcePipelineReconciler()
 	datasourceLookupKey := types.NamespacedName{Name: d.Name, Namespace: d.Namespace}
@@ -113,22 +124,55 @@ func (d *DatasourcePipelineTestReconciler) reconcile() reconcile.Result {
 	return result
 }
 
+func (d *DatasourcePipelineTestReconciler) registerDeleteMocks() {
+	httpmock.Reset()
+	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
+
+	//avro schema mocks
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+".1234-value/versions/1",
+		httpmock.NewStringResponder(200, `{}`))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+".1234-value/versions/latest",
+		httpmock.NewStringResponder(200, `{}`))
+
+	httpmock.RegisterResponder(
+		"DELETE",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+".1234-value",
+		httpmock.NewStringResponder(200, `{}`))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoindatasourcepipeline."+d.Name+".1234/versions",
+		httpmock.NewStringResponder(404, `{}`))
+
+	//kafka connector mocks
+	httpmock.RegisterResponder(
+		"GET",
+		"http://connect-connect-api."+d.Namespace+".svc:8083/connectors/xjoindatasourcepipeline."+d.Name+".1234",
+		httpmock.NewStringResponder(404, `{}`))
+}
+
 func (d *DatasourcePipelineTestReconciler) registerNewMocks() {
 	httpmock.Reset()
 	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
 
+	//avro schema mocks
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/1",
-		httpmock.NewStringResponder(404, `{"message":"No version '1' found for artifact with ID 'xjoindatasourcepipeline.test-data-source-pipeline.1234-value' in group 'null'.","error_code":40402}`).Times(1))
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+".1234-value/versions/1",
+		httpmock.NewStringResponder(404, `{"message":"No version '1' found for artifact with ID 'xjoindatasourcepipeline.`+d.Name+`.1234-value' in group 'null'.","error_code":40402}`).Times(1))
 
 	httpmock.RegisterResponder(
 		"POST",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+".1234-value/versions",
 		httpmock.NewStringResponder(200, `{"createdBy":"","createdOn":"2022-07-27T17:28:11+0000","modifiedBy":"","modifiedOn":"2022-07-27T17:28:11+0000","id":1,"version":1,"type":"AVRO","globalId":1,"state":"ENABLED","groupId":"null","contentId":1,"references":[]}`))
 
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/latest",
-		httpmock.NewStringResponder(200, `{"schema":"{\"name\":\"Value\",\"namespace\":\"xjoindatasourcepipeline.test-data-source-pipeline\"}","schemaType":"AVRO","references":[]}`))
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+".1234-value/versions/latest",
+		httpmock.NewStringResponder(200, `{"schema":"{\"name\":\"Value\",\"namespace\":\"xjoindatasourcepipeline.`+d.Name+`\"}","schemaType":"AVRO","references":[]}`))
 }
