@@ -122,6 +122,37 @@ func (x *XJoinIndexPipelineTestReconciler) registerDeleteMocks() {
 		"GET",
 		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+".1234/versions",
 		httpmock.NewStringResponder(404, `{}`))
+
+	for _, customImage := range x.CustomSubgraphImages {
+		httpmock.RegisterResponder(
+			"GET",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+".1234/versions",
+			httpmock.NewStringResponder(200, `{}`).Once())
+
+		httpmock.RegisterResponder(
+			"DELETE",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+".1234",
+			httpmock.NewStringResponder(200, `{}`).Once())
+	}
+
+	for _, dataSource := range x.DataSources {
+		response, err := os.ReadFile("./test/data/apicurio/" + dataSource.ApiCurioResponseFilename + ".json")
+		checkError(err)
+		httpmock.RegisterResponder(
+			"GET",
+			"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+dataSource.Name+"."+dataSource.Version+"-value/versions/latest",
+			httpmock.NewStringResponder(200, string(response)))
+
+		httpmock.RegisterResponder(
+			"GET",
+			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234",
+			httpmock.NewStringResponder(200, "{}").Once())
+
+		httpmock.RegisterResponder(
+			"DELETE",
+			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234",
+			httpmock.NewStringResponder(200, "{}").Once())
+	}
 }
 
 func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {

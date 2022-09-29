@@ -9,8 +9,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	v1 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	//+kubebuilder:scaffold:imports
@@ -571,39 +573,252 @@ var _ = Describe("XJoinIndexPipeline", func() {
 		})
 
 		It("Should delete the Elasticsearch connector", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:      namespace,
+				Name:           name,
+				ConfigFileName: "xjoinindex",
+				K8sClient:      k8sClient,
+			}
+			createdIndexPipeline := reconciler.ReconcileNew()
 
+			connectors := &v1beta2.KafkaConnectorList{}
+			err := k8sClient.List(context.Background(), connectors)
+			checkError(err)
+			Expect(connectors.Items).To(HaveLen(1))
+
+			err = k8sClient.Delete(context.Background(), &createdIndexPipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://connect-connect-api."+namespace+".svc:8083/connectors/xjoinindexpipeline."+name+".1234"]
+			Expect(count).To(Equal(6))
+
+			connectors = &v1beta2.KafkaConnectorList{}
+			err = k8sClient.List(context.Background(), connectors)
+			checkError(err)
+			Expect(connectors.Items).To(HaveLen(0))
 		})
 
 		It("Should delete the Kafka topic", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:      namespace,
+				Name:           name,
+				ConfigFileName: "xjoinindex",
+				K8sClient:      k8sClient,
+			}
+			createdIndexPipeline := reconciler.ReconcileNew()
 
+			topics := &v1beta2.KafkaTopicList{}
+			err := k8sClient.List(context.Background(), topics)
+			checkError(err)
+			Expect(topics.Items).To(HaveLen(1))
+
+			err = k8sClient.Delete(context.Background(), &createdIndexPipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			topics = &v1beta2.KafkaTopicList{}
+			err = k8sClient.List(context.Background(), topics)
+			checkError(err)
+			Expect(topics.Items).To(HaveLen(0))
 		})
 
 		It("Should delete the Avro schema", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:      namespace,
+				Name:           name,
+				ConfigFileName: "xjoinindex",
+				K8sClient:      k8sClient,
+			}
+			createdIndexPipeline := reconciler.ReconcileNew()
 
+			err := k8sClient.Delete(context.Background(), &createdIndexPipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			info := httpmock.GetCallCountInfo()
+			count := info["DELETE http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+name+".1234-value"]
+			Expect(count).To(Equal(1))
 		})
 
 		It("Should delete the GraphQL schema", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:      namespace,
+				Name:           name,
+				ConfigFileName: "xjoinindex",
+				K8sClient:      k8sClient,
+			}
+			createdIndexPipeline := reconciler.ReconcileNew()
 
+			err := k8sClient.Delete(context.Background(), &createdIndexPipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			info := httpmock.GetCallCountInfo()
+			count := info["DELETE http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline-"+name+"-1234"]
+			Expect(count).To(Equal(1))
 		})
 
 		It("Should delete the xjoin-core deployment", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:      namespace,
+				Name:           name,
+				ConfigFileName: "xjoinindex",
+				K8sClient:      k8sClient,
+			}
+			createdIndexPipeline := reconciler.ReconcileNew()
 
+			deployment := &unstructured.Unstructured{}
+			deployment.SetGroupVersionKind(common.DeploymentGVK)
+			deploymentName := "xjoin-core-xjoinindexpipeline-" + name + "-1234"
+			deploymentLookup := types.NamespacedName{Name: deploymentName, Namespace: namespace}
+			err := k8sClient.Get(context.Background(), deploymentLookup, deployment)
+			checkError(err)
+			Expect(deployment.GetName()).To(Equal(deploymentName))
+
+			err = k8sClient.Delete(context.Background(), &createdIndexPipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			deployments := &unstructured.UnstructuredList{}
+			deployments.SetGroupVersionKind(common.DeploymentGVK)
+			err = k8sClient.List(context.Background(), deployments)
+			checkError(err)
+			Expect(deployments.Items).To(HaveLen(0))
 		})
 
 		It("Should delete the xjoin-api-subgraph deployment", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:      namespace,
+				Name:           name,
+				ConfigFileName: "xjoinindex",
+				K8sClient:      k8sClient,
+			}
+			createdIndexPipeline := reconciler.ReconcileNew()
 
+			deployment := &unstructured.Unstructured{}
+			deployment.SetGroupVersionKind(common.DeploymentGVK)
+			deploymentName := "xjoinindexpipeline-" + name + "-1234"
+			deploymentLookup := types.NamespacedName{Name: deploymentName, Namespace: namespace}
+			err := k8sClient.Get(context.Background(), deploymentLookup, deployment)
+			checkError(err)
+			Expect(deployment.GetName()).To(Equal(deploymentName))
+
+			err = k8sClient.Delete(context.Background(), &createdIndexPipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			deployments := &unstructured.UnstructuredList{}
+			deployments.SetGroupVersionKind(common.DeploymentGVK)
+			err = k8sClient.List(context.Background(), deployments)
+			checkError(err)
+			Expect(deployments.Items).To(HaveLen(0))
 		})
 
 		It("Should delete the custom image's xjoin-api-subgraph deployment", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:      namespace,
+				Name:           name,
+				ConfigFileName: "xjoinindex",
+				K8sClient:      k8sClient,
+				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{
+					{
+						Name:  "test-custom-image",
+						Image: "quay.io/test/custom-image",
+					},
+				},
+			}
+			createdIndexPipeline := reconciler.ReconcileNew()
 
+			deployment := &unstructured.Unstructured{}
+			deployment.SetGroupVersionKind(common.DeploymentGVK)
+			deploymentName := "xjoinindexpipeline-test-index-pipeline-test-custom-image-1234"
+			deploymentLookup := types.NamespacedName{Name: deploymentName, Namespace: namespace}
+			err := k8sClient.Get(context.Background(), deploymentLookup, deployment)
+			checkError(err)
+			Expect(deployment.GetName()).To(Equal(deploymentName))
+
+			err = k8sClient.Delete(context.Background(), &createdIndexPipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			deployments := &unstructured.UnstructuredList{}
+			deployments.SetGroupVersionKind(common.DeploymentGVK)
+			err = k8sClient.List(context.Background(), deployments)
+			checkError(err)
+			Expect(deployments.Items).To(HaveLen(0))
 		})
 
 		It("Should delete the custom image's graphql schema", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:      namespace,
+				Name:           name,
+				ConfigFileName: "xjoinindex",
+				K8sClient:      k8sClient,
+				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{
+					{
+						Name:  "test-custom-image",
+						Image: "quay.io/test/custom-image",
+					},
+				},
+			}
+			createdIndexPipeline := reconciler.ReconcileNew()
 
+			err := k8sClient.Delete(context.Background(), &createdIndexPipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-test-custom-image.1234/versions"]
+			Expect(count).To(Equal(1))
+
+			count = info["DELETE http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-test-custom-image.1234"]
+			Expect(count).To(Equal(1))
 		})
 
 		It("Should delete the Elasticsearch pipeline", func() {
+			dataSourceName := "testdatasource"
+			datasourceReconciler := DatasourceTestReconciler{
+				Namespace: namespace,
+				Name:      dataSourceName,
+				K8sClient: k8sClient,
+			}
+			datasourceReconciler.ReconcileNew()
+			createdDataSource := datasourceReconciler.ReconcileValid()
 
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:      namespace,
+				Name:           name,
+				ConfigFileName: "xjoinindex-with-json-field",
+				K8sClient:      k8sClient,
+				DataSources: []DataSource{{
+					Name:                     dataSourceName,
+					Version:                  createdDataSource.Status.ActiveVersion,
+					ApiCurioResponseFilename: "datasource-latest-version",
+				}},
+			}
+			createdIndexPipeline := reconciler.ReconcileNew()
+
+			err := k8sClient.Delete(context.Background(), &createdIndexPipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234"]
+			Expect(count).To(Equal(1))
+
+			count = info["DELETE http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234"]
+			Expect(count).To(Equal(1))
 		})
 	})
 })
