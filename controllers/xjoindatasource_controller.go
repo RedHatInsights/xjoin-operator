@@ -129,6 +129,11 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return result, errors.Wrap(err, 0)
 	}
 
+	if instance.GetDeletionTimestamp() != nil {
+		//actual finalizer code is called via reconciler
+		return reconcile.Result{}, nil
+	}
+
 	instance.Status.SpecHash, err = utils.SpecHash(instance.Spec)
 	if err != nil {
 		return result, errors.Wrap(err, 0)

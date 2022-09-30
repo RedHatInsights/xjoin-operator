@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -64,6 +65,30 @@ var _ = Describe("XJoinDataSource", func() {
 			}
 			Expect(createdDatasourcePipeline.OwnerReferences).To(HaveLen(1))
 			Expect(createdDatasourcePipeline.OwnerReferences).To(ContainElement(dataSourceOwnerReference))
+		})
+	})
+
+	Context("Reconcile Delete", func() {
+		It("Should delete a XJoinDataSourcePipeline", func() {
+			reconciler := DatasourceTestReconciler{
+				Namespace: namespace,
+				Name:      "test-data-source",
+				K8sClient: k8sClient,
+			}
+			createdDataSource := reconciler.ReconcileNew()
+
+			dataSourcePipelineList := &v1alpha1.XJoinDataSourcePipelineList{}
+			err := k8sClient.List(context.Background(), dataSourcePipelineList)
+			checkError(err)
+			Expect(dataSourcePipelineList.Items).To(HaveLen(1))
+
+			err = k8sClient.Delete(context.Background(), &createdDataSource)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			err = k8sClient.List(context.Background(), dataSourcePipelineList)
+			checkError(err)
+			Expect(dataSourcePipelineList.Items).To(HaveLen(0))
 		})
 	})
 })

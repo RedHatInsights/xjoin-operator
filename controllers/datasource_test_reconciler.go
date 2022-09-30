@@ -85,6 +85,17 @@ func (d *DatasourceTestReconciler) ReconcileValid() v1alpha1.XJoinDataSource {
 	return *createdDatasource
 }
 
+func (d *DatasourceTestReconciler) ReconcileDelete() {
+	d.registerDeleteMocks()
+	result := d.reconcile()
+	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 0}))
+
+	datasourceList := v1alpha1.XJoinDataSourceList{}
+	err := d.K8sClient.List(context.Background(), &datasourceList, client.InNamespace(d.Namespace))
+	checkError(err)
+	Expect(datasourceList.Items).To(HaveLen(0))
+}
+
 func (d *DatasourceTestReconciler) createValidDataSource() {
 	ctx := context.Background()
 
@@ -143,6 +154,16 @@ func (d *DatasourceTestReconciler) reconcile() reconcile.Result {
 }
 
 func (d *DatasourceTestReconciler) registerNewMocks() {
+	httpmock.Reset()
+	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects",
+		httpmock.NewStringResponder(200, `[]`))
+}
+
+func (d *DatasourceTestReconciler) registerDeleteMocks() {
 	httpmock.Reset()
 	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
 
