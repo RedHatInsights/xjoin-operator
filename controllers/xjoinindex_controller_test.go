@@ -8,126 +8,11 @@ import (
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"time"
 	//+kubebuilder:scaffold:imports
 )
 
 var _ = Describe("XJoinIndex", func() {
 	var namespace string
-
-	var newXJoinIndexReconciler = func() *XJoinIndexReconciler {
-		return NewXJoinIndexReconciler(
-			k8sClient,
-			scheme.Scheme,
-			testLogger,
-			record.NewFakeRecorder(10),
-			namespace,
-			true)
-	}
-
-	var createValidIndex = func(name string) {
-		ctx := context.Background()
-
-		httpmock.RegisterResponder(
-			"GET",
-			"http://apicurio:1080/apis/ccompat/v6/subjects",
-			httpmock.NewStringResponder(200, `[]`))
-
-		responder, err := httpmock.NewJsonResponder(200, httpmock.File("./test/data/apicurio/empty-response.json"))
-		checkError(err)
-		httpmock.RegisterResponder(
-			"GET",
-			"http://apicurio:1080/apis/registry/v2/search/artifacts?limit=500&labels=graphql",
-			responder)
-
-		httpmock.RegisterResponder(
-			"GET",
-			"http://localhost:9200/_ingest/pipeline/xjoinindex.test-index%2A",
-			httpmock.NewStringResponder(404, "{}"))
-
-		httpmock.RegisterResponder(
-			"GET",
-			"http://localhost:9200/_cat/indices/xjoinindex.test-index.%2A?format=JSON&h=index",
-			httpmock.NewStringResponder(200, "[]"))
-
-		customSubgraphImage := []v1alpha1.CustomSubgraphImage{{
-			Name:  "test",
-			Image: "test",
-		}}
-
-		indexSpec := v1alpha1.XJoinIndexSpec{
-			AvroSchema:           "{}",
-			Pause:                false,
-			CustomSubgraphImages: customSubgraphImage,
-		}
-
-		index := &v1alpha1.XJoinIndex{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-			},
-			Spec: indexSpec,
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "xjoin.cloud.redhat.com/v1alpha1",
-				Kind:       "XJoinIndex",
-			},
-		}
-
-		Expect(k8sClient.Create(ctx, index)).Should(Succeed())
-
-		//validate index spec is created correctly
-		indexLookupKey := types.NamespacedName{Name: name, Namespace: namespace}
-		createdIndex := &v1alpha1.XJoinIndex{}
-
-		Eventually(func() bool {
-			err := k8sClient.Get(ctx, indexLookupKey, createdIndex)
-			if err != nil {
-				return false
-			}
-			return true
-		}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
-		Expect(createdIndex.Spec.Pause).Should(Equal(false))
-		Expect(createdIndex.Spec.AvroSchema).Should(Equal("{}"))
-		Expect(createdIndex.Spec.CustomSubgraphImages).Should(Equal(customSubgraphImage))
-	}
-
-	var reconcileIndex = func(name string) v1alpha1.XJoinIndex {
-		ctx := context.Background()
-
-		xjoinIndexReconciler := newXJoinIndexReconciler()
-
-		indexLookupKey := types.NamespacedName{Name: name, Namespace: namespace}
-		createdIndex := &v1alpha1.XJoinIndex{}
-
-		result, err := xjoinIndexReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: indexLookupKey})
-		checkError(err)
-		Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
-
-		Eventually(func() bool {
-			err := k8sClient.Get(ctx, indexLookupKey, createdIndex)
-			if err != nil {
-				return false
-			}
-			return true
-		}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
-		Expect(createdIndex.Status.ActiveVersion).To(Equal(""))
-		Expect(createdIndex.Status.ActiveVersionIsValid).To(Equal(false))
-		Expect(createdIndex.Status.RefreshingVersion).ToNot(Equal(""))
-		Expect(createdIndex.Status.RefreshingVersionIsValid).To(Equal(false))
-		Expect(createdIndex.Status.SpecHash).ToNot(Equal(""))
-		Expect(createdIndex.Finalizers).To(HaveLen(1))
-		Expect(createdIndex.Finalizers).To(ContainElement("finalizer.xjoin.index.cloud.redhat.com"))
-
-		info := httpmock.GetCallCountInfo()
-		count := info["GET http://apicurio:1080/apis/ccompat/v6/subjects"]
-		Expect(count).To(Equal(1))
-
-		return *createdIndex
-	}
 
 	BeforeEach(func() {
 		httpmock.Activate()
@@ -144,9 +29,13 @@ var _ = Describe("XJoinIndex", func() {
 
 	Context("Reconcile", func() {
 		It("Should create a XJoinIndexPipeline", func() {
-			indexName := "test-index"
-			createValidIndex(indexName)
-			createdIndex := reconcileIndex(indexName)
+			reconciler := IndexTestReconciler{
+				Namespace: namespace,
+				Name:      "test-index",
+				K8sClient: k8sClient,
+			}
+			createdIndex := reconciler.ReconcileNew()
+
 			indexPipelineName := createdIndex.Name + "." + createdIndex.Status.RefreshingVersion
 
 			indexPipelineKey := types.NamespacedName{Name: indexPipelineName, Namespace: namespace}
@@ -171,6 +60,31 @@ var _ = Describe("XJoinIndex", func() {
 			}
 			Expect(createdIndexPipeline.OwnerReferences).To(HaveLen(1))
 			Expect(createdIndexPipeline.OwnerReferences).To(ContainElement(indexOwnerReference))
+		})
+	})
+
+	Context("Reconcile Delete", func() {
+		It("Should delete a XJoinIndexPipeline", func() {
+			reconciler := IndexTestReconciler{
+				Namespace: namespace,
+				Name:      "test-index",
+				K8sClient: k8sClient,
+			}
+			createdIndex := reconciler.ReconcileNew()
+
+			indexPipelineList := &v1alpha1.XJoinIndexPipelineList{}
+			err := k8sClient.List(context.Background(), indexPipelineList)
+			checkError(err)
+			Expect(indexPipelineList.Items).To(HaveLen(1))
+
+			err = k8sClient.Delete(context.Background(), &createdIndex)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			err = k8sClient.List(context.Background(), indexPipelineList)
+			checkError(err)
+			Expect(indexPipelineList.Items).To(HaveLen(0))
+
 		})
 	})
 })
