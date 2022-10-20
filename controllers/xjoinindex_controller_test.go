@@ -8,6 +8,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -73,7 +74,7 @@ var _ = Describe("XJoinIndex", func() {
 			createdIndex := reconciler.ReconcileNew()
 
 			indexPipelineList := &v1alpha1.XJoinIndexPipelineList{}
-			err := k8sClient.List(context.Background(), indexPipelineList)
+			err := k8sClient.List(context.Background(), indexPipelineList, client.InNamespace(namespace))
 			checkError(err)
 			Expect(indexPipelineList.Items).To(HaveLen(1))
 
@@ -81,7 +82,7 @@ var _ = Describe("XJoinIndex", func() {
 			checkError(err)
 			reconciler.ReconcileDelete()
 
-			err = k8sClient.List(context.Background(), indexPipelineList)
+			err = k8sClient.List(context.Background(), indexPipelineList, client.InNamespace(namespace))
 			checkError(err)
 			Expect(indexPipelineList.Items).To(HaveLen(0))
 

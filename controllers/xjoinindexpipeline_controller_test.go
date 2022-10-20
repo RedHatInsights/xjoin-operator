@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -583,7 +584,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			createdIndexPipeline := reconciler.ReconcileNew()
 
 			connectors := &v1beta2.KafkaConnectorList{}
-			err := k8sClient.List(context.Background(), connectors)
+			err := k8sClient.List(context.Background(), connectors, client.InNamespace(namespace))
 			checkError(err)
 			Expect(connectors.Items).To(HaveLen(1))
 
@@ -596,7 +597,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(count).To(Equal(6))
 
 			connectors = &v1beta2.KafkaConnectorList{}
-			err = k8sClient.List(context.Background(), connectors)
+			err = k8sClient.List(context.Background(), connectors, client.InNamespace(namespace))
 			checkError(err)
 			Expect(connectors.Items).To(HaveLen(0))
 		})
@@ -612,7 +613,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			createdIndexPipeline := reconciler.ReconcileNew()
 
 			topics := &v1beta2.KafkaTopicList{}
-			err := k8sClient.List(context.Background(), topics)
+			err := k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
 			checkError(err)
 			Expect(topics.Items).To(HaveLen(1))
 
@@ -621,7 +622,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			reconciler.ReconcileDelete()
 
 			topics = &v1beta2.KafkaTopicList{}
-			err = k8sClient.List(context.Background(), topics)
+			err = k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
 			checkError(err)
 			Expect(topics.Items).To(HaveLen(0))
 		})
@@ -688,7 +689,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			deployments := &unstructured.UnstructuredList{}
 			deployments.SetGroupVersionKind(common.DeploymentGVK)
-			err = k8sClient.List(context.Background(), deployments)
+			err = k8sClient.List(context.Background(), deployments, client.InNamespace(namespace))
 			checkError(err)
 			Expect(deployments.Items).To(HaveLen(0))
 		})
@@ -717,7 +718,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			deployments := &unstructured.UnstructuredList{}
 			deployments.SetGroupVersionKind(common.DeploymentGVK)
-			err = k8sClient.List(context.Background(), deployments)
+			err = k8sClient.List(context.Background(), deployments, client.InNamespace(namespace))
 			checkError(err)
 			Expect(deployments.Items).To(HaveLen(0))
 		})
@@ -752,7 +753,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			deployments := &unstructured.UnstructuredList{}
 			deployments.SetGroupVersionKind(common.DeploymentGVK)
-			err = k8sClient.List(context.Background(), deployments)
+			err = k8sClient.List(context.Background(), deployments, client.InNamespace(namespace))
 			checkError(err)
 			Expect(deployments.Items).To(HaveLen(0))
 		})
