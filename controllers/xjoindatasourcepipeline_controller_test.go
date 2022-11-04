@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -157,7 +158,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			createdDataSourcePipeline := reconciler.ReconcileNew()
 
 			connectors := &v1beta2.KafkaConnectorList{}
-			err := k8sClient.List(context.Background(), connectors)
+			err := k8sClient.List(context.Background(), connectors, client.InNamespace(namespace))
 			checkError(err)
 			Expect(connectors.Items).To(HaveLen(1))
 
@@ -170,7 +171,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			Expect(count).To(Equal(6))
 
 			connectors = &v1beta2.KafkaConnectorList{}
-			err = k8sClient.List(context.Background(), connectors)
+			err = k8sClient.List(context.Background(), connectors, client.InNamespace(namespace))
 			checkError(err)
 			Expect(connectors.Items).To(HaveLen(0))
 		})
@@ -203,7 +204,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			createdDataSourcePipeline := reconciler.ReconcileNew()
 
 			topics := &v1beta2.KafkaTopicList{}
-			err := k8sClient.List(context.Background(), topics)
+			err := k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
 			checkError(err)
 			Expect(topics.Items).To(HaveLen(1))
 
@@ -212,7 +213,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			reconciler.ReconcileDelete()
 
 			topics = &v1beta2.KafkaTopicList{}
-			err = k8sClient.List(context.Background(), topics)
+			err = k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
 			checkError(err)
 			Expect(topics.Items).To(HaveLen(0))
 		})

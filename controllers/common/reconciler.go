@@ -75,17 +75,17 @@ func (r *Reconciler) getState(specHash string) string {
 		r.instance.GetRefreshingVersionIsValid() == false &&
 		r.instance.GetRefreshingVersion() != "" {
 		return INITIAL_SYNC
-	} else if r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionIsValid() == true {
-		return VALID
+	} else if r.instance.GetRefreshingVersion() != "" &&
+		r.instance.GetRefreshingVersionIsValid() == true {
+		return REFRESH_COMPLETE
 	} else if r.instance.GetActiveVersion() != "" &&
 		r.instance.GetActiveVersionIsValid() == false &&
 		r.instance.GetRefreshingVersion() != "" &&
 		r.instance.GetRefreshingVersionIsValid() == false {
 		return REFRESHING
-	} else if r.instance.GetRefreshingVersion() != "" &&
-		r.instance.GetRefreshingVersionIsValid() == true {
-		return REFRESH_COMPLETE
+	} else if r.instance.GetActiveVersion() != "" &&
+		r.instance.GetActiveVersionIsValid() == true {
+		return VALID
 	} else {
 		return ""
 	}

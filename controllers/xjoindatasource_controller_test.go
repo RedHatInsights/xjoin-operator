@@ -8,6 +8,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -78,7 +79,7 @@ var _ = Describe("XJoinDataSource", func() {
 			createdDataSource := reconciler.ReconcileNew()
 
 			dataSourcePipelineList := &v1alpha1.XJoinDataSourcePipelineList{}
-			err := k8sClient.List(context.Background(), dataSourcePipelineList)
+			err := k8sClient.List(context.Background(), dataSourcePipelineList, client.InNamespace(namespace))
 			checkError(err)
 			Expect(dataSourcePipelineList.Items).To(HaveLen(1))
 
@@ -86,7 +87,7 @@ var _ = Describe("XJoinDataSource", func() {
 			checkError(err)
 			reconciler.ReconcileDelete()
 
-			err = k8sClient.List(context.Background(), dataSourcePipelineList)
+			err = k8sClient.List(context.Background(), dataSourcePipelineList, client.InNamespace(namespace))
 			checkError(err)
 			Expect(dataSourcePipelineList.Items).To(HaveLen(0))
 		})

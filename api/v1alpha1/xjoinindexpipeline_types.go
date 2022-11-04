@@ -22,6 +22,7 @@ type XJoinIndexPipelineSpec struct {
 }
 
 type XJoinIndexPipelineStatus struct {
+	ValidationResponse ValidationResponse `json:"validationResponse,omitempty"`
 }
 
 // +kubebuilder:object:root=true

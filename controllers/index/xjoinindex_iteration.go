@@ -16,8 +16,8 @@ type XJoinIndexIteration struct {
 }
 
 func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (err error) {
-	dataSourcePipeline := unstructured.Unstructured{}
-	dataSourcePipeline.Object = map[string]interface{}{
+	indexPipeline := unstructured.Unstructured{}
+	indexPipeline.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      name + "." + version,
 			"namespace": i.Iteration.Instance.GetNamespace(),
@@ -33,9 +33,9 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 			"customSubgraphImages": i.Parameters.CustomSubgraphImages.Value(),
 		},
 	}
-	dataSourcePipeline.SetGroupVersionKind(common.IndexPipelineGVK)
+	indexPipeline.SetGroupVersionKind(common.IndexPipelineGVK)
 
-	err = i.CreateChildResource(dataSourcePipeline, common.IndexGVK)
+	err = i.CreateChildResource(indexPipeline, common.IndexGVK)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -50,6 +50,7 @@ func (i *XJoinIndexIteration) CreateIndexValidator(name string, version string) 
 			"namespace": i.Iteration.Instance.GetNamespace(),
 			"labels": map[string]interface{}{
 				common.COMPONENT_NAME_LABEL: name,
+				"app":                       "xjoin-validator",
 			},
 		},
 		"spec": map[string]interface{}{

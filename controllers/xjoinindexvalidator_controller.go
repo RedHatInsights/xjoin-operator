@@ -13,6 +13,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,11 +32,13 @@ type XJoinIndexValidatorReconciler struct {
 	Recorder  record.EventRecorder
 	Namespace string
 	Test      bool
+	ClientSet *kubernetes.Clientset
 }
 
 func NewXJoinIndexValidatorReconciler(
 	client client.Client,
 	scheme *runtime.Scheme,
+	clientset *kubernetes.Clientset,
 	log logr.Logger,
 	recorder record.EventRecorder,
 	namespace string,
@@ -48,6 +51,7 @@ func NewXJoinIndexValidatorReconciler(
 		Recorder:  recorder,
 		Namespace: namespace,
 		Test:      isTest,
+		ClientSet: clientset,
 	}
 }
 
@@ -114,6 +118,7 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 			Client:           r.Client,
 			Log:              reqLogger,
 		},
+		ClientSet: r.ClientSet,
 	}
 
 	if err = i.AddFinalizer(xjoinindexValidatorFinalizer); err != nil {
@@ -127,10 +132,12 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 		}
 	}
 
-	err = i.Validate()
-	//if err != nil {
-	//	return result, errors.Wrap(err, 0)
-	//}
-
-	return reconcile.Result{}, nil
+	phase, err := i.ReconcileValidationPod()
+	if err != nil {
+		return result, errors.Wrap(err, 0)
+	} else if phase == "valid" {
+		return reconcile.Result{RequeueAfter: time.Second * time.Duration(p.ValidationInterval.Int())}, nil
+	} else {
+		return reconcile.Result{RequeueAfter: time.Second * time.Duration(p.ValidationPodStatusInterval.Int())}, nil
+	}
 }

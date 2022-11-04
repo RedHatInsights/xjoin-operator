@@ -23,6 +23,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	k8runtime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/clientcmd"
@@ -165,9 +166,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	clientset, err := kubernetes.NewForConfig(mgr.GetConfig()) //used to read logs from validation pod
+
 	if err = controllers.NewXJoinIndexValidatorReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
+		clientset,
 		ctrl.Log.WithName("controllers").WithName("XJoinIndexValidator"),
 		mgr.GetEventRecorderFor("xjoinindexvalidator"),
 		namespace,

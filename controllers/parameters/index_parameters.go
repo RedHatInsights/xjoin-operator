@@ -27,6 +27,8 @@ type IndexParameters struct {
 	ElasticSearchIndexTemplate       Parameter
 	KafkaBootstrapURL                Parameter
 	CustomSubgraphImages             Parameter
+	ValidationInterval               Parameter //period between validation checks (seconds)
+	ValidationPodStatusInterval      Parameter //period between checking the status of the validation pod (seconds)
 }
 
 func BuildIndexParameters() *IndexParameters {
@@ -164,6 +166,18 @@ func BuildIndexParameters() *IndexParameters {
 			Type:         reflect.Slice,
 			SpecKey:      "CustomSubgraphImages",
 			DefaultValue: nil,
+		},
+		ValidationInterval: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "validation.interval",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  1 * 60,
+		},
+		ValidationPodStatusInterval: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "validation.pod.status.interval",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  1,
 		},
 	}
 
