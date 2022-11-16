@@ -47,10 +47,13 @@ spec:
         },
         {
           "name": "account",
-          "type": {
-            "type": "string",
-            "xjoin.type": "string"
-          }
+          "type": [
+            "null",
+            {
+              "type": "string",
+              "xjoin.type": "string"
+            }
+          ]
         },
         {
           "name": "display_name",

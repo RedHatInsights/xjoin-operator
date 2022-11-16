@@ -38,15 +38,11 @@ spec:
             type: object
           spec:
             properties:
-              activePipeline:
-                type: boolean
               avroSchema:
                 type: string
               name:
                 type: string
               pause:
-                type: boolean
-              refreshingPipeline:
                 type: boolean
               version:
                 type: string

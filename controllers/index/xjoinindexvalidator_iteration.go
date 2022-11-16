@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/go-errors/errors"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
+	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"io"
 	v1 "k8s.io/api/core/v1"
@@ -44,53 +47,92 @@ func (i *XJoinIndexValidatorIteration) Finalize() (err error) {
 
 func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, err error) {
 	//Get index avro schema, references
-	/*
-		registry := schemaregistry.NewSchemaRegistryConfluentClient(
-			schemaregistry.ConnectionParams{
-				Protocol: i.Parameters.SchemaRegistryProtocol.String(),
-				Hostname: i.Parameters.SchemaRegistryHost.String(),
-				Port:     i.Parameters.SchemaRegistryPort.String(),
-			})
-		registry.Init()
+	registry := schemaregistry.NewSchemaRegistryConfluentClient(
+		schemaregistry.ConnectionParams{
+			Protocol: i.Parameters.SchemaRegistryProtocol.String(),
+			Hostname: i.Parameters.SchemaRegistryHost.String(),
+			Port:     i.Parameters.SchemaRegistryPort.String(),
+		})
+	registry.Init()
 
-		//name+version of IndexValidator is identical to IndexPipeline
-		references, err := registry.GetSchemaReferences("xjoinindexpipeline." + i.GetInstance().GetName() + "-value")
+	indexAvroSchemaParser := avro.IndexAvroSchemaParser{
+		AvroSchema:      i.Parameters.AvroSchema.String(),
+		Client:          i.Client,
+		Context:         i.Context,
+		Namespace:       i.Instance.GetNamespace(),
+		Log:             i.Log,
+		SchemaRegistry:  registry,
+		SchemaNamespace: i.Instance.GetName(),
+	}
+	indexAvroSchema, err := indexAvroSchemaParser.Parse()
+
+	schemas := make(map[string]string) //map of schema names to schema definition
+	var envVars []v1.EnvVar
+	for _, ref := range indexAvroSchema.References {
+		//Get reference schemas
+		refSchema, err := registry.GetSchema(ref.Subject)
+		if err != nil {
+			return "", errors.Wrap(err, 0)
+		}
+		schemas[ref.Name] = refSchema
+
+		//Get datasourcepipeline k8s object to get db connection info
+		dataSourcePipeline := &v1alpha1.XJoinDataSourcePipeline{}
+		dataSourcePipelineName := strings.Split(ref.Subject, "xjoindatasourcepipeline.")[1]
+		dataSourcePipelineName = strings.Split(dataSourcePipelineName, "-value")[0]
+		err = i.Client.Get(
+			i.Context,
+			client.ObjectKey{Name: dataSourcePipelineName, Namespace: i.GetInstance().Namespace},
+			dataSourcePipeline)
 		if err != nil {
 			return "", errors.Wrap(err, 0)
 		}
 
-		schemas := make(map[string]string)                                //map of schema names to schema definition
-		dataSourcePipelines := make(map[string]unstructured.Unstructured) //map of schema names to dataSourcePipeline
-		for _, ref := range references {
-			//Get reference schemas
-			refSchema, err := registry.GetSchema(ref.Subject)
-			if err != nil {
-				return "", errors.Wrap(err, 0)
-			}
-			schemas[ref.Name] = refSchema
+		envVars = append(envVars, v1.EnvVar{
+			Name: strings.Split(dataSourcePipelineName, ".")[0] + "_DB_HOSTNAME",
+			ValueFrom: &v1.EnvVarSource{
+				SecretKeyRef: dataSourcePipeline.Spec.DatabaseHostname.ValueFrom.SecretKeyRef,
+			},
+		})
 
-			//Get datasourcepipeline k8s object to get db connection info
-			dataSourcePipeline := &unstructured.Unstructured{}
-			dataSourcePipeline.SetGroupVersionKind(common.DataSourcePipelineGVK)
-			dataSourcePipelineName := strings.Split(ref.Subject, "XJoinDataSourcePipeline.")[1]
-			err = i.Client.Get(
-				i.Context,
-				client.ObjectKey{Name: dataSourcePipelineName, Namespace: i.GetInstance().Namespace},
-				dataSourcePipeline)
-			if err != nil {
-				return "", errors.Wrap(err, 0)
-			}
-			dataSourcePipelines[ref.Name] = *dataSourcePipeline
-		}
+		envVars = append(envVars, v1.EnvVar{
+			Name: strings.Split(dataSourcePipelineName, ".")[0] + "_DB_USERNAME",
+			ValueFrom: &v1.EnvVarSource{
+				SecretKeyRef: dataSourcePipeline.Spec.DatabaseUsername.ValueFrom.SecretKeyRef,
+			},
+		})
 
-	*/
+		envVars = append(envVars, v1.EnvVar{
+			Name: strings.Split(dataSourcePipelineName, ".")[0] + "_DB_PASSWORD",
+			ValueFrom: &v1.EnvVarSource{
+				SecretKeyRef: dataSourcePipeline.Spec.DatabasePassword.ValueFrom.SecretKeyRef,
+			},
+		})
 
-	//use avro schema to map database rows, es documents
+		envVars = append(envVars, v1.EnvVar{
+			Name: strings.Split(dataSourcePipelineName, ".")[0] + "_DB_NAME",
+			ValueFrom: &v1.EnvVarSource{
+				SecretKeyRef: dataSourcePipeline.Spec.DatabaseName.ValueFrom.SecretKeyRef,
+			},
+		})
+
+		envVars = append(envVars, v1.EnvVar{
+			Name: strings.Split(dataSourcePipelineName, ".")[0] + "_DB_PORT",
+			ValueFrom: &v1.EnvVarSource{
+				SecretKeyRef: dataSourcePipeline.Spec.DatabasePort.ValueFrom.SecretKeyRef,
+			},
+		})
+
+		envVars = append(envVars, v1.EnvVar{
+			Name:  strings.Split(dataSourcePipelineName, ".")[0] + "_DB_TABLE",
+			Value: dataSourcePipeline.Spec.DatabaseTable.Value,
+		})
+	}
 
 	//check if pod is already running
-	podList := &v1.PodList{}
 	labels := client.MatchingLabels{}
 	labels["xjoin.index"] = i.Instance.GetName()
+	podList := &v1.PodList{}
 	err = i.Client.List(i.Context, podList, client.InNamespace(i.Instance.GetNamespace()), labels)
 	if err != nil {
 		return "", errors.Wrap(err, 0)
@@ -112,7 +154,7 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 				Containers: []v1.Container{{
 					Name:  i.ValidationPodName(),
 					Image: "quay.io/ckyrouac/xjoin-validation:latest",
-					Env: []v1.EnvVar{{
+					Env: append(envVars, []v1.EnvVar{{
 						Name: "ELASTICSEARCH_URL",
 						ValueFrom: &v1.EnvVarSource{
 							SecretKeyRef: &v1.SecretKeySelector{
@@ -155,9 +197,12 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 						Name:  "SCHEMA_REGISTRY_PORT",
 						Value: i.Parameters.SchemaRegistryPort.String(),
 					}, {
-						Name:  "AVRO_SCHEMA",
+						Name:  "FULL_AVRO_SCHEMA",
+						Value: indexAvroSchema.AvroSchemaString,
+					}, {
+						Name:  "INDEX_AVRO_SCHEMA",
 						Value: i.Parameters.AvroSchema.String(),
-					}},
+					}}...),
 					ImagePullPolicy: "Always",
 				}},
 			},
@@ -210,6 +255,8 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 			return "", errors.Wrap(err, 0)
 		}
 
+		//TODO: delete secret
+
 		return response.Result, nil
 	} else if pod.Status.Phase == "Failed" {
 		return "failed", nil
@@ -228,8 +275,8 @@ func (i *XJoinIndexValidatorIteration) ValidationPodName() string {
 	return name
 }
 
-func (i *XJoinIndexValidatorIteration) ParsePodResponse() (v1alpha1.ValidationResponse, error) {
-	var response v1alpha1.ValidationResponse
+func (i *XJoinIndexValidatorIteration) ParsePodResponse() (validation.ValidationResponse, error) {
+	var response validation.ValidationResponse
 	podLogOpts := v1.PodLogOptions{}
 	req := i.ClientSet.CoreV1().Pods(i.Instance.GetNamespace()).GetLogs(i.ValidationPodName(), &podLogOpts)
 
