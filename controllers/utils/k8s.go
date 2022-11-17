@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-errors/errors"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"hash/fnv"
@@ -106,7 +107,7 @@ func ConfigMapHash(cm *corev1.ConfigMap, ignoredKeys ...string) (string, error) 
 		return "-1", nil
 	}
 
-	values := Omit(cm.Data, ignoredKeys...)
+	values := utils.Omit(cm.Data, ignoredKeys...)
 
 	jsonVal, err := json.Marshal(values)
 

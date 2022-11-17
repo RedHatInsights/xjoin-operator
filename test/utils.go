@@ -2,7 +2,7 @@ package test
 
 import (
 	"fmt"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"strconv"
 	"time"
 

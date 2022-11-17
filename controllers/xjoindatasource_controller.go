@@ -10,7 +10,7 @@ import (
 	. "github.com/redhatinsights/xjoin-operator/controllers/datasource"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -68,7 +68,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 	reqLogger := xjoinlogger.NewLogger("controller_xjoindatasource", "DataSource", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling XJoinDataSource")
 
-	instance, err := utils.FetchXJoinDataSource(r.Client, request.NamespacedName, ctx)
+	instance, err := k8sUtils.FetchXJoinDataSource(r.Client, request.NamespacedName, ctx)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -134,7 +134,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return reconcile.Result{}, nil
 	}
 
-	instance.Status.SpecHash, err = utils.SpecHash(instance.Spec)
+	instance.Status.SpecHash, err = k8sUtils.SpecHash(instance.Spec)
 	if err != nil {
 		return result, errors.Wrap(err, 0)
 	}

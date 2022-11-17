@@ -3,7 +3,7 @@ package components
 import (
 	"encoding/json"
 	"github.com/go-errors/errors"
-	"github.com/redhatinsights/xjoin-operator/controllers/avro"
+	. "github.com/redhatinsights/xjoin-go-lib/pkg/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"github.com/riferrei/srclient"
 	"strings"
@@ -105,7 +105,7 @@ func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err e
 }
 
 func (as AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
-	var schemaObj avro.Schema
+	var schemaObj Schema
 	err = json.Unmarshal([]byte(as.schema), &schemaObj)
 	if err != nil {
 		return schema, errors.Wrap(err, 0)

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-logr/logr"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
@@ -28,7 +29,7 @@ import (
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	. "github.com/redhatinsights/xjoin-operator/controllers/pipeline"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	v1 "k8s.io/api/core/v1"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,7 +60,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 
 	i := ReconcileIteration{}
 
-	instance, err := utils.FetchXJoinPipeline(r.Client, request.NamespacedName, ctx)
+	instance, err := k8sUtils.FetchXJoinPipeline(r.Client, request.NamespacedName, ctx)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -385,7 +386,7 @@ func (r *XJoinPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return requests
 			}
 
-			pipelines, err := utils.FetchXJoinPipelines(r.Client, ctx)
+			pipelines, err := k8sUtils.FetchXJoinPipelines(r.Client, ctx)
 			if err != nil {
 				r.Log.Error(err, "Failed to fetch XJoinPipelines")
 				return requests
@@ -416,7 +417,7 @@ func (r *XJoinPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			secretName := secret.GetName()
 
-			pipelines, err := utils.FetchXJoinPipelines(r.Client, ctx)
+			pipelines, err := k8sUtils.FetchXJoinPipelines(r.Client, ctx)
 			if err != nil {
 				r.Log.Error(err, "Failed to fetch XJoinPipelines")
 				return requests

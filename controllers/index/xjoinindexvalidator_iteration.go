@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/go-errors/errors"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"io"
 	v1 "k8s.io/api/core/v1"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
@@ -235,7 +236,7 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 			Name:      i.Instance.GetName(),
 			Namespace: i.Instance.GetNamespace(),
 		}
-		xjoinIndexPipeline, err := utils.FetchXJoinIndexPipeline(i.Client, indexNamespacedName, i.Context)
+		xjoinIndexPipeline, err := k8sUtils.FetchXJoinIndexPipeline(i.Client, indexNamespacedName, i.Context)
 		if err != nil {
 			return "", errors.Wrap(err, 0)
 		}

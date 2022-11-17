@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
@@ -13,7 +14,7 @@ import (
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -77,7 +78,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 	reqLogger := xjoinlogger.NewLogger("controller_xjoindatasourcepipeline", "DataSourcePipeline", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling XJoinDataSourcePipeline")
 
-	instance, err := utils.FetchXJoinDataSourcePipeline(r.Client, request.NamespacedName, ctx)
+	instance, err := k8sUtils.FetchXJoinDataSourcePipeline(r.Client, request.NamespacedName, ctx)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.

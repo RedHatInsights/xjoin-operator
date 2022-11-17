@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-errors/errors"
+	xjoinUtils "github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -38,7 +39,7 @@ func NewConfig(instance *xjoin.XJoinPipeline, client client.Client, ctx context.
 	config := Config{}
 
 	config.Parameters = NewXJoinConfiguration()
-	cm, err := utils.FetchConfigMap(client, instance.Namespace, "xjoin", ctx)
+	cm, err := k8sUtils.FetchConfigMap(client, instance.Namespace, "xjoin", ctx)
 	if err != nil {
 		return &config, err
 	}
@@ -52,7 +53,7 @@ func NewConfig(instance *xjoin.XJoinPipeline, client client.Client, ctx context.
 	}
 	hbiDBSecretName := hbiDBSecretNameVal.Interface().(Parameter)
 	instance.Status.HBIDBSecretName = hbiDBSecretName.String()
-	config.hbiDBSecret, err = utils.FetchSecret(client, instance.Namespace, hbiDBSecretName.String(), ctx)
+	config.hbiDBSecret, err = k8sUtils.FetchSecret(client, instance.Namespace, hbiDBSecretName.String(), ctx)
 	if err != nil {
 		return &config, err
 	}
@@ -63,7 +64,7 @@ func NewConfig(instance *xjoin.XJoinPipeline, client client.Client, ctx context.
 	}
 	elasticSearchSecretName := elasticSearchSecretVal.Interface().(Parameter)
 	instance.Status.ElasticSearchSecretName = elasticSearchSecretName.String()
-	config.elasticSearchSecret, err = utils.FetchSecret(client, instance.Namespace, elasticSearchSecretName.String(), ctx)
+	config.elasticSearchSecret, err = k8sUtils.FetchSecret(client, instance.Namespace, elasticSearchSecretName.String(), ctx)
 	if err != nil {
 		return &config, err
 	}
@@ -73,7 +74,7 @@ func NewConfig(instance *xjoin.XJoinPipeline, client client.Client, ctx context.
 		return &config, err
 	}
 	schemaRegistrySecretName := schemaRegistrySecretNameVal.Interface().(Parameter)
-	config.schemaRegistrySecret, err = utils.FetchSecret(client, instance.Namespace, schemaRegistrySecretName.String(), ctx)
+	config.schemaRegistrySecret, err = k8sUtils.FetchSecret(client, instance.Namespace, schemaRegistrySecretName.String(), ctx)
 	if err != nil {
 		return &config, err
 	}
@@ -244,7 +245,7 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 		}
 	}
 
-	ctx, cancel := utils.DefaultContext()
+	ctx, cancel := xjoinUtils.DefaultContext()
 	defer cancel()
 	err = config.client.List(
 		ctx,
@@ -322,7 +323,7 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 		return err
 	}
 
-	esSecret, err := utils.FetchSecret(
+	esSecret, err := k8sUtils.FetchSecret(
 		config.client, config.Parameters.ElasticSearchNamespace.String(), "xjoin-elasticsearch-es-elastic-user", ctx)
 	if err != nil {
 		return err
@@ -376,7 +377,7 @@ func (config *Config) buildXJoinConfig(ctx context.Context) error {
 		}
 	}
 
-	configMapHash, err := utils.ConfigMapHash(config.configMap, keysIgnoredByRefresh...)
+	configMapHash, err := k8sUtils.ConfigMapHash(config.configMap, keysIgnoredByRefresh...)
 	if err != nil {
 		return err
 	}
@@ -385,7 +386,7 @@ func (config *Config) buildXJoinConfig(ctx context.Context) error {
 		return err
 	}
 
-	dbSecretHash, err := utils.SecretHash(config.hbiDBSecret)
+	dbSecretHash, err := k8sUtils.SecretHash(config.hbiDBSecret)
 	if err != nil {
 		return err
 	}
@@ -394,7 +395,7 @@ func (config *Config) buildXJoinConfig(ctx context.Context) error {
 		return err
 	}
 
-	esSecretHash, err := utils.SecretHash(config.elasticSearchSecret)
+	esSecretHash, err := k8sUtils.SecretHash(config.elasticSearchSecret)
 	if err != nil {
 		return err
 	}

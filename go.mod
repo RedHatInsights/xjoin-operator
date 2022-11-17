@@ -16,7 +16,7 @@ require (
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.10.2
 	github.com/prometheus/client_golang v1.7.1
-	github.com/redhatinsights/xjoin-go-lib v0.0.3
+	github.com/redhatinsights/xjoin-go-lib v0.0.4
 	github.com/riferrei/srclient v0.4.0
 	github.com/spf13/viper v1.7.0
 	go.uber.org/zap v1.15.0

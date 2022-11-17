@@ -7,13 +7,14 @@ import (
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/go-errors/errors"
 	"github.com/google/uuid"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers"
 	xjoinconfig "github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"github.com/redhatinsights/xjoin-operator/test"
 	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
@@ -865,7 +866,7 @@ func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) error {
 func (i *Iteration) GetPipeline() (*xjoin.XJoinPipeline, error) {
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	return utils.FetchXJoinPipeline(test.Client, i.NamespacedName, ctx)
+	return k8sUtils.FetchXJoinPipeline(test.Client, i.NamespacedName, ctx)
 }
 
 func (i *Iteration) ReconcileXJoinForDeletedPipeline() error {

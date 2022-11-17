@@ -4,13 +4,14 @@ import (
 	"context"
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	. "github.com/redhatinsights/xjoin-operator/controllers/index"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -68,7 +69,7 @@ func (r *XJoinIndexReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			var requests []reconcile.Request
 
-			indexes, err := utils.FetchXJoinIndexes(r.Client, ctx)
+			indexes, err := k8sUtils.FetchXJoinIndexes(r.Client, ctx)
 			if err != nil {
 				r.Log.Error(err, "Failed to fetch XJoinIndexes")
 				return requests
@@ -98,7 +99,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 	reqLogger := xjoinlogger.NewLogger("controller_xjoinindex", "Index", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling XJoinIndex")
 
-	instance, err := utils.FetchXJoinIndex(r.Client, request.NamespacedName, ctx)
+	instance, err := k8sUtils.FetchXJoinIndex(r.Client, request.NamespacedName, ctx)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -157,7 +158,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 			Namespace: i.Instance.GetNamespace(),
 		}
 
-		activeIndexPipeline, err := utils.FetchXJoinIndexPipeline(i.Client, indexPipelineNamespacedName, i.Context)
+		activeIndexPipeline, err := k8sUtils.FetchXJoinIndexPipeline(i.Client, indexPipelineNamespacedName, i.Context)
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
@@ -171,7 +172,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 			Namespace: i.Instance.GetNamespace(),
 		}
 
-		refreshingIndexPipeline, err := utils.FetchXJoinIndexPipeline(i.Client, indexPipelineNamespacedName, i.Context)
+		refreshingIndexPipeline, err := k8sUtils.FetchXJoinIndexPipeline(i.Client, indexPipelineNamespacedName, i.Context)
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
@@ -186,7 +187,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 			Name:      dataSourceName,
 			Namespace: instance.GetNamespace(),
 		}
-		dataSource, err := utils.FetchXJoinDataSource(i.Client, dataSourceNamespacedName, i.Context)
+		dataSource, err := k8sUtils.FetchXJoinDataSource(i.Client, dataSourceNamespacedName, i.Context)
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
@@ -207,7 +208,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		return reconcile.Result{}, nil
 	}
 
-	instance.Status.SpecHash, err = utils.SpecHash(instance.Spec)
+	instance.Status.SpecHash, err = k8sUtils.SpecHash(instance.Spec)
 	if err != nil {
 		return result, errors.Wrap(err, 0)
 	}

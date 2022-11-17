@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-errors/errors"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"net/http"

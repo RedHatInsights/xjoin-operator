@@ -2,9 +2,10 @@ package test
 
 import (
 	"fmt"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"github.com/redhatinsights/xjoin-operator/test"
 	"gopkg.in/h2non/gock.v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -249,7 +250,7 @@ var _ = Describe("Pipeline operations", func() {
 		It("Considers db secret name configuration", func() {
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			hbiDBSecret, err := utils.FetchSecret(
+			hbiDBSecret, err := k8sUtils.FetchSecret(
 				test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 			err = test.Client.Delete(ctx, hbiDBSecret)
@@ -268,7 +269,7 @@ var _ = Describe("Pipeline operations", func() {
 		It("Considers es secret name configuration", func() {
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			elasticSearchSecret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
+			elasticSearchSecret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 			err = test.Client.Delete(ctx, elasticSearchSecret)
 			Expect(err).ToNot(HaveOccurred())
@@ -575,7 +576,7 @@ var _ = Describe("Pipeline operations", func() {
 
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			configMap, err := utils.FetchConfigMap(test.Client, i.NamespacedName.Namespace, "xjoin", ctx)
+			configMap, err := k8sUtils.FetchConfigMap(test.Client, i.NamespacedName.Namespace, "xjoin", ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			cm["debezium.connector.errors.log.enable"] = "false"
@@ -602,7 +603,7 @@ var _ = Describe("Pipeline operations", func() {
 
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
+			secret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			//update the secret with new username/password
@@ -635,7 +636,7 @@ var _ = Describe("Pipeline operations", func() {
 
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
+			secret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			//change the secret hash by adding a new field
@@ -810,7 +811,7 @@ var _ = Describe("Pipeline operations", func() {
 			//trigger refresh so there is an active and initializing pipeline
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
+			secret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["newfield"] = []byte("value")
 			err = test.Client.Update(ctx, secret)
@@ -833,7 +834,7 @@ var _ = Describe("Pipeline operations", func() {
 		It("Artifacts removed when an error occurs during initial setup", func() {
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
+			secret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["db.host"] = []byte("invalidurl")
 			err = test.Client.Update(ctx, secret)
@@ -866,7 +867,7 @@ var _ = Describe("Pipeline operations", func() {
 		It("Fails if ElasticSearch secret is misconfigured", func() {
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
+			secret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["endpoint"] = []byte("invalidurl")
 			err = test.Client.Update(ctx, secret)
@@ -881,7 +882,7 @@ var _ = Describe("Pipeline operations", func() {
 		It("Fails if HBI DB secret is misconfigured", func() {
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			secret, err := utils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
+			secret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["db.host"] = []byte("invalidurl")
 			err = test.Client.Update(ctx, secret)
@@ -1160,7 +1161,13 @@ var _ = Describe("Pipeline operations", func() {
 
 	Describe("Kafka Topic", func() {
 		It("Waits for the Kafka topic to be ready before creating connectors", func() {
-			err := i.CreatePipeline()
+			cm := map[string]string{
+				"kafka.topic.replicas": "1",
+			}
+			err := i.CreateConfigMap("xjoin", cm)
+			Expect(err).ToNot(HaveOccurred())
+
+			err = i.CreatePipeline()
 			Expect(err).ToNot(HaveOccurred())
 			pipeline, err := i.ReconcileXJoinNonTest()
 			Expect(err).ToNot(HaveOccurred())

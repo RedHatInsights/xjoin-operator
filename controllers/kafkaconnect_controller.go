@@ -6,7 +6,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -30,7 +30,7 @@ type KafkaConnectReconciler struct {
 }
 
 func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Request, ctx context.Context) error {
-	instance, err := utils.FetchXJoinPipeline(r.Client, request.NamespacedName, ctx)
+	instance, err := k8sUtils.FetchXJoinPipeline(r.Client, request.NamespacedName, ctx)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.

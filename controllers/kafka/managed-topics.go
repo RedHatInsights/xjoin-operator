@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/google/go-cmp/cmp"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"golang.org/x/oauth2/clientcredentials"
 	"io/ioutil"
 	"net/http"

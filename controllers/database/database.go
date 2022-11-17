@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"net/url"
 	"sort"
 	"strings"
@@ -16,7 +17,6 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
 )
 
 var log = logger.NewLogger("database")

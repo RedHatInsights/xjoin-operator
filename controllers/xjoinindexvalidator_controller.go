@@ -10,7 +10,7 @@ import (
 	. "github.com/redhatinsights/xjoin-operator/controllers/index"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -74,7 +74,7 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 	reqLogger := xjoinlogger.NewLogger("controller_xjoinindexvalidator", "IndexValidator", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling XJoinIndexValidator")
 
-	instance, err := utils.FetchXJoinIndexValidator(r.Client, request.NamespacedName, ctx)
+	instance, err := k8sUtils.FetchXJoinIndexValidator(r.Client, request.NamespacedName, ctx)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.

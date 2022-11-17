@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
@@ -15,7 +16,7 @@ import (
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -84,7 +85,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	reqLogger := xjoinlogger.NewLogger("controller_xjoinindexpipeline", "IndexPipeline", request.Name, "Namespace", request.Namespace)
 	reqLogger.Info("Reconciling XJoinIndexPipeline")
 
-	instance, err := utils.FetchXJoinIndexPipeline(r.Client, request.NamespacedName, ctx)
+	instance, err := k8sUtils.FetchXJoinIndexPipeline(r.Client, request.NamespacedName, ctx)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -332,7 +333,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 			Name:      name,
 			Namespace: i.Instance.GetNamespace(),
 		}
-		datasource, err := utils.FetchXJoinDataSource(i.Client, datasourceNamespacedName, ctx)
+		datasource, err := k8sUtils.FetchXJoinDataSource(i.Client, datasourceNamespacedName, ctx)
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
@@ -344,7 +345,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Name:      instance.OwnerReferences[0].Name,
 		Namespace: i.Instance.GetNamespace(),
 	}
-	xjoinIndex, err := utils.FetchXJoinIndex(i.Client, indexNamespacedName, ctx)
+	xjoinIndex, err := k8sUtils.FetchXJoinIndex(i.Client, indexNamespacedName, ctx)
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}

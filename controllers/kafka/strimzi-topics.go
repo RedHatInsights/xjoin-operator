@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/google/go-cmp/cmp"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -65,7 +65,7 @@ func (t *StrimziTopics) createTopicByFullName(topicName string, dryRun bool) (*u
 	defer cancel()
 	err := t.Client.Create(ctx, topic)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, 0)
 	}
 
 	if !t.Test {

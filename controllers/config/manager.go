@@ -6,7 +6,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	v1 "k8s.io/api/core/v1"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -109,7 +109,7 @@ func (m *Manager) Parse() error {
 
 func (m *Manager) loadConfigMaps() error {
 	for _, name := range m.configMapNames {
-		cm, err := utils.FetchConfigMap(m.client, m.namespace, name, m.ctx)
+		cm, err := k8sUtils.FetchConfigMap(m.client, m.namespace, name, m.ctx)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
@@ -123,7 +123,7 @@ func (m *Manager) loadConfigMaps() error {
 
 func (m *Manager) loadSecrets() error {
 	for _, name := range m.secretNames {
-		secret, err := utils.FetchSecret(m.client, m.namespace, name, m.ctx)
+		secret, err := k8sUtils.FetchSecret(m.client, m.namespace, name, m.ctx)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}

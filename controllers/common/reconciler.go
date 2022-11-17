@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/go-errors/errors"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
-	"github.com/redhatinsights/xjoin-operator/controllers/utils"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"strconv"
 	"time"
 )
@@ -92,7 +92,7 @@ func (r *Reconciler) getState(specHash string) string {
 }
 
 func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
-	specHash, err := utils.SpecHash(r.instance.GetSpec())
+	specHash, err := k8sUtils.SpecHash(r.instance.GetSpec())
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
