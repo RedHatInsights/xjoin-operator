@@ -96,13 +96,11 @@ if [ -z "$KUBE_SETUP_PATH" ]; then
     if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
       sed -i '' 's/^install_xjoin_operator//g' ./kube_setup.sh
     fi
-    sed -i '' 's/^install_cyndi_operator//g' ./kube_setup.sh
     sed -i '' 's/^install_keda_operator//g' ./kube_setup.sh
   else
     if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
       sed -i 's/^install_xjoin_operator//g' ./kube_setup.sh
     fi
-    sed -i 's/^install_cyndi_operator//g' ./kube_setup.sh
     sed -i 's/^install_keda_operator//g' ./kube_setup.sh
     sed -i 's/minikube kubectl --/kubectl/g' ./kube_setup.sh # this allows connecting to remote minikube instances
   fi
@@ -130,7 +128,7 @@ kubectl apply -f dev/xjoin-generic.configmap.yaml -n test
 
 # bonfire environment (kafka, connect, etc.)
 print_start_message "Setting up bonfire environment"
-bonfire process-env -n test -u cloudservices -f ./dev/clowdenv.yaml | oc apply -f - -n test
+bonfire process-env -n test -u cloudservices --template-file ./dev/clowdenv.yaml | oc apply -f - -n test
 wait_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-zookeeper
 wait_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-kafka
 wait_for_pod_to_be_running strimzi.io/cluster=connect
