@@ -156,7 +156,7 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 					Name:  i.ValidationPodName(),
 					Image: "quay.io/ckyrouac/xjoin-validation:latest",
 					Env: append(envVars, []v1.EnvVar{{
-						Name: "ELASTICSEARCH_URL",
+						Name: "ELASTICSEARCH_HOST_URL",
 						ValueFrom: &v1.EnvVarSource{
 							SecretKeyRef: &v1.SecretKeySelector{
 								LocalObjectReference: v1.LocalObjectReference{
