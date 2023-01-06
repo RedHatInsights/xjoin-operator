@@ -87,6 +87,7 @@ print_start_message "Running kube-setup.sh"
 CURRENT_DIR=$(pwd)
 mkdir /tmp/kubesetup
 cd /tmp/kubesetup || exit 1
+START_TIME=`date +%s`
 
 if [ -z "$KUBE_SETUP_PATH" ]; then
   echo "Using default kube_setup from github"
@@ -179,4 +180,9 @@ kubectl delete pods --selector='job=host-inventory-synchronizer' -n test
 kubectl delete pods --selector='job=host-inventory-org-id-populator' -n test
 
 dev/forward-ports-clowder.sh test
+
+END_TIME=`date +%s`
+DEPLOYMENT_TIME=`expr $END_TIME - $START_TIME`
+print_start_message "Deployment of strimzi kafka, host-inventory, and xjoin-operator took $DEPLOYMENT_TIME seconds"
+
 print_start_message "Done!"
