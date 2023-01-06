@@ -61,7 +61,7 @@ function insert_chunk() {
     echo -ne "$INDEX\r"
   done
 
-  psql -U postgres -h localhost -p 5432 -d insights -f "$FILE"
+  psql -U postgres -h localhost -p 5432 -d host-inventory -f "$FILE"
   rm "$FILE"
 }
 
@@ -77,7 +77,7 @@ function insert_extras() {
     echo -ne "$INDEX\r"
   done
 
-  psql -U postgres -h localhost -p 5432 -d insights -f "$FILE"
+  psql -U postgres -h localhost -p 5432 -d host-inventory -f "$FILE"
   rm "$FILE"
 }
 
