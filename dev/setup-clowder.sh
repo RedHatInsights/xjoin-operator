@@ -13,7 +13,7 @@ fi
 INCLUDE_EXTRA_STUFF=$1
 PLATFORM=`uname -a | cut -f1 -d' '`
 
-function print_start_message() {
+function print_message() {
   echo -e "\n********************************************************************************"
   echo -e "* $1"
   echo -e "********************************************************************************\n"
@@ -71,7 +71,7 @@ kubectl create ns test
 
 if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   # OLM
-  print_start_message "Installing OLM"
+  print_message "Installing OLM"
   CURRENT_DIR=$(pwd)
   mkdir /tmp/olm
   cd /tmp/olm || exit 1
@@ -83,7 +83,7 @@ if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
 fi
 
 # kube_setup.sh
-print_start_message "Running kube-setup.sh"
+print_message "Running kube-setup.sh"
 CURRENT_DIR=$(pwd)
 mkdir /tmp/kubesetup
 cd /tmp/kubesetup || exit 1
@@ -115,27 +115,27 @@ cd "$CURRENT_DIR" || exit 1
 kubectl set env deployment/strimzi-cluster-operator -n strimzi STRIMZI_IMAGE_PULL_SECRETS=cloudservices-pull-secret
 
 # clowder CRDs
-print_start_message "Installing Clowder CRDs"
+print_message "Installing Clowder CRDs"
 kubectl apply -f $(curl https://api.github.com/repos/RedHatInsights/clowder/releases/latest | jq '.assets[0].browser_download_url' -r) --validate=false
 
 # project and secrets
-print_start_message "Setting up pull secrets"
+print_message "Setting up pull secrets"
 dev/setup.sh -s -p test
 
 # operator CRDs, configmap, XJoinPipeline
-print_start_message "Setting up XJoin operator"
+print_message "Setting up XJoin operator"
 dev/setup.sh -x -d -p test
 kubectl apply -f dev/xjoin-generic.configmap.yaml -n test
 
 # bonfire environment (kafka, connect, etc.)
-print_start_message "Setting up bonfire environment"
+print_message "Setting up bonfire environment"
 bonfire process-env -n test -u cloudservices --template-file ./dev/clowdenv.yaml | oc apply -f - -n test
 wait_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-zookeeper
 wait_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-kafka
 wait_for_pod_to_be_running strimzi.io/cluster=connect
 
 # inventory resources
-print_start_message "Setting up host-inventory"
+print_message "Setting up host-inventory"
 bonfire process host-inventory -n test --no-get-dependencies | oc apply -f - -n test
 delete_clowdapp_dependencies host-inventory
 wait_for_pod_to_be_running app=host-inventory,service=db
@@ -154,7 +154,7 @@ psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE PUBLICATIO
 psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE DATABASE test WITH TEMPLATE '$HBI_NAME';"
 
 # elasticsearch
-print_start_message "Setting up elasticsearch password"
+print_message "Setting up elasticsearch password"
 dev/setup.sh -e -p test
 
 if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
@@ -163,15 +163,15 @@ if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   kubectl apply -f dev/demo/cats.db.yaml -n test
 
   # APICurio (the ApiCurio operator has not been released in over a year, this will manually create a deployment/service)
-  print_start_message "Installing Apicurio"
+  print_message "Installing Apicurio"
   wait_for_pod_to_be_running app=apicurio
 
   # XJoin API Gateway
-  print_start_message "Setting up xjoin-api-gateway"
+  print_message "Setting up xjoin-api-gateway"
   wait_for_pod_to_be_running app=xjoin-api-gateway
 
   # cats resources
-  print_start_message "Setting up cats"
+  print_message "Setting up cats"
   wait_for_pod_to_be_running app=cats,service=db
   dev/forward-ports-clowder.sh test
 fi
@@ -183,6 +183,6 @@ dev/forward-ports-clowder.sh test
 
 END_TIME=`date +%s`
 DEPLOYMENT_TIME=`expr $END_TIME - $START_TIME`
-print_start_message "Deployment of strimzi kafka, host-inventory, and xjoin-operator took $DEPLOYMENT_TIME seconds"
+print_message "Deployment of strimzi kafka, host-inventory, and xjoin-operator took $DEPLOYMENT_TIME seconds"
 
-print_start_message "Done!"
+print_message "Done!"
