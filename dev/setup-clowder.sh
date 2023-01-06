@@ -159,7 +159,6 @@ dev/setup.sh -e -p test
 if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   kubectl apply -f ./dev/apicurio.yaml -n test
   bonfire process xjoin-api-gateway -n test --no-get-dependencies -p xjoin-api-gateway/SCHEMA_REGISTRY_HOSTNAME=apicurio.test.svc -p xjoin-api-gateway/SCHEMA_REGISTRY_PORT=1080 | oc apply -f - -n test
-  kubectl apply -f dev/demo/cats.db.yaml -n test
 
   # APICurio (the ApiCurio operator has not been released in over a year, this will manually create a deployment/service)
   print_start_message "Installing Apicurio"
@@ -168,11 +167,6 @@ if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   # XJoin API Gateway
   print_start_message "Setting up xjoin-api-gateway"
   wait_for_pod_to_be_running app=xjoin-api-gateway
-
-  # cats resources
-  print_start_message "Setting up cats"
-  wait_for_pod_to_be_running app=cats,service=db
-  dev/forward-ports-clowder.sh test
 fi
 
 kubectl delete pods --selector='job=host-inventory-synchronizer' -n test
