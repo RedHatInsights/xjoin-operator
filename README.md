@@ -29,17 +29,20 @@ The operator is responsible for:
 ## Implementation
 
 The operator defines two controllers that reconcile a XJoinPipeline
+
 * [PipelineController](./controllers/xjoinpipeline_controller.go) which manages all the resources
   (connectors, elasticsearch resources, topic, replication slots) and handles recovery
 * [ValidationController](./controllers/validation_controller.go) which periodically compares the data in the
   ElasticSearch index with what is stored in HBI to determine whether the pipeline is valid
 
 ## Development
+
 ### Setting up the development environment using Clowder
+
 1. Install the latest version of [bonfire](https://github.com/RedHatInsights/bonfire)
 2. Set up a local Kubernetes environment. Known to work with the following:
-   - [CodeReady Containers](https://developers.redhat.com/products/codeready-containers/overview)
-   - [MiniKube](https://minikube.sigs.k8s.io/docs/start/)
+    - [CodeReady Containers](https://developers.redhat.com/products/codeready-containers/overview)
+    - [MiniKube](https://minikube.sigs.k8s.io/docs/start/)
 
 3. Configure Kubernetes to use at least 16G of memory and 6 cpus. This is known to work, although you can try with less.
     ```
@@ -55,7 +58,7 @@ The operator defines two controllers that reconcile a XJoinPipeline
    ```
    minikube config set driver kvm2
    ```
-   
+
 5. Start Kubernetes
     ```
     ./crc start
@@ -65,20 +68,23 @@ The operator defines two controllers that reconcile a XJoinPipeline
     ```
 
 6. If using CRC
-   - When prompted for a pull secret paste it (you obtained pull secret on step 1 when downloading CRC)
-   - Log in to the cluster as kubeadmin (oc login -u kubeadmin -p ...)
-     You'll find the exact command to use in the CRC startup log
+    - When prompted for a pull secret paste it (you obtained pull secret on step 1 when downloading CRC)
+    - Log in to the cluster as kubeadmin (oc login -u kubeadmin -p ...)
+      You'll find the exact command to use in the CRC startup log
 
 7. Login to https://quay.io and https://registry.redhat.io
-   - `docker login -u=<quay-username> -p="password" quay.io`
-   - `docker login https://registry.redhat.io`
-   - For MacOS, do the following to place the creds in .docker/config.json, which are stored in `"credsStore": "desktop"|"osxkeystore"` and are not available for pulling images from private repos.
-      1. `docker logout quay.io`
-      1. `docker logout registry.redhat.io`
-      1. Remove the "credStore" block from .docker/config.json.
-      1. `docker login -u=<quay-username> -p="password" quay.io`
-      1. `docker login https://registry.redhat.io`
-      - NOTE: Manually creating the `.docker/config.json` and adding `"auth": base64-encoded username:password` does not work.
+    - `docker login -u=<quay-username> -p="password" quay.io`
+    - `docker login https://registry.redhat.io`
+    - For MacOS, do the following to place the creds in .docker/config.json, which are stored
+      in `"credsStore": "desktop"|"osxkeystore"` and are not available for pulling images from private repos.
+        1. `docker logout quay.io`
+        1. `docker logout registry.redhat.io`
+        1. Remove the "credStore" block from .docker/config.json.
+        1. `docker login -u=<quay-username> -p="password" quay.io`
+        1. `docker login https://registry.redhat.io`
+
+        - NOTE: Manually creating the `.docker/config.json` and adding `"auth": base64-encoded username:password` does
+          not work.
 
 8. Do one of the following
     - Append the following line into `/etc/hosts`
@@ -93,19 +99,23 @@ The operator defines two controllers that reconcile a XJoinPipeline
 9. `./dev/setup-clowder.sh`
 
 ### Forward ports
+
 To access the services within the Kubernetes cluster there is a script to forward ports to each of the useful services:
+
 ```bash
 ./dev/forward-ports-clowder.sh
 ```
-   
+
 ### Reset the development environment
+
 The Openshift environment can be deleted with this script:
+
 ```bash
 ./dev/teardown.sh
 ```
 
 Afterwards, the environment can be setup again without restarting Kubernetes via `dev/setup.sh`.
-   
+
 ### Running the operator locally
 
 With the cluster set up it is now possible to install manifests and run the operator locally.
@@ -125,19 +135,22 @@ With the cluster set up it is now possible to install manifests and run the oper
     kubectl apply -f ../config/samples/xjoin_v1alpha1_xjoinpipeline.yaml -n test
     ```
 
-There is also `make delve` to debug the operator. After starting the Delve server process, connect to it with a Delve debugger.
+There is also `make delve` to debug the operator. After starting the Delve server process, connect to it with a Delve
+debugger.
 
 ### Running the operator locally via OLM
 
-This is useful when testing deployment related changes. It's a little cumbersome for everyday development because an 
+This is useful when testing deployment related changes. It's a little cumbersome for everyday development because an
 image needs to be built by app-interface and pushed to the cluster for each change.
 
 - To deploy the operator via locally OLM run
+
 ```bash
 ./dev/install.operator.locally.sh
 ```
 
 - To uninstall the OLM deployed operator run
+
 ```bash
 ./dev/uninstall.operator.locally.sh
 ```
@@ -163,8 +176,10 @@ docker login -u=$QUAY_USERNAME -p $QUAY_PASSWORD
   ```
 - They can be executed via `make test`.
 - There is also `make delve-test` to run the tests in debug mode. Then `delve` can be used to connect to the test run.
-- The tests take a while to run. To whitelist one or a few tests, prepend `It` with an F. e.g. change `It("Creates a connector...` to `FIt("Creates a connector...) {`
-- Sometimes when the test execution fails unexpectedly it will leave orphaned projects in kubernetes. Use `dev/cleanup.projects.sh` to remove them.
+- The tests take a while to run. To whitelist one or a few tests, prepend `It` with an F. e.g.
+  change `It("Creates a connector...` to `FIt("Creates a connector...) {`
+- Sometimes when the test execution fails unexpectedly it will leave orphaned projects in kubernetes.
+  Use `dev/cleanup.projects.sh` to remove them.
 
 ## Version 2
 
@@ -182,9 +197,12 @@ The xjoin-api-gateway does not yet have an official build, so a custom entry nee
     path: clowdapp.yaml
 ```
 
-The simplest way to create a complete local development environment is via the `./dev/setup_clowder.sh true` script. This
-script will install resources in the `test` namespace. The true flag will install the additional dependencies required for 
-xjoin.v2. See the [version 1 development](#development) section for details on setting up minikube and running the script.
+The simplest way to create a complete local development environment is via the `./dev/setup_clowder.sh true` script.
+This
+script will install resources in the `test` namespace. The true flag will install the additional dependencies required
+for
+xjoin.v2. See the [version 1 development](#development) section for details on setting up minikube and running the
+script.
 
 After setting up a kubernetes environment, the xjoin-operator code can be run like this:
 
@@ -201,10 +219,11 @@ kubectl apply -f config/samples/xjoin_v1alpha1_xjoindatasource.yaml -n test
 kubectl apply -f config/samples/xjoin_v1alpha1_xjoinindex.yaml -n test
 ```
 
-These commands create two k8s resources (XJoinIndex and XJoinDataSource) which then create many more k8s resources. 
-The xjoin k8s resources are defined in the `api/v1alpha1` directory.
+These commands create two k8s resources (XJoinIndex and XJoinDataSource) which then create many more k8s resources.
+The xjoin k8s resources are defined in the [api/v1alpha1](api/v1alpha1) directory.
 
 ### Running the tests
+
 The xjoin.v2 tests utilize mocks, so they don't require kubernetes or any other services to run.
 
 ```
@@ -220,7 +239,7 @@ the Elasticsearch index directly instead of querying the GraphQL API.
 2. Check the logs of the xjoin-operator
 3. Look at the status of each of the following resources via `kubectl get -o yaml <resource name>`:
    `XJoinIndex`, `XJoinIndexPipeline`, `XJoinDataSource`, `XJoinDataSourcePipeline`, `KafkaConnector`
-4. Check the logs of Kafka Connect via 
+4. Check the logs of Kafka Connect via
     ```
     kubectl logs -f -l app.kubernetes.io/instance=connect --all-containers=true`
     ```
@@ -236,3 +255,23 @@ the Elasticsearch index directly instead of querying the GraphQL API.
    ```
    kcat -b localhost:29092 -C -o beginning -f '%h\n%s\n\n\n' -t xjoin.inventory.1663597318878465070.public.hosts
    ```
+
+### xjoin.v2 code walkthrough
+
+The CRDs are contained in the [api/v1alpha1](api/v1alpha1) directory.
+
+| Custom Resource Definition | Description                                                                                                                                                                                                                                                                                                                                                                                                       | Created By |
+|----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------|
+| XJoinDataSource            | This defines a single data source (e.g. a database table). This is created by the user.                                                                                                                                                                                                                                                                                                                           | Human      |
+| XJoinDataSourcePipeline    | This defines the pipeline for a DataSource. Each DataSource can have multiple DataSourcePipelines. e.g. there will be two DataSourcePipeline's for a single DataSource when the DataSource is being refreshed. The old DataSource will continue to be used by applications until the new DataSource is in sync. At that point, the old DataSource is deleted and the new DataSource will be used by applications. | Code       |
+| XJoinIndex                 | This defines an Index that is composed of one or more DataSources. The Index defines how the data is indexed into Elasticsearch. This is created by the user.                                                                                                                                                                                                                                                     | Human      |
+| XJoinIndexPipeline         | This defines the pipeline for an Index. This is similar to the XJoinDataSourcePipeline where each Index can have multiple IndexPipelines.                                                                                                                                                                                                                                                                         | Code       |
+| XJoinIndexValidator        | This defines the validator for an Index. The validator periodically compares the data in each DataSource with the data in the Index. The validator is responsible for updating the status of the Index and each DataSource used by the Index.                                                                                                                                                                     | Code       |
+
+Almost all the remaining business logic is contained in the [controllers](controllers) directory. The other directories are mostly boilerplate and related to deployments/builds.
+
+Both the DataSourcePipeline and the IndexPipeline manage multiple resources to construct a pipeline for the data to flow. Throughout the code these resources are referred to as a `Component` and they are managed by a `ComponentManager`. More details can by found in the [controllers/components/README.md](controllers/components/README.md).
+
+The code for the top level resources (XJoinDataSource and XJoinIndex) can be found in the [controllers/datasource](controllers/datasource) and the [controllers/index](controllers/index) directory.
+
+There are many different parameters and sources of parameters across the operator. These are handled by the [ConfigManager](controllers/config/manager.go). The parameters for the xjoin.v2 resources are defined in [controllers/parameters](controllers/parameters).
