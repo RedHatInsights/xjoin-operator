@@ -23,7 +23,7 @@ func (c *Custodian) AddComponent(component Component) {
 	c.components = append(c.components, component)
 }
 
-//Scrub removes any components not in validVersions
+// Scrub removes any components not in validVersions
 func (c *Custodian) Scrub() error {
 	for _, component := range c.components {
 		installedVersions, err := component.ListInstalledVersions()

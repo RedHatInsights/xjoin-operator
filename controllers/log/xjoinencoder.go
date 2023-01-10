@@ -1,15 +1,16 @@
 package log
 
 import (
+	"time"
+
 	"github.com/go-errors/errors"
 	"go.uber.org/zap/buffer"
 	"go.uber.org/zap/zapcore"
-	"time"
 )
 
-//Custom encoder to use go-errors traces to improve debugging
-//When the following issue is resolved this shouldn't be necessary
-//https://github.com/uber-go/zap/issues/514
+// Custom encoder to use go-errors traces to improve debugging
+// When the following issue is resolved this shouldn't be necessary
+// https://github.com/uber-go/zap/issues/514
 
 type xjoinEncoder struct {
 	encoder zapcore.Encoder

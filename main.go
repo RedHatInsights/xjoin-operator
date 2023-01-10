@@ -18,6 +18,9 @@ package main
 
 import (
 	"flag"
+	"os"
+	"time"
+
 	"github.com/redhatinsights/xjoin-operator/controllers"
 	"github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
@@ -27,11 +30,9 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/clientcmd"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	k8slog "sigs.k8s.io/controller-runtime/pkg/log"
-	"time"
 
 	xjoinv1alpha1 "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports

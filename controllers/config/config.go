@@ -3,6 +3,10 @@ package config
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
+
 	"github.com/go-errors/errors"
 	xjoinUtils "github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -12,10 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
-	"strings"
 )
 
 var log = logger.NewLogger("config")
@@ -188,7 +189,7 @@ func (config *Config) checkIfManagedKafka(ctx context.Context) (isManaged bool, 
 	return isManaged, err
 }
 
-//Unable to pass ephemeral environment's kafka/connect cluster name into the deployment template
+// Unable to pass ephemeral environment's kafka/connect cluster name into the deployment template
 func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 	log.Info("Loading Kafka parameters for ephemeral environment: " + config.instance.Namespace)
 

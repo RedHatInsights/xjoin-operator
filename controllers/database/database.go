@@ -5,12 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"net/url"
 	"sort"
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 
 	"github.com/go-errors/errors"
 	"github.com/jmoiron/sqlx"
@@ -340,7 +341,7 @@ func formatIdsList(ids []string) (string, error) {
 	return idsTemplateParsed, nil
 }
 
-//TODO handle this dynamically with a schema
+// TODO handle this dynamically with a schema
 func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
 	cols := "id,account,org_id,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter,tags"
 
@@ -411,25 +412,31 @@ func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
 
 /*
 "tags_structured": [
+
 	{
 		"namespace": "NS1",
 		"value": "val3",
 		"key": "key3"
 	}
+
 ],
 
 "tags_string": [
+
 	"NS1/key3/val3",
 	"NS3/key3/val3",
 	"Sat/prod/",
 	"SPECIAL/key/val"
+
 ],
 
 "tags_search": [
+
 	"NS1/key3=val3",
 	"NS3/key3=val3",
 	"Sat/prod=",
 	"SPECIAL/key=val"
+
 ],
 */
 func tagsStructured(tagsJson map[string]interface{}) (
