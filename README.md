@@ -78,10 +78,10 @@ The operator defines two controllers that reconcile a XJoinPipeline
     - For MacOS, do the following to place the creds in .docker/config.json, which are stored
       in `"credsStore": "desktop"|"osxkeystore"` and are not available for pulling images from private repos.
         1. `docker logout quay.io`
-        1. `docker logout registry.redhat.io`
-        1. Remove the "credStore" block from .docker/config.json.
-        1. `docker login -u=<quay-username> -p="password" quay.io`
-        1. `docker login https://registry.redhat.io`
+        2. `docker logout registry.redhat.io`
+        3. Remove the "credStore" block from .docker/config.json.
+        4. `docker login -u=<quay-username> -p="password" quay.io`
+        5. `docker login https://registry.redhat.io`
 
         - NOTE: Manually creating the `.docker/config.json` and adding `"auth": base64-encoded username:password` does
           not work.
@@ -93,7 +93,7 @@ The operator defines two controllers that reconcile a XJoinPipeline
         ```
     - Install and run [kubefwd](https://github.com/txn2/kubefwd)
       ```
-      sudo -E kubefwd svc -n test --kubeconfig ~/.kube/config
+      sudo -E kubefwd svc -n test --kubeconfig ~/.kube/config -m 8080:8090 -m 8081:8091
       ```
 
 9. `./dev/setup-clowder.sh`
