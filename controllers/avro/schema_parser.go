@@ -5,6 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strings"
+
 	"github.com/go-errors/errors"
 	. "github.com/redhatinsights/xjoin-go-lib/pkg/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
@@ -12,9 +15,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"github.com/riferrei/srclient"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
 )
 
 const (
@@ -22,7 +23,7 @@ const (
 	OBJECT_TO_ARRAY_OF_STRINGS = "object_to_array_of_strings"
 )
 
-//IndexAvroSchema is a completely parsed representation of a xjoinindex avro schema
+// IndexAvroSchema is a completely parsed representation of a xjoinindex avro schema
 type IndexAvroSchema struct {
 	AvroSchema       Schema
 	AvroSchemaString string
@@ -42,7 +43,7 @@ type IndexAvroSchemaParser struct {
 	SchemaRegistry  *schemaregistry.ConfluentClient
 }
 
-//Parse AvroSchema string into various structures represented by IndexAvroSchema to be used in component creation
+// Parse AvroSchema string into various structures represented by IndexAvroSchema to be used in component creation
 func (d IndexAvroSchemaParser) Parse() (indexAvroSchema IndexAvroSchema, err error) {
 	indexAvroSchema.References, err = d.parseAvroSchemaReferences()
 	if err != nil {
@@ -78,7 +79,7 @@ func (d IndexAvroSchemaParser) Parse() (indexAvroSchema IndexAvroSchema, err err
 	return
 }
 
-//applyTransformations adds the fields defined in xjoin.transformations to the Schema
+// applyTransformations adds the fields defined in xjoin.transformations to the Schema
 func (d IndexAvroSchemaParser) applyTransformations(avroSchema Schema) (transformedAvroSchema Schema, err error) {
 	for _, transformation := range avroSchema.Transformations {
 		switch transformation.Type {
@@ -184,7 +185,7 @@ func (d IndexAvroSchemaParser) applyObjectToArrayOfObjectsTransformation(
 	return avroSchema, nil
 }
 
-//ParseAvroSchemaReferences parses the Index's Avro Schema JSON to build a list of srclient.References
+// ParseAvroSchemaReferences parses the Index's Avro Schema JSON to build a list of srclient.References
 func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclient.Reference, err error) {
 	schemaString := d.AvroSchema
 	var schemaObj Schema
@@ -237,7 +238,7 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 	return
 }
 
-//ParseAvroSchema transforms an avro schema into elasticsearch mapping properties and a list of jsonFields
+// ParseAvroSchema transforms an avro schema into elasticsearch mapping properties and a list of jsonFields
 func (d IndexAvroSchemaParser) transformToES(avroSchema Schema) (properties string, jsonFields []string, err error) {
 
 	if avroSchema.Fields == nil {
@@ -369,7 +370,7 @@ func parseXJoinFlags(avroFieldType Type, esProperty map[string]interface{}) (map
 	return esProperty, nil
 }
 
-//ExpandReferences retrieves the full schema for each xjoinref field
+// ExpandReferences retrieves the full schema for each xjoinref field
 func (d IndexAvroSchemaParser) expandReferences(baseSchema string, references []srclient.Reference) (fullSchema Schema, err error) {
 	err = json.Unmarshal([]byte(baseSchema), &fullSchema)
 	if err != nil {

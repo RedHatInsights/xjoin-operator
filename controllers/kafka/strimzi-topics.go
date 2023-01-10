@@ -2,6 +2,9 @@ package kafka
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/go-errors/errors"
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
@@ -10,8 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
-	"time"
 )
 
 var topicGroupVersionKind = schema.GroupVersionKind{
@@ -127,7 +128,7 @@ func (t *StrimziTopics) DeleteTopicByPipelineVersion(pipelineVersion string) err
 	return err
 }
 
-//DeleteAllTopics is only used in tests
+// DeleteAllTopics is only used in tests
 func (t *StrimziTopics) DeleteAllTopics() error {
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
@@ -165,7 +166,7 @@ func (t *StrimziTopics) DeleteAllTopics() error {
 	return nil
 }
 
-//ListTopicNamesForPipelineVersion is only used in tests
+// ListTopicNamesForPipelineVersion is only used in tests
 func (t *StrimziTopics) ListTopicNamesForPipelineVersion(pipelineVersion string) ([]string, error) {
 	topics := &unstructured.UnstructuredList{}
 	topics.SetGroupVersionKind(topicsGroupVersionKind)

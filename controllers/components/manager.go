@@ -32,7 +32,7 @@ func (c *ComponentManager) AddComponent(component Component) {
 	c.components = append(c.components, component)
 }
 
-//CreateAll creates all components. No-op if the components are already created.
+// CreateAll creates all components. No-op if the components are already created.
 func (c ComponentManager) CreateAll() error {
 	for _, component := range c.components {
 		componentExists, err := component.Exists()
@@ -49,7 +49,7 @@ func (c ComponentManager) CreateAll() error {
 	return nil
 }
 
-//DeleteAll deletes all components. No-op if the components are already deleted.
+// DeleteAll deletes all components. No-op if the components are already deleted.
 func (c ComponentManager) DeleteAll() error {
 	for _, component := range c.components {
 		componentExists, err := component.Exists()

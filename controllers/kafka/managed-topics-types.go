@@ -1,6 +1,6 @@
 package kafka
 
-//response types
+// response types
 type ManagedTopicResponse struct {
 	Kind  string             `json:"kind,omitempty"`
 	Items []ManagedTopicItem `json:"items"`
@@ -36,7 +36,7 @@ type ManagedTopicItem struct {
 	Config     []ManagedTopicConfig    `json:"config,omitempty"`
 }
 
-//request types
+// request types
 type ManagedTopicRequest struct {
 	Name     string               `json:"name,omitempty"`
 	Settings ManagedTopicSettings `json:"settings,omitempty"`
