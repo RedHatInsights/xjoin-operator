@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	strimziApi "github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
 	. "github.com/onsi/ginkgo"
@@ -25,7 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	xjoinApi "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	//+kubebuilder:scaffold:imports
+	// +kubebuilder:scaffold:imports
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -134,8 +135,8 @@ var _ = BeforeSuite(func() {
 	err = scheme.AddToScheme(myscheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	//err = xjoinApi.AddToScheme(scheme.Scheme)
-	//Expect(err).NotTo(HaveOccurred())
+	// err = xjoinApi.AddToScheme(scheme.Scheme)
+	// Expect(err).NotTo(HaveOccurred())
 	//
 	err = strimziApi.AddToScheme(myscheme)
 	Expect(err).NotTo(HaveOccurred())
@@ -144,7 +145,7 @@ var _ = BeforeSuite(func() {
 	recognized := myscheme.Recognizes(gvk)
 	Expect(recognized).To(Equal(true))
 
-	//+kubebuilder:scaffold:scheme
+	// +kubebuilder:scaffold:scheme
 	k8sClient, err = client.New(cfg, client.Options{Scheme: myscheme})
 
 	Expect(err).NotTo(HaveOccurred())

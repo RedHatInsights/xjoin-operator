@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"time"
+
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
@@ -23,7 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"time"
 )
 
 type XJoinIndexReconciler struct {
@@ -151,7 +152,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	//check status of active and refreshing IndexPipelines, update instance.Status accordingly
+	// check status of active and refreshing IndexPipelines, update instance.Status accordingly
 	if instance.Status.ActiveVersion != "" {
 		indexPipelineNamespacedName := types.NamespacedName{
 			Name:      i.Instance.GetName() + "." + instance.Status.ActiveVersion,
@@ -180,7 +181,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		instance.Status.RefreshingVersionIsValid = refreshingIndexPipeline.Status.ValidationResponse.Result == "valid"
 	}
 
-	//force refresh if datasource is updated
+	// force refresh if datasource is updated
 	forceRefresh := false
 	for dataSourceName, dataSourceVersion := range instance.Status.DataSources {
 		dataSourceNamespacedName := types.NamespacedName{

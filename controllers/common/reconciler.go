@@ -2,11 +2,12 @@ package common
 
 import (
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/go-errors/errors"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
-	"strconv"
-	"time"
 )
 
 type ReconcilerMethods interface {
@@ -168,7 +169,7 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 		r.instance.SetRefreshingVersionIsValid(false)
 	}
 
-	//Scrub orphaned resources
+	// Scrub orphaned resources
 	err = r.methods.Scrub()
 	if err != nil {
 		return errors.Wrap(err, 0)

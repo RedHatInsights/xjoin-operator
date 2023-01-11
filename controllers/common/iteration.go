@@ -3,6 +3,9 @@ package common
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"time"
+
 	"github.com/go-errors/errors"
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
@@ -11,11 +14,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"time"
 )
 
 const COMPONENT_NAME_LABEL = "xjoin.component.name"
@@ -118,8 +119,8 @@ func (i *Iteration) AddFinalizer(finalizer string) error {
 }
 
 func (i *Iteration) ReconcileChild(child Child) (err error) {
-	//build an array and map of expected child versions (active, refreshing)
-	//the map value will be set to true when an expected child is found
+	// build an array and map of expected child versions (active, refreshing)
+	// the map value will be set to true when an expected child is found
 	expectedChildrenMap := make(map[string]bool)
 	var expectedChildrenArray []string
 	if child.GetParentInstance().GetActiveVersion() != "" {
@@ -131,7 +132,7 @@ func (i *Iteration) ReconcileChild(child Child) (err error) {
 		expectedChildrenArray = append(expectedChildrenArray, child.GetParentInstance().GetRefreshingVersion())
 	}
 
-	//retrieve a list of children for this datasource.name
+	// retrieve a list of children for this datasource.name
 	children := &unstructured.UnstructuredList{}
 	children.SetGroupVersionKind(child.GetGVK())
 	labels := client.MatchingLabels{}
@@ -145,7 +146,7 @@ func (i *Iteration) ReconcileChild(child Child) (err error) {
 
 	apiVersion, kind := child.GetGVK().ToAPIVersionAndKind()
 
-	//remove any extra children, ensure the expected children are created
+	// remove any extra children, ensure the expected children are created
 	for _, childItem := range children.Items {
 		spec := childItem.Object["spec"]
 		if spec == nil {

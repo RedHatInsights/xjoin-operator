@@ -2,6 +2,10 @@ package test
 
 import (
 	"context"
+	"os/exec"
+	"reflect"
+	"time"
+
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers"
 	. "github.com/redhatinsights/xjoin-operator/controllers/config"
@@ -18,11 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"os/exec"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"time"
 )
 
 var log = logger.NewLogger("test_utils")
@@ -239,9 +240,9 @@ func Before() (*Iteration, error) {
 		SSLMode:  "disable",
 	})
 
-	//Sometimes during the test suite execution the port forward fails.
-	//This will check each dependency and if one is not responding,
-	//the port will be forwarded again
+	// Sometimes during the test suite execution the port forward fails.
+	// This will check each dependency and if one is not responding,
+	// the port will be forwarded again
 	for j := 0; j < 3; j++ {
 		dependenciesAreResponding := i.CheckIfDependenciesAreResponding()
 
@@ -363,8 +364,8 @@ func After(i *Iteration) error {
 }
 
 func attemptToRemoveReplicationSlots(dbClient *database.Database) (err error) {
-	//sometimes the underlying connector process doesn't release the slot quickly
-	//so retry this for 10 seconds
+	// sometimes the underlying connector process doesn't release the slot quickly
+	// so retry this for 10 seconds
 	for j := 0; j < 10; j++ {
 		log.Info("Deleting replication slots")
 		err = dbClient.RemoveReplicationSlotsForPrefix(ResourceNamePrefix)

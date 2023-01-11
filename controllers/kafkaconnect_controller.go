@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"time"
+
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
@@ -11,7 +13,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -108,7 +109,7 @@ func (r *KafkaConnectReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		return reconcile.Result{}, err
 	}
 
-	//skip kafka connect reconciliation in ephemeral namespaces
+	// skip kafka connect reconciliation in ephemeral namespaces
 	if r.parameters.Ephemeral.Bool() {
 		reqLogger.Info("Skipping kafkaconnect reconciliation")
 		return reconcile.Result{}, nil

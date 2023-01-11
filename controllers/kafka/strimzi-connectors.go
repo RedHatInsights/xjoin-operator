@@ -5,17 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-errors/errors"
-	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
-	"github.com/redhatinsights/xjoin-operator/controllers/database"
-	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"io/ioutil"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"net/http"
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/go-errors/errors"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
+	"github.com/redhatinsights/xjoin-operator/controllers/database"
+	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -179,7 +180,7 @@ func (c *StrimziConnectors) RestartTaskForConnector(connectorName string, taskId
 }
 
 func (c *StrimziConnectors) verifyTaskIsRunning(task map[string]interface{}, connectorName string) (bool, error) {
-	//try to restart the task 10 times
+	// try to restart the task 10 times
 	for i := 0; i < 10; i++ {
 		if task["state"] == running {
 			return true, nil
@@ -541,7 +542,7 @@ func (c *StrimziConnectors) updateConnectDepReplicas(newReplicas int64) (current
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*999)
 	defer cancel()
 
-	//try a few times in case the deployment is updated between the GET/PUT which causes the update to fail
+	// try a few times in case the deployment is updated between the GET/PUT which causes the update to fail
 	for j := 0; j < 10; j++ {
 		//retrieve deployment object
 		var deploymentGVK = schema.GroupVersionKind{
@@ -583,7 +584,7 @@ func (c *StrimziConnectors) RestartConnect() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*999)
 	defer cancel()
 
-	//get current pod template hash
+	// get current pod template hash
 	pods := &corev1.PodList{}
 
 	labels := client.MatchingLabels{}
@@ -597,8 +598,8 @@ func (c *StrimziConnectors) RestartConnect() error {
 		return errors.New("no Kafka Connect instance found")
 	}
 
-	//podLabels := pods.Items[0].GetLabels()
-	//currentHash := podLabels["pod-template-hash"]
+	// podLabels := pods.Items[0].GetLabels()
+	// currentHash := podLabels["pod-template-hash"]
 
 	currentReplicas, err := c.updateConnectDepReplicas(0)
 	if err != nil {
@@ -610,7 +611,7 @@ func (c *StrimziConnectors) RestartConnect() error {
 	}
 
 	log.Info("Waiting for Kafka Connect to be ready...")
-	//wait for deployment to complete by checking each pods status
+	// wait for deployment to complete by checking each pods status
 	err = wait.PollImmediate(time.Second*time.Duration(2), time.Duration(1800)*time.Second, func() (bool, error) {
 		ctx, cancel = utils.DefaultContext()
 		defer cancel()

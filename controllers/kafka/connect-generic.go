@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+	"text/template"
+	"time"
+
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
-	"text/template"
-	"time"
 )
 
 func (kafka *GenericKafka) CreateGenericDebeziumConnector(
@@ -119,10 +120,10 @@ func (kafka *GenericKafka) DeleteConnector(name string) error {
 	connector.SetNamespace(kafka.ConnectNamespace)
 	connector.SetGroupVersionKind(connectorGVK)
 
-	//check the Connect REST API every second for 10 seconds to see if the connector is really deleted.
-	//This is necessary because there is a race condition in Kafka Connect. If a connector
-	//and topic is deleted in rapid succession, the Kafka Connect tasks get stuck trying to connect to a topic
-	//that doesn't exist.
+	// check the Connect REST API every second for 10 seconds to see if the connector is really deleted.
+	// This is necessary because there is a race condition in Kafka Connect. If a connector
+	// and topic is deleted in rapid succession, the Kafka Connect tasks get stuck trying to connect to a topic
+	// that doesn't exist.
 	delay := time.Millisecond * 100
 	attempts := 200
 	connectorIsDeleted := false

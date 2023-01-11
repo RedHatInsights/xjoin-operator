@@ -4,6 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"reflect"
+	"strconv"
+	"strings"
+	"text/template"
+	"time"
+
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/go-errors/errors"
 	"github.com/google/uuid"
@@ -16,7 +24,6 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"github.com/redhatinsights/xjoin-operator/test"
-	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -24,14 +31,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
-	"net/http"
-	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
-	"strings"
-	"text/template"
-	"time"
 )
 
 var ResourceNamePrefix = "xjointest"
@@ -92,7 +93,7 @@ func (i *Iteration) getConnectorConfig(connectorName string) (map[string]interfa
 		"http://%s-connect-api.%s.svc:8083/connectors/%s/config",
 		i.Parameters.ConnectCluster.String(), i.Parameters.ConnectClusterNamespace.String(), connectorName)
 
-	//GET current config from Kafka Connect REST API
+	// GET current config from Kafka Connect REST API
 	httpClient := &http.Client{Timeout: 15 * time.Second}
 	req, err := http.NewRequest(http.MethodGet, configUrl, nil)
 	if err != nil {
@@ -125,7 +126,7 @@ func (i *Iteration) putConnectorConfig(connectorName string, config []byte) erro
 		"http://%s-connect-api.%s.svc:8083/connectors/%s/config",
 		i.Parameters.ConnectCluster.String(), i.Parameters.ConnectClusterNamespace.String(), connectorName)
 
-	//PUT updated config
+	// PUT updated config
 	httpClient := &http.Client{}
 	req, err := http.NewRequest(http.MethodPut, configUrl, bytes.NewReader(config))
 	if err != nil {
@@ -150,7 +151,7 @@ func (i *Iteration) SetDBConnectorHost(dbHost string, connectorName string) erro
 		return err
 	}
 
-	//update config with new URL
+	// update config with new URL
 	bodyMap["database.hostname"] = dbHost
 	bodyJson, err := json.Marshal(bodyMap)
 	if err != nil {
@@ -167,7 +168,7 @@ func (i *Iteration) SetESConnectorURL(esUrl string, connectorName string) error 
 		return err
 	}
 
-	//update config with new URL
+	// update config with new URL
 	bodyMap["connection.url"] = esUrl
 	bodyJson, err := json.Marshal(bodyMap)
 	if err != nil {
@@ -241,7 +242,7 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 		Version: "v1",
 	}
 
-	//get existing strimzi deployment
+	// get existing strimzi deployment
 	deployment := &unstructured.Unstructured{}
 	deployment.SetGroupVersionKind(deploymentGVK)
 	ctx, cancel := utils.DefaultContext()
@@ -252,7 +253,7 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 		return err
 	}
 
-	//update deployment with replicas
+	// update deployment with replicas
 	obj := deployment.Object
 	spec := obj["spec"].(map[string]interface{})
 	spec["replicas"] = replicas
@@ -264,7 +265,7 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 		return err
 	}
 
-	//wait for deployment to be ready if replicas > 0
+	// wait for deployment to be ready if replicas > 0
 	if replicas > 0 {
 		err = wait.PollImmediate(time.Second, time.Duration(150)*time.Second, func() (bool, error) {
 			pods := &corev1.PodList{}
@@ -1173,7 +1174,7 @@ func (i *Iteration) setConnectorReconciliationPause(connectorName string, pause 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 
-	//strimzi might update the connector between the GET/PUT calls, so retry a few times
+	// strimzi might update the connector between the GET/PUT calls, so retry a few times
 	for j := 0; j < 5; j++ {
 		connector, err := i.KafkaClient.GetConnector(connectorName)
 		if err != nil {

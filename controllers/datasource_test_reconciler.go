@@ -124,7 +124,7 @@ func (d *DatasourceTestReconciler) createValidDataSource() {
 
 	Expect(d.K8sClient.Create(ctx, datasource)).Should(Succeed())
 
-	//validate datasource spec is created correctly
+	// validate datasource spec is created correctly
 	datasourceLookupKey := types.NamespacedName{Name: d.Name, Namespace: d.Namespace}
 	createdDatasource := &v1alpha1.XJoinDataSource{}
 

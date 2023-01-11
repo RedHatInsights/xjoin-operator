@@ -376,7 +376,7 @@ func (d IndexAvroSchemaParser) expandReferences(baseSchema string, references []
 		return fullSchema, errors.Wrap(err, 0)
 	}
 
-	//TODO handle type array instead of assuming type[0]
+	// TODO handle type array instead of assuming type[0]
 	for idx, field := range fullSchema.Fields {
 		if field.Type[0].XJoinType == "reference" {
 			ref, err := findReferenceByType(references, field.Type[0].Type)
@@ -413,8 +413,8 @@ func findReferenceByType(references []srclient.Reference, refType string) (srcli
 }
 
 func (d IndexAvroSchemaParser) AvroSubjectToKafkaTopic(avroSubject string) (kafkaTopic string) {
-	//avro subjects have a -value suffix while kafka topics do not
-	//e.g. xjoindatasourcepipeline.hosts.123456789-value
+	// avro subjects have a -value suffix while kafka topics do not
+	// e.g. xjoindatasourcepipeline.hosts.123456789-value
 	return strings.Split(avroSubject, "-")[0]
 }
 

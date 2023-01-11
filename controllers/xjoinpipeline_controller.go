@@ -19,6 +19,9 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/go-logr/logr"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -43,8 +46,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"strconv"
-	"time"
 )
 
 type XJoinPipelineReconciler struct {
@@ -223,7 +224,7 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 		return reconcile.Result{}, nil
 	}
 
-	//pause this pipeline. Reconcile loop is skipped until Pause is set to false or nil
+	// pause this pipeline. Reconcile loop is skipped until Pause is set to false or nil
 	if i.Instance.Spec.Pause == true {
 		return reconcile.Result{}, nil
 	}

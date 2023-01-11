@@ -267,7 +267,7 @@ func (t *StrimziTopics) CreateGenericTopic(topicName string, topicParameters Top
 
 	log.Info("Waiting for topic to be created.", "topic", topicName)
 
-	//wait for the topic to be created in Kafka (condition.status == ready)
+	// wait for the topic to be created in Kafka (condition.status == ready)
 	err = wait.PollImmediate(time.Second, time.Duration(topicParameters.CreationTimeout)*time.Second, func() (bool, error) {
 		topics := &unstructured.UnstructuredList{}
 		topics.SetGroupVersionKind(topicsGroupVersionKind)

@@ -69,7 +69,7 @@ func (db *Database) GetConnection() (connection *sqlx.DB, err error) {
 		db.Config.Port,
 		db.Config.SSLMode)
 
-	//db.Config.Name is empty before creating the test database
+	// db.Config.Name is empty before creating the test database
 	if db.Config.Name != "" {
 		connStr = connStr + " dbname=" + db.Config.Name
 	}

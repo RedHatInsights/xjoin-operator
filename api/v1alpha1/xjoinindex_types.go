@@ -20,7 +20,7 @@ type XJoinIndexStatus struct {
 	RefreshingVersionIsValid bool   `json:"refreshingVersionIsValid"`
 	SpecHash                 string `json:"specHash"`
 
-	//+optional
+	// +optional
 	DataSources map[string]string `json:"dataSources"` //map of datasource name to datasource resource version
 }
 

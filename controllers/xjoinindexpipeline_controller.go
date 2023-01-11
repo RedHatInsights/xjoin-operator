@@ -2,6 +2,10 @@ package controllers
 
 import (
 	"context"
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
@@ -22,14 +26,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strings"
-	"time"
 )
 
 const xjoinindexpipelineFinalizer = "finalizer.xjoin.indexpipeline.cloud.redhat.com"
@@ -323,7 +324,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	//build list of datasources
+	// build list of datasources
 	dataSources := make(map[string]string)
 	for _, ref := range indexAvroSchema.References {
 		//get each datasource name and resource version
@@ -340,7 +341,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		dataSources[name] = datasource.ResourceVersion
 	}
 
-	//update parent status
+	// update parent status
 	indexNamespacedName := types.NamespacedName{
 		Name:      instance.OwnerReferences[0].Name,
 		Namespace: i.Instance.GetNamespace(),

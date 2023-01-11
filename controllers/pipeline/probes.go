@@ -4,7 +4,7 @@ import "github.com/redhatinsights/xjoin-operator/controllers/metrics"
 
 func (i *ReconcileIteration) ProbeStartingInitialSync() {
 	i.Log.Info("New pipeline version", "version", i.Instance.Status.PipelineVersion)
-	//i.EventNormal("InitialSync", "Starting data synchronization to %s", i.instance.Status.TableName)
+	// i.EventNormal("InitialSync", "Starting data synchronization to %s", i.instance.Status.TableName)
 	i.Log.Info("Transitioning to InitialSync")
 }
 

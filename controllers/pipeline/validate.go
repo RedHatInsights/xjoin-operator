@@ -3,17 +3,18 @@ package pipeline
 import (
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/go-test/deep"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"math"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 )
 
 const countMismatchThreshold = 0.5
@@ -130,7 +131,7 @@ func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mi
 	}
 	endTime := now.Add(-time.Duration(validationLagComp) * time.Second)
 
-	//validate chunk between startTime and endTime
+	// validate chunk between startTime and endTime
 	hbiIds, err = i.InventoryDb.GetHostIdsByModifiedOn(startTime, endTime)
 	if err != nil {
 		return
@@ -155,8 +156,8 @@ func (i *ReconcileIteration) idValidation() (isValid bool, mismatchCount int, mi
 		"inAppOnly", inAppOnly[:utils.Min(idDiffMaxLength, len(inAppOnly))],
 	)
 
-	//re-validate any mismatched hosts to check if they were invalid due to lag
-	//this can happen when the modified_on filter excludes hosts updated between retrieving hosts from the DB/ES
+	// re-validate any mismatched hosts to check if they were invalid due to lag
+	// this can happen when the modified_on filter excludes hosts updated between retrieving hosts from the DB/ES
 	if mismatchCount > 0 {
 		mismatchedIds := append(hbiIds, esIds...)
 		hbiIds, err = i.InventoryDb.GetHostIdsByIdList(mismatchedIds)
@@ -207,7 +208,7 @@ type idDiff struct {
 }
 
 func (i *ReconcileIteration) validateFullChunkSync(chunk []string) (allIdDiffs []idDiff, err error) {
-	//retrieve hosts from db and es
+	// retrieve hosts from db and es
 	esHosts, err := i.ESClient.GetHostsByIds(i.ESClient.ESIndexName(i.Instance.Status.PipelineVersion), chunk)
 	if err != nil {
 		return
@@ -227,7 +228,7 @@ func (i *ReconcileIteration) validateFullChunkSync(chunk []string) (allIdDiffs [
 	deep.MaxDiff = len(chunk) * 100
 	diffs := deep.Equal(hbiHosts, esHosts)
 
-	//build the change object for logging
+	// build the change object for logging
 	for _, diff := range diffs {
 		idxStr := diff[strings.Index(diff, "[")+1 : strings.Index(diff, "]")]
 
@@ -305,7 +306,7 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 		return false, -1, -1, errors.New("Error during full validation")
 	}
 
-	//double check mismatched hosts to account for lag
+	// double check mismatched hosts to account for lag
 	var mismatchedIds []string
 	for d := range allIdDiffs {
 		mismatchedIds = append(mismatchedIds, d.id)
@@ -325,7 +326,7 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 		}
 	}
 
-	//determine if the data is valid within the threshold
+	// determine if the data is valid within the threshold
 	mismatchCount = len(diffsById)
 	mismatchRatio = float64(mismatchCount) / math.Max(float64(len(ids)), 1)
 	isValid = (mismatchRatio * 100) <= float64(i.GetValidationPercentageThreshold())
@@ -339,7 +340,7 @@ func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatc
 		isValid = true
 	}
 
-	//log at most 50 invalid systems
+	// log at most 50 invalid systems
 	diffsToLog := make(map[string][]string)
 	idx := 0
 	for key, val := range diffsById {

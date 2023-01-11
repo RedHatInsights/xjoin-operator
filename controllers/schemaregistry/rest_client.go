@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/go-errors/errors"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/go-errors/errors"
 )
 
 type RestClient struct {
@@ -84,7 +85,7 @@ func (c *RestClient) RegisterGraphQLSchema(name string) (id string, err error) {
 			"unable to create graphql schema, statusCode: %v, message: %s", resCode, resBody["message"])), 0)
 	}
 
-	//add labels
+	// add labels
 	url := "http://" + strings.ReplaceAll(name, ".", "-") + ".test.svc:4000/graphql" //TODO url is static
 	labelsBody := make(map[string]interface{})
 	labelsBody["labels"] = []string{"xjoin-subgraph-url=" + url, "graphql"}

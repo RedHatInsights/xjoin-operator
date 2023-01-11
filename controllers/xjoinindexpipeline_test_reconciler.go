@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"os"
+
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -10,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -72,13 +73,13 @@ func (x *XJoinIndexPipelineTestReconciler) registerDeleteMocks() {
 	httpmock.Reset()
 	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
 
-	//connector mocks
+	// connector mocks
 	httpmock.RegisterResponder(
 		"GET",
 		"http://connect-connect-api."+x.Namespace+".svc:8083/connectors/xjoinindexpipeline."+x.Name+".1234",
 		httpmock.NewStringResponder(404, `{}`))
 
-	//gql schema mocks
+	// gql schema mocks
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline-"+x.Name+"-1234/versions/1",
@@ -92,7 +93,7 @@ func (x *XJoinIndexPipelineTestReconciler) registerDeleteMocks() {
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline-"+x.Name+"-1234",
 		httpmock.NewStringResponder(200, `{}`))
 
-	//elasticsearch index mocks
+	// elasticsearch index mocks
 	httpmock.RegisterResponder(
 		"HEAD",
 		"http://localhost:9200/xjoinindexpipeline."+x.Name+".1234",
@@ -102,7 +103,7 @@ func (x *XJoinIndexPipelineTestReconciler) registerDeleteMocks() {
 		"http://localhost:9200/xjoinindexpipeline."+x.Name+".1234",
 		httpmock.NewStringResponder(200, `{}`))
 
-	//avro schema mocks
+	// avro schema mocks
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions/1",
@@ -159,7 +160,7 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 	httpmock.Reset()
 	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
 
-	//elasticsearch index mocks
+	// elasticsearch index mocks
 	httpmock.RegisterResponder(
 		"HEAD",
 		"http://localhost:9200/xjoinindexpipeline."+x.Name+".1234",
@@ -170,7 +171,7 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 		"http://localhost:9200/xjoinindexpipeline."+x.Name+".1234",
 		httpmock.NewStringResponder(201, `{}`))
 
-	//avro schema mocks
+	// avro schema mocks
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions/1",
@@ -186,7 +187,7 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions/latest",
 		httpmock.NewStringResponder(200, `{"schema":"{\"name\":\"Value\",\"namespace\":\"xjoinindexpipelinepipeline.`+x.Name+`\"}","schemaType":"AVRO","references":[]}`))
 
-	//graphql schema mocks
+	// graphql schema mocks
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+".1234/versions",
@@ -256,7 +257,7 @@ func (x *XJoinIndexPipelineTestReconciler) createValidIndexPipeline() {
 	checkError(err)
 	xjoinIndexName := "test-xjoin-index"
 
-	//XjoinIndexPipeline requires an XJoinIndex owner. Create one here
+	// XjoinIndexPipeline requires an XJoinIndex owner. Create one here
 	indexSpec := v1alpha1.XJoinIndexSpec{
 		AvroSchema:           string(indexAvroSchema),
 		Pause:                false,
@@ -277,7 +278,7 @@ func (x *XJoinIndexPipelineTestReconciler) createValidIndexPipeline() {
 
 	Expect(x.K8sClient.Create(ctx, index)).Should(Succeed())
 
-	//create the XJoinIndexPipeline
+	// create the XJoinIndexPipeline
 	indexPipelineSpec := v1alpha1.XJoinIndexPipelineSpec{
 		Name:                 x.Name,
 		Version:              "1234",
@@ -312,7 +313,7 @@ func (x *XJoinIndexPipelineTestReconciler) createValidIndexPipeline() {
 
 	Expect(x.K8sClient.Create(ctx, indexPipeline)).Should(Succeed())
 
-	//validate indexPipeline spec is created correctly
+	// validate indexPipeline spec is created correctly
 	indexPipelineLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
 	createdIndexPipeline := &v1alpha1.XJoinIndexPipeline{}
 

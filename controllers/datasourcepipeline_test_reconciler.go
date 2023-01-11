@@ -62,7 +62,7 @@ func (d *DatasourcePipelineTestReconciler) createValidDataSourcePipeline() {
 
 	Expect(d.K8sClient.Create(ctx, datasource)).Should(Succeed())
 
-	//validate datasource spec is created correctly
+	// validate datasource spec is created correctly
 	datasourceLookupKey := types.NamespacedName{Name: d.Name, Namespace: d.Namespace}
 	createdDataSourcePipeline := &v1alpha1.XJoinDataSourcePipeline{}
 
@@ -128,7 +128,7 @@ func (d *DatasourcePipelineTestReconciler) registerDeleteMocks() {
 	httpmock.Reset()
 	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
 
-	//avro schema mocks
+	// avro schema mocks
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+".1234-value/versions/1",
@@ -149,7 +149,7 @@ func (d *DatasourcePipelineTestReconciler) registerDeleteMocks() {
 		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoindatasourcepipeline."+d.Name+".1234/versions",
 		httpmock.NewStringResponder(404, `{}`))
 
-	//kafka connector mocks
+	// kafka connector mocks
 	httpmock.RegisterResponder(
 		"GET",
 		"http://connect-connect-api."+d.Namespace+".svc:8083/connectors/xjoindatasourcepipeline."+d.Name+".1234",
@@ -160,7 +160,7 @@ func (d *DatasourcePipelineTestReconciler) registerNewMocks() {
 	httpmock.Reset()
 	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
 
-	//avro schema mocks
+	// avro schema mocks
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+".1234-value/versions/1",

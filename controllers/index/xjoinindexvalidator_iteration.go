@@ -3,6 +3,9 @@ package index
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"strings"
+
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
@@ -12,7 +15,6 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
-	"io"
 	v1 "k8s.io/api/core/v1"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +22,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strings"
 )
 
 const xjoinindexvalidatorFinalizer = "finalizer.xjoin.indexvalidator.cloud.redhat.com"
@@ -47,7 +48,7 @@ func (i *XJoinIndexValidatorIteration) Finalize() (err error) {
 }
 
 func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, err error) {
-	//Get index avro schema, references
+	// Get index avro schema, references
 	registry := schemaregistry.NewSchemaRegistryConfluentClient(
 		schemaregistry.ConnectionParams{
 			Protocol: i.Parameters.SchemaRegistryProtocol.String(),
@@ -130,7 +131,7 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 		})
 	}
 
-	//check if pod is already running
+	// check if pod is already running
 	labels := client.MatchingLabels{}
 	labels["xjoin.index"] = i.Instance.GetName()
 	podList := &v1.PodList{}
@@ -215,7 +216,7 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 		return "", nil
 	}
 
-	//wait for pod status==completed, retry n times if status==failed
+	// wait for pod status==completed, retry n times if status==failed
 	pod := &v1.Pod{}
 	err = i.Client.Get(i.Context, client.ObjectKey{Name: i.ValidationPodName(), Namespace: i.Instance.GetNamespace()}, pod)
 	if err != nil {

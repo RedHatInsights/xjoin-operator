@@ -2,6 +2,9 @@ package pipeline
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -19,8 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strings"
-	"time"
 )
 
 // XJoinPipelineReconciler reconciles a XJoinPipeline object
@@ -215,7 +216,7 @@ func (i *ReconcileIteration) DeleteStaleDependencies() (errors []error) {
 
 	var staleResources []string
 
-	//keep the in progress pipeline's resources and the active resources
+	// keep the in progress pipeline's resources and the active resources
 	if i.Instance.GetState() != xjoin.STATE_REMOVED && i.Instance.Status.PipelineVersion != "" {
 		connectorsToKeep = append(connectorsToKeep, i.KafkaConnectors.DebeziumConnectorName(i.Instance.Status.PipelineVersion))
 		connectorsToKeep = append(connectorsToKeep, i.KafkaConnectors.ESConnectorName(i.Instance.Status.PipelineVersion))
@@ -232,7 +233,7 @@ func (i *ReconcileIteration) DeleteStaleDependencies() (errors []error) {
 	i.Log.Info("TopicsToKeep", "topics", topicsToKeep)
 	i.Log.Debug("ReplicationSlotsToKeep", "slots", replicationSlotsToKeep)
 
-	//delete stale Kafka Connectors
+	// delete stale Kafka Connectors
 	connectors, err := i.Kafka.ListConnectors()
 	if err != nil {
 		errors = append(errors, err)
@@ -249,7 +250,7 @@ func (i *ReconcileIteration) DeleteStaleDependencies() (errors []error) {
 		}
 	}
 
-	//delete stale ES pipelines
+	// delete stale ES pipelines
 	esPipelines, err := i.ESClient.ListESPipelines()
 	if err != nil {
 		errors = append(errors, err)
@@ -266,7 +267,7 @@ func (i *ReconcileIteration) DeleteStaleDependencies() (errors []error) {
 		}
 	}
 
-	//delete stale ES indices
+	// delete stale ES indices
 	indices, err := i.ESClient.ListIndices()
 	if err != nil {
 		errors = append(errors, err)
@@ -283,7 +284,7 @@ func (i *ReconcileIteration) DeleteStaleDependencies() (errors []error) {
 		}
 	}
 
-	//delete stale Kafka Topics
+	// delete stale Kafka Topics
 	topics, err := i.KafkaTopics.ListTopicNamesForPrefix(resourceNamePrefix)
 	if err != nil {
 		errors = append(errors, err)
@@ -300,7 +301,7 @@ func (i *ReconcileIteration) DeleteStaleDependencies() (errors []error) {
 		}
 	}
 
-	//delete stale replication slots
+	// delete stale replication slots
 	slots, err := i.InventoryDb.ListReplicationSlots(resourceNamePrefix)
 	if err != nil {
 		errors = append(errors, err)
@@ -393,7 +394,7 @@ func (i *ReconcileIteration) UpdateAliasIfHealthier() error {
 		}
 	}
 
-	//don't remove the jenkins managed alias until the operator pipeline is healthy
+	// don't remove the jenkins managed alias until the operator pipeline is healthy
 	currIndices, err := i.ESClient.GetCurrentIndicesWithAlias("xjoin.inventory.hosts")
 	if !utils.ContainsString(currIndices, "xjoin.inventory.hosts."+i.Parameters.JenkinsManagedVersion.String()) {
 		if err = i.ESClient.UpdateAliasByFullIndexName(
@@ -407,7 +408,7 @@ func (i *ReconcileIteration) UpdateAliasIfHealthier() error {
 }
 
 func (i *ReconcileIteration) CheckForDeviation() (problem error, err error) {
-	//Configmap/secrets
+	// Configmap/secrets
 	if i.Instance.Status.XJoinConfigVersion != i.Parameters.ConfigMapVersion.String() {
 		return fmt.Errorf("configMap changed. New version is %s",
 			i.Parameters.ConfigMapVersion.String()), nil
@@ -423,19 +424,19 @@ func (i *ReconcileIteration) CheckForDeviation() (problem error, err error) {
 			i.Parameters.HBIDBSecretVersion.String()), nil
 	}
 
-	//ES Index
+	// ES Index
 	problem, err = i.CheckESIndexDeviation()
 	if err != nil || problem != nil {
 		return problem, err
 	}
 
-	//ES Pipeline
+	// ES Pipeline
 	problem, err = i.CheckESPipelineDeviation()
 	if err != nil || problem != nil {
 		return problem, err
 	}
 
-	//Connectors
+	// Connectors
 	problem, err = i.CheckConnectorDeviation(
 		i.KafkaConnectors.ESConnectorName(i.Instance.Status.PipelineVersion), "es")
 	if err != nil || problem != nil {
@@ -448,7 +449,7 @@ func (i *ReconcileIteration) CheckForDeviation() (problem error, err error) {
 		return problem, err
 	}
 
-	//Topic
+	// Topic
 	problem, err = i.CheckTopicDeviation()
 	if err != nil || problem != nil {
 		return problem, err

@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"time"
+
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -12,7 +14,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"time"
 )
 
 type IndexTestReconciler struct {
@@ -102,7 +103,7 @@ func (i *IndexTestReconciler) createValidIndex() {
 
 	Expect(i.K8sClient.Create(ctx, index)).Should(Succeed())
 
-	//validate index spec is created correctly
+	// validate index spec is created correctly
 	indexLookupKey := types.NamespacedName{Name: i.Name, Namespace: i.Namespace}
 	createdIndex := &v1alpha1.XJoinIndex{}
 

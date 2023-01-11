@@ -2,12 +2,13 @@ package components
 
 import (
 	"context"
+	"strings"
+
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
 )
 
 type XJoinAPISubGraph struct {
@@ -148,7 +149,7 @@ func (x XJoinAPISubGraph) Create() (err error) {
 		return errors.Wrap(err, 0)
 	}
 
-	//create the service
+	// create the service
 	service := &unstructured.Unstructured{}
 
 	service.Object = map[string]interface{}{
@@ -181,7 +182,7 @@ func (x XJoinAPISubGraph) Create() (err error) {
 }
 
 func (x XJoinAPISubGraph) Delete() (err error) {
-	//delete the deployment
+	// delete the deployment
 	deployment := &unstructured.Unstructured{}
 	deployment.SetGroupVersionKind(common.DeploymentGVK)
 	err = x.Client.Get(x.Context, client.ObjectKey{Name: x.Name(), Namespace: x.Namespace}, deployment)
@@ -194,7 +195,7 @@ func (x XJoinAPISubGraph) Delete() (err error) {
 		return errors.Wrap(err, 0)
 	}
 
-	//delete the service
+	// delete the service
 	service := &unstructured.Unstructured{}
 	service.SetGroupVersionKind(common.ServiceGVK)
 	err = x.Client.Get(x.Context, client.ObjectKey{Name: x.Name(), Namespace: x.Namespace}, service)
@@ -207,7 +208,7 @@ func (x XJoinAPISubGraph) Delete() (err error) {
 		return errors.Wrap(err, 0)
 	}
 
-	//delete the gql schema from registry
+	// delete the gql schema from registry
 	exists, err := x.Registry.CheckIfSchemaVersionExists(x.schemaName+"-"+x.version, 1) //TODO
 
 	if exists {

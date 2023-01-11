@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"time"
+
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -19,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"time"
 )
 
 type XJoinDataSourceReconciler struct {
@@ -139,7 +140,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return result, errors.Wrap(err, 0)
 	}
 
-	//TODO actually validate
+	// TODO actually validate
 	if originalInstance.Status.RefreshingVersion != "" {
 		instance.Status.ActiveVersionIsValid = true
 		instance.Status.ActiveVersion = instance.Status.RefreshingVersion

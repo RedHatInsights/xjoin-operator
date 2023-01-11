@@ -1,9 +1,10 @@
 package components
 
 import (
+	"strings"
+
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
-	"strings"
 )
 
 type ElasticsearchConnector struct {
@@ -30,7 +31,7 @@ func (es ElasticsearchConnector) Name() string {
 func (es ElasticsearchConnector) Create() (err error) {
 	m := es.TemplateParameters
 	m["Topic"] = es.Topic
-	//m["RenameTopicReplacement"] = fmt.Sprintf("%s.%s", kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
+	// m["RenameTopicReplacement"] = fmt.Sprintf("%s.%s", kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
 
 	err = es.KafkaClient.CreateGenericElasticsearchConnector(es.Name(), es.Template, m)
 	if err != nil {
