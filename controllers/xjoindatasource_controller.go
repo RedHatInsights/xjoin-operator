@@ -82,7 +82,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	p := parameters.BuildDataSourceParameters()
 
-	if p.Pause.Bool() == true {
+	if p.Pause.Bool() {
 		return
 	}
 

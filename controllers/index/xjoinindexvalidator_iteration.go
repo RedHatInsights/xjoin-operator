@@ -294,7 +294,15 @@ func (i *XJoinIndexValidatorIteration) ParsePodResponse() (validation.Validation
 	}
 	str := buf.String()
 	strArray := strings.Split(str, "\n")
-	resultString := strArray[len(strArray)-2] //removes trailing new lines
+
+	//parse last line, removing trailing new lines
+	var resultString string
+	if len(strArray) > 1 {
+		resultString = strArray[len(strArray)-2]
+	} else {
+		resultString = strArray[len(strArray)-1]
+	}
+
 	err = json.Unmarshal([]byte(resultString), &response)
 	if err != nil {
 		return response, errors.Wrap(err, 0)

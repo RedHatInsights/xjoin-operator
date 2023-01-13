@@ -133,7 +133,7 @@ func (i *ReconcileIteration) UpdateStatusAndRequeue() (reconcile.Result, error) 
 }
 
 func (i *ReconcileIteration) GetValidationInterval() int {
-	if i.Instance.Status.InitialSyncInProgress == true {
+	if i.Instance.Status.InitialSyncInProgress {
 		return i.Parameters.ValidationInitInterval.Int()
 	}
 
@@ -141,7 +141,7 @@ func (i *ReconcileIteration) GetValidationInterval() int {
 }
 
 func (i *ReconcileIteration) GetValidationAttemptsThreshold() int {
-	if i.Instance.Status.InitialSyncInProgress == true {
+	if i.Instance.Status.InitialSyncInProgress {
 		return i.Parameters.ValidationInitAttemptsThreshold.Int()
 	}
 
@@ -149,7 +149,7 @@ func (i *ReconcileIteration) GetValidationAttemptsThreshold() int {
 }
 
 func (i *ReconcileIteration) GetValidationPercentageThreshold() int {
-	if i.Instance.Status.InitialSyncInProgress == true {
+	if i.Instance.Status.InitialSyncInProgress {
 		return i.Parameters.ValidationInitPercentageThreshold.Int()
 	}
 
@@ -395,6 +395,9 @@ func (i *ReconcileIteration) UpdateAliasIfHealthier() error {
 
 	//don't remove the jenkins managed alias until the operator pipeline is healthy
 	currIndices, err := i.ESClient.GetCurrentIndicesWithAlias("xjoin.inventory.hosts")
+	if err != nil {
+		return err
+	}
 	if !utils.ContainsString(currIndices, "xjoin.inventory.hosts."+i.Parameters.JenkinsManagedVersion.String()) {
 		if err = i.ESClient.UpdateAliasByFullIndexName(
 			i.ESClient.AliasName(),
@@ -468,7 +471,7 @@ func (i *ReconcileIteration) CheckESPipelineDeviation() (problem error, err erro
 
 	if err != nil {
 		return nil, err
-	} else if esPipelineExists == false {
+	} else if !esPipelineExists {
 		return fmt.Errorf("elasticsearch pipeline %s not found", pipelineName), nil
 	}
 
@@ -486,7 +489,7 @@ func (i *ReconcileIteration) CheckESIndexDeviation() (problem error, err error) 
 
 	if err != nil {
 		return nil, err
-	} else if indexExists == false {
+	} else if !indexExists {
 		return fmt.Errorf(
 			"elasticsearch index %s not found",
 			indexName), nil

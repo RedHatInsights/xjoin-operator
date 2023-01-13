@@ -32,7 +32,7 @@ var _ = Describe("Pipeline operations", func() {
 				Get("/connectors").
 				Reply(500)
 
-			originalPodName, err := i.getConnectPodName()
+			originalPodName, err := i.GetConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
 
 			err = i.CreatePipeline()
@@ -43,7 +43,7 @@ var _ = Describe("Pipeline operations", func() {
 
 			time.Sleep(time.Second * 3) //give the old connect pod time to completely go away
 
-			newPodName, err := i.getConnectPodName()
+			newPodName, err := i.GetConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(originalPodName).ToNot(Equal(newPodName))
@@ -54,7 +54,7 @@ var _ = Describe("Pipeline operations", func() {
 			defer gock.Off()
 			defer test.ForwardPorts()
 
-			originalPodName, err := i.getConnectPodName()
+			originalPodName, err := i.GetConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
 
 			pipeline, err := i.CreateValidPipeline()
@@ -76,7 +76,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(requeue).To(BeFalse())
 
-			newPodName, err := i.getConnectPodName()
+			newPodName, err := i.GetConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(originalPodName).ToNot(Equal(newPodName))
@@ -84,14 +84,15 @@ var _ = Describe("Pipeline operations", func() {
 
 		It("Doesn't restart Kafka Connect when it is available", func() {
 			Skip("unreliable")
-			originalPodName, err := i.getConnectPodName()
+			originalPodName, err := i.GetConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
 			err = i.CreatePipeline()
 			Expect(err).ToNot(HaveOccurred())
 			requeue, err := i.ReconcileKafkaConnect()
 			Expect(requeue).To(BeFalse())
 			Expect(err).ToNot(HaveOccurred())
-			newPodName, err := i.getConnectPodName()
+			newPodName, err := i.GetConnectPodName()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(originalPodName).To(Equal(newPodName))
 		})
 	})

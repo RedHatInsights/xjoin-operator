@@ -57,10 +57,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, debeziumConnectorLookupKey, debeziumConnector)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 			debeziumClass := "io.debezium.connector.postgresql.PostgresConnector"
@@ -118,10 +115,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, kafkaTopicLookupKey, kafkaTopic)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 			kafkaTopicPartitions := int32(1)

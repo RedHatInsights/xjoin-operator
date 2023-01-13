@@ -169,6 +169,11 @@ func main() {
 
 	clientset, err := kubernetes.NewForConfig(mgr.GetConfig()) //used to read logs from validation pod
 
+	if err != nil {
+		k8slog.Log.Error(err, "unable to load k8s config")
+		os.Exit(1)
+	}
+
 	if err = controllers.NewXJoinIndexValidatorReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),

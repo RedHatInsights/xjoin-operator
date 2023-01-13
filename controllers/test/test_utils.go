@@ -284,7 +284,12 @@ func After(i *Iteration) error {
 	if err != nil {
 		return err
 	}
-	defer i.CloseDB()
+	defer func(i *Iteration) {
+		err := i.CloseDB()
+		if err != nil {
+			log.Error(err, "Unable to close database")
+		}
+	}(i)
 
 	log.Info("Deleting ES indices")
 	indices, err := i.EsClient.ListIndices()
@@ -300,7 +305,13 @@ func After(i *Iteration) error {
 
 	log.Info("Deleting connectors")
 	err = i.KafkaConnectors.DeleteAllConnectors(ResourceNamePrefix)
+	if err != nil {
+		return err
+	}
 	err = i.KafkaConnectors.DeleteAllConnectors("prefix.withadot")
+	if err != nil {
+		return err
+	}
 	err = i.KafkaConnectors.DeleteAllConnectors("prefixupdated")
 	if err != nil {
 		return err

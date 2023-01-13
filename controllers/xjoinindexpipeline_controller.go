@@ -123,7 +123,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	if p.Pause.Bool() == true {
+	if p.Pause.Bool() {
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 

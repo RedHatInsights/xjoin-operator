@@ -40,10 +40,7 @@ func (x *XJoinIndexPipelineTestReconciler) ReconcileNew() v1alpha1.XJoinIndexPip
 	indexLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
 	Eventually(func() bool {
 		err := x.K8sClient.Get(context.Background(), indexLookupKey, &x.createdIndexPipeline)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 	return x.createdIndexPipeline
 }
@@ -318,10 +315,7 @@ func (x *XJoinIndexPipelineTestReconciler) createValidIndexPipeline() {
 
 	Eventually(func() bool {
 		err := x.K8sClient.Get(ctx, indexPipelineLookupKey, createdIndexPipeline)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	Expect(createdIndexPipeline.Spec.Name).Should(Equal(x.Name))

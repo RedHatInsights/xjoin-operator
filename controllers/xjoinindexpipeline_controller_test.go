@@ -77,10 +77,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			Eventually(func() bool {
 				err := k8sClient.Get(context.Background(), connectorLookupKey, elasticsearchConnector)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 			elasticsearchClass := "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector"
@@ -115,10 +112,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			Eventually(func() bool {
 				err := k8sClient.Get(context.Background(), topicLookupKey, topic)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 			topicReplicas := int32(1)
@@ -197,10 +191,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			Eventually(func() bool {
 				err := k8sClient.Get(context.Background(), deploymentLookupKey, deployment)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 			replicas := int32(1)
@@ -280,10 +271,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			Eventually(func() bool {
 				err := k8sClient.Get(context.Background(), deploymentLookupKey, deployment)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 			replicas := int32(1)
@@ -420,10 +408,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			Eventually(func() bool {
 				err := k8sClient.Get(context.Background(), deploymentLookupKey, deployment)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 			replicas := int32(1)

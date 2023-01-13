@@ -39,10 +39,7 @@ func k8sGet(key client.ObjectKey, obj client.Object) {
 	ctx := context.Background()
 	Eventually(func() bool {
 		err := k8sClient.Get(ctx, key, obj)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 }
 

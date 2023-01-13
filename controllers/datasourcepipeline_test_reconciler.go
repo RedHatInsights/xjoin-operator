@@ -17,10 +17,9 @@ import (
 )
 
 type DatasourcePipelineTestReconciler struct {
-	Namespace         string
-	Name              string
-	K8sClient         client.Client
-	createdDatasource v1alpha1.XJoinDataSource
+	Namespace string
+	Name      string
+	K8sClient client.Client
 }
 
 func (d *DatasourcePipelineTestReconciler) newXJoinDataSourcePipelineReconciler() *XJoinDataSourcePipelineReconciler {
@@ -69,10 +68,7 @@ func (d *DatasourcePipelineTestReconciler) createValidDataSourcePipeline() {
 
 	Eventually(func() bool {
 		err := d.K8sClient.Get(ctx, datasourceLookupKey, createdDataSourcePipeline)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
 
 	Expect(createdDataSourcePipeline.Spec.Name).Should(Equal(d.Name))
@@ -97,10 +93,7 @@ func (d *DatasourcePipelineTestReconciler) ReconcileNew() v1alpha1.XJoinDataSour
 	datasourceLookupKey := types.NamespacedName{Name: d.Name, Namespace: d.Namespace}
 	Eventually(func() bool {
 		err := d.K8sClient.Get(context.Background(), datasourceLookupKey, createdDataSourcePipeline)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	return *createdDataSourcePipeline

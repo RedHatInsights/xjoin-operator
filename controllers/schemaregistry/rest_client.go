@@ -50,7 +50,7 @@ func (c *RestClient) MakeRequest(requestParams Request) (resCode int, body map[s
 		return 500, nil, errors.Wrap(err, 0)
 	}
 
-	if strings.Index(res.Header.Get("Content-Type"), "application/json") != -1 {
+	if strings.Contains(res.Header.Get("Content-Type"), "application/json") {
 		err = json.Unmarshal(resBody, &body)
 		if err != nil {
 			return 500, nil, errors.Wrap(err, 0)
@@ -79,6 +79,10 @@ func (c *RestClient) RegisterGraphQLSchema(name string) (id string, err error) {
 		},
 	})
 
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
+
 	if resCode >= 300 {
 		return "", errors.Wrap(errors.New(fmt.Sprintf(
 			"unable to create graphql schema, statusCode: %v, message: %s", resCode, resBody["message"])), 0)
@@ -101,6 +105,9 @@ func (c *RestClient) RegisterGraphQLSchema(name string) (id string, err error) {
 			"Content-Type": "application/json",
 		},
 	})
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
 
 	if resCode >= 300 {
 		return "", errors.Wrap(errors.New(fmt.Sprintf(
@@ -115,6 +122,9 @@ func (c *RestClient) DeleteGraphQLSchema(name string) (err error) {
 		Method: http.MethodDelete,
 		Path:   "/groups/default/artifacts/" + name,
 	})
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 
 	if resCode >= 300 {
 		return errors.Wrap(errors.New(fmt.Sprintf(
@@ -129,6 +139,9 @@ func (c *RestClient) CheckIfGraphQLSchemaExists(name string) (exists bool, err e
 		Method: http.MethodGet,
 		Path:   "/groups/default/artifacts/" + name + "/versions",
 	})
+	if err != nil {
+		return false, errors.Wrap(err, 0)
+	}
 
 	if resCode >= 300 && resCode != 404 {
 		return false, errors.Wrap(errors.New(fmt.Sprintf(

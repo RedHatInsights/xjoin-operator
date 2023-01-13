@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -72,7 +71,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		return i, err
 	}
 
-	if instance.Spec.Pause == true {
+	if instance.Spec.Pause {
 		return i, nil
 	}
 
@@ -140,7 +139,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		CreationTimeout:    i.Parameters.KafkaTopicCreationTimeout.Int(),
 	}
 
-	if i.Parameters.ManagedKafka.Bool() == true {
+	if i.Parameters.ManagedKafka.Bool() {
 		r.Log.Info("Loading Managed Kafka secret")
 		managedKafkaSecret := &v1.Secret{}
 		namespacedName := types.NamespacedName{
@@ -211,12 +210,12 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 	reqLogger.Info("Reconciling XJoinPipeline")
 
 	i, err := r.setup(reqLogger, request, ctx)
-	defer i.Close()
 
 	if err != nil {
 		i.Error(err)
 		setupErrors = append(setupErrors, err)
 	}
+	defer i.Close()
 
 	// Request object not found, could have been deleted after reconcile request or
 	if i.Instance == nil {
@@ -224,7 +223,7 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 	}
 
 	//pause this pipeline. Reconcile loop is skipped until Pause is set to false or nil
-	if i.Instance.Spec.Pause == true {
+	if i.Instance.Spec.Pause {
 		return reconcile.Result{}, nil
 	}
 
@@ -253,11 +252,16 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 			}
 		}
 
+		//allow this to fail in ephemeral envs because
+		//DeleteResourceForPipeline could fail due to Kafka/KafkaConnect already being deleted
 		err = i.DeleteResourceForPipeline(i.Instance.Status.PipelineVersion)
-		err = i.DeleteResourceForPipeline(i.Instance.Status.ActivePipelineVersion)
+		if err != nil && !i.Parameters.Ephemeral.Bool() {
+			return reconcile.Result{}, err
+		}
 
 		//allow this to fail in ephemeral envs because
 		//DeleteResourceForPipeline could fail due to Kafka/KafkaConnect already being deleted
+		err = i.DeleteResourceForPipeline(i.Instance.Status.ActivePipelineVersion)
 		if err != nil && !i.Parameters.Ephemeral.Bool() {
 			return reconcile.Result{}, err
 		}
@@ -288,7 +292,7 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 		i.Instance.Status.ElasticSearchSecretVersion = i.Parameters.ElasticSearchSecretVersion.String()
 		i.Instance.Status.HBIDBSecretVersion = i.Parameters.HBIDBSecretVersion.String()
 
-		pipelineVersion := fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
+		pipelineVersion := strconv.FormatInt(time.Now().UnixNano(), 10)
 		if err = i.Instance.TransitionToInitialSync(i.Parameters.ResourceNamePrefix.String(), pipelineVersion); err != nil {
 			i.Error(err, "Error transitioning to Initial Sync")
 			return reconcile.Result{}, err

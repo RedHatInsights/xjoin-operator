@@ -16,10 +16,9 @@ import (
 )
 
 type IndexTestReconciler struct {
-	Namespace         string
-	Name              string
-	K8sClient         client.Client
-	createdDatasource v1alpha1.XJoinDataSource
+	Namespace string
+	Name      string
+	K8sClient client.Client
 }
 
 func (i *IndexTestReconciler) ReconcileNew() v1alpha1.XJoinIndex {
@@ -33,10 +32,7 @@ func (i *IndexTestReconciler) ReconcileNew() v1alpha1.XJoinIndex {
 
 	Eventually(func() bool {
 		err := i.K8sClient.Get(context.Background(), indexLookupKey, createdIndex)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
 	Expect(createdIndex.Status.ActiveVersion).To(Equal(""))
 	Expect(createdIndex.Status.ActiveVersionIsValid).To(Equal(false))
@@ -108,10 +104,7 @@ func (i *IndexTestReconciler) createValidIndex() {
 
 	Eventually(func() bool {
 		err := i.K8sClient.Get(ctx, indexLookupKey, createdIndex)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
 	Expect(createdIndex.Spec.Pause).Should(Equal(false))
 	Expect(createdIndex.Spec.AvroSchema).Should(Equal("{}"))

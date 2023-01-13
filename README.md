@@ -98,6 +98,9 @@ The operator defines two controllers that reconcile a XJoinPipeline
 
 9. `./dev/setup-clowder.sh`
 
+### Linting
+This project uses [golint-ci](https://golangci-lint.run/)
+
 ### Forward ports
 
 To access the services within the Kubernetes cluster there is a script to forward ports to each of the useful services:
@@ -125,12 +128,12 @@ With the cluster set up it is now possible to install manifests and run the oper
     make install
     ```
 
-1. Run the operator
+2. Run the operator
     ```
     make run ENABLE_WEBHOOKS=false
     ```
 
-1. Finally, create a new pipeline
+3. Finally, create a new pipeline
     ```
     kubectl apply -f ../config/samples/xjoin_v1alpha1_xjoinpipeline.yaml -n test
     ```

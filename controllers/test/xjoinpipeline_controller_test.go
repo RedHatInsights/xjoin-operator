@@ -138,6 +138,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(aliases).To(BeEmpty())
 
 			topics, err := i.KafkaTopics.ListTopicNamesForPipelineVersion(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
 			Expect(topics).To(ContainElement(i.KafkaTopics.TopicName(pipeline.Status.PipelineVersion)))
 		})
 
@@ -614,6 +615,7 @@ var _ = Describe("Pipeline operations", func() {
 			secret.Data["db.user"] = []byte(tempUser)
 			secret.Data["db.password"] = []byte(tempPassword)
 			err = test.Client.Update(ctx, secret)
+			Expect(err).ToNot(HaveOccurred())
 
 			//run a reconcile
 			pipeline, err = i.ExpectInitSyncUnknownReconcile()
@@ -642,6 +644,7 @@ var _ = Describe("Pipeline operations", func() {
 			//change the secret hash by adding a new field
 			secret.Data["newfield"] = []byte("value")
 			err = test.Client.Update(ctx, secret)
+			Expect(err).ToNot(HaveOccurred())
 
 			pipeline, err = i.ExpectInitSyncUnknownReconcile()
 			Expect(err).ToNot(HaveOccurred())
@@ -815,6 +818,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["newfield"] = []byte("value")
 			err = test.Client.Update(ctx, secret)
+			Expect(err).ToNot(HaveOccurred())
 			pipeline, err = i.ExpectInitSyncUnknownReconcile()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
@@ -838,6 +842,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["db.host"] = []byte("invalidurl")
 			err = test.Client.Update(ctx, secret)
+			Expect(err).ToNot(HaveOccurred())
 
 			//this will fail due to incorrect secret
 			err = i.CreatePipeline()
@@ -871,6 +876,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["endpoint"] = []byte("invalidurl")
 			err = test.Client.Update(ctx, secret)
+			Expect(err).ToNot(HaveOccurred())
 
 			err = i.CreatePipeline()
 			Expect(err).ToNot(HaveOccurred())
@@ -886,6 +892,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["db.host"] = []byte("invalidurl")
 			err = test.Client.Update(ctx, secret)
+			Expect(err).ToNot(HaveOccurred())
 
 			err = i.CreatePipeline()
 			Expect(err).ToNot(HaveOccurred())

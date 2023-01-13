@@ -170,10 +170,23 @@ func (db *Database) RemoveReplicationSlot(slot string) error {
 		return nil
 	}
 
-	_, err := db.ExecQuery(fmt.Sprintf(
-		`SELECT pg_drop_replication_slot('%s') WHERE EXISTS 
+	totalAttempts := 10
+	success := false
+	var err error
+
+	for attempt := 0; attempt < totalAttempts; attempt++ {
+		_, err = db.ExecQuery(fmt.Sprintf(
+			`SELECT pg_drop_replication_slot('%s') WHERE EXISTS 
 				 (SELECT slot_name from pg_catalog.pg_replication_slots where slot_name='%s')`, slot, slot))
-	if err != nil {
+		if err == nil {
+			success = true
+			break
+		} else {
+			time.Sleep(time.Second * 1)
+		}
+	}
+
+	if !success {
 		return err
 	}
 

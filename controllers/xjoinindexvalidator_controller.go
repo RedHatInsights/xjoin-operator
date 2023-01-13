@@ -105,7 +105,7 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 		return
 	}
 
-	if p.Pause.Bool() == true {
+	if p.Pause.Bool() {
 		return
 	}
 

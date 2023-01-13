@@ -70,11 +70,7 @@ func (i *Iteration) CheckIfDependenciesAreResponding() bool {
 		return false
 	}
 	_, err = i.EsClient.ListIndices()
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }
 
 func (i *Iteration) CloseDB() error {
@@ -475,6 +471,9 @@ func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename st
 	if res.IsError() {
 
 		bodyBytes, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
 		err = res.Body.Close()
 		if err != nil {
 			return err
@@ -500,6 +499,9 @@ func (i *Iteration) InsertHostNow(filename string) (string, error) {
 
 func (i *Iteration) InsertHost(filename string, modifiedOn time.Time) (string, error) {
 	hostId, err := uuid.NewUUID()
+	if err != nil {
+		return "", err
+	}
 
 	hbiHostFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/hosts/hbi/" + filename + ".sql")
 	if err != nil {
@@ -589,7 +591,7 @@ func (i *Iteration) ExpectPipelineVersionToBeRemoved(pipelineVersion string) err
 	if err != nil {
 		return err
 	}
-	if exists != false {
+	if exists {
 		return errors.New(fmt.Sprintf("expected index %s to not exist", i.EsClient.ESIndexName(pipelineVersion)))
 	}
 
@@ -642,7 +644,7 @@ func (i *Iteration) ExpectValidReconcile() (*xjoin.XJoinPipeline, error) {
 		return nil, errors.New("expected pipeline state to be valid")
 	}
 
-	if pipeline.Status.InitialSyncInProgress != false {
+	if pipeline.Status.InitialSyncInProgress {
 		return nil, errors.New("expected InitialSyncInProgress to be false")
 	}
 
@@ -667,7 +669,7 @@ func (i *Iteration) ExpectNewReconcile() (*xjoin.XJoinPipeline, error) {
 		return nil, errors.New("expected pipeline state to be new")
 	}
 
-	if pipeline.Status.InitialSyncInProgress != false {
+	if pipeline.Status.InitialSyncInProgress {
 		return nil, errors.New("expected InitialSyncInProgress to be false")
 	}
 
@@ -692,7 +694,7 @@ func (i *Iteration) ExpectInitSyncInvalidReconcile() (*xjoin.XJoinPipeline, erro
 		return nil, errors.New("expected pipeline state to be initial_sync")
 	}
 
-	if pipeline.Status.InitialSyncInProgress != true {
+	if !pipeline.Status.InitialSyncInProgress {
 		return nil, errors.New("expected InitialSyncInProgress to be true")
 	}
 
@@ -716,7 +718,7 @@ func (i *Iteration) ExpectInitSyncUnknownReconcile() (*xjoin.XJoinPipeline, erro
 		return nil, errors.New("expected pipeline state to be initial_sync")
 	}
 
-	if pipeline.Status.InitialSyncInProgress != true {
+	if !pipeline.Status.InitialSyncInProgress {
 		return nil, errors.New("expected InitialSyncInProgress to be true")
 	}
 
@@ -740,7 +742,7 @@ func (i *Iteration) ExpectInvalidReconcile() (*xjoin.XJoinPipeline, error) {
 		return nil, errors.New("expected pipeline state to be invalid")
 	}
 
-	if pipeline.Status.InitialSyncInProgress != false {
+	if pipeline.Status.InitialSyncInProgress {
 		return nil, errors.New("expected InitialSyncInProgress to be false")
 	}
 
@@ -773,7 +775,7 @@ func (i *Iteration) CreateValidPipeline(specs ...*xjoin.XJoinPipelineSpec) (*xjo
 		return nil, errors.New("expected pipeline state to be valid")
 	}
 
-	if pipeline.Status.InitialSyncInProgress != false {
+	if pipeline.Status.InitialSyncInProgress {
 		return nil, errors.New("expected InitialSyncInProgress to be false")
 	}
 
@@ -877,7 +879,7 @@ func (i *Iteration) ReconcileXJoinForDeletedPipeline() error {
 		return errors.Wrap(err, 0)
 	}
 
-	if result.Requeue != false {
+	if result.Requeue {
 		return errors.Wrap(errors.New("expected result.Requeue to be false"), 0)
 	}
 
@@ -915,7 +917,7 @@ func (i *Iteration) ReconcileXJoinNonTest() (*xjoin.XJoinPipeline, error) {
 		return nil, err
 	}
 
-	if result.Requeue != false {
+	if result.Requeue {
 		return nil, errors.New("expected result.requeue to be false")
 	}
 	return i.GetPipeline()
@@ -938,7 +940,7 @@ func (i *Iteration) ReconcileXJoin() (*xjoin.XJoinPipeline, error) {
 	if err != nil {
 		return nil, err
 	}
-	if result.Requeue != false {
+	if result.Requeue {
 		return nil, errors.New("expected result.Requeue to be false")
 	}
 	return i.GetPipeline()
@@ -951,7 +953,7 @@ func (i *Iteration) ReconcileValidationForDeletedPipeline() error {
 	if err != nil {
 		return err
 	}
-	if result.Requeue != false {
+	if result.Requeue {
 		return errors.New("expected result.Requeue to be false")
 	}
 
@@ -966,7 +968,7 @@ func (i *Iteration) ReconcileValidation() (*xjoin.XJoinPipeline, error) {
 		return nil, err
 	}
 
-	if result.Requeue != false {
+	if result.Requeue {
 		return nil, errors.New("expected result.requeue to be false")
 	}
 	return i.GetPipeline()
@@ -1018,15 +1020,6 @@ func (i *Iteration) WaitForPipelineToBeValid() (*xjoin.XJoinPipeline, error) {
 	}
 
 	return pipeline, nil
-}
-
-func (i *Iteration) setPrefix(prefix string) error {
-	err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue(prefix)
-	if err != nil {
-		return err
-	}
-	i.EsClient.SetResourceNamePrefix(prefix)
-	return i.Parameters.ResourceNamePrefix.SetValue(prefix)
 }
 
 func (i *Iteration) fullValidationFailureTest(hbiFileName string, esFileName string) error {
@@ -1090,7 +1083,7 @@ func (i *Iteration) fullValidationFailureTest(hbiFileName string, esFileName str
 	return nil
 }
 
-func (i *Iteration) getConnectPodName() (string, error) {
+func (i *Iteration) GetConnectPodName() (string, error) {
 	pods := &corev1.PodList{}
 
 	ctx, cancel := utils.DefaultContext()

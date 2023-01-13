@@ -3,7 +3,6 @@ package elasticsearch
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
@@ -42,6 +41,9 @@ func (es *ElasticSearch) UpdateAliasByFullIndexName(alias string, index string) 
 	req.Actions = actions
 
 	reqJSON, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
 	res, err := es.Client.Indices.UpdateAliases(bytes.NewReader(reqJSON))
 
 	if err != nil {
@@ -79,9 +81,9 @@ func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, erro
 	byteValue, _ := ioutil.ReadAll(res.Body)
 
 	if res.StatusCode != 200 {
-		return nil, errors.New(fmt.Sprintf(
-			"Unable to get current indices with alias. StatusCode: %s, Body: %s",
-			strconv.Itoa(res.StatusCode), string(byteValue)))
+		return nil, fmt.Errorf(
+			"unable to get current indices with alias. StatusCode: %s, Body: %s",
+			strconv.Itoa(res.StatusCode), string(byteValue))
 	}
 
 	var aliasesResponse []CatAliasResponse

@@ -113,7 +113,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 
 	p := parameters.BuildIndexParameters()
 
-	if p.Pause.Bool() == true {
+	if p.Pause.Bool() {
 		return
 	}
 

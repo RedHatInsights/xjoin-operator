@@ -43,7 +43,7 @@ func (i *ReconcileIteration) Validate() (isValid bool, err error) {
 	fullMismatchCount := 0
 	fullMismatchRatio := 0.0
 
-	if i.Parameters.FullValidationEnabled.Bool() == true {
+	if i.Parameters.FullValidationEnabled.Bool() {
 		isValid, fullMismatchCount, fullMismatchRatio, err = i.fullValidation(hbiIds)
 		if err != nil || !isValid {
 			metrics.ValidationFinished(isValid)
@@ -255,8 +255,6 @@ func (i *ReconcileIteration) validateFullChunkAsync(chunk []string, allIdDiffs c
 	for _, diff := range diffs {
 		allIdDiffs <- diff
 	}
-
-	return
 }
 
 func (i *ReconcileIteration) fullValidation(ids []string) (isValid bool, mismatchCount int, mismatchRatio float64, err error) {

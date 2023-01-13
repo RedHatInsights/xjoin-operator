@@ -49,7 +49,7 @@ func (sr *ConfluentClient) CheckIfSchemaVersionExists(name string, version int) 
 
 func (sr *ConfluentClient) DeleteSchema(name string) (err error) {
 	_, err = sr.Client.GetLatestSchema(name)
-	if err != nil && strings.Index(err.Error(), "404 Not Found") != -1 {
+	if err != nil && strings.Contains(err.Error(), "404 Not Found") {
 		return nil //schema doesn't exist, don't try to delete it
 	} else if err != nil {
 		return errors.Wrap(err, 0)

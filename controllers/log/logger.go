@@ -55,7 +55,7 @@ func NewLogger(name string, values ...interface{}) Log {
 
 		//suppress log spam during test runs
 		if strings.EqualFold(os.Getenv("TEST_MODE"), "true") {
-			o.DestWritter = ginkgo.GinkgoWriter
+			o.DestWriter = ginkgo.GinkgoWriter
 		}
 	}
 	logf.SetLogger(k8szap.New(opts))
