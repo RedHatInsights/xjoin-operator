@@ -45,7 +45,8 @@ kubectl -n test get KafkaTopic -o custom-columns=name:metadata.name | grep datas
 done
 
 echo "Deleting avro subjects.."
-artifacts=$(curl "http://localhost:1080/apis/registry/v2/search/artifacts?limit=100" | jq '.artifacts|map(.id)|@sh')
+APICURIO_HOSTNAME=apicurio
+artifacts=$(curl "http://$APICURIO_HOSTNAME:1080/apis/registry/v2/search/artifacts?limit=100" | jq '.artifacts|map(.id)|@sh')
 artifacts=($artifacts)
 total=${#artifacts[@]}
 for i in "${!artifacts[@]}"; do
@@ -58,7 +59,7 @@ for i in "${!artifacts[@]}"; do
       artifact=${artifacts[$i]}
       artifact="${artifact:2}"
       artifact="${artifact::-1}"
-    elif [ "$i" -eq "$total-1" ]; then
+    elif [ "$i" -eq $(("$total-1")) ]; then
       echo "At the end"
       artifact=${artifacts[$i]}
       artifact="${artifact:1}"
@@ -70,28 +71,24 @@ for i in "${!artifacts[@]}"; do
       artifact="${artifact::-1}"
     fi
     echo "$artifact"
-    curl -X DELETE http://localhost:1080/apis/registry/v1/artifacts/$artifact
+    curl -X DELETE "http://$APICURIO_HOSTNAME:1080/apis/registry/v1/artifacts/$artifact"
 done
 
 echo "Deleting replication slots"
 HBI_USER=$(kubectl get secret/host-inventory-db -o custom-columns=:data.username | base64 -d)
 HBI_NAME=$(kubectl get secret/host-inventory-db -o custom-columns=:data.name | base64 -d)
-psql -U "$HBI_USER" -h localhost -p 5432 -d "$HBI_NAME" -t -c "SELECT slot_name from pg_catalog.pg_replication_slots" | while read -r slot ; do
-  psql -U "$HBI_USER" -h localhost -p 5432 -d "$HBI_NAME" -c "SELECT pg_drop_replication_slot('$slot');"
-done
-
-CATS_USER=$(kubectl get secret/cats-db -o custom-columns=:data.username | base64 -d)
-CATS_NAME=$(kubectl get secret/cats-db -o custom-columns=:data.name | base64 -d)
-psql -U "$CATS_USER" -h localhost -p 5433 -d "$CATS_NAME" -t -c "SELECT slot_name from pg_catalog.pg_replication_slots" | while read -r slot ; do
-  psql -U "$CATS_USER" -h localhost -p 5433 -d "$CATS_NAME" -c "SELECT pg_drop_replication_slot('$slot');"
+HBI_HOSTNAME=host-inventory-db.test.svc
+psql -U "$HBI_USER" -h "$HBI_HOSTNAME" -p 5432 -d "$HBI_NAME" -t -c "SELECT slot_name from pg_catalog.pg_replication_slots" | while read -r slot ; do
+  psql -U "$HBI_USER" -h "$HBI_HOSTNAME" -p 5432 -d "$HBI_NAME" -c "SELECT pg_drop_replication_slot('$slot');"
 done
 
 echo "Deleting ES indexes"
 ES_PASSWORD=$(kubectl get secret/xjoin-elasticsearch-es-elastic-user -o custom-columns=:data.elastic | base64 -d)
-curl -u "elastic:$ES_PASSWORD" http://localhost:9200/_cat/indices\?format\=json | jq '.[] | .index' | grep xjoinindexpipeline | while read -r index ; do
+ES_HOSTNAME=xjoin-elasticsearch-es-default.test.svc
+curl -u "elastic:$ES_PASSWORD" "http://$ES_HOSTNAME:9200/_cat/indices?format=json" | jq '.[] | .index' | grep xjoinindexpipeline | while read -r index ; do
   index="${index:1}"
   index="${index::-1}"
-  curl -u "elastic:$ES_PASSWORD" -X DELETE "http://localhost:9200/$index"
+  curl -u "elastic:$ES_PASSWORD" -X DELETE "http://$ES_HOSTNAME:9200/$index"
 done
 
 echo "Deleting subgraph pods"
@@ -104,3 +101,5 @@ kubectl delete services --selector='xjoin.index=xjoinindexpipeline-hosts'
 kubectl delete services --selector='xjoin.index=xjoinindexpipeline-cats'
 kubectl delete services --selector='xjoin.index=xjoinindexpipeline-cats'
 kubectl delete services --selector='xjoin.index=xjoinindexpipeline-hosts-hbi-tags'
+
+kubectl delete pods --selector='xjoin.component.name=XJoinIndexValidator'

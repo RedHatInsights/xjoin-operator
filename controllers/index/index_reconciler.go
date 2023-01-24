@@ -35,10 +35,6 @@ func (d *ReconcileMethods) New(version string) (err error) {
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
-	err = d.iteration.CreateIndexValidator(d.iteration.GetInstance().Name, version)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
 	return
 }
 
@@ -63,10 +59,6 @@ func (d *ReconcileMethods) StartRefreshing(version string) (err error) {
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
-	err = d.iteration.CreateIndexValidator(d.iteration.GetInstance().Name, version)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
 	return
 }
 
@@ -79,13 +71,11 @@ func (d *ReconcileMethods) Refreshing() (err error) {
 }
 
 func (d *ReconcileMethods) RefreshComplete() (err error) {
-	err = d.iteration.DeleteIndexPipeline(d.iteration.GetInstance().Name, d.iteration.GetInstance().Status.ActiveVersion)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-	err = d.iteration.DeleteIndexValidator(d.iteration.GetInstance().Name, d.iteration.GetInstance().Status.ActiveVersion)
-	if err != nil {
-		return errors.Wrap(err, 0)
+	if d.iteration.GetInstance().Status.ActiveVersion != "" {
+		err = d.iteration.DeleteIndexPipeline(d.iteration.GetInstance().Name, d.iteration.GetInstance().Status.ActiveVersion)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
 	}
 	return
 }
