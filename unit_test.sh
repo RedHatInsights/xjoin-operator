@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Add you unit test specific code
-export GO111MODULE="on"
-export GOPATH=/var/gopath
+# export GO111MODULE="on"
+# export GOPATH=/var/gopath
 
 # go get stuff...
 
