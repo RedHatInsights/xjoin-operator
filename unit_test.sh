@@ -1,18 +1,5 @@
 #!/bin/bash
 
-# Add you unit test specific code
-# export GO111MODULE="on"
-# export GOPATH=/var/gopath
-
-# go get stuff...
-
-# If your app requires a 'cdappconfig.json' when running unit tests, create a dummy cdappconfig
-# that has appropraite values and.  Store this file in your git repo.  Example can be found here:
-# https://github.com/RedHatInsights/insights-ingress-go/blob/master/cdappconfig.json
-set +e
-# ACG_CONFIG="$(pwd)/cdappconfig.json"  go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
-
-# run unit test using Makefile rule generic-test
 make generic-test
 result=$?
 set -e
