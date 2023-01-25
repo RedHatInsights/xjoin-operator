@@ -1,7 +1,10 @@
-FROM registry.access.redhat.com/ubi8/go-toolset:1.17.12 as builder
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest as builder
 
 USER 0
 WORKDIR /workspace
+# install go
+RUN microdnf install -y golang
+
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -21,6 +24,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager 
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
+# ---------- this part probably is not going to work, find work around
 COPY --from=builder /workspace/manager .
 USER nonroot:nonroot
 
