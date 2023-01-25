@@ -12,6 +12,8 @@ IQE_MARKER_EXPRESSION="smoke"  # This is the value passed to pytest -m
 IQE_FILTER_EXPRESSION=""  # This is the value passed to pytest -k
 IQE_CJI_TIMEOUT="30m"  # This is the time to wait for smoke test to complete or fail
 
+DOCKERFILE="Dockerfile.unittest"
+
 # the below part works.
 ARTIFACTS_DIR=$WORKSPACE/artifacts
 
