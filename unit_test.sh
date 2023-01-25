@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# use the following make rule to execute unit tests
 make generic-test
 result=$?
 set -e
