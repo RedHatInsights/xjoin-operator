@@ -1,11 +1,7 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest as builder
+FROM registry.access.redhat.com/ubi8/go-toolset:1.17.12 as builder
 
 USER 0
-ENV APP_ROOT=/workspace
-WORKDIR $APP_ROOT
-
-# install go
-RUN microdnf install -y golang
+WORKDIR /workspace
 
 # Copy the Go Modules manifests
 COPY go.mod go.mod
@@ -22,12 +18,9 @@ COPY controllers/ controllers/
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
 
-RUN chgrp -R 0 $APP_ROOT && \
-    chmod -R g=u $APP_ROOT
-
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 WORKDIR /
 
 COPY --from=builder /workspace/manager .
