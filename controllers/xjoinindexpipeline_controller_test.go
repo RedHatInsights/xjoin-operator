@@ -11,10 +11,12 @@ import (
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	v1 "k8s.io/api/apps/v1"
-	v12 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	//+kubebuilder:scaffold:imports
 )
@@ -213,7 +215,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal("xjoin-core-xjoinindexpipeline-test-index-pipeline-1234"))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/ckyrouac/xjoin-core:latest"))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(5))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]v12.EnvVar{
+			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]corev1.EnvVar{
 				{
 					Name:      "SOURCE_TOPICS",
 					Value:     "", //TODO
@@ -294,7 +296,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal("xjoinindexpipeline-test-index-pipeline-1234"))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/ckyrouac/xjoin-api-subgraph:latest"))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(9))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]v12.EnvVar{
+			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]corev1.EnvVar{
 				{
 					Name:      "AVRO_SCHEMA",
 					Value:     `{"type":"record","name":"Value","namespace":"test-index-pipeline"}`,
@@ -343,7 +345,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			}))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Command).To(BeNil())
 			Expect(deployment.Spec.Template.Spec.Containers[0].Args).To(BeNil())
-			Expect(deployment.Spec.Template.Spec.Containers[0].Ports).To(Equal([]v12.ContainerPort{{
+			Expect(deployment.Spec.Template.Spec.Containers[0].Ports).To(Equal([]corev1.ContainerPort{{
 				Name:          "web",
 				HostPort:      int32(0),
 				ContainerPort: int32(8000),
@@ -431,7 +433,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal(deploymentName))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/ckyrouac/host-inventory-subgraph:latest"))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(9))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]v12.EnvVar{
+			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]corev1.EnvVar{
 				{
 					Name:      "AVRO_SCHEMA",
 					Value:     `{"type":"record","name":"Value","namespace":"test-index-pipeline"}`,
@@ -480,7 +482,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			}))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Command).To(BeNil())
 			Expect(deployment.Spec.Template.Spec.Containers[0].Args).To(BeNil())
-			Expect(deployment.Spec.Template.Spec.Containers[0].Ports).To(Equal([]v12.ContainerPort{{
+			Expect(deployment.Spec.Template.Spec.Containers[0].Ports).To(Equal([]corev1.ContainerPort{{
 				Name:          "web",
 				HostPort:      int32(0),
 				ContainerPort: int32(8000),
@@ -532,6 +534,55 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			count = info["PUT http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234"]
 			Expect(count).To(Equal(1))
+		})
+
+		It("Should create an XJoinIndexValidation resource", func() {
+			configFileName := "xjoinindex"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:      namespace,
+				Name:           "test-index-pipeline",
+				ConfigFileName: "xjoinindex",
+				K8sClient:      k8sClient,
+				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{{
+					Name:  "test-custom-image",
+					Image: "quay.io/ckyrouac/host-inventory-subgraph:latest",
+				}},
+			}
+			reconciler.ReconcileNew()
+
+			validatorName := "xjoinindexpipeline.test-index-pipeline.1234"
+			validatorLookupKey := types.NamespacedName{Name: validatorName, Namespace: namespace}
+			validator := &v1alpha1.XJoinIndexValidator{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), validatorLookupKey, validator)
+				return err == nil
+			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+			Expect(validator.Name).To(Equal(validatorName))
+			Expect(validator.Namespace).To(Equal(namespace))
+			Expect(validator.GetLabels()).To(Equal(map[string]string{
+				"app":                  "xjoin-validator",
+				"xjoin.component.name": "xjoinindexpipeline.test-index-pipeline",
+			}))
+			Expect(validator.OwnerReferences).To(HaveLen(1))
+
+			truePtr := true
+			expectedOwnerRef := metav1.OwnerReference{
+				APIVersion:         "v1alpha1",
+				Kind:               "XJoinIndexPipeline",
+				Name:               "test-index-pipeline",
+				UID:                validator.OwnerReferences[0].UID,
+				Controller:         &truePtr,
+				BlockOwnerDeletion: &truePtr,
+			}
+			Expect(validator.OwnerReferences[0]).To(Equal(expectedOwnerRef))
+			Expect(validator.Spec.Version).To(Equal("1234"))
+			Expect(validator.Spec.IndexName).To(Equal("xjoinindexpipeline.test-index-pipeline.1234"))
+
+			indexAvroSchema, err := os.ReadFile("./test/data/avro/" + configFileName + ".json")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(validator.Spec.AvroSchema).To(Equal(string(indexAvroSchema)))
 		})
 	})
 
@@ -805,6 +856,31 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			count = info["DELETE http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234"]
 			Expect(count).To(Equal(1))
+		})
+
+		It("Should delete the XJoinIndexValidation resource", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:      namespace,
+				Name:           name,
+				ConfigFileName: "xjoinindex",
+				K8sClient:      k8sClient,
+			}
+			createdIndexPipeline := reconciler.ReconcileNew()
+
+			validators := &v1alpha1.XJoinIndexValidatorList{}
+			err := k8sClient.List(context.Background(), validators, client.InNamespace(namespace))
+			checkError(err)
+			Expect(validators.Items).To(HaveLen(1))
+
+			err = k8sClient.Delete(context.Background(), &createdIndexPipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			validators = &v1alpha1.XJoinIndexValidatorList{}
+			err = k8sClient.List(context.Background(), validators, client.InNamespace(namespace))
+			checkError(err)
+			Expect(validators.Items).To(HaveLen(0))
 		})
 	})
 })
