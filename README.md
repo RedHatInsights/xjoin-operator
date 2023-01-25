@@ -89,7 +89,7 @@ The operator defines two controllers that reconcile a XJoinPipeline
 8. Do one of the following
     - Append the following line into `/etc/hosts`
         ```
-        127.0.0.1 inventory-db host-inventory-db.test.svc xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http kafka-kafka-0.kafka-kafka-brokers.test.svc
+        127.0.0.1 inventory-db host-inventory-db.test.svc xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http kafka-kafka-0.kafka-kafka-brokers.test.svc apicurio
         ```
     - Install and run [kubefwd](https://github.com/txn2/kubefwd)
       ```

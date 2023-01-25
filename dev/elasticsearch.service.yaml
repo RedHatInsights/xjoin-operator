@@ -1,0 +1,23 @@
+#this is used in the dev environment to enable the inventory service's host creation script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: elasticsearch-hbi
+  name: elasticsearch-hbi
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - port: 29092
+      protocol: TCP
+      targetPort: 9092
+      name: external
+  selector:
+    common.k8s.elastic.co/type: elasticsearch
+    elasticsearch.k8s.elastic.co/cluster-name: xjoin-elasticsearch
+  sessionAffinity: None
+  type: ClusterIP

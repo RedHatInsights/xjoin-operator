@@ -275,6 +275,15 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Image:                 "quay.io/ckyrouac/xjoin-api-subgraph:latest", //TODO
 		GraphQLSchemaName:     graphqlSchemaComponent.Name(),
 	})
+	componentManager.AddComponent(&components.XJoinIndexValidator{
+		Client:                 i.Client,
+		Context:                i.Context,
+		Namespace:              i.Instance.GetNamespace(),
+		Schema:                 p.AvroSchema.String(),
+		Pause:                  i.Parameters.Pause.Bool(),
+		ParentInstance:         i.Instance,
+		ElasticsearchIndexName: elasticSearchIndexComponent.Name(),
+	})
 
 	for _, customSubgraphImage := range instance.Spec.CustomSubgraphImages {
 		customSubgraphGraphQLSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{

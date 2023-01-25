@@ -118,7 +118,8 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 			Client:           r.Client,
 			Log:              reqLogger,
 		},
-		ClientSet: r.ClientSet,
+		ClientSet:              r.ClientSet,
+		ElasticsearchIndexName: instance.Spec.IndexName,
 	}
 
 	if err = i.AddFinalizer(xjoinindexValidatorFinalizer); err != nil {

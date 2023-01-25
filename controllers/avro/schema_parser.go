@@ -44,7 +44,7 @@ type IndexAvroSchemaParser struct {
 }
 
 // Parse AvroSchema string into various structures represented by IndexAvroSchema to be used in component creation
-func (d IndexAvroSchemaParser) Parse() (indexAvroSchema IndexAvroSchema, err error) {
+func (d *IndexAvroSchemaParser) Parse() (indexAvroSchema IndexAvroSchema, err error) {
 	indexAvroSchema.References, err = d.parseAvroSchemaReferences()
 	if err != nil {
 		return indexAvroSchema, errors.Wrap(err, 0)
@@ -80,7 +80,7 @@ func (d IndexAvroSchemaParser) Parse() (indexAvroSchema IndexAvroSchema, err err
 }
 
 // applyTransformations adds the fields defined in xjoin.transformations to the Schema
-func (d IndexAvroSchemaParser) applyTransformations(avroSchema Schema) (transformedAvroSchema Schema, err error) {
+func (d *IndexAvroSchemaParser) applyTransformations(avroSchema Schema) (transformedAvroSchema Schema, err error) {
 	for _, transformation := range avroSchema.Transformations {
 		switch transformation.Type {
 		case OBJECT_TO_ARRAY_OF_OBJECTS:
@@ -99,7 +99,7 @@ func (d IndexAvroSchemaParser) applyTransformations(avroSchema Schema) (transfor
 	return avroSchema, nil
 }
 
-func (d IndexAvroSchemaParser) applyObjectToArrayOfStringsTransformation(
+func (d *IndexAvroSchemaParser) applyObjectToArrayOfStringsTransformation(
 	avroSchema Schema, transformation Transformation) (Schema, error) {
 
 	stringType := Type{
@@ -125,7 +125,7 @@ func (d IndexAvroSchemaParser) applyObjectToArrayOfStringsTransformation(
 	return avroSchema, nil
 }
 
-func (d IndexAvroSchemaParser) applyObjectToArrayOfObjectsTransformation(
+func (d *IndexAvroSchemaParser) applyObjectToArrayOfObjectsTransformation(
 	avroSchema Schema, transformation Transformation) (Schema, error) {
 
 	if transformation.Parameters["keys"] == nil || reflect.TypeOf(transformation.Parameters["keys"]).Kind() != reflect.Slice {
@@ -196,7 +196,10 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 	}
 
 	for _, field := range schemaObj.Fields {
-		dataSourceName := strings.Split(field.Type[0].Type, ".")[1] //TODO
+		if len(field.Type) == 0 || len(strings.Split(field.Type[0].Type, ".")) < 2 {
+			return references, errors.Wrap(errors.New("unable to parse dataSourceName from avro schema fields"), 0)
+		}
+		dataSourceName := strings.Split(field.Type[0].Type, ".")[1]
 
 		//get data source obj from field.Ref
 		dataSource := &unstructured.Unstructured{}
@@ -239,7 +242,7 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 }
 
 // ParseAvroSchema transforms an avro schema into elasticsearch mapping properties and a list of jsonFields
-func (d IndexAvroSchemaParser) transformToES(avroSchema Schema) (properties string, jsonFields []string, err error) {
+func (d *IndexAvroSchemaParser) transformToES(avroSchema Schema) (properties string, jsonFields []string, err error) {
 
 	if avroSchema.Fields == nil {
 		return properties, jsonFields, errors.Wrap(errors.New("fields property is missing from avro schema"), 0)
@@ -265,7 +268,7 @@ func parseAvroFields(avroFields []Field, parent list.List) (map[string]interface
 	for _, avroField := range avroFields {
 		esProperty := make(map[string]interface{})
 
-		if avroField.XJoinIndex != nil && *avroField.XJoinIndex == false {
+		if avroField.XJoinIndex != nil && !*avroField.XJoinIndex {
 			continue
 		}
 
@@ -371,7 +374,7 @@ func parseXJoinFlags(avroFieldType Type, esProperty map[string]interface{}) (map
 }
 
 // ExpandReferences retrieves the full schema for each xjoinref field
-func (d IndexAvroSchemaParser) expandReferences(baseSchema string, references []srclient.Reference) (fullSchema Schema, err error) {
+func (d *IndexAvroSchemaParser) expandReferences(baseSchema string, references []srclient.Reference) (fullSchema Schema, err error) {
 	err = json.Unmarshal([]byte(baseSchema), &fullSchema)
 	if err != nil {
 		return fullSchema, errors.Wrap(err, 0)
@@ -413,13 +416,13 @@ func findReferenceByType(references []srclient.Reference, refType string) (srcli
 	return srclient.Reference{}, errors.Wrap(errors.New("reference "+refType+"not found in list of references"), 0)
 }
 
-func (d IndexAvroSchemaParser) AvroSubjectToKafkaTopic(avroSubject string) (kafkaTopic string) {
+func (d *IndexAvroSchemaParser) AvroSubjectToKafkaTopic(avroSubject string) (kafkaTopic string) {
 	//avro subjects have a -value suffix while kafka topics do not
 	//e.g. xjoindatasourcepipeline.hosts.123456789-value
 	return strings.Split(avroSubject, "-")[0]
 }
 
-func (d IndexAvroSchemaParser) ParseSourceTopics(references []srclient.Reference) (sourceTopics string) {
+func (d *IndexAvroSchemaParser) ParseSourceTopics(references []srclient.Reference) (sourceTopics string) {
 	for idx, reference := range references {
 		if idx != 0 {
 			sourceTopics = sourceTopics + ","

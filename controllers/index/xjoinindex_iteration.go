@@ -42,42 +42,8 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 	return
 }
 
-func (i *XJoinIndexIteration) CreateIndexValidator(name string, version string) (err error) {
-	indexValidator := unstructured.Unstructured{}
-	indexValidator.Object = map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"name":      name + "." + version,
-			"namespace": i.Iteration.Instance.GetNamespace(),
-			"labels": map[string]interface{}{
-				common.COMPONENT_NAME_LABEL: name,
-				"app":                       "xjoin-validator",
-			},
-		},
-		"spec": map[string]interface{}{
-			"name":       name,
-			"version":    version,
-			"avroSchema": i.Parameters.AvroSchema.String(),
-			"pause":      i.Parameters.Pause.Bool(),
-		},
-	}
-	indexValidator.SetGroupVersionKind(common.IndexValidatorGVK)
-	err = i.CreateChildResource(indexValidator, common.IndexGVK)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-	return
-}
-
 func (i *XJoinIndexIteration) DeleteIndexPipeline(name string, version string) (err error) {
 	err = i.DeleteResource(name+"."+version, common.IndexPipelineGVK)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-	return
-}
-
-func (i *XJoinIndexIteration) DeleteIndexValidator(name string, version string) (err error) {
-	err = i.DeleteResource(name+"."+version, common.IndexValidatorGVK)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -96,11 +62,6 @@ func (i *XJoinIndexIteration) Finalize() (err error) {
 	i.Log.Info("Starting finalizer")
 
 	err = i.DeleteAllResourceTypeWithComponentName(common.IndexPipelineGVK, i.GetInstance().GetName())
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-
-	err = i.DeleteAllResourceTypeWithComponentName(common.IndexValidatorGVK, i.GetInstance().GetName())
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -127,21 +88,8 @@ func (i *XJoinIndexIteration) ReconcilePipeline() (err error) {
 	return
 }
 
-func (i *XJoinIndexIteration) ReconcileValidator() (err error) {
-	child := NewIndexValidatorChild(i)
-	err = i.ReconcileChild(child)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-	return
-}
-
 func (i *XJoinIndexIteration) ReconcileChildren() (err error) {
 	err = i.ReconcilePipeline()
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-	err = i.ReconcileValidator()
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

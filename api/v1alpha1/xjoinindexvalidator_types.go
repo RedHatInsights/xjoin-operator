@@ -15,6 +15,9 @@ type XJoinIndexValidatorSpec struct {
 	// +kubebuilder:validation:Required
 	AvroSchema string `json:"avroSchema,omitempty"`
 
+	// +kubebuilder:validation:Required
+	IndexName string `json:"indexName,omitempty"`
+
 	// +optional
 	Pause bool `json:"pause,omitempty"`
 }

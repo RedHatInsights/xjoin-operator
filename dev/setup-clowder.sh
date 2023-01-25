@@ -155,6 +155,7 @@ psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE DATABASE t
 # elasticsearch
 print_start_message "Setting up elasticsearch password"
 dev/setup.sh -e -p test
+kubectl apply -f ./dev/elasticsearch.service.yaml -n test
 
 if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
   kubectl apply -f ./dev/apicurio.yaml -n test
