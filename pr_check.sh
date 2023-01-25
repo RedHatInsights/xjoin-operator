@@ -20,6 +20,11 @@ DOCKERFILE="Dockerfile.unittest"
 CICD_URL=https://raw.githubusercontent.com/RedHatInsights/bonfire/master/cicd
 curl -s $CICD_URL/bootstrap.sh > .cicd_bootstrap.sh && source .cicd_bootstrap.sh
 
+# The contents of build.sh can be found at:
+# https://raw.githubusercontent.com/RedHatInsights/bonfire/master/cicd/build.sh
+# This script is used to build the image that is used in the PR Check
+source $CICD_ROOT/build.sh
+
 # the below part works.
 ARTIFACTS_DIR=$WORKSPACE/artifacts
 
