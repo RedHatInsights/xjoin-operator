@@ -24,7 +24,7 @@ import (
 	"strings"
 )
 
-const xjoinindexvalidatorFinalizer = "finalizer.xjoin.indexvalidator.cloud.redhat.com"
+const XJoinIndexValidatorFinalizer = "finalizer.xjoin.indexvalidator.cloud.redhat.com"
 
 type XJoinIndexValidatorIteration struct {
 	common.Iteration
@@ -35,7 +35,7 @@ type XJoinIndexValidatorIteration struct {
 
 func (i *XJoinIndexValidatorIteration) Finalize() (err error) {
 	i.Log.Info("Starting finalizer")
-	controllerutil.RemoveFinalizer(i.Instance, xjoinindexvalidatorFinalizer)
+	controllerutil.RemoveFinalizer(i.Instance, XJoinIndexValidatorFinalizer)
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()

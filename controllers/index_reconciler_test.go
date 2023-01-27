@@ -1,10 +1,11 @@
-package controllers
+package controllers_test
 
 import (
 	"context"
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -60,8 +61,8 @@ func (i *IndexTestReconciler) ReconcileDelete() {
 	Expect(indexList.Items).To(HaveLen(0))
 }
 
-func (i *IndexTestReconciler) newXJoinIndexReconciler() *XJoinIndexReconciler {
-	return NewXJoinIndexReconciler(
+func (i *IndexTestReconciler) newXJoinIndexReconciler() *controllers.XJoinIndexReconciler {
+	return controllers.NewXJoinIndexReconciler(
 		i.K8sClient,
 		scheme.Scheme,
 		testLogger,
