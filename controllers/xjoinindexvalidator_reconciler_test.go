@@ -27,16 +27,46 @@ type XJoinIndexValidatorTestReconciler struct {
 	createdIndexValidator v1alpha1.XJoinIndexValidator
 }
 
-func (x *XJoinIndexValidatorTestReconciler) ReconcileCreate() v1alpha1.XJoinIndexValidator {
+func (x *XJoinIndexValidatorTestReconciler) ReconcileCreate() (v1alpha1.XJoinIndexValidator, reconcile.Result) {
 	x.createIndexValidator()
+	x.createDatasource()
 	result := x.reconcile()
-	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 1000000000}))
 	validatorLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
 	Eventually(func() bool {
 		err := x.K8sClient.Get(context.Background(), validatorLookupKey, &x.createdIndexValidator)
 		return err == nil
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
-	return x.createdIndexValidator
+	return x.createdIndexValidator, result
+}
+
+func (x *XJoinIndexValidatorTestReconciler) ReconcileRunning() (v1alpha1.XJoinIndexValidator, reconcile.Result) {
+	x.createIndexValidator()
+	x.reconcile()
+	validatorLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
+	Eventually(func() bool {
+		err := x.K8sClient.Get(context.Background(), validatorLookupKey, &x.createdIndexValidator)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+	result := x.reconcile()
+	return x.createdIndexValidator, result
+}
+
+func (x *XJoinIndexValidatorTestReconciler) createDatasource() {
+	reconciler := DatasourceTestReconciler{
+		Namespace:          x.Namespace,
+		Name:               "testdatasource",
+		K8sClient:          k8sClient,
+		AvroSchemaFileName: "xjoindatasource-single-field",
+	}
+	createdDataSource := reconciler.ReconcileNew()
+	Expect(createdDataSource.Name).To(Equal("testdatasource"))
+	refreshingVersion := createdDataSource.Status.RefreshingVersion
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.testdatasource."+refreshingVersion+"-value/versions/latest",
+		httpmock.NewStringResponder(200, fmt.Sprintf(
+			`{"id": 1, "subject": "xjoindatasourcepipeline.testdatasource.%s-value", "version": 1, "schema": "%s", "references": []}`, refreshingVersion, "{}")))
 }
 
 func (x *XJoinIndexValidatorTestReconciler) createIndexValidator() {

@@ -3,6 +3,7 @@ package controllers_test
 import (
 	"context"
 	"github.com/redhatinsights/xjoin-operator/controllers"
+	"os"
 	"time"
 
 	"github.com/jarcoal/httpmock"
@@ -18,9 +19,10 @@ import (
 )
 
 type DatasourcePipelineTestReconciler struct {
-	Namespace string
-	Name      string
-	K8sClient client.Client
+	Namespace          string
+	Name               string
+	K8sClient          client.Client
+	AvroSchemaFileName string
 }
 
 func (d *DatasourcePipelineTestReconciler) newXJoinDataSourcePipelineReconciler() *controllers.XJoinDataSourcePipelineReconciler {
@@ -33,13 +35,23 @@ func (d *DatasourcePipelineTestReconciler) newXJoinDataSourcePipelineReconciler(
 		true)
 }
 
-func (d *DatasourcePipelineTestReconciler) createValidDataSourcePipeline() {
+func (d *DatasourcePipelineTestReconciler) CreateValidDataSourcePipeline() {
 	ctx := context.Background()
+
+	//optionally load avro schema from file
+	var datasourceAvroSchema string
+	if d.AvroSchemaFileName != "" {
+		datasourceAvroSchemaBytes, err := os.ReadFile("./test/data/avro/" + d.AvroSchemaFileName + ".json")
+		Expect(err).ToNot(HaveOccurred())
+		datasourceAvroSchema = string(datasourceAvroSchemaBytes)
+	} else {
+		datasourceAvroSchema = "{}"
+	}
 
 	datasourceSpec := v1alpha1.XJoinDataSourcePipelineSpec{
 		Name:             d.Name,
 		Version:          "1234",
-		AvroSchema:       "{}",
+		AvroSchema:       datasourceAvroSchema,
 		DatabaseHostname: &v1alpha1.StringOrSecretParameter{Value: "dbHost"},
 		DatabasePort:     &v1alpha1.StringOrSecretParameter{Value: "8080"},
 		DatabaseUsername: &v1alpha1.StringOrSecretParameter{Value: "dbUsername"},
@@ -75,7 +87,7 @@ func (d *DatasourcePipelineTestReconciler) createValidDataSourcePipeline() {
 	Expect(createdDataSourcePipeline.Spec.Name).Should(Equal(d.Name))
 	Expect(createdDataSourcePipeline.Spec.Version).Should(Equal("1234"))
 	Expect(createdDataSourcePipeline.Spec.Pause).Should(Equal(false))
-	Expect(createdDataSourcePipeline.Spec.AvroSchema).Should(Equal("{}"))
+	Expect(createdDataSourcePipeline.Spec.AvroSchema).Should(Equal(datasourceAvroSchema))
 	Expect(createdDataSourcePipeline.Spec.DatabaseHostname).Should(Equal(&v1alpha1.StringOrSecretParameter{Value: "dbHost"}))
 	Expect(createdDataSourcePipeline.Spec.DatabasePort).Should(Equal(&v1alpha1.StringOrSecretParameter{Value: "8080"}))
 	Expect(createdDataSourcePipeline.Spec.DatabaseUsername).Should(Equal(&v1alpha1.StringOrSecretParameter{Value: "dbUsername"}))
@@ -86,7 +98,7 @@ func (d *DatasourcePipelineTestReconciler) createValidDataSourcePipeline() {
 
 func (d *DatasourcePipelineTestReconciler) ReconcileNew() v1alpha1.XJoinDataSourcePipeline {
 	d.registerNewMocks()
-	d.createValidDataSourcePipeline()
+	d.CreateValidDataSourcePipeline()
 	createdDataSourcePipeline := &v1alpha1.XJoinDataSourcePipeline{}
 	result := d.reconcile()
 	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
