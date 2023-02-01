@@ -126,7 +126,12 @@ fi
 PULL_SECRET=cloudservices-pull-secret
 if [ "$SETUP_PULL_SECRET" = true ] || [ "$SETUP_ALL" = true ]; then
   echo "Setting up pull secret"
-  kubectl create secret generic "$PULL_SECRET" --from-file=.dockerconfigjson="$HOME/.docker/config.json" --type=kubernetes.io/dockerconfigjson -n "$PROJECT_NAME"
+  SECRETS_CONFIG="$HOME/.docker/config.json"
+  if [ ! -f "$SECRETS_CONFIG" ]; then
+    # Grab podman's config instead
+    SECRETS_CONFIG="${XDG_RUNTIME_DIR}/containers/auth.json"
+  fi
+  kubectl create secret generic "$PULL_SECRET" --from-file=.dockerconfigjson="$SECRETS_CONFIG" --type=kubernetes.io/dockerconfigjson -n "$PROJECT_NAME"
   kubectl patch serviceaccount default -p "{\"imagePullSecrets\": [{\"name\": \"$PULL_SECRET\"}]}" -n "$PROJECT_NAME"
 fi
 
