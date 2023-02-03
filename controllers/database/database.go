@@ -309,7 +309,7 @@ func (db *Database) GetHostIdsByIdList(ids []string) ([]string, error) {
 func (db *Database) GetHostIdsByModifiedOn(start time.Time, end time.Time) ([]string, error) {
 	query := fmt.Sprintf(
 		`SELECT id FROM hosts WHERE modified_on > '%s' AND modified_on < '%s' ORDER BY id `,
-		start.Format(utils.TimeFormat()), end.Format(utils.TimeFormat()))
+		start.Format(time.RFC3339Nano), end.Format(time.RFC3339Nano))
 
 	log.Info("GetHostIdsQuery", "query", query)
 
