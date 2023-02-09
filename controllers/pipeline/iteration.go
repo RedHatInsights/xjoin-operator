@@ -2,6 +2,10 @@ package pipeline
 
 import (
 	"fmt"
+	"math"
+	"strings"
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -19,8 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strings"
-	"time"
 )
 
 // XJoinPipelineReconciler reconciles a XJoinPipeline object
@@ -388,7 +390,7 @@ func (i *ReconcileIteration) UpdateAliasIfHealthier() error {
 			return fmt.Errorf("failed to get host count from latest index %w", err)
 		}
 
-		if utils.Abs(hbiHostCount-latestCount) > utils.Abs(hbiHostCount-activeCount) {
+		if math.Abs(float64(hbiHostCount-latestCount)) > math.Abs(float64(hbiHostCount-activeCount)) {
 			return nil // the active table is healthier; do not update anything
 		}
 	}
