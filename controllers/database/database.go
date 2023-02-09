@@ -461,10 +461,8 @@ func tagsStructured(tagsJson map[string]interface{}) (
 	stringsTags = make([]string, 0)
 	searchTags = make([]string, 0)
 
-	tagsJson = utils.SortMap(tagsJson)
-
 	for namespaceName, namespaceVal := range tagsJson {
-		namespaceMap := utils.SortMap(namespaceVal.(map[string]interface{}))
+		namespaceMap := namespaceVal.(map[string]interface{})
 		for keyName, values := range namespaceMap {
 			valuesArray := values.([]interface{})
 
