@@ -15,7 +15,6 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
-	"github.com/redhatinsights/xjoin-operator/test"
 	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -354,7 +353,7 @@ func (i *Iteration) TestSpecFieldChangedForPipeline(
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err := test.Client.Update(ctx, pipeline)
+	err := Client.Update(ctx, pipeline)
 	if err != nil {
 		return err
 	}
@@ -382,7 +381,7 @@ func (i *Iteration) CopySecret(existingSecretName string, newSecretName string, 
 	defer cancel()
 
 	secret := &corev1.Secret{}
-	err := test.Client.Get(ctx, client.ObjectKey{Name: existingSecretName, Namespace: existingNamespace}, secret)
+	err := Client.Get(ctx, client.ObjectKey{Name: existingSecretName, Namespace: existingNamespace}, secret)
 	if err != nil {
 		return err
 	}
@@ -393,7 +392,7 @@ func (i *Iteration) CopySecret(existingSecretName string, newSecretName string, 
 	newSecret.Data["newkey"] = nil
 	newSecret.Namespace = newNamespace
 
-	return test.Client.Create(ctx, newSecret)
+	return Client.Create(ctx, newSecret)
 }
 
 func (i *Iteration) DeleteAllHosts() error {
@@ -431,7 +430,7 @@ func (i *Iteration) IndexDocumentNow(pipelineVersion string, id string, filename
 }
 
 func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename string, modifiedOn time.Time) error {
-	esDocumentFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/hosts/es/" + filename + ".json")
+	esDocumentFile, err := ioutil.ReadFile(GetRootDir() + "/test/data/hosts/es/" + filename + ".json")
 	if err != nil {
 		return err
 	}
@@ -503,7 +502,7 @@ func (i *Iteration) InsertHost(filename string, modifiedOn time.Time) (string, e
 		return "", err
 	}
 
-	hbiHostFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/hosts/hbi/" + filename + ".sql")
+	hbiHostFile, err := ioutil.ReadFile(GetRootDir() + "/test/data/hosts/hbi/" + filename + ".sql")
 	if err != nil {
 		return "", err
 	}
@@ -543,7 +542,7 @@ func (i *Iteration) CreateConfigMap(name string, data map[string]string) error {
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	return test.Client.Create(ctx, configMap)
+	return Client.Create(ctx, configMap)
 }
 
 func (i *Iteration) CreateESSecret(name string) error {
@@ -562,7 +561,7 @@ func (i *Iteration) CreateESSecret(name string) error {
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	return test.Client.Create(ctx, secret)
+	return Client.Create(ctx, secret)
 }
 
 func (i *Iteration) CreateDbSecret(name string) error {
@@ -583,7 +582,7 @@ func (i *Iteration) CreateDbSecret(name string) error {
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	return test.Client.Create(ctx, secret)
+	return Client.Create(ctx, secret)
 }
 
 func (i *Iteration) ExpectPipelineVersionToBeRemoved(pipelineVersion string) error {
@@ -789,7 +788,7 @@ func (i *Iteration) CreateValidPipeline(specs ...*xjoin.XJoinPipelineSpec) (*xjo
 func (i *Iteration) DeletePipeline(pipeline *xjoin.XJoinPipeline) error {
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err := test.Client.Delete(ctx, pipeline)
+	err := Client.Delete(ctx, pipeline)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -857,7 +856,7 @@ func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) error {
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err := test.Client.Create(ctx, &pipeline)
+	err := Client.Create(ctx, &pipeline)
 	if err != nil {
 		return err
 	}
@@ -868,7 +867,7 @@ func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) error {
 func (i *Iteration) GetPipeline() (*xjoin.XJoinPipeline, error) {
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	return k8sUtils.FetchXJoinPipeline(test.Client, i.NamespacedName, ctx)
+	return k8sUtils.FetchXJoinPipeline(Client, i.NamespacedName, ctx)
 }
 
 func (i *Iteration) ReconcileXJoinForDeletedPipeline() error {
@@ -1176,7 +1175,7 @@ func (i *Iteration) setConnectorReconciliationPause(connectorName string, pause 
 		annotations["strimzi.io/pause-reconciliation"] = pause
 		metadata := connector.Object["metadata"].(map[string]interface{})
 		metadata["annotations"] = annotations
-		err = test.Client.Update(ctx, connector)
+		err = Client.Update(ctx, connector)
 		if err == nil {
 			break
 		}

@@ -1,9 +1,8 @@
 package test
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/redhatinsights/xjoin-operator/test"
 	"gopkg.in/h2non/gock.v1"
 	"time"
 )
@@ -26,7 +25,7 @@ var _ = Describe("Pipeline operations", func() {
 		It("Restarts Kafka Connect when /connectors is unreachable", func() {
 			Skip("unreliable")
 			defer gock.Off()
-			defer test.ForwardPorts()
+			defer ForwardPorts()
 
 			gock.New("http://connect-connect-api.test.svc:8083").
 				Get("/connectors").
@@ -52,7 +51,7 @@ var _ = Describe("Pipeline operations", func() {
 		It("Restarts Kafka Connect when /connectors/<connector> is unreachable", func() {
 			Skip("unreliable")
 			defer gock.Off()
-			defer test.ForwardPorts()
+			defer ForwardPorts()
 
 			originalPodName, err := i.GetConnectPodName()
 			Expect(err).ToNot(HaveOccurred())

@@ -4,8 +4,8 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: elasticsearch-hbi
-  name: elasticsearch-hbi
+    app: kafka-hbi
+  name: kafka-hbi
 spec:
   internalTrafficPolicy: Cluster
   ipFamilies:
@@ -17,7 +17,8 @@ spec:
       targetPort: 9092
       name: external
   selector:
-    common.k8s.elastic.co/type: elasticsearch
-    elasticsearch.k8s.elastic.co/cluster-name: xjoin-elasticsearch
+    strimzi.io/cluster: kafka
+    strimzi.io/kind: Kafka
+    strimzi.io/name: kafka-kafka
   sessionAffinity: None
   type: ClusterIP

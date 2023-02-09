@@ -9,7 +9,6 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
-	"github.com/redhatinsights/xjoin-operator/test"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +28,7 @@ var log = logger.NewLogger("test_utils")
 
 func newXJoinReconciler(namespace string, isTest bool) *controllers.XJoinPipelineReconciler {
 	return controllers.NewXJoinReconciler(
-		test.Client,
+		Client,
 		scheme.Scheme,
 		logf.Log.WithName("test"),
 		record.NewFakeRecorder(10),
@@ -39,7 +38,7 @@ func newXJoinReconciler(namespace string, isTest bool) *controllers.XJoinPipelin
 
 func newValidationReconciler(namespace string) *controllers.ValidationReconciler {
 	return controllers.NewValidationReconciler(
-		test.Client,
+		Client,
 		scheme.Scheme,
 		logf.Log.WithName("test-validation"),
 		true,
@@ -50,7 +49,7 @@ func newValidationReconciler(namespace string) *controllers.ValidationReconciler
 
 func newKafkaConnectReconciler(namespace string, isTest bool) *controllers.KafkaConnectReconciler {
 	return controllers.NewKafkaConnectReconciler(
-		test.Client,
+		Client,
 		scheme.Scheme,
 		logf.Log.WithName("test-kafkaconnect"),
 		record.NewFakeRecorder(10),
@@ -146,7 +145,7 @@ func getParameters() (Parameters, map[string]interface{}, error) {
 
 func Before() (*Iteration, error) {
 	i := NewTestIteration()
-	ns, err := test.UniqueNamespace(ResourceNamePrefix)
+	ns, err := UniqueNamespace(ResourceNamePrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +249,7 @@ func Before() (*Iteration, error) {
 		} else {
 			//there is a slight lag between running oc port-forward and being able to access the service
 			//which is why the sleep is here
-			cmd := exec.Command(test.GetRootDir() + "/dev/forward-ports-clowder.sh")
+			cmd := exec.Command(GetRootDir() + "/../dev/forward-ports-clowder.sh")
 			err := cmd.Run()
 			if err != nil {
 				return nil, err
@@ -335,14 +334,14 @@ func After(i *Iteration) error {
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err = test.Client.List(ctx, pipelines, client.InNamespace(i.NamespacedName.Namespace))
+	err = Client.List(ctx, pipelines, client.InNamespace(i.NamespacedName.Namespace))
 	if err != nil {
 		return err
 	}
 
 	for _, pipeline := range pipelines.Items {
 		pipeline.SetFinalizers([]string{})
-		err = test.Client.Update(ctx, &pipeline)
+		err = Client.Update(ctx, &pipeline)
 		if err != nil {
 			return err
 		}
@@ -355,7 +354,7 @@ func After(i *Iteration) error {
 		},
 	}
 
-	err = test.Client.Delete(context.Background(), &namespace, client.GracePeriodSeconds(0))
+	err = Client.Delete(context.Background(), &namespace, client.GracePeriodSeconds(0))
 	if err != nil {
 		return err
 	}

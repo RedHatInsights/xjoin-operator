@@ -1,7 +1,8 @@
-package controllers
+package controllers_test
 
 import (
 	"context"
+	"github.com/redhatinsights/xjoin-operator/controllers"
 	"time"
 
 	"github.com/jarcoal/httpmock"
@@ -174,8 +175,8 @@ func (d *DatasourceTestReconciler) registerValidMocks() {
 		httpmock.NewStringResponder(200, `[]`))
 }
 
-func (d *DatasourceTestReconciler) newXJoinDataSourceReconciler() *XJoinDataSourceReconciler {
-	return NewXJoinDataSourceReconciler(
+func (d *DatasourceTestReconciler) newXJoinDataSourceReconciler() *controllers.XJoinDataSourceReconciler {
+	return controllers.NewXJoinDataSourceReconciler(
 		d.K8sClient,
 		scheme.Scheme,
 		testLogger,

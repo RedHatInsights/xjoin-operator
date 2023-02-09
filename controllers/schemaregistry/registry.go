@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/riferrei/srclient"
-	"strings"
+	"reflect"
 )
 
 type ConfluentClient struct {
@@ -38,7 +38,12 @@ func (sr *ConfluentClient) RegisterAvroSchema(name string, schemaDefinition stri
 
 func (sr *ConfluentClient) CheckIfSchemaVersionExists(name string, version int) (exists bool, err error) {
 	_, err = sr.Client.GetSchemaByVersion(name, version)
-	if err != nil && (strings.Index(err.Error(), "404") == 0) { //TODO find a more reliable way to check if schema exists
+	errorCode := -1
+	if reflect.TypeOf(err) == reflect.TypeOf(srclient.Error{}) {
+		errorCode = err.(srclient.Error).Code
+	}
+
+	if err != nil && (errorCode == 40402) {
 		return false, nil
 	} else if err != nil {
 		return false, errors.Wrap(err, 0)
@@ -49,7 +54,13 @@ func (sr *ConfluentClient) CheckIfSchemaVersionExists(name string, version int) 
 
 func (sr *ConfluentClient) DeleteSchema(name string) (err error) {
 	_, err = sr.Client.GetLatestSchema(name)
-	if err != nil && strings.Contains(err.Error(), "404 Not Found") {
+
+	errorCode := -1
+	if reflect.TypeOf(err) == reflect.TypeOf(srclient.Error{}) {
+		errorCode = err.(srclient.Error).Code
+	}
+
+	if err != nil && errorCode == 40403 {
 		return nil //schema doesn't exist, don't try to delete it
 	} else if err != nil {
 		return errors.Wrap(err, 0)
