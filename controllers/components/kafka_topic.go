@@ -41,7 +41,7 @@ func (kt *KafkaTopic) Delete() (err error) {
 	return
 }
 
-func (kt *KafkaTopic) CheckDeviation() (err error) {
+func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 	return //TODO
 }
 

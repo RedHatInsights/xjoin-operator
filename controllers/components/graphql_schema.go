@@ -66,7 +66,7 @@ func (as *GraphQLSchema) DeleteByVersion(version string) (err error) {
 	return as.restClient.DeleteGraphQLSchema(as.name + "." + version)
 }
 
-func (as *GraphQLSchema) CheckDeviation() (err error) {
+func (as *GraphQLSchema) CheckDeviation() (problem, err error) {
 	return //TODO
 }
 
