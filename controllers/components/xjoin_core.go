@@ -132,7 +132,7 @@ func (xc XJoinCore) Delete() (err error) {
 	return
 }
 
-func (xc *XJoinCore) CheckDeviation() (err error) {
+func (xc *XJoinCore) CheckDeviation() (problem, err error) {
 	return
 }
 

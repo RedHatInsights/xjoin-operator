@@ -47,7 +47,7 @@ func (dc *DebeziumConnector) Delete() (err error) {
 	return
 }
 
-func (dc *DebeziumConnector) CheckDeviation() (err error) {
+func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
 	return
 }
 

@@ -76,7 +76,7 @@ func (as *AvroSchema) DeleteByVersion(version string) (err error) {
 	return
 }
 
-func (as *AvroSchema) CheckDeviation() (err error) {
+func (as *AvroSchema) CheckDeviation() (problem, err error) {
 	return //TODO
 }
 

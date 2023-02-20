@@ -108,7 +108,7 @@ func (xv *XJoinIndexValidator) Delete() (err error) {
 	return
 }
 
-func (xv *XJoinIndexValidator) CheckDeviation() (err error) {
+func (xv *XJoinIndexValidator) CheckDeviation() (problem, err error) {
 	return
 }
 

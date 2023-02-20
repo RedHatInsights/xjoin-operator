@@ -6,7 +6,7 @@ type Component interface {
 	Name() string
 	Create() error
 	Delete() error
-	CheckDeviation() error
+	CheckDeviation() (error, error)
 	Exists() (bool, error)
 	SetName(string)
 	SetVersion(string)
