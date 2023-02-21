@@ -336,6 +336,15 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
+	problems, err := componentManager.CheckForDeviations()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	if len(problems) > 0 {
+		//TODO: set instance status to invalid, add problems to status
+	}
+
 	//build list of datasources
 	dataSources := make(map[string]string)
 	for _, ref := range indexAvroSchema.References {

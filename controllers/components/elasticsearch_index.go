@@ -43,7 +43,7 @@ func (es *ElasticsearchIndex) Delete() (err error) {
 	return
 }
 
-func (es *ElasticsearchIndex) CheckDeviation() (err error) {
+func (es *ElasticsearchIndex) CheckDeviation() (problem error, err error) {
 	return
 }
 

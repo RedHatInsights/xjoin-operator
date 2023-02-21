@@ -221,5 +221,14 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
+	problems, err := componentManager.CheckForDeviations()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	if len(problems) > 0 {
+		//TODO: set instance status to invalid, add problems to status
+	}
+
 	return i.UpdateStatusAndRequeue()
 }

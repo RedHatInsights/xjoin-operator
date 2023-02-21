@@ -6,7 +6,7 @@ type Component interface {
 	Name() string
 	Create() error
 	Delete() error
-	CheckDeviation() error
+	CheckDeviation() (error, error)
 	Exists() (bool, error)
 	SetName(string)
 	SetVersion(string)
@@ -33,7 +33,7 @@ func (c *ComponentManager) AddComponent(component Component) {
 }
 
 // CreateAll creates all components. No-op if the components are already created.
-func (c ComponentManager) CreateAll() error {
+func (c *ComponentManager) CreateAll() error {
 	for _, component := range c.components {
 		componentExists, err := component.Exists()
 		if err != nil {
@@ -50,7 +50,7 @@ func (c ComponentManager) CreateAll() error {
 }
 
 // DeleteAll deletes all components. No-op if the components are already deleted.
-func (c ComponentManager) DeleteAll() error {
+func (c *ComponentManager) DeleteAll() error {
 	for _, component := range c.components {
 		componentExists, err := component.Exists()
 		if err != nil {
@@ -64,4 +64,19 @@ func (c ComponentManager) DeleteAll() error {
 		}
 	}
 	return nil
+}
+
+// CheckForDeviations checks each component's stored value against the expected value, returns true if deviation is found
+func (c *ComponentManager) CheckForDeviations() (problems []error, err error) {
+	for _, component := range c.components {
+		problem, err := component.CheckDeviation()
+		if err != nil {
+			return problems, errors.Wrap(err, 0)
+		}
+		if problem != nil {
+			problems = append(problems, problem)
+		}
+	}
+
+	return problems, nil
 }
