@@ -221,5 +221,5 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	return i.UpdateStatusAndRequeue()
+	return i.UpdateStatusAndRequeue(time.Second * 30)
 }

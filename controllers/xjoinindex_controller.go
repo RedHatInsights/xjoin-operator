@@ -221,5 +221,5 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		i.GetInstance().Status.DataSources = map[string]string{}
 	}
 
-	return i.UpdateStatusAndRequeue()
+	return i.UpdateStatusAndRequeue(time.Second * 30)
 }

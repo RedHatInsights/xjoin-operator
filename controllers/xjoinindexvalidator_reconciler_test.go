@@ -8,9 +8,11 @@ import (
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/k8s"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"os"
@@ -25,6 +27,7 @@ type XJoinIndexValidatorTestReconciler struct {
 	K8sClient             client.Client
 	ConfigFileName        string
 	createdIndexValidator v1alpha1.XJoinIndexValidator
+	PodLogReader          k8s.LogReader
 }
 
 func (x *XJoinIndexValidatorTestReconciler) ReconcileCreate() (v1alpha1.XJoinIndexValidator, reconcile.Result) {
@@ -41,6 +44,7 @@ func (x *XJoinIndexValidatorTestReconciler) ReconcileCreate() (v1alpha1.XJoinInd
 
 func (x *XJoinIndexValidatorTestReconciler) ReconcileRunning() (v1alpha1.XJoinIndexValidator, reconcile.Result) {
 	x.createIndexValidator()
+	x.createDatasource()
 	x.reconcile()
 	validatorLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
 	Eventually(func() bool {
@@ -50,6 +54,36 @@ func (x *XJoinIndexValidatorTestReconciler) ReconcileRunning() (v1alpha1.XJoinIn
 
 	result := x.reconcile()
 	return x.createdIndexValidator, result
+}
+
+func (x *XJoinIndexValidatorTestReconciler) ReconcileSuccess() (v1alpha1.XJoinIndexValidator, reconcile.Result) {
+	x.createIndexValidator()
+	x.createDatasource()
+	x.reconcile()
+	validatorLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
+	Eventually(func() bool {
+		err := x.K8sClient.Get(context.Background(), validatorLookupKey, &x.createdIndexValidator)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+	validatorPods := x.ListValidatorPods()
+	validatorPods.Items[0].Status.Phase = corev1.PodSucceeded
+	err := x.K8sClient.Status().Update(context.Background(), &validatorPods.Items[0])
+	checkError(err)
+
+	result := x.reconcile() //TODO: mock the response from the pod to be success
+	return x.createdIndexValidator, result
+}
+
+func (x *XJoinIndexValidatorTestReconciler) ListValidatorPods() *corev1.PodList {
+	labels := client.MatchingLabels{}
+	labels["xjoin.index"] = x.Name
+	labels[common.COMPONENT_NAME_LABEL] = "XJoinIndexValidator"
+
+	pods := &corev1.PodList{}
+	err := k8sClient.List(context.Background(), pods, client.InNamespace(x.Namespace), labels)
+	checkError(err)
+	return pods
 }
 
 func (x *XJoinIndexValidatorTestReconciler) createDatasource() {
@@ -155,11 +189,12 @@ func (x *XJoinIndexValidatorTestReconciler) newXJoinIndexValidatorReconciler() *
 	return controllers.NewXJoinIndexValidatorReconciler(
 		x.K8sClient,
 		scheme.Scheme,
-		&kubernetes.Clientset{},
+		fake.NewSimpleClientset(),
 		testLogger,
 		record.NewFakeRecorder(10),
 		x.Namespace,
-		true)
+		true,
+		x.PodLogReader)
 }
 
 func (x *XJoinIndexValidatorTestReconciler) reconcile() reconcile.Result {

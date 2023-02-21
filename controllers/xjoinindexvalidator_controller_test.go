@@ -1,16 +1,16 @@
 package controllers_test
 
 import (
-	"context"
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/index"
+	"github.com/redhatinsights/xjoin-operator/controllers/k8s/mocks"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"time"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -37,6 +37,7 @@ var _ = Describe("XJoinIndexValidator", func() {
 				Name:           "test-index-validator",
 				ConfigFileName: "xjoinindex",
 				K8sClient:      k8sClient,
+				PodLogReader:   &mocks.LogReader{},
 			}
 			createdIndexValidator, _ := reconciler.ReconcileCreate()
 			Expect(createdIndexValidator.Finalizers).To(HaveLen(1))
@@ -52,21 +53,13 @@ var _ = Describe("XJoinIndexValidator", func() {
 				Name:           name,
 				ConfigFileName: configFileName,
 				K8sClient:      k8sClient,
+				PodLogReader:   &mocks.LogReader{},
 			}
 			reconciler.ReconcileCreate()
 
-			connectors := &corev1.PodList{}
-			err := k8sClient.List(context.Background(), connectors, client.InNamespace(namespace))
-			checkError(err)
-
-			podName := "xjoin-validation-" + name
-			podLookupKey := types.NamespacedName{Name: podName, Namespace: namespace}
-			pod := &corev1.Pod{}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(context.Background(), podLookupKey, pod)
-				return err == nil
-			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+			pods := reconciler.ListValidatorPods()
+			Expect(len(pods.Items)).To(Equal(1))
+			pod := pods.Items[0]
 
 			Expect(pod.Name).To(Equal("xjoin-validation-" + name))
 			Expect(pod.Status.Phase).To(Equal(corev1.PodPending))
@@ -179,30 +172,74 @@ var _ = Describe("XJoinIndexValidator", func() {
 				Name:           "test-index-validator",
 				ConfigFileName: "xjoinindex",
 				K8sClient:      k8sClient,
+				PodLogReader:   &mocks.LogReader{},
 			}
 			_, result := reconciler.ReconcileCreate()
-			Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 1000000000}))
+			Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 1 * time.Second}))
 		})
 	})
 
 	Context("Reconcile Pod Running", func() {
-		It("Should requeue after ValidationPodStatusInterval while pod is running", func() {
+		It("Should requeue after ValidationPodStatusInterval", func() {
 			reconciler := XJoinIndexValidatorTestReconciler{
 				Namespace:      namespace,
 				Name:           "test-index-validator",
 				ConfigFileName: "xjoinindex",
 				K8sClient:      k8sClient,
+				PodLogReader:   &mocks.LogReader{},
 			}
-			_, result := reconciler.ReconcileRunning()
-			Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 1000000000}))
+			validator, result := reconciler.ReconcileRunning()
+			Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 1 * time.Second}))
+			Expect(validator.Status.ValidationPodPhase).To(Equal(index.ValidatorPodRunning))
+		})
+
+		It("Should NOT create more pods while a pod is already running", func() {
+			reconciler := XJoinIndexValidatorTestReconciler{
+				Namespace:      namespace,
+				Name:           "test-index-validator",
+				ConfigFileName: "xjoinindex",
+				K8sClient:      k8sClient,
+				PodLogReader:   &mocks.LogReader{},
+			}
+			validator, _ := reconciler.ReconcileRunning()
+			Expect(validator.Status.ValidationPodPhase).To(Equal(index.ValidatorPodRunning))
+
+			pods := reconciler.ListValidatorPods()
+			Expect(len(pods.Items)).To(Equal(1))
 		})
 	})
 
 	Context("Reconcile Pod Success", func() {
+		It("Should requeue after ValidationInterval", func() {
+			name := "test-index-validator"
 
+			logBytes, err := os.ReadFile("./test/data/validator/success.log.txt")
+			checkError(err)
+
+			podLogReader := mocks.LogReader{}
+			podLogReader.
+				On("GetLogs", "xjoin-validation-"+name, namespace).Return(string(logBytes), err)
+
+			reconciler := XJoinIndexValidatorTestReconciler{
+				Namespace:      namespace,
+				Name:           name,
+				ConfigFileName: "xjoinindex",
+				K8sClient:      k8sClient,
+				PodLogReader:   &podLogReader,
+			}
+			validator, result := reconciler.ReconcileSuccess()
+			Expect(validator.Status.ValidationPodPhase).To(Equal(index.ValidatorPodSuccess))
+			Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 60 * time.Second}))
+		})
+
+		It("Should delete the validator pod", func() {
+
+		})
 	})
 
 	Context("Reconcile Pod Failure", func() {
+		It("Should requeue immediately", func() {
 
+		})
 	})
 })

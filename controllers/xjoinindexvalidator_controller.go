@@ -8,6 +8,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	. "github.com/redhatinsights/xjoin-operator/controllers/index"
+	"github.com/redhatinsights/xjoin-operator/controllers/k8s"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -26,32 +27,35 @@ import (
 const xjoinindexValidatorFinalizer = "finalizer.xjoin.indexvalidator.cloud.redhat.com"
 
 type XJoinIndexValidatorReconciler struct {
-	Client    client.Client
-	Log       logr.Logger
-	Scheme    *runtime.Scheme
-	Recorder  record.EventRecorder
-	Namespace string
-	Test      bool
-	ClientSet *kubernetes.Clientset
+	Client       client.Client
+	Log          logr.Logger
+	Scheme       *runtime.Scheme
+	Recorder     record.EventRecorder
+	Namespace    string
+	Test         bool
+	ClientSet    kubernetes.Interface
+	PodLogReader k8s.LogReader
 }
 
 func NewXJoinIndexValidatorReconciler(
 	client client.Client,
 	scheme *runtime.Scheme,
-	clientset *kubernetes.Clientset,
+	clientset kubernetes.Interface,
 	log logr.Logger,
 	recorder record.EventRecorder,
 	namespace string,
-	isTest bool) *XJoinIndexValidatorReconciler {
+	isTest bool,
+	podLogReader k8s.LogReader) *XJoinIndexValidatorReconciler {
 
 	return &XJoinIndexValidatorReconciler{
-		Client:    client,
-		Log:       log,
-		Scheme:    scheme,
-		Recorder:  recorder,
-		Namespace: namespace,
-		Test:      isTest,
-		ClientSet: clientset,
+		Client:       client,
+		Log:          log,
+		Scheme:       scheme,
+		Recorder:     recorder,
+		Namespace:    namespace,
+		Test:         isTest,
+		ClientSet:    clientset,
+		PodLogReader: podLogReader,
 	}
 }
 
@@ -124,6 +128,7 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 		},
 		ClientSet:              r.ClientSet,
 		ElasticsearchIndexName: instance.Spec.IndexName,
+		PodLogReader:           r.PodLogReader,
 	}
 
 	if err = i.AddFinalizer(xjoinindexValidatorFinalizer); err != nil {
@@ -140,9 +145,11 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 	phase, err := i.ReconcileValidationPod()
 	if err != nil {
 		return result, errors.Wrap(err, 0)
-	} else if phase == "valid" {
-		return reconcile.Result{RequeueAfter: time.Second * time.Duration(p.ValidationInterval.Int())}, nil
+	}
+	instance.Status.ValidationPodPhase = phase
+	if phase == ValidatorPodSuccess {
+		return i.UpdateStatusAndRequeue(time.Second * time.Duration(p.ValidationInterval.Int()))
 	} else {
-		return reconcile.Result{RequeueAfter: time.Second * time.Duration(p.ValidationPodStatusInterval.Int())}, nil
+		return i.UpdateStatusAndRequeue(time.Second * time.Duration(p.ValidationPodStatusInterval.Int()))
 	}
 }
