@@ -236,6 +236,11 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234",
 			httpmock.NewStringResponder(200, "{}"))
 	}
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions/latest",
+		httpmock.NewStringResponder(200, "{}"))
 }
 
 func (x *XJoinIndexPipelineTestReconciler) newXJoinIndexPipelineReconciler() *controllers.XJoinIndexPipelineReconciler {

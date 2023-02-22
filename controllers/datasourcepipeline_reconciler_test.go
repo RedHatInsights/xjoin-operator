@@ -170,4 +170,9 @@ func (d *DatasourcePipelineTestReconciler) registerNewMocks() {
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/schemas/ids/1",
 		httpmock.NewStringResponder(200, `{"schema":"{\"name\":\"Value\",\"namespace\":\"xjoindatasourcepipeline.`+d.Name+`\"}","schemaType":"AVRO","references":[]}`))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+".1234-value/versions/latest",
+		httpmock.NewStringResponder(200, "{}"))
 }
