@@ -2,11 +2,13 @@ package components
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
+
 	"github.com/go-errors/errors"
 	. "github.com/redhatinsights/xjoin-go-lib/pkg/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"github.com/riferrei/srclient"
-	"strings"
 )
 
 type AvroSchema struct {
@@ -76,8 +78,28 @@ func (as *AvroSchema) DeleteByVersion(version string) (err error) {
 	return
 }
 
-func (as *AvroSchema) CheckDeviation() (problem error, err error) {
-	return //TODO
+func (as *AvroSchema) CheckDeviation() (problem, err error) {
+	schema, err := as.SetSchemaNameNamespace()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	as.registry.Client.ResetCache()
+	srschema, err := as.registry.Client.GetLatestSchema(as.Name())
+	if err != nil {
+		srerr, isSrerr := err.(srclient.Error)
+		if isSrerr && srerr.Code == 40401 {
+			// Error code 40401 – Subject not found
+			return fmt.Errorf("schema for subject %s not found in registry", as.Name()), nil
+		}
+		return nil, errors.Wrap(err, 0)
+	}
+
+	if schema != srschema.Schema() {
+		problem = fmt.Errorf("schema in registry changed for subject %s", as.Name())
+	}
+
+	return
 }
 
 func (as *AvroSchema) Exists() (exists bool, err error) {
