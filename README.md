@@ -39,40 +39,27 @@ The operator defines two controllers that reconcile a XJoinPipeline
 
 ### Setting up the development environment using Clowder
 
-1. Install the latest version of [bonfire](https://github.com/RedHatInsights/bonfire)
-2. Set up a local Kubernetes environment. Known to work with the following:
-    - [CodeReady Containers](https://developers.redhat.com/products/codeready-containers/overview)
+1. Install dependencies
+    - [bonfire](https://github.com/RedHatInsights/bonfire)
+    - [psql](https://www.postgresql.org/docs/current/app-psql.html)
+    - [jq](https://stedolan.github.io/jq/)
+    - [Go 1.18](https://go.dev)
+2. Set up a local minikube environment
     - [MiniKube](https://minikube.sigs.k8s.io/docs/start/)
 
 3. Configure Kubernetes to use at least 16G of memory and 6 cpus. This is known to work, although you can try with less.
     ```
-    ./crc config set memory 16384
-    ./crc config set cpus 6
-    ```
-    ```
     minikube config set cpus 6
     minikube config set memory 16384
-    ```
-
-4. If using minikube, use the kvm2 driver. The docker driver is known to cause problems.
-   ```
    minikube config set driver kvm2
-   ```
+    ```
 
-5. Start Kubernetes
-    ```
-    ./crc start
-    ```
+4. Start minikube
     ```
     minikube start
     ```
 
-6. If using CRC
-    - When prompted for a pull secret paste it (you obtained pull secret on step 1 when downloading CRC)
-    - Log in to the cluster as kubeadmin (oc login -u kubeadmin -p ...)
-      You'll find the exact command to use in the CRC startup log
-
-7. Login to https://quay.io and https://registry.redhat.io
+5. Login to https://quay.io and https://registry.redhat.io
     - `docker login -u=<quay-username> -p="password" quay.io`
     - `docker login https://registry.redhat.io`
     - For MacOS, do the following to place the creds in .docker/config.json, which are stored
@@ -86,7 +73,7 @@ The operator defines two controllers that reconcile a XJoinPipeline
         - NOTE: Manually creating the `.docker/config.json` and adding `"auth": base64-encoded username:password` does
           not work.
 
-8. Do one of the following
+6. Do one of the following
     - Append the following line into `/etc/hosts`
         ```
         127.0.0.1 inventory-db host-inventory-db.test.svc xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http kafka-kafka-0.kafka-kafka-brokers.test.svc apicurio apicurio.test.svc
@@ -96,7 +83,7 @@ The operator defines two controllers that reconcile a XJoinPipeline
       sudo -E kubefwd svc -n test --kubeconfig ~/.kube/config -m 8080:8090 -m 8081:8091
       ```
 
-9. `./dev/setup-clowder.sh`
+7. `./dev/setup-clowder.sh`
 
 ### Linting
 This project uses [golint-ci](https://golangci-lint.run/)
@@ -109,15 +96,19 @@ To access the services within the Kubernetes cluster there is a script to forwar
 ./dev/forward-ports-clowder.sh
 ```
 
-### Reset the development environment
+or the ports can be forwarded via the [kubefwd](https://github.com/txn2/kubefwd) utility:
 
-The Openshift environment can be deleted with this script:
-
-```bash
-./dev/teardown.sh
+```
+sudo -E kubefwd svc -n test --kubeconfig ~/.kube/config -m 8080:8090 -m 8081:8091
 ```
 
-Afterwards, the environment can be setup again without restarting Kubernetes via `dev/setup.sh`.
+### Reset the development environment
+
+It is easiest to completely delete the minikube instance then rerun the `setup-clowder.sh` script when necessary.
+
+```bash
+minikube delete && minikube start && ./dev/setup-clowder.sh
+```
 
 ### Running the operator locally
 
