@@ -47,7 +47,7 @@ func (es ElasticsearchConnector) Delete() (err error) {
 	return
 }
 
-func (es *ElasticsearchConnector) CheckDeviation() (err error) {
+func (es *ElasticsearchConnector) CheckDeviation() (problem, err error) {
 	return
 }
 

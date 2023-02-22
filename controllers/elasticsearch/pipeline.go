@@ -2,7 +2,6 @@ package elasticsearch
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
@@ -51,9 +50,9 @@ func (es *ElasticSearch) GetESPipeline(pipelineVersion string) (map[string]inter
 	resCode, body, err := parseResponse(res)
 
 	if resCode != 200 {
-		return nil, errors.New(fmt.Sprintf(
+		return nil, fmt.Errorf(
 			"invalid response from ElasticSearch. StatusCode: %s, Body: %s",
-			strconv.Itoa(res.StatusCode), body))
+			strconv.Itoa(res.StatusCode), body)
 	}
 
 	return body, err
@@ -107,12 +106,12 @@ func (es *ElasticSearch) ListESPipelines(pipelineIds ...string) ([]string, error
 	if resCode == 404 {
 		return esPipelines, nil
 	} else if resCode != 200 {
-		return nil, errors.New(fmt.Sprintf(
+		return nil, fmt.Errorf(
 			"Unable to list es pipelines. StatusCode: %s, Body: %s",
-			strconv.Itoa(res.StatusCode), body))
+			strconv.Itoa(res.StatusCode), body)
 	}
 
-	for esPipelineName, _ := range body {
+	for esPipelineName := range body {
 		esPipelines = append(esPipelines, esPipelineName)
 	}
 

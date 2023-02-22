@@ -1,9 +1,10 @@
-package controllers
+package controllers_test
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/go-errors/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -14,13 +15,12 @@ import (
 	"time"
 
 	strimziApi "github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -35,23 +35,32 @@ var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
 
+var K8sGetTimeout = 3 * time.Second
+var K8sGetInterval = 100 * time.Millisecond
+
+var testLogger = logf.Log.WithName("test")
+
+//this is used to output stack traces when an error occurs
+func checkError(err error) {
+	if err != nil {
+		testLogger.Error(errors.Wrap(err, 0), "test failure")
+	}
+	Expect(err).ToNot(HaveOccurred())
+}
+
 func k8sGet(key client.ObjectKey, obj client.Object) {
 	ctx := context.Background()
 	Eventually(func() bool {
 		err := k8sClient.Get(ctx, key, obj)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 }
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecsWithDefaultAndCustomReporters(t,
-		"Controller Suite",
-		[]Reporter{printer.NewlineReporter{}})
+	RunSpecs(t,
+		"Controller Suite")
 }
 
 func NewNamespace() (string, error) {
@@ -117,7 +126,7 @@ var _ = BeforeSuite(func() {
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
 			filepath.Join("..", "config", "crd", "bases"),
-			filepath.Join("..", "test", "crd"),
+			filepath.Join("test", "data", "crd"),
 		},
 		ErrorIfCRDPathMissing: true,
 	}
@@ -150,7 +159,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
-}, 60)
+})
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")

@@ -62,13 +62,17 @@ func NewXJoinIndexPipelineReconciler(
 }
 
 func (r *XJoinIndexPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	logConstructor := func(r *reconcile.Request) logr.Logger {
+		return mgr.GetLogger()
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-indexpipeline-controller").
 		For(&xjoin.XJoinIndexPipeline{}).
-		WithLogger(mgr.GetLogger()).
+		WithLogConstructor(logConstructor).
 		WithOptions(controller.Options{
-			Log:         mgr.GetLogger(),
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
+			LogConstructor: logConstructor,
+			RateLimiter:    workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		Complete(r)
 }
@@ -123,7 +127,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	if p.Pause.Bool() == true {
+	if p.Pause.Bool() {
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
@@ -275,6 +279,15 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Image:                 "quay.io/ckyrouac/xjoin-api-subgraph:latest", //TODO
 		GraphQLSchemaName:     graphqlSchemaComponent.Name(),
 	})
+	componentManager.AddComponent(&components.XJoinIndexValidator{
+		Client:                 i.Client,
+		Context:                i.Context,
+		Namespace:              i.Instance.GetNamespace(),
+		Schema:                 p.AvroSchema.String(),
+		Pause:                  i.Parameters.Pause.Bool(),
+		ParentInstance:         i.Instance,
+		ElasticsearchIndexName: elasticSearchIndexComponent.Name(),
+	})
 
 	for _, customSubgraphImage := range instance.Spec.CustomSubgraphImages {
 		customSubgraphGraphQLSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{
@@ -321,6 +334,15 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	err = componentManager.CreateAll()
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	problems, err := componentManager.CheckForDeviations()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	if len(problems) > 0 {
+		//TODO: set instance status to invalid, add problems to status
 	}
 
 	//build list of datasources

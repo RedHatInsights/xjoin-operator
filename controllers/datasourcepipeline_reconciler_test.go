@@ -1,7 +1,8 @@
-package controllers
+package controllers_test
 
 import (
 	"context"
+	"github.com/redhatinsights/xjoin-operator/controllers"
 	"time"
 
 	"github.com/jarcoal/httpmock"
@@ -17,14 +18,13 @@ import (
 )
 
 type DatasourcePipelineTestReconciler struct {
-	Namespace         string
-	Name              string
-	K8sClient         client.Client
-	createdDatasource v1alpha1.XJoinDataSource
+	Namespace string
+	Name      string
+	K8sClient client.Client
 }
 
-func (d *DatasourcePipelineTestReconciler) newXJoinDataSourcePipelineReconciler() *XJoinDataSourcePipelineReconciler {
-	return NewXJoinDataSourcePipelineReconciler(
+func (d *DatasourcePipelineTestReconciler) newXJoinDataSourcePipelineReconciler() *controllers.XJoinDataSourcePipelineReconciler {
+	return controllers.NewXJoinDataSourcePipelineReconciler(
 		d.K8sClient,
 		scheme.Scheme,
 		testLogger,
@@ -69,10 +69,7 @@ func (d *DatasourcePipelineTestReconciler) createValidDataSourcePipeline() {
 
 	Eventually(func() bool {
 		err := d.K8sClient.Get(ctx, datasourceLookupKey, createdDataSourcePipeline)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
 
 	Expect(createdDataSourcePipeline.Spec.Name).Should(Equal(d.Name))
@@ -97,10 +94,7 @@ func (d *DatasourcePipelineTestReconciler) ReconcileNew() v1alpha1.XJoinDataSour
 	datasourceLookupKey := types.NamespacedName{Name: d.Name, Namespace: d.Namespace}
 	Eventually(func() bool {
 		err := d.K8sClient.Get(context.Background(), datasourceLookupKey, createdDataSourcePipeline)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	return *createdDataSourcePipeline
@@ -174,6 +168,6 @@ func (d *DatasourcePipelineTestReconciler) registerNewMocks() {
 
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+".1234-value/versions/latest",
+		"http://apicurio:1080/apis/ccompat/v6/schemas/ids/1",
 		httpmock.NewStringResponder(200, `{"schema":"{\"name\":\"Value\",\"namespace\":\"xjoindatasourcepipeline.`+d.Name+`\"}","schemaType":"AVRO","references":[]}`))
 }

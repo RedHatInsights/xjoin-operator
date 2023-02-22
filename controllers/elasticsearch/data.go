@@ -3,16 +3,16 @@ package elasticsearch
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/elastic/go-elasticsearch/v7/esapi"
-	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
-	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	"io/ioutil"
 	"math"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
+	"github.com/redhatinsights/xjoin-operator/controllers/data"
 )
 
 func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.Host, error) {
@@ -22,6 +22,9 @@ func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.H
 	var query QueryHostsById
 	query.Query.Bool.Filter.IDs.Values = hostIds
 	reqJSON, err := json.Marshal(query)
+	if err != nil {
+		return nil, err
+	}
 	requestSize := len(hostIds)
 
 	searchReq := esapi.SearchRequest{
@@ -38,9 +41,9 @@ func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.H
 	if searchRes.StatusCode >= 400 {
 		bodyBytes, _ := ioutil.ReadAll(searchRes.Body)
 
-		return nil, errors.New(fmt.Sprintf(
+		return nil, fmt.Errorf(
 			"invalid response code when getting hosts by id. StatusCode: %v, Body: %s",
-			searchRes.StatusCode, bodyBytes))
+			searchRes.StatusCode, bodyBytes)
 	}
 
 	hosts, err := parseSearchHostsResponse(searchRes)
@@ -91,9 +94,9 @@ func (es *ElasticSearch) getHostIDsQuery(index string, reqJSON []byte) ([]string
 	if searchRes.StatusCode >= 400 {
 		bodyBytes, _ := ioutil.ReadAll(searchRes.Body)
 
-		return nil, errors.New(fmt.Sprintf(
+		return nil, fmt.Errorf(
 			"invalid response code when getting hosts ids. StatusCode: %v, Body: %s",
-			searchRes.StatusCode, bodyBytes))
+			searchRes.StatusCode, bodyBytes)
 	}
 
 	ids, searchJSON, err := parseSearchIdsResponse(searchRes)
@@ -108,7 +111,7 @@ func (es *ElasticSearch) getHostIDsQuery(index string, reqJSON []byte) ([]string
 	moreHits := true
 	scrollID := searchJSON.ScrollID
 
-	for moreHits == true {
+	for moreHits {
 		scrollReq := esapi.ScrollRequest{
 			Scroll:   time.Duration(1) * time.Minute,
 			ScrollID: scrollID,
@@ -170,8 +173,8 @@ func (es *ElasticSearch) GetHostIDsByIdList(index string, ids []string) (complet
 
 func (es *ElasticSearch) GetHostIDsByModifiedOn(index string, start time.Time, end time.Time) ([]string, error) {
 	var query QueryHostIDsRange
-	query.Query.Range.ModifiedOn.Lt = end.Format(utils.TimeFormat())
-	query.Query.Range.ModifiedOn.Gt = start.Format(utils.TimeFormat())
+	query.Query.Range.ModifiedOn.Lt = end.UTC().Format(time.RFC3339Nano)
+	query.Query.Range.ModifiedOn.Gt = start.UTC().Format(time.RFC3339Nano)
 	reqJSON, err := json.Marshal(query)
 	if err != nil {
 		return nil, err

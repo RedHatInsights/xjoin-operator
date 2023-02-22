@@ -89,7 +89,7 @@ The operator defines two controllers that reconcile a XJoinPipeline
 8. Do one of the following
     - Append the following line into `/etc/hosts`
         ```
-        127.0.0.1 inventory-db host-inventory-db.test.svc xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http kafka-kafka-0.kafka-kafka-brokers.test.svc
+        127.0.0.1 inventory-db host-inventory-db.test.svc xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http kafka-kafka-0.kafka-kafka-brokers.test.svc apicurio apicurio.test.svc
         ```
     - Install and run [kubefwd](https://github.com/txn2/kubefwd)
       ```
@@ -97,6 +97,9 @@ The operator defines two controllers that reconcile a XJoinPipeline
       ```
 
 9. `./dev/setup-clowder.sh`
+
+### Linting
+This project uses [golint-ci](https://golangci-lint.run/)
 
 ### Forward ports
 
@@ -125,12 +128,12 @@ With the cluster set up it is now possible to install manifests and run the oper
     make install
     ```
 
-1. Run the operator
+2. Run the operator
     ```
     make run ENABLE_WEBHOOKS=false
     ```
 
-1. Finally, create a new pipeline
+3. Finally, create a new pipeline
     ```
     kubectl apply -f ../config/samples/xjoin_v1alpha1_xjoinpipeline.yaml -n test
     ```

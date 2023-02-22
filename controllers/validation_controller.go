@@ -34,7 +34,7 @@ func (r *ValidationReconciler) setup(reqLogger logger.Log, request ctrl.Request,
 		return i, err
 	}
 
-	if i.Instance.Spec.Pause == true {
+	if i.Instance.Spec.Pause {
 		return i, nil
 	}
 
@@ -50,12 +50,13 @@ func (r *ValidationReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 	reqLogger.Info("Reconciling Validation")
 
 	i, err := r.setup(reqLogger, request, ctx)
-	defer i.Close()
 
 	if err != nil {
 		i.Error(err)
 		return reconcile.Result{}, err
 	}
+
+	defer i.Close()
 
 	if i.Instance != nil {
 		reqLogger.Debug("Instance State", "state", i.Instance.GetState())
@@ -65,7 +66,7 @@ func (r *ValidationReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 	if i.Instance == nil ||
 		i.Instance.GetState() == xjoin.STATE_REMOVED ||
 		i.Instance.GetState() == xjoin.STATE_NEW ||
-		i.Instance.Spec.Pause == true {
+		i.Instance.Spec.Pause {
 
 		return reconcile.Result{}, nil
 	}
@@ -121,7 +122,7 @@ func eventFilterPredicate() predicate.Predicate {
 			oldPipeline, ok1 := e.ObjectOld.(*xjoin.XJoinPipeline)
 			newPipeline, ok2 := e.ObjectNew.(*xjoin.XJoinPipeline)
 
-			if ok1 && ok2 && oldPipeline.Status.InitialSyncInProgress == false && newPipeline.Status.InitialSyncInProgress == true {
+			if ok1 && ok2 && !oldPipeline.Status.InitialSyncInProgress && newPipeline.Status.InitialSyncInProgress {
 				return true // pipeline refresh happened - validate the new pipeline
 			}
 
@@ -131,14 +132,18 @@ func eventFilterPredicate() predicate.Predicate {
 }
 
 func (r *ValidationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	logConstructor := func(r *reconcile.Request) logr.Logger {
+		return mgr.GetLogger()
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-validation").
 		For(&xjoin.XJoinPipeline{}).
 		WithEventFilter(eventFilterPredicate()).
-		WithLogger(mgr.GetLogger()).
+		WithLogConstructor(logConstructor).
 		WithOptions(controller.Options{
-			Log:         mgr.GetLogger(),
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
+			LogConstructor: logConstructor,
+			RateLimiter:    workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		Complete(r)
 }

@@ -153,6 +153,8 @@ psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "ALTER ROLE insigh
 psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE PUBLICATION dbz_publication FOR TABLE hosts;"
 psql -U "$HBI_USER" -h inventory-db -p 5432 -d "$HBI_NAME" -c "CREATE DATABASE test WITH TEMPLATE '$HBI_NAME';"
 
+kubectl apply -f ./dev/kafka.service.yaml -n test
+
 # elasticsearch
 print_message "Setting up elasticsearch password"
 dev/setup.sh -e -p test

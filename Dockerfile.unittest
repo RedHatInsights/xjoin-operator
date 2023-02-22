@@ -1,0 +1,5 @@
+FROM registry.access.redhat.com/ubi8/go-toolset:1.17.12
+
+WORKDIR /workspace
+
+COPY . .

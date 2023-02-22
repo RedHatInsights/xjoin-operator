@@ -1,10 +1,11 @@
-package controllers
+package controllers_test
 
 import (
 	"context"
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -40,10 +41,7 @@ func (x *XJoinIndexPipelineTestReconciler) ReconcileNew() v1alpha1.XJoinIndexPip
 	indexLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
 	Eventually(func() bool {
 		err := x.K8sClient.Get(context.Background(), indexLookupKey, &x.createdIndexPipeline)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 	return x.createdIndexPipeline
 }
@@ -183,8 +181,8 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions/latest",
-		httpmock.NewStringResponder(200, `{"schema":"{\"name\":\"Value\",\"namespace\":\"xjoinindexpipelinepipeline.`+x.Name+`\"}","schemaType":"AVRO","references":[]}`))
+		"http://apicurio:1080/apis/ccompat/v6/schemas/ids/1",
+		httpmock.NewStringResponder(200, `{"schema":"{\"name\":\"Value\",\"namespace\":\"xjoindatasourcepipeline.`+x.Name+`\"}","schemaType":"AVRO","references":[]}`))
 
 	//graphql schema mocks
 	httpmock.RegisterResponder(
@@ -240,8 +238,8 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 	}
 }
 
-func (x *XJoinIndexPipelineTestReconciler) newXJoinIndexPipelineReconciler() *XJoinIndexPipelineReconciler {
-	return NewXJoinIndexPipelineReconciler(
+func (x *XJoinIndexPipelineTestReconciler) newXJoinIndexPipelineReconciler() *controllers.XJoinIndexPipelineReconciler {
+	return controllers.NewXJoinIndexPipelineReconciler(
 		x.K8sClient,
 		scheme.Scheme,
 		testLogger,
@@ -318,10 +316,7 @@ func (x *XJoinIndexPipelineTestReconciler) createValidIndexPipeline() {
 
 	Eventually(func() bool {
 		err := x.K8sClient.Get(ctx, indexPipelineLookupKey, createdIndexPipeline)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	Expect(createdIndexPipeline.Spec.Name).Should(Equal(x.Name))

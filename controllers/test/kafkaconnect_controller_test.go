@@ -1,9 +1,8 @@
 package test
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/redhatinsights/xjoin-operator/test"
 	"gopkg.in/h2non/gock.v1"
 	"time"
 )
@@ -26,13 +25,13 @@ var _ = Describe("Pipeline operations", func() {
 		It("Restarts Kafka Connect when /connectors is unreachable", func() {
 			Skip("unreliable")
 			defer gock.Off()
-			defer test.ForwardPorts()
+			defer ForwardPorts()
 
 			gock.New("http://connect-connect-api.test.svc:8083").
 				Get("/connectors").
 				Reply(500)
 
-			originalPodName, err := i.getConnectPodName()
+			originalPodName, err := i.GetConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
 
 			err = i.CreatePipeline()
@@ -43,7 +42,7 @@ var _ = Describe("Pipeline operations", func() {
 
 			time.Sleep(time.Second * 3) //give the old connect pod time to completely go away
 
-			newPodName, err := i.getConnectPodName()
+			newPodName, err := i.GetConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(originalPodName).ToNot(Equal(newPodName))
@@ -52,9 +51,9 @@ var _ = Describe("Pipeline operations", func() {
 		It("Restarts Kafka Connect when /connectors/<connector> is unreachable", func() {
 			Skip("unreliable")
 			defer gock.Off()
-			defer test.ForwardPorts()
+			defer ForwardPorts()
 
-			originalPodName, err := i.getConnectPodName()
+			originalPodName, err := i.GetConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
 
 			pipeline, err := i.CreateValidPipeline()
@@ -76,7 +75,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(requeue).To(BeFalse())
 
-			newPodName, err := i.getConnectPodName()
+			newPodName, err := i.GetConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(originalPodName).ToNot(Equal(newPodName))
@@ -84,14 +83,15 @@ var _ = Describe("Pipeline operations", func() {
 
 		It("Doesn't restart Kafka Connect when it is available", func() {
 			Skip("unreliable")
-			originalPodName, err := i.getConnectPodName()
+			originalPodName, err := i.GetConnectPodName()
 			Expect(err).ToNot(HaveOccurred())
 			err = i.CreatePipeline()
 			Expect(err).ToNot(HaveOccurred())
 			requeue, err := i.ReconcileKafkaConnect()
 			Expect(requeue).To(BeFalse())
 			Expect(err).ToNot(HaveOccurred())
-			newPodName, err := i.getConnectPodName()
+			newPodName, err := i.GetConnectPodName()
+			Expect(err).ToNot(HaveOccurred())
 			Expect(originalPodName).To(Equal(newPodName))
 		})
 	})

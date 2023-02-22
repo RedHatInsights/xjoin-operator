@@ -15,7 +15,6 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
-	"github.com/redhatinsights/xjoin-operator/test"
 	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,11 +69,7 @@ func (i *Iteration) CheckIfDependenciesAreResponding() bool {
 		return false
 	}
 	_, err = i.EsClient.ListIndices()
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }
 
 func (i *Iteration) CloseDB() error {
@@ -358,7 +353,7 @@ func (i *Iteration) TestSpecFieldChangedForPipeline(
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err := test.Client.Update(ctx, pipeline)
+	err := Client.Update(ctx, pipeline)
 	if err != nil {
 		return err
 	}
@@ -386,7 +381,7 @@ func (i *Iteration) CopySecret(existingSecretName string, newSecretName string, 
 	defer cancel()
 
 	secret := &corev1.Secret{}
-	err := test.Client.Get(ctx, client.ObjectKey{Name: existingSecretName, Namespace: existingNamespace}, secret)
+	err := Client.Get(ctx, client.ObjectKey{Name: existingSecretName, Namespace: existingNamespace}, secret)
 	if err != nil {
 		return err
 	}
@@ -397,7 +392,7 @@ func (i *Iteration) CopySecret(existingSecretName string, newSecretName string, 
 	newSecret.Data["newkey"] = nil
 	newSecret.Namespace = newNamespace
 
-	return test.Client.Create(ctx, newSecret)
+	return Client.Create(ctx, newSecret)
 }
 
 func (i *Iteration) DeleteAllHosts() error {
@@ -435,7 +430,7 @@ func (i *Iteration) IndexDocumentNow(pipelineVersion string, id string, filename
 }
 
 func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename string, modifiedOn time.Time) error {
-	esDocumentFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/hosts/es/" + filename + ".json")
+	esDocumentFile, err := ioutil.ReadFile(GetRootDir() + "/test/data/hosts/es/" + filename + ".json")
 	if err != nil {
 		return err
 	}
@@ -475,6 +470,9 @@ func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename st
 	if res.IsError() {
 
 		bodyBytes, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
 		err = res.Body.Close()
 		if err != nil {
 			return err
@@ -500,8 +498,11 @@ func (i *Iteration) InsertHostNow(filename string) (string, error) {
 
 func (i *Iteration) InsertHost(filename string, modifiedOn time.Time) (string, error) {
 	hostId, err := uuid.NewUUID()
+	if err != nil {
+		return "", err
+	}
 
-	hbiHostFile, err := ioutil.ReadFile(test.GetRootDir() + "/test/hosts/hbi/" + filename + ".sql")
+	hbiHostFile, err := ioutil.ReadFile(GetRootDir() + "/test/data/hosts/hbi/" + filename + ".sql")
 	if err != nil {
 		return "", err
 	}
@@ -541,7 +542,7 @@ func (i *Iteration) CreateConfigMap(name string, data map[string]string) error {
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	return test.Client.Create(ctx, configMap)
+	return Client.Create(ctx, configMap)
 }
 
 func (i *Iteration) CreateESSecret(name string) error {
@@ -560,7 +561,7 @@ func (i *Iteration) CreateESSecret(name string) error {
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	return test.Client.Create(ctx, secret)
+	return Client.Create(ctx, secret)
 }
 
 func (i *Iteration) CreateDbSecret(name string) error {
@@ -581,7 +582,7 @@ func (i *Iteration) CreateDbSecret(name string) error {
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	return test.Client.Create(ctx, secret)
+	return Client.Create(ctx, secret)
 }
 
 func (i *Iteration) ExpectPipelineVersionToBeRemoved(pipelineVersion string) error {
@@ -589,7 +590,7 @@ func (i *Iteration) ExpectPipelineVersionToBeRemoved(pipelineVersion string) err
 	if err != nil {
 		return err
 	}
-	if exists != false {
+	if exists {
 		return errors.New(fmt.Sprintf("expected index %s to not exist", i.EsClient.ESIndexName(pipelineVersion)))
 	}
 
@@ -642,7 +643,7 @@ func (i *Iteration) ExpectValidReconcile() (*xjoin.XJoinPipeline, error) {
 		return nil, errors.New("expected pipeline state to be valid")
 	}
 
-	if pipeline.Status.InitialSyncInProgress != false {
+	if pipeline.Status.InitialSyncInProgress {
 		return nil, errors.New("expected InitialSyncInProgress to be false")
 	}
 
@@ -667,7 +668,7 @@ func (i *Iteration) ExpectNewReconcile() (*xjoin.XJoinPipeline, error) {
 		return nil, errors.New("expected pipeline state to be new")
 	}
 
-	if pipeline.Status.InitialSyncInProgress != false {
+	if pipeline.Status.InitialSyncInProgress {
 		return nil, errors.New("expected InitialSyncInProgress to be false")
 	}
 
@@ -692,7 +693,7 @@ func (i *Iteration) ExpectInitSyncInvalidReconcile() (*xjoin.XJoinPipeline, erro
 		return nil, errors.New("expected pipeline state to be initial_sync")
 	}
 
-	if pipeline.Status.InitialSyncInProgress != true {
+	if !pipeline.Status.InitialSyncInProgress {
 		return nil, errors.New("expected InitialSyncInProgress to be true")
 	}
 
@@ -716,7 +717,7 @@ func (i *Iteration) ExpectInitSyncUnknownReconcile() (*xjoin.XJoinPipeline, erro
 		return nil, errors.New("expected pipeline state to be initial_sync")
 	}
 
-	if pipeline.Status.InitialSyncInProgress != true {
+	if !pipeline.Status.InitialSyncInProgress {
 		return nil, errors.New("expected InitialSyncInProgress to be true")
 	}
 
@@ -740,7 +741,7 @@ func (i *Iteration) ExpectInvalidReconcile() (*xjoin.XJoinPipeline, error) {
 		return nil, errors.New("expected pipeline state to be invalid")
 	}
 
-	if pipeline.Status.InitialSyncInProgress != false {
+	if pipeline.Status.InitialSyncInProgress {
 		return nil, errors.New("expected InitialSyncInProgress to be false")
 	}
 
@@ -773,7 +774,7 @@ func (i *Iteration) CreateValidPipeline(specs ...*xjoin.XJoinPipelineSpec) (*xjo
 		return nil, errors.New("expected pipeline state to be valid")
 	}
 
-	if pipeline.Status.InitialSyncInProgress != false {
+	if pipeline.Status.InitialSyncInProgress {
 		return nil, errors.New("expected InitialSyncInProgress to be false")
 	}
 
@@ -787,7 +788,7 @@ func (i *Iteration) CreateValidPipeline(specs ...*xjoin.XJoinPipelineSpec) (*xjo
 func (i *Iteration) DeletePipeline(pipeline *xjoin.XJoinPipeline) error {
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err := test.Client.Delete(ctx, pipeline)
+	err := Client.Delete(ctx, pipeline)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -855,7 +856,7 @@ func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) error {
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err := test.Client.Create(ctx, &pipeline)
+	err := Client.Create(ctx, &pipeline)
 	if err != nil {
 		return err
 	}
@@ -866,7 +867,7 @@ func (i *Iteration) CreatePipeline(specs ...*xjoin.XJoinPipelineSpec) error {
 func (i *Iteration) GetPipeline() (*xjoin.XJoinPipeline, error) {
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	return k8sUtils.FetchXJoinPipeline(test.Client, i.NamespacedName, ctx)
+	return k8sUtils.FetchXJoinPipeline(Client, i.NamespacedName, ctx)
 }
 
 func (i *Iteration) ReconcileXJoinForDeletedPipeline() error {
@@ -877,7 +878,7 @@ func (i *Iteration) ReconcileXJoinForDeletedPipeline() error {
 		return errors.Wrap(err, 0)
 	}
 
-	if result.Requeue != false {
+	if result.Requeue {
 		return errors.Wrap(errors.New("expected result.Requeue to be false"), 0)
 	}
 
@@ -915,7 +916,7 @@ func (i *Iteration) ReconcileXJoinNonTest() (*xjoin.XJoinPipeline, error) {
 		return nil, err
 	}
 
-	if result.Requeue != false {
+	if result.Requeue {
 		return nil, errors.New("expected result.requeue to be false")
 	}
 	return i.GetPipeline()
@@ -938,7 +939,7 @@ func (i *Iteration) ReconcileXJoin() (*xjoin.XJoinPipeline, error) {
 	if err != nil {
 		return nil, err
 	}
-	if result.Requeue != false {
+	if result.Requeue {
 		return nil, errors.New("expected result.Requeue to be false")
 	}
 	return i.GetPipeline()
@@ -951,7 +952,7 @@ func (i *Iteration) ReconcileValidationForDeletedPipeline() error {
 	if err != nil {
 		return err
 	}
-	if result.Requeue != false {
+	if result.Requeue {
 		return errors.New("expected result.Requeue to be false")
 	}
 
@@ -966,7 +967,7 @@ func (i *Iteration) ReconcileValidation() (*xjoin.XJoinPipeline, error) {
 		return nil, err
 	}
 
-	if result.Requeue != false {
+	if result.Requeue {
 		return nil, errors.New("expected result.requeue to be false")
 	}
 	return i.GetPipeline()
@@ -1018,15 +1019,6 @@ func (i *Iteration) WaitForPipelineToBeValid() (*xjoin.XJoinPipeline, error) {
 	}
 
 	return pipeline, nil
-}
-
-func (i *Iteration) setPrefix(prefix string) error {
-	err := i.KafkaClient.Parameters.ResourceNamePrefix.SetValue(prefix)
-	if err != nil {
-		return err
-	}
-	i.EsClient.SetResourceNamePrefix(prefix)
-	return i.Parameters.ResourceNamePrefix.SetValue(prefix)
 }
 
 func (i *Iteration) fullValidationFailureTest(hbiFileName string, esFileName string) error {
@@ -1090,7 +1082,7 @@ func (i *Iteration) fullValidationFailureTest(hbiFileName string, esFileName str
 	return nil
 }
 
-func (i *Iteration) getConnectPodName() (string, error) {
+func (i *Iteration) GetConnectPodName() (string, error) {
 	pods := &corev1.PodList{}
 
 	ctx, cancel := utils.DefaultContext()
@@ -1183,7 +1175,7 @@ func (i *Iteration) setConnectorReconciliationPause(connectorName string, pause 
 		annotations["strimzi.io/pause-reconciliation"] = pause
 		metadata := connector.Object["metadata"].(map[string]interface{})
 		metadata["annotations"] = annotations
-		err = test.Client.Update(ctx, connector)
+		err = Client.Update(ctx, connector)
 		if err == nil {
 			break
 		}

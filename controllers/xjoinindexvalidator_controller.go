@@ -56,13 +56,17 @@ func NewXJoinIndexValidatorReconciler(
 }
 
 func (r *XJoinIndexValidatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	logConstructor := func(r *reconcile.Request) logr.Logger {
+		return mgr.GetLogger()
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-indexvalidator-controller").
 		For(&xjoin.XJoinIndexValidator{}).
-		WithLogger(mgr.GetLogger()).
+		WithLogConstructor(logConstructor).
 		WithOptions(controller.Options{
-			Log:         mgr.GetLogger(),
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
+			LogConstructor: logConstructor,
+			RateLimiter:    workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		Complete(r)
 }
@@ -105,7 +109,7 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 		return
 	}
 
-	if p.Pause.Bool() == true {
+	if p.Pause.Bool() {
 		return
 	}
 
@@ -118,7 +122,8 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 			Client:           r.Client,
 			Log:              reqLogger,
 		},
-		ClientSet: r.ClientSet,
+		ClientSet:              r.ClientSet,
+		ElasticsearchIndexName: instance.Spec.IndexName,
 	}
 
 	if err = i.AddFinalizer(xjoinindexValidatorFinalizer); err != nil {

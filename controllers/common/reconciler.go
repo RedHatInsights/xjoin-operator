@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"github.com/go-errors/errors"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -35,10 +34,10 @@ func NewReconciler(methods ReconcilerMethods, instance XJoinObject, log logger.L
 }
 
 func (r *Reconciler) Version() string {
-	return fmt.Sprintf("%s", strconv.FormatInt(time.Now().UnixNano(), 10))
+	return strconv.FormatInt(time.Now().UnixNano(), 10)
 }
 
-func (r *Reconciler) doRefresh() (err error) {
+func (r *Reconciler) DoRefresh() (err error) {
 	r.log.Info("STATE: START REFRESH")
 
 	refreshingVersion := r.Version()
@@ -53,38 +52,38 @@ func (r *Reconciler) doRefresh() (err error) {
 
 const (
 	START_REFRESH    string = "START_REFRESH"
-	REFRESHING              = "REFRESHING"
-	NEW                     = "NEW"
-	REMOVED                 = "REMOVED"
-	INITIAL_SYNC            = "INITIAL_SYNC"
-	VALID                   = "VALID"
-	REFRESH_COMPLETE        = "REFRESH_COMPLETE"
+	REFRESHING       string = "REFRESHING"
+	NEW              string = "NEW"
+	REMOVED          string = "REMOVED"
+	INITIAL_SYNC     string = "INITIAL_SYNC"
+	VALID            string = "VALID"
+	REFRESH_COMPLETE string = "REFRESH_COMPLETE"
 )
 
 func (r *Reconciler) getState(specHash string) string {
 	if r.instance.GetDeletionTimestamp() != nil {
 		return REMOVED
 	} else if (r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionIsValid() == false &&
+		!r.instance.GetActiveVersionIsValid() &&
 		r.instance.GetRefreshingVersion() == "") ||
 		(r.instance.GetSpecHash() != "" && r.instance.GetSpecHash() != specHash) {
 		return START_REFRESH
 	} else if r.instance.GetActiveVersion() == "" && r.instance.GetRefreshingVersion() == "" {
 		return NEW
 	} else if r.instance.GetActiveVersion() == "" &&
-		r.instance.GetRefreshingVersionIsValid() == false &&
+		!r.instance.GetRefreshingVersionIsValid() &&
 		r.instance.GetRefreshingVersion() != "" {
 		return INITIAL_SYNC
 	} else if r.instance.GetRefreshingVersion() != "" &&
-		r.instance.GetRefreshingVersionIsValid() == true {
+		r.instance.GetRefreshingVersionIsValid() {
 		return REFRESH_COMPLETE
 	} else if r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionIsValid() == false &&
+		!r.instance.GetActiveVersionIsValid() &&
 		r.instance.GetRefreshingVersion() != "" &&
-		r.instance.GetRefreshingVersionIsValid() == false {
+		!r.instance.GetRefreshingVersionIsValid() {
 		return REFRESHING
 	} else if r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionIsValid() == true {
+		r.instance.GetActiveVersionIsValid() {
 		return VALID
 	} else {
 		return ""

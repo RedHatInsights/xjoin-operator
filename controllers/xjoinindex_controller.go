@@ -54,13 +54,17 @@ func NewXJoinIndexReconciler(
 }
 
 func (r *XJoinIndexReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	logConstructor := func(r *reconcile.Request) logr.Logger {
+		return mgr.GetLogger()
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-index-controller").
 		For(&xjoin.XJoinIndex{}).
-		WithLogger(mgr.GetLogger()).
+		WithLogConstructor(logConstructor).
 		WithOptions(controller.Options{
-			Log:         mgr.GetLogger(),
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
+			LogConstructor: logConstructor,
+			RateLimiter:    workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		Watches(&source.Kind{Type: &xjoin.XJoinDataSource{}}, handler.EnqueueRequestsFromMapFunc(func(datasource client.Object) []reconcile.Request {
 			//when a xjoindatasource spec is updated, reconcile each xjoinindex which consumes the xjoindatasource
@@ -113,7 +117,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 
 	p := parameters.BuildIndexParameters()
 
-	if p.Pause.Bool() == true {
+	if p.Pause.Bool() {
 		return
 	}
 

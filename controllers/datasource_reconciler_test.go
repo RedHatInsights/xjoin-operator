@@ -1,7 +1,8 @@
-package controllers
+package controllers_test
 
 import (
 	"context"
+	"github.com/redhatinsights/xjoin-operator/controllers"
 	"time"
 
 	"github.com/jarcoal/httpmock"
@@ -17,10 +18,9 @@ import (
 )
 
 type DatasourceTestReconciler struct {
-	Namespace         string
-	Name              string
-	K8sClient         client.Client
-	createdDatasource v1alpha1.XJoinDataSource
+	Namespace string
+	Name      string
+	K8sClient client.Client
 }
 
 func (d *DatasourceTestReconciler) ReconcileNew() v1alpha1.XJoinDataSource {
@@ -34,10 +34,7 @@ func (d *DatasourceTestReconciler) ReconcileNew() v1alpha1.XJoinDataSource {
 
 	Eventually(func() bool {
 		err := d.K8sClient.Get(context.Background(), datasourceLookupKey, createdDatasource)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
 
 	Expect(createdDatasource.Status.ActiveVersion).To(Equal(""))
@@ -65,10 +62,7 @@ func (d *DatasourceTestReconciler) ReconcileValid() v1alpha1.XJoinDataSource {
 
 	Eventually(func() bool {
 		err := d.K8sClient.Get(context.Background(), datasourceLookupKey, createdDatasource)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
 
 	Expect(createdDatasource.Status.ActiveVersion).ToNot(Equal(""))
@@ -131,10 +125,7 @@ func (d *DatasourceTestReconciler) createValidDataSource() {
 
 	Eventually(func() bool {
 		err := d.K8sClient.Get(ctx, datasourceLookupKey, createdDatasource)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
 	Expect(createdDatasource.Spec.Pause).Should(Equal(false))
 	Expect(createdDatasource.Spec.AvroSchema).Should(Equal("{}"))
@@ -184,8 +175,8 @@ func (d *DatasourceTestReconciler) registerValidMocks() {
 		httpmock.NewStringResponder(200, `[]`))
 }
 
-func (d *DatasourceTestReconciler) newXJoinDataSourceReconciler() *XJoinDataSourceReconciler {
-	return NewXJoinDataSourceReconciler(
+func (d *DatasourceTestReconciler) newXJoinDataSourceReconciler() *controllers.XJoinDataSourceReconciler {
+	return controllers.NewXJoinDataSourceReconciler(
 		d.K8sClient,
 		scheme.Scheme,
 		testLogger,

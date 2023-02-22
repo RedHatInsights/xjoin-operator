@@ -2,6 +2,10 @@ package pipeline
 
 import (
 	"fmt"
+	"math"
+	"strings"
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -19,8 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strings"
-	"time"
 )
 
 // XJoinPipelineReconciler reconciles a XJoinPipeline object
@@ -133,7 +135,7 @@ func (i *ReconcileIteration) UpdateStatusAndRequeue() (reconcile.Result, error) 
 }
 
 func (i *ReconcileIteration) GetValidationInterval() int {
-	if i.Instance.Status.InitialSyncInProgress == true {
+	if i.Instance.Status.InitialSyncInProgress {
 		return i.Parameters.ValidationInitInterval.Int()
 	}
 
@@ -141,7 +143,7 @@ func (i *ReconcileIteration) GetValidationInterval() int {
 }
 
 func (i *ReconcileIteration) GetValidationAttemptsThreshold() int {
-	if i.Instance.Status.InitialSyncInProgress == true {
+	if i.Instance.Status.InitialSyncInProgress {
 		return i.Parameters.ValidationInitAttemptsThreshold.Int()
 	}
 
@@ -149,7 +151,7 @@ func (i *ReconcileIteration) GetValidationAttemptsThreshold() int {
 }
 
 func (i *ReconcileIteration) GetValidationPercentageThreshold() int {
-	if i.Instance.Status.InitialSyncInProgress == true {
+	if i.Instance.Status.InitialSyncInProgress {
 		return i.Parameters.ValidationInitPercentageThreshold.Int()
 	}
 
@@ -388,13 +390,16 @@ func (i *ReconcileIteration) UpdateAliasIfHealthier() error {
 			return fmt.Errorf("failed to get host count from latest index %w", err)
 		}
 
-		if utils.Abs(hbiHostCount-latestCount) > utils.Abs(hbiHostCount-activeCount) {
+		if math.Abs(float64(hbiHostCount-latestCount)) > math.Abs(float64(hbiHostCount-activeCount)) {
 			return nil // the active table is healthier; do not update anything
 		}
 	}
 
 	//don't remove the jenkins managed alias until the operator pipeline is healthy
 	currIndices, err := i.ESClient.GetCurrentIndicesWithAlias("xjoin.inventory.hosts")
+	if err != nil {
+		return err
+	}
 	if !utils.ContainsString(currIndices, "xjoin.inventory.hosts."+i.Parameters.JenkinsManagedVersion.String()) {
 		if err = i.ESClient.UpdateAliasByFullIndexName(
 			i.ESClient.AliasName(),
@@ -468,7 +473,7 @@ func (i *ReconcileIteration) CheckESPipelineDeviation() (problem error, err erro
 
 	if err != nil {
 		return nil, err
-	} else if esPipelineExists == false {
+	} else if !esPipelineExists {
 		return fmt.Errorf("elasticsearch pipeline %s not found", pipelineName), nil
 	}
 
@@ -486,7 +491,7 @@ func (i *ReconcileIteration) CheckESIndexDeviation() (problem error, err error) 
 
 	if err != nil {
 		return nil, err
-	} else if indexExists == false {
+	} else if !indexExists {
 		return fmt.Errorf(
 			"elasticsearch index %s not found",
 			indexName), nil

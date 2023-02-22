@@ -1,4 +1,4 @@
-package controllers
+package controllers_test
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
 	"github.com/jarcoal/httpmock"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
 	"os"
@@ -57,10 +57,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, debeziumConnectorLookupKey, debeziumConnector)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 			debeziumClass := "io.debezium.connector.postgresql.PostgresConnector"
@@ -99,7 +96,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			count = info["GET http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/1"]
 			Expect(count).To(Equal(1))
 
-			count = info["GET http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/latest"]
+			count = info["GET http://apicurio:1080/apis/ccompat/v6/schemas/ids/1"]
 			Expect(count).To(Equal(1))
 		})
 
@@ -118,10 +115,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, kafkaTopicLookupKey, kafkaTopic)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 			kafkaTopicPartitions := int32(1)

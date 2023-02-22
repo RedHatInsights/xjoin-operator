@@ -180,7 +180,7 @@ func (es GenericElasticsearch) ListPipelinesForPrefix(prefix string) (esPipeline
 		return nil, errors.Wrap(err, 0)
 	}
 
-	for esPipelineName, _ := range body {
+	for esPipelineName := range body {
 		esPipelines = append(esPipelines, esPipelineName)
 	}
 

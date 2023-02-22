@@ -6,23 +6,17 @@ import (
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
-	"github.com/redhatinsights/xjoin-operator/test"
 	"gopkg.in/h2non/gock.v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/tools/record"
 	"reflect"
 	"strconv"
-	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
-
-func TestControllers(t *testing.T) {
-	test.Setup(t, "Controllers")
-}
 
 var _ = Describe("Pipeline operations", func() {
 	var i *Iteration
@@ -138,6 +132,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(aliases).To(BeEmpty())
 
 			topics, err := i.KafkaTopics.ListTopicNamesForPipelineVersion(pipeline.Status.PipelineVersion)
+			Expect(err).ToNot(HaveOccurred())
 			Expect(topics).To(ContainElement(i.KafkaTopics.TopicName(pipeline.Status.PipelineVersion)))
 		})
 
@@ -203,25 +198,25 @@ var _ = Describe("Pipeline operations", func() {
 			esConnectorConfig := esConnectorSpec["config"].(map[string]interface{})
 			Expect(esConnectorConfig["tasks.max"]).To(Equal(cm["elasticsearch.connector.tasks.max"]))
 			Expect(esConnectorConfig["topics"]).To(Equal(ResourceNamePrefix + "." + pipeline.Status.PipelineVersion + ".public.hosts"))
-			val, err := test.StrToInt64(cm["elasticsearch.connector.batch.size"])
+			val, err := StrToInt64(cm["elasticsearch.connector.batch.size"])
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnectorConfig["batch.size"]).To(Equal(val))
-			val, err = test.StrToInt64(cm["elasticsearch.connector.max.in.flight.requests"])
+			val, err = StrToInt64(cm["elasticsearch.connector.max.in.flight.requests"])
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnectorConfig["max.in.flight.requests"]).To(Equal(val))
-			boolVal, err := test.StrToBool(cm["elasticsearch.connector.errors.log.enable"])
+			boolVal, err := StrToBool(cm["elasticsearch.connector.errors.log.enable"])
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnectorConfig["errors.log.enable"]).To(Equal(boolVal))
-			val, err = test.StrToInt64(cm["elasticsearch.connector.max.retries"])
+			val, err = StrToInt64(cm["elasticsearch.connector.max.retries"])
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnectorConfig["max.retries"]).To(Equal(val))
-			val, err = test.StrToInt64(cm["elasticsearch.connector.retry.backoff.ms"])
+			val, err = StrToInt64(cm["elasticsearch.connector.retry.backoff.ms"])
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnectorConfig["retry.backoff.ms"]).To(Equal(val))
-			val, err = test.StrToInt64(cm["elasticsearch.connector.max.buffered.records"])
+			val, err = StrToInt64(cm["elasticsearch.connector.max.buffered.records"])
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnectorConfig["max.buffered.records"]).To(Equal(val))
-			val, err = test.StrToInt64(cm["elasticsearch.connector.linger.ms"])
+			val, err = StrToInt64(cm["elasticsearch.connector.linger.ms"])
 			Expect(err).ToNot(HaveOccurred())
 			Expect(esConnectorConfig["linger.ms"]).To(Equal(val))
 
@@ -233,16 +228,16 @@ var _ = Describe("Pipeline operations", func() {
 			dbConnectorSpec := dbConnector.Object["spec"].(map[string]interface{})
 			dbConnectorConfig := dbConnectorSpec["config"].(map[string]interface{})
 			Expect(dbConnectorConfig["tasks.max"]).To(Equal(cm["debezium.connector.tasks.max"]))
-			val, err = test.StrToInt64(cm["debezium.connector.max.batch.size"])
+			val, err = StrToInt64(cm["debezium.connector.max.batch.size"])
 			Expect(err).ToNot(HaveOccurred())
 			Expect(dbConnectorConfig["max.batch.size"]).To(Equal(val))
-			val, err = test.StrToInt64(cm["debezium.connector.max.queue.size"])
+			val, err = StrToInt64(cm["debezium.connector.max.queue.size"])
 			Expect(err).ToNot(HaveOccurred())
 			Expect(dbConnectorConfig["max.queue.size"]).To(Equal(val))
-			val, err = test.StrToInt64(cm["debezium.connector.poll.interval.ms"])
+			val, err = StrToInt64(cm["debezium.connector.poll.interval.ms"])
 			Expect(err).ToNot(HaveOccurred())
 			Expect(dbConnectorConfig["poll.interval.ms"]).To(Equal(val))
-			boolVal, err = test.StrToBool(cm["debezium.connector.errors.log.enable"])
+			boolVal, err = StrToBool(cm["debezium.connector.errors.log.enable"])
 			Expect(err).ToNot(HaveOccurred())
 			Expect(dbConnectorConfig["errors.log.enable"]).To(Equal(boolVal))
 		})
@@ -251,9 +246,9 @@ var _ = Describe("Pipeline operations", func() {
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
 			hbiDBSecret, err := k8sUtils.FetchSecret(
-				test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
+				Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
-			err = test.Client.Delete(ctx, hbiDBSecret)
+			err = Client.Delete(ctx, hbiDBSecret)
 			Expect(err).ToNot(HaveOccurred())
 
 			secretName := "test-hbi-db-secret"
@@ -269,9 +264,9 @@ var _ = Describe("Pipeline operations", func() {
 		It("Considers es secret name configuration", func() {
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			elasticSearchSecret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
+			elasticSearchSecret, err := k8sUtils.FetchSecret(Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
-			err = test.Client.Delete(ctx, elasticSearchSecret)
+			err = Client.Delete(ctx, elasticSearchSecret)
 			Expect(err).ToNot(HaveOccurred())
 
 			secretName := "test-elasticsearch-secret"
@@ -576,13 +571,13 @@ var _ = Describe("Pipeline operations", func() {
 
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			configMap, err := k8sUtils.FetchConfigMap(test.Client, i.NamespacedName.Namespace, "xjoin", ctx)
+			configMap, err := k8sUtils.FetchConfigMap(Client, i.NamespacedName.Namespace, "xjoin", ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			cm["debezium.connector.errors.log.enable"] = "false"
 
 			configMap.Data = cm
-			err = test.Client.Update(ctx, configMap)
+			err = Client.Update(ctx, configMap)
 			Expect(err).ToNot(HaveOccurred())
 
 			pipeline, err = i.ExpectInitSyncUnknownReconcile()
@@ -603,7 +598,7 @@ var _ = Describe("Pipeline operations", func() {
 
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			secret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
+			secret, err := k8sUtils.FetchSecret(Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			//update the secret with new username/password
@@ -613,7 +608,8 @@ var _ = Describe("Pipeline operations", func() {
 				fmt.Sprintf("CREATE USER %s WITH PASSWORD '%s' IN ROLE insights;", tempUser, tempPassword))
 			secret.Data["db.user"] = []byte(tempUser)
 			secret.Data["db.password"] = []byte(tempPassword)
-			err = test.Client.Update(ctx, secret)
+			err = Client.Update(ctx, secret)
+			Expect(err).ToNot(HaveOccurred())
 
 			//run a reconcile
 			pipeline, err = i.ExpectInitSyncUnknownReconcile()
@@ -636,12 +632,13 @@ var _ = Describe("Pipeline operations", func() {
 
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			secret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
+			secret, err := k8sUtils.FetchSecret(Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			//change the secret hash by adding a new field
 			secret.Data["newfield"] = []byte("value")
-			err = test.Client.Update(ctx, secret)
+			err = Client.Update(ctx, secret)
+			Expect(err).ToNot(HaveOccurred())
 
 			pipeline, err = i.ExpectInitSyncUnknownReconcile()
 			Expect(err).ToNot(HaveOccurred())
@@ -811,10 +808,11 @@ var _ = Describe("Pipeline operations", func() {
 			//trigger refresh so there is an active and initializing pipeline
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			secret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
+			secret, err := k8sUtils.FetchSecret(Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["newfield"] = []byte("value")
-			err = test.Client.Update(ctx, secret)
+			err = Client.Update(ctx, secret)
+			Expect(err).ToNot(HaveOccurred())
 			pipeline, err = i.ExpectInitSyncUnknownReconcile()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pipeline.Status.ActiveIndexName).To(Equal(activeIndex))
@@ -834,10 +832,11 @@ var _ = Describe("Pipeline operations", func() {
 		It("Artifacts removed when an error occurs during initial setup", func() {
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			secret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
+			secret, err := k8sUtils.FetchSecret(Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["db.host"] = []byte("invalidurl")
-			err = test.Client.Update(ctx, secret)
+			err = Client.Update(ctx, secret)
+			Expect(err).ToNot(HaveOccurred())
 
 			//this will fail due to incorrect secret
 			err = i.CreatePipeline()
@@ -867,10 +866,11 @@ var _ = Describe("Pipeline operations", func() {
 		It("Fails if ElasticSearch secret is misconfigured", func() {
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			secret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
+			secret, err := k8sUtils.FetchSecret(Client, i.NamespacedName.Namespace, i.Parameters.ElasticSearchSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["endpoint"] = []byte("invalidurl")
-			err = test.Client.Update(ctx, secret)
+			err = Client.Update(ctx, secret)
+			Expect(err).ToNot(HaveOccurred())
 
 			err = i.CreatePipeline()
 			Expect(err).ToNot(HaveOccurred())
@@ -882,10 +882,11 @@ var _ = Describe("Pipeline operations", func() {
 		It("Fails if HBI DB secret is misconfigured", func() {
 			ctx, cancel := utils.DefaultContext()
 			defer cancel()
-			secret, err := k8sUtils.FetchSecret(test.Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
+			secret, err := k8sUtils.FetchSecret(Client, i.NamespacedName.Namespace, i.Parameters.HBIDBSecretName.String(), ctx)
 			Expect(err).ToNot(HaveOccurred())
 			secret.Data["db.host"] = []byte("invalidurl")
-			err = test.Client.Update(ctx, secret)
+			err = Client.Update(ctx, secret)
+			Expect(err).ToNot(HaveOccurred())
 
 			err = i.CreatePipeline()
 			Expect(err).ToNot(HaveOccurred())
@@ -1031,7 +1032,7 @@ var _ = Describe("Pipeline operations", func() {
 				err := i.DeleteService(serviceName)
 				Expect(err).ToNot(HaveOccurred())
 			}(i, dbHost)
-			defer test.ForwardPorts()
+			defer ForwardPorts()
 
 			pipeline, err := i.CreateValidPipeline()
 			Expect(err).ToNot(HaveOccurred())

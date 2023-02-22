@@ -220,7 +220,7 @@ func (x XJoinAPISubGraph) Delete() (err error) {
 	return
 }
 
-func (x *XJoinAPISubGraph) CheckDeviation() (err error) {
+func (x *XJoinAPISubGraph) CheckDeviation() (problem, err error) {
 	return
 }
 
