@@ -233,3 +233,8 @@ catalog-build: opm
 .PHONY: catalog-push
 catalog-push: ## Push the catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+clean:
+	rm -r bin || true
+	rm -r build || true
+	rm -r testbin/bin || true
