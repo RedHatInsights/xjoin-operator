@@ -1,9 +1,10 @@
+
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.1
+    controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
   name: xjoinpipelines.xjoin.cloud.redhat.com
 spec:
@@ -106,12 +107,14 @@ spec:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
                     use as an array at the field path .status.conditions.  For example,
-                    \n type FooStatus struct{ // Represents the observations of a
-                    foo's current state. // Known .status.conditions.type are: \"Available\",
-                    \"Progressing\", and \"Degraded\" // +patchMergeKey=type // +patchStrategy=merge
-                    // +listType=map // +listMapKey=type Conditions []metav1.Condition
+                    \n \ttype FooStatus struct{ \t    // Represents the observations
+                    of a foo's current state. \t    // Known .status.conditions.type
+                    are: \"Available\", \"Progressing\", and \"Degraded\" \t    //
+                    +patchMergeKey=type \t    // +patchStrategy=merge \t    // +listType=map
+                    \t    // +listMapKey=type \t    Conditions []metav1.Condition
                     `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\"
-                    protobuf:\"bytes,1,rep,name=conditions\"` \n // other fields }"
+                    protobuf:\"bytes,1,rep,name=conditions\"` \n \t    // other fields
+                    \t}"
                   properties:
                     lastTransitionTime:
                       description: lastTransitionTime is the last time the condition
@@ -123,6 +126,7 @@ spec:
                     message:
                       description: message is a human readable message indicating
                         details about the transition. This may be an empty string.
+                      maxLength: 32768
                       type: string
                     observedGeneration:
                       description: observedGeneration represents the .metadata.generation
@@ -131,6 +135,7 @@ spec:
                         is 9, the condition is out of date with respect to the current
                         state of the instance.
                       format: int64
+                      minimum: 0
                       type: integer
                     reason:
                       description: reason contains a programmatic identifier indicating
@@ -139,9 +144,16 @@ spec:
                         meanings for this field, and whether the values are considered
                         a guaranteed API. The value should be a CamelCase string.
                         This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
                       type: string
                     status:
                       description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
                       type: string
                     type:
                       description: type of condition in CamelCase or in foo.example.com/CamelCase.
@@ -149,6 +161,8 @@ spec:
                         like Available, but because arbitrary conditions can be useful
                         (see .node.status.conditions), the ability to deconflict is
                         important. The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
                       type: string
                   required:
                   - lastTransitionTime
@@ -199,3 +213,9 @@ spec:
     storage: true
     subresources:
       status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
