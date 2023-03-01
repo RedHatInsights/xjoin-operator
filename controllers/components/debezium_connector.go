@@ -48,6 +48,15 @@ func (dc *DebeziumConnector) Delete() (err error) {
 }
 
 func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
+    connector, err := dc.KafkaClient.GetConnector(dc.Name())
+    if err != nil {
+        return errors.Wrap(err, 0)
+    }
+
+    if dc.TemplateParameters != connector.TemplateParameters {
+        return fmt.Errorf("connector in instance does not match connector template from resources for %s", as.Name())
+    }
+
 	return
 }
 
