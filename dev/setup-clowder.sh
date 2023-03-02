@@ -160,12 +160,12 @@ print_message "Setting up elasticsearch password"
 dev/setup.sh -e -p test
 
 if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
-  kubectl apply -f ./dev/apicurio.yaml -n test
-  bonfire process xjoin-api-gateway -n test --no-get-dependencies -p xjoin-api-gateway/SCHEMA_REGISTRY_HOSTNAME=apicurio.test.svc -p xjoin-api-gateway/SCHEMA_REGISTRY_PORT=1080 | oc apply -f - -n test
+  bonfire process xjoin-api-gateway -n test | oc apply -f - -n test
 
   # APICurio (the ApiCurio operator has not been released in over a year, this will manually create a deployment/service)
   print_message "Installing Apicurio"
-  wait_for_pod_to_be_running app=apicurio
+  wait_for_pod_to_be_running pod=xjoin-apicurio-service
+  wait_for_pod_to_be_running app=xjoin-apicurio,service=db
 
   # XJoin API Gateway
   print_message "Setting up xjoin-api-gateway"
