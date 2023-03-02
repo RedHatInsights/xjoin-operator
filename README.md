@@ -179,18 +179,6 @@ docker login -u=$QUAY_USERNAME -p $QUAY_PASSWORD
 
 ### Local development
 
-The xjoin-api-gateway does not yet have an official build, so a custom entry needs to be added to
-`~/.config/bonfire/config.yaml`.
-
-```
-- name: xjoin-api-gateway
-  components:
-  - name: xjoin-api-gateway
-    host: local
-    repo: /home/chris/dev/projects/active/xjoin-api-gateway
-    path: clowdapp.yaml
-```
-
 The simplest way to create a complete local development environment is via the `./dev/setup_clowder.sh true` script.
 This
 script will install resources in the `test` namespace. The true flag will install the additional dependencies required
