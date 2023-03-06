@@ -206,7 +206,7 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 		dataSource.SetGroupVersionKind(common.DataSourceGVK)
 		err = d.Client.Get(d.Context, client.ObjectKey{Name: dataSourceName, Namespace: d.Namespace}, dataSource)
 		if err != nil {
-			return references, errors.Wrap(err, 0) //TODO: simplify this error message
+			return references, errors.Wrap(err, 0)
 		}
 
 		status := dataSource.Object["status"]

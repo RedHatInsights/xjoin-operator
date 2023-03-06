@@ -50,6 +50,8 @@ spec:
             type: object
           status:
             properties:
+              validationPodPhase:
+                type: string
               validationResponse:
                 properties:
                   details:
