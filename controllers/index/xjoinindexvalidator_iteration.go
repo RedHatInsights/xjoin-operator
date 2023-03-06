@@ -202,45 +202,42 @@ func (i *XJoinIndexValidatorIteration) buildDBConnectionEnvVars(references []src
 			return envVars, errors.Wrap(err, 0)
 		}
 
-		envVars = append(envVars, v1.EnvVar{
-			Name: strings.Split(dataSourcePipelineName, ".")[0] + "_DB_HOSTNAME",
-			ValueFrom: &v1.EnvVarSource{
-				SecretKeyRef: dataSourcePipeline.Spec.DatabaseHostname.ValueFrom.SecretKeyRef,
-			},
-		})
+		envVarPrefix := strings.Split(dataSourcePipelineName, ".")[0]
+		hostnameEnvVar, err := dataSourcePipeline.Spec.DatabaseHostname.ConvertToEnvVar(envVarPrefix + "_DB_HOSTNAME")
+		if err != nil {
+			return envVars, errors.Wrap(err, 0)
+		}
+		envVars = append(envVars, hostnameEnvVar)
 
-		envVars = append(envVars, v1.EnvVar{
-			Name: strings.Split(dataSourcePipelineName, ".")[0] + "_DB_USERNAME",
-			ValueFrom: &v1.EnvVarSource{
-				SecretKeyRef: dataSourcePipeline.Spec.DatabaseUsername.ValueFrom.SecretKeyRef,
-			},
-		})
+		usernameEnvVar, err := dataSourcePipeline.Spec.DatabaseUsername.ConvertToEnvVar(envVarPrefix + "_DB_USERNAME")
+		if err != nil {
+			return envVars, errors.Wrap(err, 0)
+		}
+		envVars = append(envVars, usernameEnvVar)
 
-		envVars = append(envVars, v1.EnvVar{
-			Name: strings.Split(dataSourcePipelineName, ".")[0] + "_DB_PASSWORD",
-			ValueFrom: &v1.EnvVarSource{
-				SecretKeyRef: dataSourcePipeline.Spec.DatabasePassword.ValueFrom.SecretKeyRef,
-			},
-		})
+		passwordEnvVar, err := dataSourcePipeline.Spec.DatabasePassword.ConvertToEnvVar(envVarPrefix + "_DB_PASSWORD")
+		if err != nil {
+			return envVars, errors.Wrap(err, 0)
+		}
+		envVars = append(envVars, passwordEnvVar)
 
-		envVars = append(envVars, v1.EnvVar{
-			Name: strings.Split(dataSourcePipelineName, ".")[0] + "_DB_NAME",
-			ValueFrom: &v1.EnvVarSource{
-				SecretKeyRef: dataSourcePipeline.Spec.DatabaseName.ValueFrom.SecretKeyRef,
-			},
-		})
+		nameEnvVar, err := dataSourcePipeline.Spec.DatabaseName.ConvertToEnvVar(envVarPrefix + "_DB_NAME")
+		if err != nil {
+			return envVars, errors.Wrap(err, 0)
+		}
+		envVars = append(envVars, nameEnvVar)
 
-		envVars = append(envVars, v1.EnvVar{
-			Name: strings.Split(dataSourcePipelineName, ".")[0] + "_DB_PORT",
-			ValueFrom: &v1.EnvVarSource{
-				SecretKeyRef: dataSourcePipeline.Spec.DatabasePort.ValueFrom.SecretKeyRef,
-			},
-		})
+		portEnvVar, err := dataSourcePipeline.Spec.DatabasePort.ConvertToEnvVar(envVarPrefix + "_DB_PORT")
+		if err != nil {
+			return envVars, errors.Wrap(err, 0)
+		}
+		envVars = append(envVars, portEnvVar)
 
-		envVars = append(envVars, v1.EnvVar{
-			Name:  strings.Split(dataSourcePipelineName, ".")[0] + "_DB_TABLE",
-			Value: dataSourcePipeline.Spec.DatabaseTable.Value,
-		})
+		tableEnvVar, err := dataSourcePipeline.Spec.DatabaseTable.ConvertToEnvVar(envVarPrefix + "_DB_TABLE")
+		if err != nil {
+			return envVars, errors.Wrap(err, 0)
+		}
+		envVars = append(envVars, tableEnvVar)
 	}
 
 	return
