@@ -2,9 +2,10 @@ package schemaregistry
 
 import (
 	"fmt"
+	"reflect"
+
 	"github.com/go-errors/errors"
 	"github.com/riferrei/srclient"
-	"reflect"
 )
 
 type ConfluentClient struct {
@@ -15,7 +16,7 @@ type ConfluentClient struct {
 }
 
 func NewSchemaRegistryConfluentClient(connectionParams ConnectionParams) *ConfluentClient {
-	baseUrl := fmt.Sprintf("%s://%s:%s", connectionParams.Protocol, connectionParams.Hostname, "1080")
+	baseUrl := fmt.Sprintf("%s://%s:%s", connectionParams.Protocol, connectionParams.Hostname, connectionParams.Port)
 	return &ConfluentClient{
 		confluentApiUrl: baseUrl + "/apis/ccompat/v6",
 		v2ApiUrl:        baseUrl + "/apis/registry/v2",
