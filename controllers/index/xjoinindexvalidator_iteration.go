@@ -1,7 +1,6 @@
 package index
 
 import (
-	"bytes"
 	"encoding/json"
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
@@ -9,11 +8,11 @@ import (
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/k8s"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"github.com/riferrei/srclient"
-	"io"
 	v1 "k8s.io/api/core/v1"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,8 +28,9 @@ const XJoinIndexValidatorFinalizer = "finalizer.xjoin.indexvalidator.cloud.redha
 type XJoinIndexValidatorIteration struct {
 	common.Iteration
 	Parameters             parameters.IndexParameters
-	ClientSet              *kubernetes.Clientset
+	ClientSet              kubernetes.Interface
 	ElasticsearchIndexName string
+	PodLogReader           k8s.LogReader
 }
 
 func (i *XJoinIndexValidatorIteration) Finalize() (err error) {
@@ -164,19 +164,11 @@ func (i *XJoinIndexValidatorIteration) ParsePodResponse() (validation.Validation
 	podLogOpts := v1.PodLogOptions{}
 	req := i.ClientSet.CoreV1().Pods(i.Instance.GetNamespace()).GetLogs(i.ValidationPodName(), &podLogOpts)
 
-	podLogs, err := req.Stream(i.Context)
+	logString, err := i.PodLogReader.GetLogs(i.ValidationPodName(), i.Instance.GetNamespace())
 	if err != nil {
 		return response, errors.Wrap(err, 0)
 	}
-	defer podLogs.Close()
-
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, podLogs)
-	if err != nil {
-		return response, errors.Wrap(err, 0)
-	}
-	str := buf.String()
-	strArray := strings.Split(str, "\n")
+	strArray := strings.Split(logString, "\n")
 
 	//parse last line, removing trailing new lines
 	var resultString string

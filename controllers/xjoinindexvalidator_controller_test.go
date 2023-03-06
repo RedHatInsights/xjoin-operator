@@ -35,6 +35,7 @@ var _ = Describe("XJoinIndexValidator", func() {
 				Name:           "test-index-validator",
 				ConfigFileName: "xjoinindex",
 				K8sClient:      k8sClient,
+				PodLogReader:   &mocks.LogReader{},
 			}
 			createdIndexValidator := reconciler.ReconcileCreate()
 			Expect(createdIndexValidator.Finalizers).To(HaveLen(1))
