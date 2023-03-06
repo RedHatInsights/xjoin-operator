@@ -149,5 +149,5 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		instance.Status.ActiveVersion = instance.Status.RefreshingVersion
 	}
 
-	return i.UpdateStatusAndRequeue()
+	return i.UpdateStatusAndRequeue(time.Second * 30)
 }

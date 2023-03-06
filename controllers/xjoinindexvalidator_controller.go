@@ -145,9 +145,11 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 	phase, err := i.ReconcileValidationPod()
 	if err != nil {
 		return result, errors.Wrap(err, 0)
-	} else if phase == "valid" {
-		return reconcile.Result{RequeueAfter: time.Second * time.Duration(p.ValidationInterval.Int())}, nil
+	}
+	instance.Status.ValidationPodPhase = phase
+	if phase == ValidatorPodSuccess {
+		return i.UpdateStatusAndRequeue(time.Second * time.Duration(p.ValidationInterval.Int()))
 	} else {
-		return reconcile.Result{RequeueAfter: time.Second * time.Duration(p.ValidationPodStatusInterval.Int())}, nil
+		return i.UpdateStatusAndRequeue(time.Second * time.Duration(p.ValidationPodStatusInterval.Int()))
 	}
 }

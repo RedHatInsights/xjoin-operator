@@ -29,7 +29,7 @@ type Iteration struct {
 	Test             bool
 }
 
-func (i *Iteration) UpdateStatusAndRequeue() (reconcile.Result, error) {
+func (i *Iteration) UpdateStatusAndRequeue(requeueAfter time.Duration) (reconcile.Result, error) {
 	instanceVal := reflect.ValueOf(i.Instance).Elem()
 	statusVal := instanceVal.FieldByName("Status")
 	if !statusVal.IsValid() {
@@ -64,7 +64,7 @@ func (i *Iteration) UpdateStatusAndRequeue() (reconcile.Result, error) {
 		time.Sleep(1 * time.Second) //TODO: this is to prevent status conflicts. Find a better way to avoid the conflicts
 	}
 
-	return reconcile.Result{RequeueAfter: time.Second * 30}, nil
+	return reconcile.Result{RequeueAfter: requeueAfter}, nil
 }
 
 func (i *Iteration) CreateChildResource(resourceDefinition unstructured.Unstructured, ownerGVK schema.GroupVersionKind) (err error) {
