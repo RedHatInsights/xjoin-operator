@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"github.com/redhatinsights/xjoin-operator/controllers/k8s"
 	"os"
 	"time"
 
@@ -182,6 +183,7 @@ func main() {
 		mgr.GetEventRecorderFor("xjoinindexvalidator"),
 		namespace,
 		false,
+		k8s.PodLogReader{ClientSet: clientset},
 	).SetupWithManager(mgr); err != nil {
 		k8slog.Log.Error(err, "unable to create controller", "controller", "XJoinIndexValidator")
 		os.Exit(1)
