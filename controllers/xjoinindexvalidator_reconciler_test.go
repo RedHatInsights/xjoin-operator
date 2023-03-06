@@ -30,16 +30,84 @@ type XJoinIndexValidatorTestReconciler struct {
 	PodLogReader          k8s.LogReader
 }
 
-func (x *XJoinIndexValidatorTestReconciler) ReconcileCreate() v1alpha1.XJoinIndexValidator {
+func (x *XJoinIndexValidatorTestReconciler) ReconcileCreate() (v1alpha1.XJoinIndexValidator, reconcile.Result) {
 	x.createIndexValidator()
+	x.createDatasource()
 	result := x.reconcile()
-	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 1000000000}))
 	validatorLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
 	Eventually(func() bool {
 		err := x.K8sClient.Get(context.Background(), validatorLookupKey, &x.createdIndexValidator)
 		return err == nil
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
-	return x.createdIndexValidator
+	return x.createdIndexValidator, result
+}
+
+func (x *XJoinIndexValidatorTestReconciler) ReconcileRunning() (v1alpha1.XJoinIndexValidator, reconcile.Result) {
+	x.createIndexValidator()
+	x.createDatasource()
+	x.reconcile()
+	validatorLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
+	Eventually(func() bool {
+		err := x.K8sClient.Get(context.Background(), validatorLookupKey, &x.createdIndexValidator)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+	result := x.reconcile()
+	return x.createdIndexValidator, result
+}
+
+func (x *XJoinIndexValidatorTestReconciler) ReconcileSuccess() (validator v1alpha1.XJoinIndexValidator, result reconcile.Result) {
+	x.createIndexValidator()
+	x.createDatasource()
+	x.reconcile()
+	validatorLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
+	Eventually(func() bool {
+		err := x.K8sClient.Get(context.Background(), validatorLookupKey, &x.createdIndexValidator)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+	validatorPods := x.ListValidatorPods()
+	validatorPods.Items[0].Status.Phase = corev1.PodSucceeded
+	err := x.K8sClient.Status().Update(context.Background(), &validatorPods.Items[0])
+	newPods := x.ListValidatorPods()
+	newPods.Items[0].GetNamespace()
+	checkError(err)
+
+	result = x.reconcile()
+	Eventually(func() bool {
+		err := x.K8sClient.Get(context.Background(), validatorLookupKey, &validator)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+	return
+}
+
+func (x *XJoinIndexValidatorTestReconciler) ListValidatorPods() *corev1.PodList {
+	labels := client.MatchingLabels{}
+	labels["xjoin.index"] = x.Name
+	labels[common.COMPONENT_NAME_LABEL] = "XJoinIndexValidator"
+
+	pods := &corev1.PodList{}
+	err := k8sClient.List(context.Background(), pods, client.InNamespace(x.Namespace), labels)
+	checkError(err)
+	return pods
+}
+
+func (x *XJoinIndexValidatorTestReconciler) createDatasource() {
+	reconciler := DatasourceTestReconciler{
+		Namespace:          x.Namespace,
+		Name:               "testdatasource",
+		K8sClient:          k8sClient,
+		AvroSchemaFileName: "xjoindatasource-single-field",
+	}
+	createdDataSource := reconciler.ReconcileNew()
+	Expect(createdDataSource.Name).To(Equal("testdatasource"))
+	refreshingVersion := createdDataSource.Status.RefreshingVersion
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.testdatasource."+refreshingVersion+"-value/versions/latest",
+		httpmock.NewStringResponder(200, fmt.Sprintf(
+			`{"id": 1, "subject": "xjoindatasourcepipeline.testdatasource.%s-value", "version": 1, "schema": "%s", "references": []}`, refreshingVersion, "{}")))
 }
 
 func (x *XJoinIndexValidatorTestReconciler) createIndexValidator() {

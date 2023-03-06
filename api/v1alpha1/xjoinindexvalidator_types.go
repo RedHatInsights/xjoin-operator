@@ -24,6 +24,7 @@ type XJoinIndexValidatorSpec struct {
 
 type XJoinIndexValidatorStatus struct {
 	ValidationResponse validation.ValidationResponse `json:"validationResponse,omitempty"`
+	ValidationPodPhase string                        `json:"validationPodPhase,omitempty"`
 }
 
 // +kubebuilder:object:root=true

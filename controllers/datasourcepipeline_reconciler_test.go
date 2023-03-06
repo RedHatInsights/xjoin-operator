@@ -98,7 +98,7 @@ func (d *DatasourcePipelineTestReconciler) CreateValidDataSourcePipeline() {
 
 func (d *DatasourcePipelineTestReconciler) ReconcileNew() v1alpha1.XJoinDataSourcePipeline {
 	d.registerNewMocks()
-	d.createValidDataSourcePipeline()
+	d.CreateValidDataSourcePipeline()
 	createdDataSourcePipeline := &v1alpha1.XJoinDataSourcePipeline{}
 	result := d.reconcile()
 	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
