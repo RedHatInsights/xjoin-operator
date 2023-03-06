@@ -3,6 +3,7 @@ package controllers_test
 import (
 	"context"
 	"github.com/redhatinsights/xjoin-operator/controllers"
+	"os"
 	"time"
 
 	"github.com/jarcoal/httpmock"
@@ -18,9 +19,10 @@ import (
 )
 
 type DatasourceTestReconciler struct {
-	Namespace string
-	Name      string
-	K8sClient client.Client
+	Namespace          string
+	Name               string
+	K8sClient          client.Client
+	AvroSchemaFileName string
 }
 
 func (d *DatasourceTestReconciler) ReconcileNew() v1alpha1.XJoinDataSource {
@@ -94,8 +96,17 @@ func (d *DatasourceTestReconciler) ReconcileDelete() {
 func (d *DatasourceTestReconciler) createValidDataSource() {
 	ctx := context.Background()
 
+	var datasourceAvroSchema string
+	if d.AvroSchemaFileName != "" {
+		datasourceAvroSchemaBytes, err := os.ReadFile("./test/data/avro/" + d.AvroSchemaFileName + ".json")
+		Expect(err).ToNot(HaveOccurred())
+		datasourceAvroSchema = string(datasourceAvroSchemaBytes)
+	} else {
+		datasourceAvroSchema = "{}"
+	}
+
 	datasourceSpec := v1alpha1.XJoinDataSourceSpec{
-		AvroSchema:       "{}",
+		AvroSchema:       datasourceAvroSchema,
 		DatabaseHostname: &v1alpha1.StringOrSecretParameter{Value: "dbHost"},
 		DatabasePort:     &v1alpha1.StringOrSecretParameter{Value: "8080"},
 		DatabaseUsername: &v1alpha1.StringOrSecretParameter{Value: "dbUsername"},
@@ -128,7 +139,7 @@ func (d *DatasourceTestReconciler) createValidDataSource() {
 		return err == nil
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
 	Expect(createdDatasource.Spec.Pause).Should(Equal(false))
-	Expect(createdDatasource.Spec.AvroSchema).Should(Equal("{}"))
+	Expect(createdDatasource.Spec.AvroSchema).Should(Equal(datasourceAvroSchema))
 	Expect(createdDatasource.Spec.DatabaseHostname).Should(Equal(&v1alpha1.StringOrSecretParameter{Value: "dbHost"}))
 	Expect(createdDatasource.Spec.DatabasePort).Should(Equal(&v1alpha1.StringOrSecretParameter{Value: "8080"}))
 	Expect(createdDatasource.Spec.DatabaseUsername).Should(Equal(&v1alpha1.StringOrSecretParameter{Value: "dbUsername"}))
