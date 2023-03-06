@@ -35,7 +35,7 @@ func (d *DatasourcePipelineTestReconciler) newXJoinDataSourcePipelineReconciler(
 		true)
 }
 
-func (d *DatasourcePipelineTestReconciler) createValidDataSourcePipeline() {
+func (d *DatasourcePipelineTestReconciler) CreateValidDataSourcePipeline() {
 	ctx := context.Background()
 
 	//optionally load avro schema from file
