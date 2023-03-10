@@ -1,9 +1,11 @@
 package components
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
-	"strings"
 )
 
 type KafkaTopic struct {
@@ -42,7 +44,31 @@ func (kt *KafkaTopic) Delete() (err error) {
 }
 
 func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
-	return //TODO
+	name := kt.name
+	topicsClient := kt.KafkaTopics
+
+	exists, err := topicsClient.CheckIfTopicExists(name)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	if exists {
+		/* Get the topic using kt.KafkaTopics.GetTopic(name)
+		   Compare the topic to the deployed one.
+		   if different 
+			  report as problem, nil
+		   else 
+		      return nil, nil
+	
+			TODO: how to get topics from cluster?
+			"kt.KafkaTopics.Client.List" appears to provide a list but the implementation 
+			appears to be incomplete, is it?
+		*/
+		return nil, nil
+	} else {
+		problem = fmt.Errorf("Kafka topic named, \"%s\", not found", name)
+	}
+	return 
 }
 
 func (kt *KafkaTopic) Exists() (exists bool, err error) {
