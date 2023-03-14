@@ -2,9 +2,12 @@ package controllers
 
 import (
 	"context"
+	"time"
+
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
@@ -23,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"time"
 )
 
 type XJoinIndexReconciler struct {
@@ -167,7 +169,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
 
-		instance.Status.ActiveVersionIsValid = activeIndexPipeline.Status.ValidationResponse.Result == "valid"
+		instance.Status.ActiveVersionIsValid = activeIndexPipeline.Status.ValidationResponse.Result == validation.ValidationValid
 	}
 
 	if instance.Status.RefreshingVersion != "" {
@@ -181,7 +183,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
 
-		instance.Status.RefreshingVersionIsValid = refreshingIndexPipeline.Status.ValidationResponse.Result == "valid"
+		instance.Status.RefreshingVersionIsValid = refreshingIndexPipeline.Status.ValidationResponse.Result == validation.ValidationValid
 	}
 
 	//force refresh if datasource is updated
