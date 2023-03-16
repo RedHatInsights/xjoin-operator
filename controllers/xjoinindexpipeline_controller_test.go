@@ -309,7 +309,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				},
 				{
 					Name:      "SCHEMA_REGISTRY_HOSTNAME",
-					Value:     "apicurio.test.svc",
+					Value:     "apicurio",
 					ValueFrom: nil,
 				},
 				{
@@ -446,7 +446,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				},
 				{
 					Name:      "SCHEMA_REGISTRY_HOSTNAME",
-					Value:     "apicurio.test.svc",
+					Value:     "apicurio",
 					ValueFrom: nil,
 				},
 				{
