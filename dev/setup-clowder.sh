@@ -10,7 +10,6 @@ if [[ "$RESPONSE_CODE" -gt 399 ]]; then
 fi
 
 
-INCLUDE_EXTRA_STUFF=$1
 PLATFORM=`uname -a | cut -f1 -d' '`
 
 function print_message() {
@@ -69,19 +68,6 @@ function wait_for_db_to_be_accessible {
 
 kubectl create ns test
 
-if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
-  # OLM
-  print_message "Installing OLM"
-  CURRENT_DIR=$(pwd)
-  mkdir /tmp/olm
-  cd /tmp/olm || exit 1
-  curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.21.2/install.sh -o install.sh
-  chmod +x install.sh
-  ./install.sh v0.21.2
-  rm -r /tmp/olm
-  cd "$CURRENT_DIR" || exit 1
-fi
-
 # kube_setup.sh
 print_message "Running kube-setup.sh"
 CURRENT_DIR=$(pwd)
@@ -94,14 +80,10 @@ if [ -z "$KUBE_SETUP_PATH" ]; then
   curl https://raw.githubusercontent.com/RedHatInsights/clowder/master/build/kube_setup.sh -o /tmp/kubesetup/kube_setup.sh && chmod +x /tmp/kubesetup/kube_setup.sh
 
   if [[ $PLATFORM == "Darwin" ]]; then
-    if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
-      sed -i '' 's/^install_xjoin_operator//g' ./kube_setup.sh
-    fi
+    sed -i '' 's/^install_xjoin_operator//g' ./kube_setup.sh
     sed -i '' 's/^install_keda_operator//g' ./kube_setup.sh
   else
-    if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
-      sed -i 's/^install_xjoin_operator//g' ./kube_setup.sh
-    fi
+    sed -i 's/^install_xjoin_operator//g' ./kube_setup.sh
     sed -i 's/^install_keda_operator//g' ./kube_setup.sh
     sed -i 's/minikube kubectl --/kubectl/g' ./kube_setup.sh # this allows connecting to remote minikube instances
   fi
@@ -169,19 +151,6 @@ kubectl apply -f ./dev/kafka.service.yaml -n test
 # elasticsearch
 print_message "Setting up elasticsearch password"
 dev/setup.sh -e -p test
-
-if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
-  bonfire process xjoin-api-gateway -n test | oc apply -f - -n test
-
-  # APICurio (the ApiCurio operator has not been released in over a year, this will manually create a deployment/service)
-  print_message "Installing Apicurio"
-  wait_for_pod_to_be_running pod=xjoin-apicurio-service
-  wait_for_pod_to_be_running app=xjoin-apicurio,service=db
-
-  # XJoin API Gateway
-  print_message "Setting up xjoin-api-gateway"
-  wait_for_pod_to_be_running app=xjoin-api-gateway
-fi
 
 kubectl delete pods --selector='job=host-inventory-synchronizer' -n test
 kubectl delete pods --selector='job=host-inventory-org-id-populator' -n test
