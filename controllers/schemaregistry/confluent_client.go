@@ -9,18 +9,20 @@ import (
 )
 
 type ConfluentClient struct {
-	Client          *srclient.SchemaRegistryClient
-	confluentApiUrl string
-	v2ApiUrl        string
-	artifactsUrl    string
+	Client           *srclient.SchemaRegistryClient
+	ConnectionParams ConnectionParams
+	confluentApiUrl  string
+	v2ApiUrl         string
+	artifactsUrl     string
 }
 
 func NewSchemaRegistryConfluentClient(connectionParams ConnectionParams) *ConfluentClient {
 	baseUrl := fmt.Sprintf("%s://%s:%s", connectionParams.Protocol, connectionParams.Hostname, connectionParams.Port)
 	return &ConfluentClient{
-		confluentApiUrl: baseUrl + "/apis/ccompat/v6",
-		v2ApiUrl:        baseUrl + "/apis/registry/v2",
-		artifactsUrl:    baseUrl + "/api/artifacts",
+		confluentApiUrl:  baseUrl + "/apis/ccompat/v6",
+		v2ApiUrl:         baseUrl + "/apis/registry/v2",
+		artifactsUrl:     baseUrl + "/api/artifacts",
+		ConnectionParams: connectionParams,
 	}
 }
 

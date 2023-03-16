@@ -91,15 +91,15 @@ func (x XJoinAPISubGraph) Create() (err error) {
 							},
 							{
 								"name":  "SCHEMA_REGISTRY_PROTOCOL",
-								"value": "http",
+								"value": x.Registry.ConnectionParams.Protocol,
 							},
 							{
 								"name":  "SCHEMA_REGISTRY_HOSTNAME",
-								"value": "apicurio.test.svc",
+								"value": x.Registry.ConnectionParams.Hostname,
 							},
 							{
 								"name":  "SCHEMA_REGISTRY_PORT",
-								"value": "1080",
+								"value": x.Registry.ConnectionParams.Port,
 							},
 							{
 								"name":  "ELASTIC_SEARCH_URL",
