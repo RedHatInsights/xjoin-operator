@@ -158,6 +158,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 	}
 
 	//check status of active and refreshing IndexPipelines, update instance.Status accordingly
+	var activePipelineValidationResult validation.ValidationResult
 	if instance.Status.ActiveVersion != "" {
 		indexPipelineNamespacedName := types.NamespacedName{
 			Name:      i.Instance.GetName() + "." + instance.Status.ActiveVersion,
@@ -168,10 +169,11 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
-
-		instance.Status.ActiveVersionIsValid = activeIndexPipeline.Status.ValidationResponse.Result == validation.ValidationValid
+		activePipelineValidationResult = activeIndexPipeline.Status.ValidationResponse.Result
+		instance.Status.ActiveVersionIsValid = activePipelineValidationResult == validation.ValidationValid
 	}
 
+	forceRefresh := false
 	if instance.Status.RefreshingVersion != "" {
 		indexPipelineNamespacedName := types.NamespacedName{
 			Name:      i.Instance.GetName() + "." + instance.Status.RefreshingVersion,
@@ -184,10 +186,12 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		}
 
 		instance.Status.RefreshingVersionIsValid = refreshingIndexPipeline.Status.ValidationResponse.Result == validation.ValidationValid
+	} else if activePipelineValidationResult == validation.ValidationInvalid {
+		// force refresh if index is invalid
+		forceRefresh = true
 	}
 
 	//force refresh if datasource is updated
-	forceRefresh := false
 	for dataSourceName, dataSourceVersion := range instance.Status.DataSources {
 		dataSourceNamespacedName := types.NamespacedName{
 			Name:      dataSourceName,
