@@ -276,7 +276,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		ElasticSearchUsername: p.ElasticSearchUsername.String(),
 		ElasticSearchPassword: p.ElasticSearchPassword.String(),
 		ElasticSearchIndex:    elasticSearchIndexComponent.Name(),
-		Image:                 "quay.io/ckyrouac/xjoin-api-subgraph:latest", //TODO
+		Image:                 "quay.io/cloudservices/xjoin-api-subgraph:latest", //TODO
 		GraphQLSchemaName:     graphqlSchemaComponent.Name(),
 	})
 	componentManager.AddComponent(&components.XJoinIndexValidator{

@@ -72,7 +72,7 @@ var _ = Describe("XJoinIndexValidator", func() {
 
 			Expect(pod.Spec.Containers).To(HaveLen(1))
 			Expect(pod.Spec.Containers[0].Name).To(Equal("xjoin-validation-" + name))
-			Expect(pod.Spec.Containers[0].Image).To(Equal("quay.io/ckyrouac/xjoin-validation:latest"))
+			Expect(pod.Spec.Containers[0].Image).To(Equal("quay.io/cloudservices/xjoin-validation:latest"))
 			Expect(pod.Spec.Containers[0].ImagePullPolicy).To(Equal(corev1.PullAlways))
 
 			//elasticsearch connection environment variables

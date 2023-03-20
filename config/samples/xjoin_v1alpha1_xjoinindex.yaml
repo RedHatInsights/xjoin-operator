@@ -6,7 +6,7 @@ spec:
   pause: false
   customSubgraphImages:
     - name: hbi-tags
-      image: quay.io/ckyrouac/host-inventory-subgraph:latest
+      image: quay.io/cloudservices/host-inventory-subgraph:latest
   avroSchema: >
     {
       "type": "record",

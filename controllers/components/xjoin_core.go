@@ -88,7 +88,7 @@ func (xc XJoinCore) Create() (err error) {
 								"value": xc.Schema,
 							},
 						},
-						"image":           "quay.io/ckyrouac/xjoin-core:latest",
+						"image":           "quay.io/cloudservices/xjoin-core:latest",
 						"imagePullPolicy": "Always",
 						"name":            xc.Name(),
 						"resources": map[string]interface{}{
