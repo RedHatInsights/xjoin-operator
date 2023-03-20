@@ -179,14 +179,9 @@ docker login -u=$QUAY_USERNAME -p $QUAY_PASSWORD
 
 ### Local development
 
-The simplest way to create a complete local development environment is via the `./dev/setup_clowder.sh true` script.
-This
-script will install resources in the `test` namespace. The true flag will install the additional dependencies required
-for
-xjoin.v2. See the [version 1 development](#development) section for details on setting up minikube and running the
-script.
+See the [version 1 development](#development) section for details on setting up minikube.
 
-After setting up a kubernetes environment, the xjoin-operator code can be run like this:
+After setting up a kubernetes environment, the xjoin-operator can be run like this:
 
 ```
 make run ENABLE_WEBHOOKS=false

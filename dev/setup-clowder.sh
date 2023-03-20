@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # make sure the internal network is reachable
 RESPONSE_CODE=$(curl --write-out %{http_code} --silent --output /dev/null app-interface.apps.appsrep05ue1.zqxk.p1.openshiftapps.com)
 
@@ -10,7 +12,6 @@ if [[ "$RESPONSE_CODE" -gt 399 ]]; then
 fi
 
 
-INCLUDE_EXTRA_STUFF=$1
 PLATFORM=`uname -a | cut -f1 -d' '`
 
 function print_message() {
@@ -51,36 +52,34 @@ function delete_clowdapp_dependencies() {
 }
 
 function wait_for_db_to_be_accessible {
-  DB_HOST=$1
-  DB_PORT=$2
-  DB_USER=$3
-  DB_NAME=$4
+    DB_HOST=$1
+    DB_PORT=$2
+    DB_USER=$3
+    DB_NAME=$4
 
-  echo -e "waiting for db to be accessible $DB_HOST"
+    echo -e "waiting for db to be accessible $DB_HOST"
 
-  # shellcheck disable=SC2034
-  for i in {1..60}; do
-    if psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -c "\list"; then
-      break
+    DB_IS_ACCESSIBLE=false
+
+    # shellcheck disable=SC2034
+    for i in {1..120}; do
+      set +e
+      if psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -c "\list"; then
+        set -e
+  	  DB_IS_ACCESSIBLE=true
+        break
+      fi
+      sleep 1
+    done
+
+    if [ "$DB_IS_ACCESSIBLE" = false ]; then
+      echo -e "Database $DB_HOST did not become accessible"
+      exit 1
     fi
-    sleep 1
-  done
+    echo -e "Database $DB_HOST is ready"
 }
 
 kubectl create ns test
-
-if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
-  # OLM
-  print_message "Installing OLM"
-  CURRENT_DIR=$(pwd)
-  mkdir /tmp/olm
-  cd /tmp/olm || exit 1
-  curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.21.2/install.sh -o install.sh
-  chmod +x install.sh
-  ./install.sh v0.21.2
-  rm -r /tmp/olm
-  cd "$CURRENT_DIR" || exit 1
-fi
 
 # kube_setup.sh
 print_message "Running kube-setup.sh"
@@ -94,14 +93,10 @@ if [ -z "$KUBE_SETUP_PATH" ]; then
   curl https://raw.githubusercontent.com/RedHatInsights/clowder/master/build/kube_setup.sh -o /tmp/kubesetup/kube_setup.sh && chmod +x /tmp/kubesetup/kube_setup.sh
 
   if [[ $PLATFORM == "Darwin" ]]; then
-    if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
-      sed -i '' 's/^install_xjoin_operator//g' ./kube_setup.sh
-    fi
+    sed -i '' 's/^install_xjoin_operator//g' ./kube_setup.sh
     sed -i '' 's/^install_keda_operator//g' ./kube_setup.sh
   else
-    if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
-      sed -i 's/^install_xjoin_operator//g' ./kube_setup.sh
-    fi
+    sed -i 's/^install_xjoin_operator//g' ./kube_setup.sh
     sed -i 's/^install_keda_operator//g' ./kube_setup.sh
     sed -i 's/minikube kubectl --/kubectl/g' ./kube_setup.sh # this allows connecting to remote minikube instances
   fi
@@ -153,7 +148,7 @@ kubectl apply -f config/samples/xjoin_v1alpha1_xjoindatasource.yaml -n test
 kubectl apply -f config/samples/xjoin_v1alpha1_xjoinindex.yaml -n test
 
 # create a custom apicurio service/port to avoid conflicts
-kubectl apply -f dev/apicurio.yaml
+kubectl apply -f dev/apicurio.yaml -n test
 
 dev/forward-ports-clowder.sh test
 HBI_USER=$(kubectl -n test get secret/host-inventory-db -o custom-columns=:data.username | base64 -d)
@@ -169,19 +164,6 @@ kubectl apply -f ./dev/kafka.service.yaml -n test
 # elasticsearch
 print_message "Setting up elasticsearch password"
 dev/setup.sh -e -p test
-
-if [ "$INCLUDE_EXTRA_STUFF" = true ]; then
-  bonfire process xjoin-api-gateway -n test | oc apply -f - -n test
-
-  # APICurio (the ApiCurio operator has not been released in over a year, this will manually create a deployment/service)
-  print_message "Installing Apicurio"
-  wait_for_pod_to_be_running pod=xjoin-apicurio-service
-  wait_for_pod_to_be_running app=xjoin-apicurio,service=db
-
-  # XJoin API Gateway
-  print_message "Setting up xjoin-api-gateway"
-  wait_for_pod_to_be_running app=xjoin-api-gateway
-fi
 
 kubectl delete pods --selector='job=host-inventory-synchronizer' -n test
 kubectl delete pods --selector='job=host-inventory-org-id-populator' -n test
