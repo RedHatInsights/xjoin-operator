@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # make sure the internal network is reachable
 RESPONSE_CODE=$(curl --write-out %{http_code} --silent --output /dev/null app-interface.apps.appsrep05ue1.zqxk.p1.openshiftapps.com)
 
@@ -50,20 +52,31 @@ function delete_clowdapp_dependencies() {
 }
 
 function wait_for_db_to_be_accessible {
-  DB_HOST=$1
-  DB_PORT=$2
-  DB_USER=$3
-  DB_NAME=$4
+    DB_HOST=$1
+    DB_PORT=$2
+    DB_USER=$3
+    DB_NAME=$4
 
-  echo -e "waiting for db to be accessible $DB_HOST"
+    echo -e "waiting for db to be accessible $DB_HOST"
 
-  # shellcheck disable=SC2034
-  for i in {1..60}; do
-    if psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -c "\list"; then
-      break
+    DB_IS_ACCESSIBLE=false
+
+    # shellcheck disable=SC2034
+    for i in {1..120}; do
+      set +e
+      if psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -c "\list"; then
+        set -e
+  	  DB_IS_ACCESSIBLE=true
+        break
+      fi
+      sleep 1
+    done
+
+    if [ "$DB_IS_ACCESSIBLE" = false ]; then
+      echo -e "Database $DB_HOST did not become accessible"
+      exit 1
     fi
-    sleep 1
-  done
+    echo -e "Database $DB_HOST is ready"
 }
 
 kubectl create ns test
@@ -135,7 +148,7 @@ kubectl apply -f config/samples/xjoin_v1alpha1_xjoindatasource.yaml -n test
 kubectl apply -f config/samples/xjoin_v1alpha1_xjoinindex.yaml -n test
 
 # create a custom apicurio service/port to avoid conflicts
-kubectl apply -f dev/apicurio.yaml
+kubectl apply -f dev/apicurio.yaml -n test
 
 dev/forward-ports-clowder.sh test
 HBI_USER=$(kubectl -n test get secret/host-inventory-db -o custom-columns=:data.username | base64 -d)
