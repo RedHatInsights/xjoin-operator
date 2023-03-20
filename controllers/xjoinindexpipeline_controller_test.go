@@ -213,7 +213,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			}))
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal("xjoin-core-xjoinindexpipeline-test-index-pipeline-1234"))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/ckyrouac/xjoin-core:latest"))
+			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/cloudservices/xjoin-core:latest"))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(5))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]corev1.EnvVar{
 				{
@@ -294,7 +294,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal("xjoinindexpipeline-test-index-pipeline-1234"))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/ckyrouac/xjoin-api-subgraph:latest"))
+			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/cloudservices/xjoin-api-subgraph:latest"))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(9))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]corev1.EnvVar{
 				{
@@ -373,7 +373,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				K8sClient:      k8sClient,
 				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{{
 					Name:  "test-custom-image",
-					Image: "quay.io/ckyrouac/host-inventory-subgraph:latest",
+					Image: "quay.io/cloudservices/host-inventory-subgraph:latest",
 				}},
 			}
 			reconciler.ReconcileNew()
@@ -399,7 +399,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				K8sClient:      k8sClient,
 				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{{
 					Name:  "test-custom-image",
-					Image: "quay.io/ckyrouac/host-inventory-subgraph:latest",
+					Image: "quay.io/cloudservices/host-inventory-subgraph:latest",
 				}},
 			}
 			reconciler.ReconcileNew()
@@ -431,7 +431,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal(deploymentName))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/ckyrouac/host-inventory-subgraph:latest"))
+			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/cloudservices/host-inventory-subgraph:latest"))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(9))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]corev1.EnvVar{
 				{
@@ -545,7 +545,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				K8sClient:      k8sClient,
 				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{{
 					Name:  "test-custom-image",
-					Image: "quay.io/ckyrouac/host-inventory-subgraph:latest",
+					Image: "quay.io/cloudservices/host-inventory-subgraph:latest",
 				}},
 			}
 			reconciler.ReconcileNew()
