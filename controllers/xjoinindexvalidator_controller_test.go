@@ -175,7 +175,7 @@ var _ = Describe("XJoinIndexValidator", func() {
 				PodLogReader:   &mocks.LogReader{},
 			}
 			_, result := reconciler.ReconcileCreate()
-			Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 1 * time.Second}))
+			Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 5 * time.Second}))
 		})
 	})
 
@@ -189,7 +189,7 @@ var _ = Describe("XJoinIndexValidator", func() {
 				PodLogReader:   &mocks.LogReader{},
 			}
 			validator, result := reconciler.ReconcileRunning()
-			Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 1 * time.Second}))
+			Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 5 * time.Second}))
 			Expect(validator.Status.ValidationPodPhase).To(Equal(index.ValidatorPodRunning))
 		})
 

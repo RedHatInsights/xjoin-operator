@@ -177,7 +177,7 @@ func BuildIndexParameters() *IndexParameters {
 			Type:          reflect.Int,
 			ConfigMapKey:  "validation.pod.status.interval",
 			ConfigMapName: "xjoin-generic",
-			DefaultValue:  1,
+			DefaultValue:  5,
 		},
 	}
 
