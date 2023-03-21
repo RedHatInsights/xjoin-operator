@@ -76,7 +76,7 @@ func (d *ReconcileMethods) RefreshComplete() (err error) {
 	return
 }
 
-func (d *ReconcileMethods) Scrub() (err error) {
+func (d *ReconcileMethods) Scrub() (errs []error) {
 	var validVersions []string
 	if d.iteration.GetInstance().Status.ActiveVersion != "" {
 		validVersions = append(validVersions, d.iteration.GetInstance().Status.ActiveVersion)
@@ -131,9 +131,5 @@ func (d *ReconcileMethods) Scrub() (err error) {
 	custodian.AddComponent(&components.DebeziumConnector{
 		KafkaClient: kafkaClient,
 	})
-	err = custodian.Scrub()
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-	return
+	return custodian.Scrub()
 }
