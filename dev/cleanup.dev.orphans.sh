@@ -45,8 +45,9 @@ kubectl -n test get KafkaTopic -o custom-columns=name:metadata.name | grep datas
 done
 
 echo "Deleting avro subjects.."
-APICURIO_HOSTNAME=apicurio
-artifacts=$(curl "http://$APICURIO_HOSTNAME:1080/apis/registry/v2/search/artifacts?limit=100" | jq '.artifacts|map(.id)|@sh')
+APICURIO_HOSTNAME=apicurio.test.svc
+APICURIO_PORT=10001
+artifacts=$(curl "http://$APICURIO_HOSTNAME:$APICURIO_PORT/apis/registry/v2/search/artifacts?limit=100" | jq '.artifacts|map(.id)|@sh')
 artifacts=($artifacts)
 total=${#artifacts[@]}
 for i in "${!artifacts[@]}"; do
@@ -55,23 +56,20 @@ for i in "${!artifacts[@]}"; do
       artifact="${artifact:2}"
       artifact="${artifact::-2}"
     elif [ "$i" -eq 0 ]; then
-      echo "At the start"
       artifact=${artifacts[$i]}
       artifact="${artifact:2}"
       artifact="${artifact::-1}"
     elif [ "$i" -eq $(("$total-1")) ]; then
-      echo "At the end"
       artifact=${artifacts[$i]}
       artifact="${artifact:1}"
       artifact="${artifact::-2}"
     else
-      echo "In the middle"
       artifact=${artifacts[$i]}
       artifact="${artifact:1}"
       artifact="${artifact::-1}"
     fi
     echo "$artifact"
-    curl -X DELETE "http://$APICURIO_HOSTNAME:1080/apis/registry/v1/artifacts/$artifact"
+    curl -X DELETE "http://$APICURIO_HOSTNAME:$APICURIO_PORT/apis/registry/v1/artifacts/$artifact"
 done
 
 echo "Deleting replication slots"
