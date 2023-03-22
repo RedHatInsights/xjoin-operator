@@ -97,6 +97,8 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 		if err != nil {
 			return "", errors.Wrap(err, 0)
 		}
+
+		return ValidatorPodRunning, nil
 	}
 
 	//parse the results of the xjoin-validation pod

@@ -16,7 +16,7 @@ type ReconcilerMethods interface {
 	StartRefreshing(string) error
 	Refreshing() error
 	RefreshComplete() error
-	Scrub() error
+	Scrub() []error
 }
 
 type Reconciler struct {
@@ -91,6 +91,16 @@ func (r *Reconciler) getState(specHash string) string {
 }
 
 func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
+	//Scrub orphaned resources
+	errs := r.methods.Scrub()
+	if len(errs) > 0 {
+		for _, e := range errs {
+			r.log.Error(e, e.Error())
+		}
+
+		return errors.Wrap(errs[0], 0)
+	}
+
 	specHash, err := k8sUtils.SpecHash(r.instance.GetSpec())
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -165,12 +175,6 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 		r.instance.SetActiveVersionIsValid(true)
 		r.instance.SetRefreshingVersion("")
 		r.instance.SetRefreshingVersionIsValid(false)
-	}
-
-	//Scrub orphaned resources
-	err = r.methods.Scrub()
-	if err != nil {
-		return errors.Wrap(err, 0)
 	}
 
 	return nil

@@ -20,6 +20,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"time"
 )
@@ -67,6 +68,7 @@ func (r *XJoinIndexValidatorReconciler) SetupWithManager(mgr ctrl.Manager) error
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-indexvalidator-controller").
 		For(&xjoin.XJoinIndexValidator{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		WithLogConstructor(logConstructor).
 		WithOptions(controller.Options{
 			LogConstructor: logConstructor,
