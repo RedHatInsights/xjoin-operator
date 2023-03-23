@@ -129,6 +129,10 @@ func (c *StrimziConnectors) GetTaskStatus(connectorName string, taskId float64) 
 	}
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
 	var bodyMap map[string]interface{}
 	err = json.Unmarshal(body, &bodyMap)
 	if err != nil {
@@ -193,6 +197,9 @@ func (c *StrimziConnectors) verifyTaskIsRunning(task map[string]interface{}, con
 			time.Sleep(2 * time.Second)
 
 			task, err = c.GetTaskStatus(connectorName, task["id"].(float64))
+			if err != nil {
+				return false, err
+			}
 		}
 	}
 
@@ -237,9 +244,13 @@ func (c *StrimziConnectors) CheckIfConnectIsResponding() (bool, error) {
 
 		if res != nil && res.StatusCode == 200 {
 			body, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				return false, err
+			}
+
 			err = res.Body.Close()
 			if err != nil {
-				return false, nil
+				return false, err
 			}
 
 			var bodyArr []string
@@ -291,6 +302,10 @@ func (c *StrimziConnectors) ListConnectorsREST(prefix string) ([]string, error) 
 	var connectors []string
 	if res.StatusCode == 200 {
 		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+
 		err = json.Unmarshal(body, &connectors)
 		if err != nil {
 			return nil, err
@@ -333,7 +348,7 @@ func (c *StrimziConnectors) ListConnectorNamesForPipelineVersion(pipelineVersion
 
 	var names []string
 	for _, connector := range connectors.Items {
-		if strings.Index(connector.GetName(), pipelineVersion) != -1 {
+		if strings.Contains(connector.GetName(), pipelineVersion) {
 			names = append(names, connector.GetName())
 		}
 	}
@@ -407,6 +422,10 @@ func (c *StrimziConnectors) GetConnectorStatus(connectorName string) (map[string
 	if res.StatusCode == 200 {
 		log.Info("Successfully got status for url: " + url)
 		body, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+
 		err = json.Unmarshal(body, &bodyMap)
 		if err != nil {
 			return nil, err
@@ -427,8 +446,7 @@ func (c *StrimziConnectors) IsFailed(connectorName string) (bool, error) {
 		return false, err
 	}
 
-	var connector interface{}
-	connector = connectorStatus["connector"]
+	var connector interface{} = connectorStatus["connector"]
 	if connector != nil {
 		connectorMap := connectorStatus["connector"].(map[string]interface{})
 		connectorState := connectorMap["state"].(string)

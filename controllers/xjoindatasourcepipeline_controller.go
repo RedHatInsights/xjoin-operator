@@ -229,6 +229,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 
 	if len(problems) > 0 {
 		//TODO: set instance status to invalid, add problems to status
+		reqLogger.Info("TODO: Set Instance status to invalid, add", "problems", len(problems))
 	}
 
 	return i.UpdateStatusAndRequeue(time.Second * 30)

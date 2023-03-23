@@ -66,6 +66,9 @@ func (t *ManagedTopics) CreateTopicByName(topicName string) error {
 	log.Info("Managed Kafka Create Topic Body: " + string(bodyBytes))
 
 	res, err := t.client.Post(t.baseurl, jsonContentType, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 
 	_, _, err = parseResponse(res)
 	if err != nil {

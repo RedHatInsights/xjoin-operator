@@ -263,11 +263,9 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 		for _, connectInstance := range connect.Items {
 			ownerRefs := connectInstance.GetOwnerReferences()
 
-			if ownerRefs != nil {
-				for _, ref := range ownerRefs {
-					if ref.Kind == "ClowdEnvironment" {
-						connectClusterName = connectInstance.GetName()
-					}
+			for _, ref := range ownerRefs {
+				if ref.Kind == "ClowdEnvironment" {
+					connectClusterName = connectInstance.GetName()
 				}
 			}
 		}
@@ -284,7 +282,7 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 		return err
 	}
 
-	if isManagedKafka == false {
+	if !isManagedKafka {
 		log.Info("Using Strimzi Kafka instance")
 		var kafkaGVK = schema.GroupVersionKind{
 			Group:   "kafka.strimzi.io",
@@ -371,7 +369,7 @@ func (config *Config) buildXJoinConfig(ctx context.Context) error {
 	}
 	config.ParametersMap = parametersMap
 
-	if config.Parameters.Ephemeral.Bool() == true {
+	if config.Parameters.Ephemeral.Bool() {
 		err := config.buildEphemeralConfig(ctx)
 		if err != nil {
 			return err
