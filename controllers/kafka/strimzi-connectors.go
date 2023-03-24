@@ -9,7 +9,7 @@ import (
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
-	"io/ioutil"
+	"io"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"net/http"
@@ -128,7 +128,7 @@ func (c *StrimziConnectors) GetTaskStatus(connectorName string, taskId float64) 
 		return nil, err
 	}
 	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func (c *StrimziConnectors) CheckIfConnectIsResponding() (bool, error) {
 		}
 
 		if res != nil && res.StatusCode == 200 {
-			body, err := ioutil.ReadAll(res.Body)
+			body, err := io.ReadAll(res.Body)
 			if err != nil {
 				return false, err
 			}
@@ -301,7 +301,7 @@ func (c *StrimziConnectors) ListConnectorsREST(prefix string) ([]string, error) 
 
 	var connectors []string
 	if res.StatusCode == 200 {
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -421,7 +421,7 @@ func (c *StrimziConnectors) GetConnectorStatus(connectorName string) (map[string
 	var bodyMap map[string]interface{}
 	if res.StatusCode == 200 {
 		log.Info("Successfully got status for url: " + url)
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return nil, err
 		}

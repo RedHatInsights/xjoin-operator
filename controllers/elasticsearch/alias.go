@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
-	"io/ioutil"
+	"io"
 	"strconv"
 )
 
@@ -78,7 +78,7 @@ func (es *ElasticSearch) GetCurrentIndicesWithAlias(name string) ([]string, erro
 		return nil, err
 	}
 
-	byteValue, _ := ioutil.ReadAll(res.Body)
+	byteValue, _ := io.ReadAll(res.Body)
 
 	if res.StatusCode != 200 {
 		return nil, fmt.Errorf(

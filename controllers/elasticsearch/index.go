@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
-	"io/ioutil"
+	"io"
 	"strings"
 	"text/template"
 )
@@ -97,7 +97,10 @@ func (es *ElasticSearch) ListIndices() ([]string, error) {
 		return nil, err
 	}
 
-	byteValue, _ := ioutil.ReadAll(res.Body)
+	byteValue, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
 
 	var indicesJSON []map[string]string
 	err = json.Unmarshal(byteValue, &indicesJSON)
@@ -127,7 +130,10 @@ func (es *ElasticSearch) CountIndex(index string) (int, error) {
 	}
 
 	var countIDsResponse CountIDsResponse
-	byteValue, _ := ioutil.ReadAll(res.Body)
+	byteValue, err := io.ReadAll(res.Body)
+	if err != nil {
+		return -1, err
+	}
 	err = json.Unmarshal(byteValue, &countIDsResponse)
 	if err != nil {
 		return -1, err
