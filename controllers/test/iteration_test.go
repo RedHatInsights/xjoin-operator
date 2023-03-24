@@ -15,7 +15,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
-	"io/ioutil"
+	"io"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -31,6 +31,7 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"os"
 )
 
 var ResourceNamePrefix = "xjointest"
@@ -102,7 +103,7 @@ func (i *Iteration) getConnectorConfig(connectorName string) (map[string]interfa
 		return nil, errors.New(fmt.Sprintf("invalid response code during getConnectorConfig: %v", res.StatusCode))
 	}
 	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -430,7 +431,7 @@ func (i *Iteration) IndexDocumentNow(pipelineVersion string, id string, filename
 }
 
 func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename string, modifiedOn time.Time) error {
-	esDocumentFile, err := ioutil.ReadFile(GetRootDir() + "/test/data/hosts/es/" + filename + ".json")
+	esDocumentFile, err := os.ReadFile(GetRootDir() + "/test/data/hosts/es/" + filename + ".json")
 	if err != nil {
 		return err
 	}
@@ -469,7 +470,7 @@ func (i *Iteration) IndexDocument(pipelineVersion string, id string, filename st
 
 	if res.IsError() {
 
-		bodyBytes, err := ioutil.ReadAll(res.Body)
+		bodyBytes, err := io.ReadAll(res.Body)
 		if err != nil {
 			return err
 		}
@@ -502,7 +503,7 @@ func (i *Iteration) InsertHost(filename string, modifiedOn time.Time) (string, e
 		return "", err
 	}
 
-	hbiHostFile, err := ioutil.ReadFile(GetRootDir() + "/test/data/hosts/hbi/" + filename + ".sql")
+	hbiHostFile, err := os.ReadFile(GetRootDir() + "/test/data/hosts/hbi/" + filename + ".sql")
 	if err != nil {
 		return "", err
 	}

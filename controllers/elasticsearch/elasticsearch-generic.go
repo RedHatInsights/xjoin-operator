@@ -8,7 +8,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/go-errors/errors"
-	"io/ioutil"
+	"io"
 	"strconv"
 	"strings"
 	"text/template"
@@ -99,7 +99,7 @@ func (es GenericElasticsearch) ListIndicesForPrefix(prefix string) ([]string, er
 	}
 	defer res.Body.Close()
 
-	byteValue, _ := ioutil.ReadAll(res.Body)
+	byteValue, _ := io.ReadAll(res.Body)
 
 	var indicesJSON []map[string]string
 	err = json.Unmarshal(byteValue, &indicesJSON)

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-errors/errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -45,7 +45,7 @@ func (c *RestClient) MakeRequest(requestParams Request) (resCode int, body map[s
 		return 500, nil, errors.Wrap(err, 0)
 	}
 
-	resBody, err := ioutil.ReadAll(res.Body)
+	resBody, err := io.ReadAll(res.Body)
 	if err != nil {
 		return 500, nil, errors.Wrap(err, 0)
 	}

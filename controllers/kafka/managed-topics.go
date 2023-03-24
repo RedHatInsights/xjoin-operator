@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"golang.org/x/oauth2/clientcredentials"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -270,7 +270,7 @@ func parseResponse(res *http.Response) (int, []byte, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode >= 300 {
-		bodyBytes, err := ioutil.ReadAll(res.Body)
+		bodyBytes, err := io.ReadAll(res.Body)
 		if err != nil {
 			return res.StatusCode, nil, errors.Wrap(err, 0)
 		}
@@ -278,7 +278,7 @@ func parseResponse(res *http.Response) (int, []byte, error) {
 			fmt.Sprintf("Manged Kafka API error: %s, %s", strconv.Itoa(res.StatusCode), string(bodyBytes))), 0)
 	}
 
-	bodyBytes, err := ioutil.ReadAll(res.Body)
+	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {
 		return res.StatusCode, nil, errors.Wrap(err, 0)
 	}
