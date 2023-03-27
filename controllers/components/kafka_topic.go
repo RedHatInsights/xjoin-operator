@@ -55,20 +55,20 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 	if exists {
 		/* Get the topic using kt.KafkaTopics.GetTopic(name)
 		   Compare the topic to the deployed one.
-		   if different 
+		   if different
 			  report as problem, nil
-		   else 
+		   else
 		      return nil, nil
 	
 			TODO: how to get topics from cluster?
-			"kt.KafkaTopics.Client.List" appears to provide a list but the implementation 
+			"kt.KafkaTopics.Client.List" appears to provide a list but the implementation
 			appears to be incomplete, is it?
 		*/
 		return nil, nil
 	} else {
 		problem = fmt.Errorf("Kafka topic named, \"%s\", not found", name)
 	}
-	return 
+	return
 }
 
 func (kt *KafkaTopic) Exists() (exists bool, err error) {
