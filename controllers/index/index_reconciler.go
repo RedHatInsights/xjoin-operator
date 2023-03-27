@@ -80,7 +80,7 @@ func (d *ReconcileMethods) RefreshComplete() (err error) {
 	return
 }
 
-func (d *ReconcileMethods) Scrub() (err error) {
+func (d *ReconcileMethods) Scrub() (errs []error) {
 	var validVersions []string
 	if d.iteration.GetInstance().Status.ActiveVersion != "" {
 		validVersions = append(validVersions, d.iteration.GetInstance().Status.ActiveVersion)
@@ -106,7 +106,7 @@ func (d *ReconcileMethods) Scrub() (err error) {
 		Context:    d.iteration.Context,
 	})
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return append(errs, errors.Wrap(err, 0))
 	}
 
 	schemaRegistryConnectionParams := schemaregistry.ConnectionParams{
@@ -163,9 +163,5 @@ func (d *ReconcileMethods) Scrub() (err error) {
 		Registry:  registryConfluentClient,
 		Namespace: d.iteration.GetInstance().Namespace,
 	})
-	err = custodian.Scrub()
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-	return
+	return custodian.Scrub()
 }

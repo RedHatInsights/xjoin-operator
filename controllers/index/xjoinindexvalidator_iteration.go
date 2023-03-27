@@ -97,6 +97,8 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 		if err != nil {
 			return "", errors.Wrap(err, 0)
 		}
+
+		return ValidatorPodRunning, nil
 	}
 
 	//parse the results of the xjoin-validation pod
@@ -261,7 +263,7 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 			RestartPolicy: "Never",
 			Containers: []v1.Container{{
 				Name:  i.ValidationPodName(),
-				Image: "quay.io/ckyrouac/xjoin-validation:latest",
+				Image: "quay.io/cloudservices/xjoin-validation:latest",
 				Env: append(dbConnectionEnvVars, []v1.EnvVar{{
 					Name: "ELASTICSEARCH_HOST_URL",
 					ValueFrom: &v1.EnvVarSource{

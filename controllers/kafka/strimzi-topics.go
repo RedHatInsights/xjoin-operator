@@ -179,7 +179,7 @@ func (t *StrimziTopics) ListTopicNamesForPipelineVersion(pipelineVersion string)
 	var response []string
 	if topics.Items != nil {
 		for _, topic := range topics.Items {
-			if strings.Index(topic.GetName(), pipelineVersion) != -1 {
+			if strings.Contains(topic.GetName(), pipelineVersion) {
 				response = append(response, topic.GetName())
 			}
 		}
@@ -291,7 +291,7 @@ func (t *StrimziTopics) CreateGenericTopic(topicName string, topicParameters Top
 
 		//in tests the status will never be updated
 		//this pretends Strimzi created the topic and updated the status
-		if t.Test == true {
+		if t.Test {
 			return true, nil
 		}
 
