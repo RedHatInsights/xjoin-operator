@@ -2,6 +2,10 @@ package test
 
 import (
 	"fmt"
+	"reflect"
+	"strconv"
+	"time"
+
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
@@ -10,9 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/tools/record"
-	"reflect"
-	"strconv"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -67,7 +68,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(dbConnectorConfig["max.queue.size"]).To(Equal(int64(1000)))
 			Expect(dbConnectorConfig["poll.interval.ms"]).To(Equal(int64(100)))
 			Expect(dbConnectorConfig["slot.name"]).To(Equal(ResourceNamePrefix + "_" + pipeline.Status.PipelineVersion))
-			Expect(dbConnectorConfig["table.whitelist"]).To(Equal("public.hosts"))
+			Expect(dbConnectorConfig["table.allowlist"]).To(Equal("public.hosts"))
 			Expect(dbConnectorConfig["database.server.name"]).To(Equal(ResourceNamePrefix + "." + pipeline.Status.PipelineVersion))
 			Expect(dbConnectorConfig["errors.log.enable"]).To(Equal(true))
 			Expect(dbConnectorConfig["transforms.unwrap.type"]).To(Equal("io.debezium.transforms.ExtractNewRecordState"))

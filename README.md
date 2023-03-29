@@ -170,7 +170,7 @@ docker login -u=$QUAY_USERNAME -p $QUAY_PASSWORD
   ```
 - They can be executed via `make test`.
 - There is also `make delve-test` to run the tests in debug mode. Then `delve` can be used to connect to the test run.
-- The tests take a while to run. To whitelist one or a few tests, prepend `It` with an F. e.g.
+- The tests take a while to run. To allowlist one or a few tests, prepend `It` with an F. e.g.
   change `It("Creates a connector...` to `FIt("Creates a connector...) {`
 - Sometimes when the test execution fails unexpectedly it will leave orphaned projects in kubernetes.
   Use `dev/cleanup.projects.sh` to remove them.
