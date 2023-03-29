@@ -6,6 +6,8 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
+	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 type KafkaTopic struct {
@@ -45,30 +47,55 @@ func (kt *KafkaTopic) Delete() (err error) {
 
 func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 	name := kt.name
-	topicsClient := kt.KafkaTopics
+	client := kt.KafkaTopics  // kt.KafkaTopics perform CRUD operations.
 
-	exists, err := topicsClient.CheckIfTopicExists(name)
+	// leave this commented line for testing.
+	// topicIn, err := client.GetTopic("platform.inventory.events")
+	topicIn, err := client.GetTopic(name)
+
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
 
-	if exists {
-		/* Get the topic using kt.KafkaTopics.GetTopic(name)
-		   Compare the topic to the deployed one.
-		   if different
-			  report as problem, nil
-		   else
-		      return nil, nil
-	
-			TODO: how to get topics from cluster?
-			"kt.KafkaTopics.Client.List" appears to provide a list but the implementation
-			appears to be incomplete, is it?
-		*/
-		return nil, nil
+	if topicIn != nil {
+		var allTopics []unstructured.Unstructured
+		allTopics, err := client.GetAllTopics()
+		if err != nil {
+			return nil, errors.Wrap(err, 0)
+		}
+
+		// make the topic data accessible, which is private by design
+		topicInPtr, ok := topicIn.(*unstructured.Unstructured)
+		if !ok {
+			problem = fmt.Errorf("problem getting the topic %s details", topicIn)
+		}
+
+		// de-reference the topic pointer for comparison
+		topicInClear := *topicInPtr
+		fmt.Printf("Input topic name: %s\n", topicInClear.GetName())
+
+		if len(allTopics) > 0 {
+			for _, topic := range allTopics {
+
+				if topicInClear.GetName() == topic.GetName() {
+					if equality.Semantic.DeepEqual(topicInClear, topic) {
+						fmt.Printf("\nTopic named %s is identicle!!!", topic.GetName())
+						return nil, nil
+					} else { 
+						fmt.Printf("\nTopic named %s NOT identicle!!!", topic.GetName())
+						problem = fmt.Errorf("KafkaTopic named %s has changed.", topic.GetName())
+					}
+				}
+			}
+		}
 	} else {
 		problem = fmt.Errorf("Kafka topic named, \"%s\", not found", name)
 	}
 	return
+}
+
+func assertNoError(err error) {
+	panic("unimplemented")
 }
 
 func (kt *KafkaTopic) Exists() (exists bool, err error) {
