@@ -1759,7 +1759,7 @@ spec:
                   config:
                     x-kubernetes-preserve-unknown-fields: true
                     type: object
-                    description: "The ZooKeeper broker config. Properties with the following prefixes cannot be set: server., dataDir, dataLogDir, clientPort, authProvider, quorum.auth, requireClientAuthScheme, snapshot.trust.empty, standaloneEnabled, reconfigEnabled, 4lw.commands.allowlist, secureClientPort, ssl., serverCnxnFactory, sslQuorum (with the exception of: ssl.protocol, ssl.quorum.protocol, ssl.enabledProtocols, ssl.quorum.enabledProtocols, ssl.ciphersuites, ssl.quorum.ciphersuites, ssl.hostnameVerification, ssl.quorum.hostnameVerification)."
+                    description: "The ZooKeeper broker config. Properties with the following prefixes cannot be set: server., dataDir, dataLogDir, clientPort, authProvider, quorum.auth, requireClientAuthScheme, snapshot.trust.empty, standaloneEnabled, reconfigEnabled, 4lw.commands.whitelist, secureClientPort, ssl., serverCnxnFactory, sslQuorum (with the exception of: ssl.protocol, ssl.quorum.protocol, ssl.enabledProtocols, ssl.quorum.enabledProtocols, ssl.ciphersuites, ssl.quorum.ciphersuites, ssl.hostnameVerification, ssl.quorum.hostnameVerification)."
                   livenessProbe:
                     type: object
                     properties:
@@ -9407,7 +9407,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                     type: object
                 description: CPU and memory resources to reserve.
-              allowlist:
+              whitelist:
                 type: string
                 description: "List of topics which are included for mirroring. This option allows any regular expression using Java-style regular expressions. Mirroring two topics named A and B is achieved by using the expression `A\\|B`. Or, as a special case, you can mirror all topics using the regular expression `*`. You can also specify multiple regular expressions separated by commas."
               include:
@@ -10146,9 +10146,9 @@ spec:
               required:
               - include
             - properties:
-                allowlist: {}
+                whitelist: {}
               required:
-              - allowlist
+              - whitelist
             required:
             - replicas
             - consumer

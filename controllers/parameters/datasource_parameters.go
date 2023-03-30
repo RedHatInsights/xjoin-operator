@@ -1,9 +1,8 @@
 package parameters
 
 import (
-	"reflect"
-
 	. "github.com/redhatinsights/xjoin-operator/controllers/config"
+	"reflect"
 )
 
 type DataSourceParameters struct {
@@ -86,7 +85,7 @@ func BuildDataSourceParameters() *DataSourceParameters {
 				"database.server.name": "{{.DatabaseServerName}}",
 				"database.sslmode": "{{.DatabaseSSLMode}}",
 				"database.sslrootcert": "{{.DatabaseSSLRootCert}}",
-				"table.allowlist": "{{.DatabaseTable}}",
+				"table.whitelist": "{{.DatabaseTable}}",
 				"plugin.name": "pgoutput",
 				"transforms": "unwrap, reroute",
 				"transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
