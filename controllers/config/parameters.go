@@ -501,7 +501,7 @@ func NewXJoinConfiguration() Parameters {
 				"database.server.name": "{{.ResourceNamePrefix}}.{{.Version}}",
 				"database.sslmode": "{{.HBIDBSSLMode}}",
 				"database.sslrootcert": "{{.HBIDBSSLRootCert}}",
-				"table.allowlist": "public.hosts",
+				"table.whitelist": "public.hosts",
 				"plugin.name": "pgoutput",
 				"transforms": "unwrap",
 				"transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
