@@ -6,11 +6,11 @@ result=$?
 set -e
 
 # If your unit tests store junit xml results, you should store them in a file matching format `artifacts/junit-*.xml`
-# If you have no junit file, use the below code to create a 'dummy' result file so Jenkins will not fail
+# If you have no junit file, use the below code to create a 'sample' result file so Jenkins will not fail
 mkdir -p $ARTIFACTS_DIR
-cat << EOF > $ARTIFACTS_DIR/junit-dummy.xml
+cat << EOF > $ARTIFACTS_DIR/junit-sample.xml
 <testsuite tests="1">
-    <testcase classname="dummy" name="dummytest"/>
+    <testcase classname="sample" name="dummytest"/>
 </testsuite>
 EOF
 

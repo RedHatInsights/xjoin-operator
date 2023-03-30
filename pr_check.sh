@@ -30,8 +30,8 @@ source $APP_ROOT/unit_test.sh
 ARTIFACTS_DIR=$WORKSPACE/artifacts
 
 mkdir -p $ARTIFACTS_DIR
-cat << EOF > $ARTIFACTS_DIR/junit-dummy.xml
+cat << EOF > $ARTIFACTS_DIR/junit-sample.xml
 <testsuite tests="1">
-    <testcase classname="dummy" name="dummytest"/>
+    <testcase classname="sample" name="sampletest"/>
 </testsuite>
 EOF

@@ -84,7 +84,7 @@ data:
         "database.server.name": "{{.ResourceNamePrefix}}.{{.Version}}",
         "database.sslmode": "{{.HBIDBSSLMode}}",
         "database.sslrootcert": "{{.HBIDBSSLRootCert}}",
-        "table.whitelist": "public.hosts",
+        "table.allowlist": "public.hosts",
         "plugin.name": "pgoutput",
         "transforms": "unwrap",
         "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
