@@ -79,10 +79,10 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 
 				if topicInClear.GetName() == topic.GetName() {
 					if equality.Semantic.DeepEqual(topicInClear, topic) {
-						fmt.Printf("\nTopic named %s is identicle!!!", topic.GetName())
+						fmt.Printf("\nTopic named %s is identical!!!", topic.GetName())
 						return nil, nil
 					} else { 
-						fmt.Printf("\nTopic named %s NOT identicle!!!", topic.GetName())
+						fmt.Printf("\nTopic named %s NOT identical!!!", topic.GetName())
 						problem = fmt.Errorf("KafkaTopic named %s has changed.", topic.GetName())
 					}
 				}
@@ -92,10 +92,6 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 		problem = fmt.Errorf("Kafka topic named, \"%s\", not found", name)
 	}
 	return
-}
-
-func assertNoError(err error) {
-	panic("unimplemented")
 }
 
 func (kt *KafkaTopic) Exists() (exists bool, err error) {
