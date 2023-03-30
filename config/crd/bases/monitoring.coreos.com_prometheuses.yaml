@@ -3913,7 +3913,7 @@ spec:
                         parameters.
                       properties:
                         batchSendDeadline:
-                          description: BatchSendDeadline is the maximum time a sample
+                          description: BatchSendDeadline is the maximum time a dummy
                             will wait in buffer.
                           type: string
                         capacity:
