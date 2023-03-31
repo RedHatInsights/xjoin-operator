@@ -6,12 +6,10 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
-	"github.com/redhatinsights/xjoin-operator/controllers/log"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-var logger = log.NewLogger("kafkatopics")
 
 type KafkaTopic struct {
 	name            string
@@ -49,12 +47,9 @@ func (kt *KafkaTopic) Delete() (err error) {
 }
 
 func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
-	name := kt.name
-	client := kt.KafkaTopics  // kt.KafkaTopics perform CRUD operations.
-
 	// leave this commented line for testing.
-	// topicIn, err := client.GetTopic("platform.inventory.events")
-	topicIn, err := client.GetTopic(name)
+	// topicIn, err := kt.KafkaTopics.GetTopic("platform.inventory.events")
+	topicIn, err := kt.KafkaTopics.GetTopic(kt.name)
 
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
@@ -62,7 +57,7 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 
 	if topicIn != nil {
 		var allTopics []unstructured.Unstructured
-		allTopics, err := client.GetAllTopics()
+		allTopics, err := kt.KafkaTopics.GetAllTopics()
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		}
@@ -70,28 +65,20 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 		// make the topic data accessible, which is private by design
 		topicInPtr, ok := topicIn.(*unstructured.Unstructured)
 		if !ok {
-			problem = fmt.Errorf("problem getting the topic %s details", topicIn)
+			return fmt.Errorf("problem getting the topic %s details", topicIn), nil
 		}
 
-		// de-reference the topic pointer for comparison
-		topicInClear := *topicInPtr
-		logger.Info("Input topic name: " + topicInClear.GetName())
-
-		if len(allTopics) > 0 {
-			for _, topic := range allTopics {
-
-				if topicInClear.GetName() == topic.GetName() {
-					if equality.Semantic.DeepEqual(topicInClear, topic) {
-						logger.Info("Topic name \"" + topic.GetName() + "\" is identical")
-					} else { 
-						logger.Info("Topic name \"" + topic.GetName() + "\" is Not identical")
-						return fmt.Errorf("KafkaTopic named %s has changed.", topic.GetName()), nil
-					}
+		for _, topic := range allTopics {
+			if topicInPtr.GetName() == topic.GetName() {
+				if equality.Semantic.DeepEqual(*topicInPtr, topic) {
+					return nil, nil
+				} else { 
+					return fmt.Errorf("KafkaTopic named %s has changed.", topic.GetName()), nil
 				}
 			}
 		}
 	} else {
-		problem = fmt.Errorf("Kafka topic named, \"%s\", not found", name)
+		problem = fmt.Errorf("Kafka topic named, \"%s\", not found", kt.name)
 	}
 	return
 }
