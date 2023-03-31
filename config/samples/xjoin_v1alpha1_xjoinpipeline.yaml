@@ -1,7 +1,7 @@
 apiVersion: xjoin.cloud.redhat.com/v1alpha1
 kind: XJoinPipeline
 metadata:
-  name: xjoinpipeline-sample
+  name: xjoinpipeline-dummy
 spec:
   connectCluster: connect
   connectClusterNamespace: test
