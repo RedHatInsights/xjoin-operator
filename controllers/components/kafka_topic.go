@@ -6,9 +6,12 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
+	"github.com/redhatinsights/xjoin-operator/controllers/log"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
+
+var logger = log.NewLogger("kafkatopics")
 
 type KafkaTopic struct {
 	name            string
@@ -72,18 +75,17 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 
 		// de-reference the topic pointer for comparison
 		topicInClear := *topicInPtr
-		fmt.Printf("Input topic name: %s\n", topicInClear.GetName())
+		logger.Info("Input topic name: " + topicInClear.GetName())
 
 		if len(allTopics) > 0 {
 			for _, topic := range allTopics {
 
 				if topicInClear.GetName() == topic.GetName() {
 					if equality.Semantic.DeepEqual(topicInClear, topic) {
-						fmt.Printf("\nTopic named %s is identical.", topic.GetName())
-						return nil, nil
+						logger.Info("Topic name \"" + topic.GetName() + "\" is identical")
 					} else { 
-						fmt.Printf("\nTopic named %s NOT identical.", topic.GetName())
-						problem = fmt.Errorf("KafkaTopic named %s has changed.", topic.GetName())
+						logger.Info("Topic name \"" + topic.GetName() + "\" is Not identical")
+						return fmt.Errorf("KafkaTopic named %s has changed.", topic.GetName()), nil
 					}
 				}
 			}
