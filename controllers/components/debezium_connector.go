@@ -53,12 +53,20 @@ func (dc *DebeziumConnector) Delete() (err error) {
 }
 
 func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
+	found, err := dc.Exists()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	if !found {
+		return fmt.Errorf("DebeziumConnector named, %s, does not exist.", dc.name), nil
+	}
+
 	// leave this commented line for testing
 	// debConPtr, err := dc.KafkaClient.GetConnector("xjoinindexpipeline.hosts.1679941693938094928")
 	debConPtr, err := dc.KafkaClient.GetConnector(dc.name)
 
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return fmt.Errorf("Error encountered when getting DebeziumConnector named, %s", dc.name), errors.Wrap(err, 0)
 	}
 	if debConPtr != nil {
 		var allconns *unstructured.UnstructuredList
