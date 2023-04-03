@@ -37,6 +37,8 @@ spec:
             type: object
           spec:
             properties:
+              appName:
+                type: string
               avroSchema:
                 type: string
               databaseHostname:

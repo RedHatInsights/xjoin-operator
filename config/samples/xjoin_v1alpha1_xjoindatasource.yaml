@@ -31,6 +31,8 @@ spec:
         key: name
   databaseTable:
     value: "public.hosts"
+  appName:
+    value: "host-inventory"
   avroSchema: >
     {
       "type": "record",
