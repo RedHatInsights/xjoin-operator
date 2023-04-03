@@ -254,3 +254,6 @@ Both the DataSourcePipeline and the IndexPipeline manage multiple resources to c
 The code for the top level resources (XJoinDataSource and XJoinIndex) can be found in the [controllers/datasource](controllers/datasource) and the [controllers/index](controllers/index) directory.
 
 There are many different parameters and sources of parameters across the operator. These are handled by the [ConfigManager](controllers/config/manager.go). The parameters for the xjoin.v2 resources are defined in [controllers/parameters](controllers/parameters).
+
+### Questions
+When will CRDs be promoted from "api/v1alpha1" to "api/v1"?
