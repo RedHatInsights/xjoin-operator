@@ -47,12 +47,20 @@ func (kt *KafkaTopic) Delete() (err error) {
 }
 
 func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
+	found, err := kt.Exists()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	if !found {
+		return fmt.Errorf("KafkaTopic named, %s, does not exist.", kt.name), nil
+	}
+	
 	// leave this commented line for testing.
 	// topicIn, err := kt.KafkaTopics.GetTopic("platform.inventory.events")
 	topicIn, err := kt.KafkaTopics.GetTopic(kt.name)
 
 	if err != nil {
-		return nil, errors.Wrap(err, 0)
+		return fmt.Errorf("Error encountered when getting KafkaTopic named, %s", kt.name), errors.Wrap(err, 0)
 	}
 
 	if topicIn != nil {
