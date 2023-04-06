@@ -243,6 +243,29 @@ parameters:
                 }
               }
             },
+            "groups": {
+              "type": "nested",
+              "properties": {
+                "id": {
+                  "type": "keyword"
+                },
+                "name": {
+                  "type": "keyword"
+                },
+                "account": {
+                  "type": "keyword"
+                },
+                "org_id": {
+                  "type": "keyword"
+                },
+                "created_on": {
+                  "type": "date_nanos"
+                },
+                "modified_on": {
+                  "type": "date_nanos"
+                }
+              }
+            },
             "per_reporter_staleness_flat": {
               "type": "nested",
               "properties": {

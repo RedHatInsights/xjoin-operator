@@ -261,6 +261,29 @@ func NewXJoinConfiguration() Parameters {
 						  "provider_id": { "type": "keyword"}
 						}
 					  },
+					  "groups": {
+					    "type": "object",
+					    "properties": {
+						  "id": {
+						    "type": "keyword"
+						  },
+						  "name": {
+						    "type": "keyword"
+						  },
+						  "account": {
+						    "type": "keyword"
+						  },
+						  "org_id": {
+						    "type": "keyword"
+						  },
+						  "created_on": {
+						    "type": "date_nanos"
+						  },
+						  "modified_on": {
+						    "type": "date_nanos"
+						  }
+					    }
+					  },
 					  "system_profile_facts": {
 						"type": "object",
 						"properties": {
@@ -478,6 +501,11 @@ func NewXJoinConfiguration() Parameters {
 					"json" : {
 						"if" : "ctx.facts != null",
 						"field" : "facts"
+					}
+				}, {
+					"json" : {
+						"if" : "ctx.groups != null",
+						"field" : "groups"
 					}
 				}, {
 					"script": {
