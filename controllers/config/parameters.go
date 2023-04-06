@@ -268,7 +268,7 @@ func NewXJoinConfiguration() Parameters {
 						    "type": "keyword"
 						  },
 						  "name": {
-							"type": "keyword",
+s							"type": "keyword",
 							"fields": {
 							  "lowercase": {
 								"type": "keyword",
