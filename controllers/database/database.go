@@ -356,7 +356,7 @@ func formatIdsList(ids []string) (string, error) {
 
 // TODO handle this dynamically with a schema
 func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
-	cols := "id,account,org_id,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter,tags"
+	cols := "id,account,org_id,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter,tags,groups"
 
 	idsString, err := formatIdsList(ids)
 	if err != nil {
@@ -415,6 +415,14 @@ func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
 			}
 			host.Tags = tagsJson
 			host.TagsStructured, host.TagsString, host.TagsSearch = tagsStructured(tagsJson)
+		}
+
+		if host.Groups != nil {
+			groupsJson, err := parseJsonField(host.Groups.([]uint8))
+			if err != nil {
+				return nil, err
+			}
+			host.Groups = groupsJson
 		}
 
 		response = append(response, host)
