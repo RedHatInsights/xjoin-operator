@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-
 type KafkaTopic struct {
 	name            string
 	version         string
@@ -54,7 +53,7 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 	if !found {
 		return fmt.Errorf("KafkaTopic named, %s, does not exist.", kt.name), nil
 	}
-	
+
 	// leave this commented line for testing.
 	// topicIn, err := kt.KafkaTopics.GetTopic("platform.inventory.events")
 	topicIn, err := kt.KafkaTopics.GetTopic(kt.name)
@@ -80,7 +79,7 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 			if topicInPtr.GetName() == topic.GetName() {
 				if equality.Semantic.DeepEqual(*topicInPtr, topic) {
 					return nil, nil
-				} else { 
+				} else {
 					return fmt.Errorf("KafkaTopic named %s has changed.", topic.GetName()), nil
 				}
 			}

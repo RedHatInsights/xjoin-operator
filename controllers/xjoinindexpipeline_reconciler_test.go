@@ -2,16 +2,20 @@ package controllers_test
 
 import (
 	"context"
+	"os"
+
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -36,6 +40,7 @@ type DataSource struct {
 func (x *XJoinIndexPipelineTestReconciler) ReconcileNew() v1alpha1.XJoinIndexPipeline {
 	x.registerNewMocks()
 	x.createValidIndexPipeline()
+	x.createValidKafkaTopic()
 	result := x.reconcile()
 	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
 	indexLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
@@ -329,4 +334,78 @@ func (x *XJoinIndexPipelineTestReconciler) createValidIndexPipeline() {
 	Expect(createdIndexPipeline.Spec.Pause).Should(Equal(false))
 	Expect(createdIndexPipeline.Spec.AvroSchema).Should(Equal(string(indexAvroSchema)))
 	Expect(createdIndexPipeline.Spec.CustomSubgraphImages).Should(Equal(x.CustomSubgraphImages))
+}
+func (x *XJoinIndexPipelineTestReconciler) createValidKafkaTopic() {
+	ctx := context.Background()
+	kafkaTopicName := "xjoinindexpipeline.test-index-pipeline"
+
+	// TODO: Do I need this "kafkaTopicSchema"?
+	// _, err := os.ReadFile("./test/data/kafka/" + "kafka_topic_config" + ".json")
+	// checkError(err)
+	// println("Type of kafkaTopicSchema: ", reflect.TypeOf(kafkaTopicSchema))
+
+	// how to use the kafkaTopicSchema ^^^ to load configurationkafkaTopicSchema
+	tp := kafka.TopicParameters{
+		Replicas:           1,
+		Partitions:         1,
+		CleanupPolicy:      "compact, delete",
+		MessageBytes:       "2097176",
+		MinCompactionLagMS: "3600000",
+		RetentionBytes:     "5368709120",
+		RetentionMS:        "2678400001",
+	}
+	st := kafka.StrimziTopics{
+		TopicParameters:       tp,
+		KafkaClusterNamespace: x.Namespace,
+		KafkaCluster:          "kafka",
+		ResourceNamePrefix:    "test-",
+		Client:                k8sClient, // let's hope this works.
+		Context:               ctx,
+	}
+
+	topicGroupVersionKind := schema.GroupVersionKind{
+		Group:   "kafka.strimzi.io",
+		Kind:    "KafkaTopic",
+		Version: "v1beta2",
+	}
+
+	topic := &unstructured.Unstructured{}
+	topic.Object = map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"name":      "xjoinindexpipeline.test-index-pipeline",
+			"namespace": st.KafkaClusterNamespace,
+		},
+		"spect": map[string]interface{}{
+			"replicas":   tp.Replicas,
+			"partitions": tp.Partitions,
+			"topicName":  kafkaTopicName,
+			"config": map[string]interface{}{
+				"cleanup.policy":    tp.CleanupPolicy,
+				"max.message.bytes": tp.MessageBytes,
+				"retention.bytes":   tp.RetentionBytes,
+				"retention.ms":      tp.RetentionMS,
+			},
+		},
+	}
+
+	topic.SetGroupVersionKind(topicGroupVersionKind)
+	Expect(x.K8sClient.Create(ctx, topic)).Should(Succeed())
+
+	// TODO: how to get the new topic using "kafkaTopicLookupKey"
+	// validate KafkaTopic has been created correctly
+	// kafkaTopicLookupKey := types.NamespacedName{Name: kafkaTopicName, Namespace: x.Namespace}
+	allTopics := &unstructured.UnstructuredList{}
+	allTopics.SetGroupVersionKind(topicGroupVersionKind)
+
+	var err error
+
+	err = x.K8sClient.List(ctx, allTopics, client.InNamespace(x.Namespace))
+	if err != nil {
+		println("Problem:")
+	}
+
+	for _, tt := range allTopics.Items {
+		Expect(tt.GetName()).Should(Equal(kafkaTopicName))
+		Expect(tt.GetKind()).Should(Equal(topicGroupVersionKind.Kind))
+	}
 }
