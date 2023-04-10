@@ -18,11 +18,11 @@ package main
 
 import (
 	"flag"
+	"github.com/redhatinsights/xjoin-operator/controllers/k8s"
 	"os"
 	"time"
 
 	"github.com/redhatinsights/xjoin-operator/controllers"
-	"github.com/redhatinsights/xjoin-operator/controllers/k8s"
 	"github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	k8runtime "k8s.io/apimachinery/pkg/runtime"
