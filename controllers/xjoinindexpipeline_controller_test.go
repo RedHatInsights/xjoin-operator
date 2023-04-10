@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os"
+
 	"github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/ginkgo/v2"
@@ -16,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	//+kubebuilder:scaffold:imports
 )
@@ -651,7 +652,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			topics := &v1beta2.KafkaTopicList{}
 			err := k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
 			checkError(err)
-			Expect(topics.Items).To(HaveLen(1))
+			Expect(topics.Items).To(HaveLen(2))
 
 			err = k8sClient.Delete(context.Background(), &createdIndexPipeline)
 			checkError(err)
@@ -660,7 +661,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			topics = &v1beta2.KafkaTopicList{}
 			err = k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
 			checkError(err)
-			Expect(topics.Items).To(HaveLen(0))
+			Expect(topics.Items).To(HaveLen(1))
 		})
 
 		It("Should delete the Avro schema", func() {
