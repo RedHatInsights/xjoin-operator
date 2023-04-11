@@ -40,7 +40,7 @@ var K8sGetInterval = 100 * time.Millisecond
 
 var testLogger = logf.Log.WithName("test")
 
-//this is used to output stack traces when an error occurs
+// this is used to output stack traces when an error occurs
 func checkError(err error) {
 	if err != nil {
 		testLogger.Error(errors.Wrap(err, 0), "test failure")
