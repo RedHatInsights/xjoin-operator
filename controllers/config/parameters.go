@@ -14,7 +14,7 @@ var secretTypes = secrets{
 	schemaRegistry: "schemaregistry",
 }
 
-//Parameters are the xjoin.v1 parameters
+// Parameters are the xjoin.v1 parameters
 type Parameters struct {
 	Ephemeral                            Parameter
 	ResourceNamePrefix                   Parameter
