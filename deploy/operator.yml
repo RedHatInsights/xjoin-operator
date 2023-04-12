@@ -40,9 +40,9 @@ parameters:
   - name: KAFKA_TOPIC_REPLICAS
     value: '2'
   - name: SCHEMA_REGISTRY_SECRET_NAME
-    value: 'service-registry-stage'
+    value: service-registry-stage
   - name: ES_CONNECTOR_CONFIG
-    value: >-
+    value: |-
       { 
         "tasks.max": "{{.ElasticSearchTasksMax}}",
         "topics": "{{.Topic}}",
@@ -270,16 +270,16 @@ parameters:
               "type": "nested",
               "properties": {
                 "reporter": {
-                "type": "keyword"
+                  "type": "keyword"
                 },
                 "last_check_in": {
-                "type": "keyword"
+                  "type": "keyword"
                 },
                 "stale_timestamp": {
-                "type": "keyword"
+                  "type": "keyword"
                 },
                 "check_in_succeeded": {
-                "type": "boolean"
+                  "type": "boolean"
                 }
               }
             },
@@ -308,7 +308,7 @@ parameters:
                   "type": "integer"
                 },
                 "system_memory_bytes": {
-                  "type": "long"
+                  "type": "integer"
                 },
                 "infrastructure_type": {
                   "type": "keyword"
@@ -351,7 +351,13 @@ parameters:
                 "os_kernel_version": {
                   "type": "keyword"
                 },
+                "releasever": {
+                  "type": "keyword"
+                },
                 "arch": {
+                  "type": "keyword"
+                },
+                "basearch": {
                   "type": "keyword"
                 },
                 "kernel_modules": {
@@ -401,6 +407,23 @@ parameters:
                 },
                 "enabled_services": {
                   "type": "keyword"
+                },
+                "sap": {
+                  "type": "object",
+                  "properties": {
+                    "sap_system": {
+                      "type": "boolean"
+                    },
+                    "sids": {
+                      "type": "keyword"
+                    },
+                    "instance_number": {
+                      "type": "keyword"
+                    },
+                    "version": {
+                      "type": "keyword"
+                    }
+                  }
                 },
                 "sap_system": {
                   "type": "boolean"
@@ -484,6 +507,9 @@ parameters:
                       "type": "keyword"
                     }
                   }
+                },
+                "system_update_method": {
+                  "type": "keyword"
                 }
               }
             },
