@@ -45,14 +45,14 @@ try {
     schemaPath = myArgs[0];
 
     if (typeof(schemaPath) != String) {
-        schemaPath = './inventory-schemas/schemas/system_profile/v1.yaml'
+        schemaPath = '../inventory-schemas/schemas/system_profile/v1.yaml'
     }
 
     let schemaFileContent = fs.readFileSync(schemaPath, 'utf8');
     let schemaData = yaml.load(schemaFileContent);
     let schema = schemaData["$defs"]["SystemProfile"];
 
-    let deploymentFilePath = './deploy/operator.yml';
+    let deploymentFilePath = '../deploy/operator.yml';
     let deploymentFileContent = fs.readFileSync(deploymentFilePath, 'utf8');
     let deploymentFileData = yaml.load(deploymentFileContent);
 
