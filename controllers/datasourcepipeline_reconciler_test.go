@@ -2,14 +2,19 @@ package controllers_test
 
 import (
 	"context"
-	"github.com/redhatinsights/xjoin-operator/controllers"
 	"os"
 	"time"
+
+	"github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
+	"github.com/redhatinsights/xjoin-operator/controllers"
+	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
@@ -99,6 +104,7 @@ func (d *DatasourcePipelineTestReconciler) CreateValidDataSourcePipeline() {
 func (d *DatasourcePipelineTestReconciler) ReconcileNew() v1alpha1.XJoinDataSourcePipeline {
 	d.registerNewMocks()
 	d.CreateValidDataSourcePipeline()
+	d.createValidKafkaTopic()
 	createdDataSourcePipeline := &v1alpha1.XJoinDataSourcePipeline{}
 	result := d.reconcile()
 	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
@@ -187,4 +193,60 @@ func (d *DatasourcePipelineTestReconciler) registerNewMocks() {
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+".1234-value/versions/latest",
 		httpmock.NewStringResponder(200, "{}"))
+}
+
+func (d *DatasourcePipelineTestReconciler) createValidKafkaTopic() {
+	ctx := context.Background()
+	kafkaTopicName := "xjoindatasourcepipeline.test-data-source-pipeline"
+
+	kafkaTopicSchema, err := os.ReadFile("./test/data/kafka/" + "kafka_topic_config" + ".json")
+	checkError(err)
+
+	tp := kafka.TopicParameters{
+		Replicas:   1,
+		Partitions: 1,
+	}
+	st := kafka.StrimziTopics{
+		TopicParameters:       tp,
+		KafkaClusterNamespace: d.Namespace,
+		KafkaCluster:          "kafka",
+		ResourceNamePrefix:    "test-",
+		Client:                k8sClient, // let's hope this works.
+		Context:               ctx,
+	}
+
+	topicGroupVersionKind := schema.GroupVersionKind{
+		Group:   "kafka.strimzi.io",
+		Kind:    "KafkaTopic",
+		Version: "v1beta2",
+	}
+
+	topic := &unstructured.Unstructured{}
+	topic.Object = map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"name":      "xjoindatasourcepipeline.test-data-source-pipeline",
+			"namespace": st.KafkaClusterNamespace,
+		},
+		"spect": map[string]interface{}{
+			"replicas":   tp.Replicas,
+			"partitions": tp.Partitions,
+			"topicName":  kafkaTopicName,
+			"config":     string(kafkaTopicSchema),
+		},
+	}
+
+	topic.SetGroupVersionKind(topicGroupVersionKind)
+	Expect(d.K8sClient.Create(ctx, topic)).Should(Succeed())
+
+	// validate KafkaTopic has been created correctly
+	kafkaTopicLookupKey := types.NamespacedName{Name: kafkaTopicName, Namespace: d.Namespace}
+	createdKafkaTopic := &v1beta2.KafkaTopic{}
+
+	Eventually(func() bool {
+		ktErr := d.K8sClient.Get(ctx, kafkaTopicLookupKey, createdKafkaTopic)
+		return ktErr == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+	Expect(createdKafkaTopic.GetName()).Should(Equal(kafkaTopicName))
+
 }

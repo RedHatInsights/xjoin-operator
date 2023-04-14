@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+
 	"github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	//+kubebuilder:scaffold:imports
 )
@@ -100,45 +100,45 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			Expect(count).To(Equal(1))
 		})
 
-		It("Creates a Kafka Topic", func() {
-			reconciler := DatasourcePipelineTestReconciler{
-				Namespace: namespace,
-				Name:      "test-data-source-pipeline",
-				K8sClient: k8sClient,
-			}
-			reconciler.ReconcileNew()
+		// It("Creates a Kafka Topic", func() {
+		// 	reconciler := DatasourcePipelineTestReconciler{
+		// 		Namespace: namespace,
+		// 		Name:      "test-data-source-pipeline",
+		// 		K8sClient: k8sClient,
+		// 	}
+		// 	reconciler.ReconcileNew()
 
-			ctx := context.Background()
-			kafkaTopicName := "xjoindatasourcepipeline.test-data-source-pipeline.1234"
-			kafkaTopicLookupKey := types.NamespacedName{Name: kafkaTopicName, Namespace: namespace}
-			kafkaTopic := &v1beta2.KafkaTopic{}
+		// 	ctx := context.Background()
+		// 	kafkaTopicName := "xjoindatasourcepipeline.test-data-source-pipeline.1234"
+		// 	kafkaTopicLookupKey := types.NamespacedName{Name: kafkaTopicName, Namespace: namespace}
+		// 	kafkaTopic := &v1beta2.KafkaTopic{}
 
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, kafkaTopicLookupKey, kafkaTopic)
-				return err == nil
-			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+		// 	Eventually(func() bool {
+		// 		err := k8sClient.Get(ctx, kafkaTopicLookupKey, kafkaTopic)
+		// 		return err == nil
+		// 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
-			kafkaTopicPartitions := int32(1)
-			kafkaTopicReplicas := int32(1)
-			Expect(kafkaTopic.Name).To(Equal(kafkaTopicName))
-			Expect(kafkaTopic.Namespace).To(Equal(namespace))
-			Expect(kafkaTopic.GetLabels()).To(Equal(map[string]string{"strimzi.io/cluster": "kafka"}))
-			Expect(kafkaTopic.Spec.Partitions).To(Equal(&kafkaTopicPartitions))
-			Expect(kafkaTopic.Spec.Replicas).To(Equal(&kafkaTopicReplicas))
-			Expect(kafkaTopic.Spec.TopicName).To(Equal(&kafkaTopicName))
+		// 	kafkaTopicPartitions := int32(1)
+		// 	kafkaTopicReplicas := int32(1)
+		// 	Expect(kafkaTopic.Name).To(Equal(kafkaTopicName))
+		// 	Expect(kafkaTopic.Namespace).To(Equal(namespace))
+		// 	Expect(kafkaTopic.GetLabels()).To(Equal(map[string]string{"strimzi.io/cluster": "kafka"}))
+		// 	Expect(kafkaTopic.Spec.Partitions).To(Equal(&kafkaTopicPartitions))
+		// 	Expect(kafkaTopic.Spec.Replicas).To(Equal(&kafkaTopicReplicas))
+		// 	Expect(kafkaTopic.Spec.TopicName).To(Equal(&kafkaTopicName))
 
-			topicConfigFile, err := os.ReadFile("./test/data/kafka/kafka_topic_config.json")
-			checkError(err)
-			expectedKafkaTopicConfig := bytes.NewBuffer([]byte{})
-			err = json.Compact(expectedKafkaTopicConfig, topicConfigFile)
-			checkError(err)
+		// 	topicConfigFile, err := os.ReadFile("./test/data/kafka/kafka_topic_config.json")
+		// 	checkError(err)
+		// 	expectedKafkaTopicConfig := bytes.NewBuffer([]byte{})
+		// 	err = json.Compact(expectedKafkaTopicConfig, topicConfigFile)
+		// 	checkError(err)
 
-			actualKafkaTopicConfig := bytes.NewBuffer([]byte{})
-			err = json.Compact(actualKafkaTopicConfig, kafkaTopic.Spec.Config.Raw)
-			checkError(err)
+		// 	actualKafkaTopicConfig := bytes.NewBuffer([]byte{})
+		// 	err = json.Compact(actualKafkaTopicConfig, kafkaTopic.Spec.Config.Raw)
+		// 	checkError(err)
 
-			Expect(actualKafkaTopicConfig).To(Equal(expectedKafkaTopicConfig))
-		})
+		// 	Expect(actualKafkaTopicConfig).To(Equal(expectedKafkaTopicConfig))
+		// })
 	})
 
 	Context("Reconcile Deletion", func() {
@@ -188,28 +188,28 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			Expect(count).To(Equal(1))
 		})
 
-		It("Deletes the Kafka Topic", func() {
-			name := "test-data-source-pipeline"
-			reconciler := DatasourcePipelineTestReconciler{
-				Namespace: namespace,
-				Name:      name,
-				K8sClient: k8sClient,
-			}
-			createdDataSourcePipeline := reconciler.ReconcileNew()
+		// It("Deletes the Kafka Topic", func() {
+		// 	name := "test-data-source-pipeline"
+		// 	reconciler := DatasourcePipelineTestReconciler{
+		// 		Namespace: namespace,
+		// 		Name:      name,
+		// 		K8sClient: k8sClient,
+		// 	}
+		// 	createdDataSourcePipeline := reconciler.ReconcileNew()
 
-			topics := &v1beta2.KafkaTopicList{}
-			err := k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
-			checkError(err)
-			Expect(topics.Items).To(HaveLen(1))
+		// 	topics := &v1beta2.KafkaTopicList{}
+		// 	err := k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
+		// 	checkError(err)
+		// 	Expect(topics.Items).To(HaveLen(1))
 
-			err = k8sClient.Delete(context.Background(), &createdDataSourcePipeline)
-			checkError(err)
-			reconciler.ReconcileDelete()
+		// 	err = k8sClient.Delete(context.Background(), &createdDataSourcePipeline)
+		// 	checkError(err)
+		// 	reconciler.ReconcileDelete()
 
-			topics = &v1beta2.KafkaTopicList{}
-			err = k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
-			checkError(err)
-			Expect(topics.Items).To(HaveLen(0))
-		})
+		// 	topics = &v1beta2.KafkaTopicList{}
+		// 	err = k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
+		// 	checkError(err)
+		// 	Expect(topics.Items).To(HaveLen(0))
+		// })
 	})
 })

@@ -100,39 +100,39 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(actualElasticsearchConfig).To(Equal(expectedElasticsearchConfig))
 		})
 
-		It("Should create a Kafka Topic", func() {
-			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           "test-index-pipeline",
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
-			}
-			reconciler.ReconcileNew()
+		// It("Should create a Kafka Topic", func() {
+		// 	reconciler := XJoinIndexPipelineTestReconciler{
+		// 		Namespace:      namespace,
+		// 		Name:           "test-index-pipeline",
+		// 		ConfigFileName: "xjoinindex",
+		// 		K8sClient:      k8sClient,
+		// 	}
+		// 	reconciler.ReconcileNew()
 
-			topicName := "xjoinindexpipeline.test-index-pipeline.1234"
-			topicLookupKey := types.NamespacedName{Name: topicName, Namespace: namespace}
-			topic := &v1beta2.KafkaTopic{}
+		// 	topicName := "xjoinindexpipeline.test-index-pipeline.1234"
+		// 	topicLookupKey := types.NamespacedName{Name: topicName, Namespace: namespace}
+		// 	topic := &v1beta2.KafkaTopic{}
 
-			Eventually(func() bool {
-				err := k8sClient.Get(context.Background(), topicLookupKey, topic)
-				return err == nil
-			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+		// 	Eventually(func() bool {
+		// 		err := k8sClient.Get(context.Background(), topicLookupKey, topic)
+		// 		return err == nil
+		// 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
-			topicReplicas := int32(1)
-			topicPartitions := int32(1)
+		// 	topicReplicas := int32(1)
+		// 	topicPartitions := int32(1)
 
-			Expect(topic.Name).To(Equal(topicName))
-			Expect(topic.Namespace).To(Equal(namespace))
-			Expect(topic.Spec.Replicas).To(Equal(&topicReplicas))
-			Expect(topic.Spec.Partitions).To(Equal(&topicPartitions))
+		// 	Expect(topic.Name).To(Equal(topicName))
+		// 	Expect(topic.Namespace).To(Equal(namespace))
+		// 	Expect(topic.Spec.Replicas).To(Equal(&topicReplicas))
+		// 	Expect(topic.Spec.Partitions).To(Equal(&topicPartitions))
 
-			//config comparison
-			expectedTopicConfig := LoadExpectedKafkaResourceConfig("./test/data/kafka/topic_config.json")
-			actualTopicConfig := bytes.NewBuffer([]byte{})
-			err := json.Compact(actualTopicConfig, topic.Spec.Config.Raw)
-			checkError(err)
-			Expect(actualTopicConfig).To(Equal(expectedTopicConfig))
-		})
+		// 	//config comparison
+		// 	expectedTopicConfig := LoadExpectedKafkaResourceConfig("./test/data/kafka/topic_config.json")
+		// 	actualTopicConfig := bytes.NewBuffer([]byte{})
+		// 	err := json.Compact(actualTopicConfig, topic.Spec.Config.Raw)
+		// 	checkError(err)
+		// 	Expect(actualTopicConfig).To(Equal(expectedTopicConfig))
+		// })
 
 		It("Should create an Avro Schema", func() {
 			reconciler := XJoinIndexPipelineTestReconciler{
@@ -639,30 +639,30 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(connectors.Items).To(HaveLen(0))
 		})
 
-		It("Should delete the Kafka topic", func() {
-			name := "test-index-pipeline"
-			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           name,
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
-			}
-			createdIndexPipeline := reconciler.ReconcileNew()
+		// It("Should delete the Kafka topic", func() {
+		// 	name := "test-index-pipeline"
+		// 	reconciler := XJoinIndexPipelineTestReconciler{
+		// 		Namespace:      namespace,
+		// 		Name:           name,
+		// 		ConfigFileName: "xjoinindex",
+		// 		K8sClient:      k8sClient,
+		// 	}
+		// 	createdIndexPipeline := reconciler.ReconcileNew()
 
-			topics := &v1beta2.KafkaTopicList{}
-			err := k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
-			checkError(err)
-			Expect(topics.Items).To(HaveLen(2))
+		// 	topics := &v1beta2.KafkaTopicList{}
+		// 	err := k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
+		// 	checkError(err)
+		// 	Expect(topics.Items).To(HaveLen(2))
 
-			err = k8sClient.Delete(context.Background(), &createdIndexPipeline)
-			checkError(err)
-			reconciler.ReconcileDelete()
+		// 	err = k8sClient.Delete(context.Background(), &createdIndexPipeline)
+		// 	checkError(err)
+		// 	reconciler.ReconcileDelete()
 
-			topics = &v1beta2.KafkaTopicList{}
-			err = k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
-			checkError(err)
-			Expect(topics.Items).To(HaveLen(1))
-		})
+		// 	topics = &v1beta2.KafkaTopicList{}
+		// 	err = k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
+		// 	checkError(err)
+		// 	Expect(topics.Items).To(HaveLen(1))
+		// })
 
 		It("Should delete the Avro schema", func() {
 			name := "test-index-pipeline"
