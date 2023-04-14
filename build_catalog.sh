@@ -73,10 +73,10 @@ fi
 #Uncomment to reset the catalog
 ###############################
 #log "Resetting index"
-./opm index prune-stranded -f $CATALOG_IMAGE:latest -c docker --tag $CATALOG_IMAGE:latest
-./opm index rm -f $CATALOG_IMAGE:latest -c docker --tag $CATALOG_IMAGE:latest -o xjoin-operator
-docker push $CATALOG_IMAGE:latest
-export SKIP_VERSION=$version
+#./opm index prune-stranded -f $CATALOG_IMAGE:latest -c docker --tag $CATALOG_IMAGE:latest
+#./opm index rm -f $CATALOG_IMAGE:latest -c docker --tag $CATALOG_IMAGE:latest -o xjoin-operator
+#docker push $CATALOG_IMAGE:latest
+#export SKIP_VERSION=$version
 prev_version=""
 unset REPLACE_VERSION
 
