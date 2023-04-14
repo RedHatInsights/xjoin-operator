@@ -335,6 +335,15 @@ func parseJsonField(field []uint8) (map[string]interface{}, error) {
 	return fieldMap, nil
 }
 
+func parseJsonArrayField(field []uint8) ([]interface{}, error) {
+	var fieldMap []interface{}
+	err := json.Unmarshal(field, &fieldMap)
+	if err != nil {
+		return nil, err
+	}
+	return fieldMap, nil
+}
+
 func formatIdsList(ids []string) (string, error) {
 	idsMap := make(map[string]interface{})
 	idsMap["IDs"] = ids
@@ -418,7 +427,7 @@ func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
 		}
 
 		if host.Groups != nil {
-			groupsJson, err := parseJsonField(host.Groups.([]uint8))
+			groupsJson, err := parseJsonArrayField(host.Groups.([]uint8))
 			if err != nil {
 				return nil, err
 			}
