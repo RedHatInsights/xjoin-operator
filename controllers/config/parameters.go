@@ -276,10 +276,10 @@ func NewXJoinConfiguration() Parameters {
 						  "org_id": {
 						    "type": "keyword"
 						  },
-						  "created_on": {
+						  "created": {
 						    "type": "date_nanos"
 						  },
-						  "modified_on": {
+						  "updated": {
 						    "type": "date_nanos"
 						  }
 					    }
