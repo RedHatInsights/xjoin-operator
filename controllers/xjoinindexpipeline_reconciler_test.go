@@ -4,10 +4,7 @@ import (
 	"context"
 	"os"
 
-<<<<<<< HEAD
 	"github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
-=======
->>>>>>> a809062 (update tests to create kafkatopics during testing.)
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -375,23 +372,13 @@ func (x *XJoinIndexPipelineTestReconciler) createValidKafkaTopic() {
 			"replicas":   tp.Replicas,
 			"partitions": tp.Partitions,
 			"topicName":  kafkaTopicName,
-<<<<<<< HEAD
 			"config":     string(kafkaTopicSchema),
-=======
-			"config": map[string]interface{}{
-				"cleanup.policy":    tp.CleanupPolicy,
-				"max.message.bytes": tp.MessageBytes,
-				"retention.bytes":   tp.RetentionBytes,
-				"retention.ms":      tp.RetentionMS,
-			},
->>>>>>> a809062 (update tests to create kafkatopics during testing.)
 		},
 	}
 
 	topic.SetGroupVersionKind(topicGroupVersionKind)
 	Expect(x.K8sClient.Create(ctx, topic)).Should(Succeed())
 
-<<<<<<< HEAD
 	// validate KafkaTopic has been created correctly
 	kafkaTopicLookupKey := types.NamespacedName{Name: kafkaTopicName, Namespace: x.Namespace}
 	createdKafkaTopic := &v1beta2.KafkaTopic{}
@@ -402,23 +389,4 @@ func (x *XJoinIndexPipelineTestReconciler) createValidKafkaTopic() {
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	Expect(createdKafkaTopic.GetName()).Should(Equal(kafkaTopicName))
-=======
-	// TODO: how to get the new topic using "kafkaTopicLookupKey"
-	// validate KafkaTopic has been created correctly
-	// kafkaTopicLookupKey := types.NamespacedName{Name: kafkaTopicName, Namespace: x.Namespace}
-	allTopics := &unstructured.UnstructuredList{}
-	allTopics.SetGroupVersionKind(topicGroupVersionKind)
-
-	var err error
-
-	err = x.K8sClient.List(ctx, allTopics, client.InNamespace(x.Namespace))
-	if err != nil {
-		println("Problem:")
-	}
-
-	for _, tt := range allTopics.Items {
-		Expect(tt.GetName()).Should(Equal(kafkaTopicName))
-		Expect(tt.GetKind()).Should(Equal(topicGroupVersionKind.Kind))
-	}
->>>>>>> a809062 (update tests to create kafkatopics during testing.)
 }
