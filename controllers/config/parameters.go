@@ -268,7 +268,13 @@ func NewXJoinConfiguration() Parameters {
 						    "type": "keyword"
 						  },
 						  "name": {
-						    "type": "keyword"
+							"type": "keyword",
+							"fields": {
+							  "lowercase": {
+								"type": "keyword",
+								"normalizer": "case_insensitive"
+							  }
+                            }
 						  },
 						  "account": {
 						    "type": "keyword"
