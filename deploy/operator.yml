@@ -314,7 +314,7 @@ parameters:
                   "type": "integer"
                 },
                 "system_memory_bytes": {
-                  "type": "integer"
+                  "type": "long"
                 },
                 "infrastructure_type": {
                   "type": "keyword"
