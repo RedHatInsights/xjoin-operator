@@ -335,8 +335,8 @@ func parseJsonField(field []uint8) (map[string]interface{}, error) {
 	return fieldMap, nil
 }
 
-func parseJsonArrayField(field []uint8) ([]interface{}, error) {
-	var fieldMap []interface{}
+func parseJsonArrayField(field []uint8) (interface{}, error) {
+	var fieldMap interface{}
 	err := json.Unmarshal(field, &fieldMap)
 	if err != nil {
 		return nil, err
