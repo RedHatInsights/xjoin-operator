@@ -4,10 +4,7 @@ import (
 	"context"
 	"os"
 
-<<<<<<< HEAD
 	"github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
-=======
->>>>>>> 413e7e7 (update tests to create kafkatopics during testing.)
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -343,20 +340,12 @@ func (x *XJoinIndexPipelineTestReconciler) createValidKafkaTopic() {
 	ctx := context.Background()
 	kafkaTopicName := "xjoinindexpipeline.test-index-pipeline"
 
-	// TODO: Do I need this "kafkaTopicSchema"?
-	// _, err := os.ReadFile("./test/data/kafka/" + "kafka_topic_config" + ".json")
-	// checkError(err)
-	// println("Type of kafkaTopicSchema: ", reflect.TypeOf(kafkaTopicSchema))
+	kafkaTopicSchema, err := os.ReadFile("./test/data/kafka/" + "kafka_topic_config" + ".json")
+	checkError(err)
 
-	// how to use the kafkaTopicSchema ^^^ to load configurationkafkaTopicSchema
 	tp := kafka.TopicParameters{
-		Replicas:           1,
-		Partitions:         1,
-		CleanupPolicy:      "compact, delete",
-		MessageBytes:       "2097176",
-		MinCompactionLagMS: "3600000",
-		RetentionBytes:     "5368709120",
-		RetentionMS:        "2678400001",
+		Replicas:   1,
+		Partitions: 1,
 	}
 	st := kafka.StrimziTopics{
 		TopicParameters:       tp,
@@ -383,33 +372,21 @@ func (x *XJoinIndexPipelineTestReconciler) createValidKafkaTopic() {
 			"replicas":   tp.Replicas,
 			"partitions": tp.Partitions,
 			"topicName":  kafkaTopicName,
-			"config": map[string]interface{}{
-				"cleanup.policy":    tp.CleanupPolicy,
-				"max.message.bytes": tp.MessageBytes,
-				"retention.bytes":   tp.RetentionBytes,
-				"retention.ms":      tp.RetentionMS,
-			},
+			"config":     string(kafkaTopicSchema),
 		},
 	}
 
 	topic.SetGroupVersionKind(topicGroupVersionKind)
 	Expect(x.K8sClient.Create(ctx, topic)).Should(Succeed())
 
-	// TODO: how to get the new topic using "kafkaTopicLookupKey"
 	// validate KafkaTopic has been created correctly
-	// kafkaTopicLookupKey := types.NamespacedName{Name: kafkaTopicName, Namespace: x.Namespace}
-	allTopics := &unstructured.UnstructuredList{}
-	allTopics.SetGroupVersionKind(topicGroupVersionKind)
+	kafkaTopicLookupKey := types.NamespacedName{Name: kafkaTopicName, Namespace: x.Namespace}
+	createdKafkaTopic := &v1beta2.KafkaTopic{}
 
-	var err error
+	Eventually(func() bool {
+		ktErr := x.K8sClient.Get(ctx, kafkaTopicLookupKey, createdKafkaTopic)
+		return ktErr == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
-	err = x.K8sClient.List(ctx, allTopics, client.InNamespace(x.Namespace))
-	if err != nil {
-		println("Problem:")
-	}
-
-	for _, tt := range allTopics.Items {
-		Expect(tt.GetName()).Should(Equal(kafkaTopicName))
-		Expect(tt.GetKind()).Should(Equal(topicGroupVersionKind.Kind))
-	}
+	Expect(createdKafkaTopic.GetName()).Should(Equal(kafkaTopicName))
 }
