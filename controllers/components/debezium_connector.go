@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-
 type DebeziumConnector struct {
 	name               string
 	version            string
@@ -74,7 +73,7 @@ func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
 		}
-		
+
 		for _, conn := range allconns.Items {
 			if debConPtr.GetName() == conn.GetName() {
 				if equality.Semantic.DeepEqual(*debConPtr, conn) {
