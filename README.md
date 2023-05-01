@@ -102,6 +102,14 @@ or the ports can be forwarded via the [kubefwd](https://github.com/txn2/kubefwd)
 sudo -E kubefwd svc -n test --kubeconfig ~/.kube/config -m 8080:8090 -m 8081:8091
 ```
 
+### Dev environment credentials
+
+`./dev/get_credentials.sh` is a helper script to populate a shell's environment with credentials to the databases and Elasticsearch. Use the following command to populate the environment.
+
+```bash
+source ./dev/get_credentials.sh test
+```
+
 ### Reset the development environment
 
 It is easiest to completely delete the minikube instance then rerun the `setup-clowder.sh` script when necessary.
