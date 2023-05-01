@@ -12,7 +12,7 @@ echo -e "Using namespace $PROJECT_NAME\n"
 
 # host inventory
 HBI_DATABASE_SECRET_NAME="host-inventory-db"
-HAS_INVENTORY_SECRET=$(kubectl get secrets -o json | jq ".items[] | select(.metadata.name==\"$HBI_DATABASE_SECRET_NAME\")")
+HAS_INVENTORY_SECRET=$(kubectl get secrets -o json -n $PROJECT_NAME | jq ".items[] | select(.metadata.name==\"$HBI_DATABASE_SECRET_NAME\")")
 if [ -n "$HAS_INVENTORY_SECRET" ]; then
   HBI_USER=$(kubectl -n "$PROJECT_NAME" get secret/"$HBI_DATABASE_SECRET_NAME" -o custom-columns=:data.username | base64 -d)
   HBI_PASSWORD=$(kubectl -n "$PROJECT_NAME" get secret/"$HBI_DATABASE_SECRET_NAME" -o custom-columns=:data.password | base64 -d)
@@ -33,7 +33,7 @@ fi
 
 # elasticsearch
 ELASTICSEARCH_SECRET_NAME="xjoin-elasticsearch-es-elastic-user"
-HAS_ELASTICSEARCH_SECRET=$(kubectl get secrets -o json | jq ".items[] | select(.metadata.name==\"$ELASTICSEARCH_SECRET_NAME\")")
+HAS_ELASTICSEARCH_SECRET=$(kubectl get secrets -o json -n $PROJECT_NAME | jq ".items[] | select(.metadata.name==\"$ELASTICSEARCH_SECRET_NAME\")")
 if [ -n "$HAS_ELASTICSEARCH_SECRET" ]; then
   ES_USERNAME=elastic
   ES_PASSWORD=$(kubectl -n "$PROJECT_NAME" get secret/"$ELASTICSEARCH_SECRET_NAME" -o custom-columns=:data.elastic | base64 -d)
@@ -46,7 +46,7 @@ fi
 
 # advisor
 ADVISOR_SECRET_NAME="advisor-backend-db"
-HAS_ADVISOR_SECRET=$(kubectl get secrets -o json | jq ".items[] | select(.metadata.name==\"$ADVISOR_SECRET_NAME\")")
+HAS_ADVISOR_SECRET=$(kubectl get secrets -o json  -n $PROJECT_NAME | jq ".items[] | select(.metadata.name==\"$ADVISOR_SECRET_NAME\")")
 if [ -n "$HAS_ADVISOR_SECRET" ]; then
   ADVISOR_USER=$(kubectl -n "$PROJECT_NAME" get secret/"$ADVISOR_SECRET_NAME" -o custom-columns=:data.username | base64 -d)
   ADVISOR_PASSWORD=$(kubectl -n "$PROJECT_NAME" get secret/"$ADVISOR_SECRET_NAME" -o custom-columns=:data.password | base64 -d)
@@ -65,7 +65,7 @@ fi
 
 # compliance
 COMPLIANCE_SECRET_NAME="compliance-db"
-HAS_COMPLIANCE_SECRET=$(kubectl get secrets -o json | jq ".items[] | select(.metadata.name==\"$COMPLIANCE_SECRET_NAME\")")
+HAS_COMPLIANCE_SECRET=$(kubectl get secrets -o json  -n $PROJECT_NAME | jq ".items[] | select(.metadata.name==\"$COMPLIANCE_SECRET_NAME\")")
 if [ -n "$HAS_COMPLIANCE_SECRET" ]; then
   COMPLIANCE_USER=$(kubectl -n "$PROJECT_NAME" get secret/"$COMPLIANCE_SECRET_NAME" -o custom-columns=:data.username | base64 -d)
   COMPLIANCE_PASSWORD=$(kubectl -n "$PROJECT_NAME" get secret/"$COMPLIANCE_SECRET_NAME" -o custom-columns=:data.password | base64 -d)
