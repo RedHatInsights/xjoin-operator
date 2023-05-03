@@ -56,7 +56,7 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 
 	// leave this commented line for testing.
 	// topicIn, err := kt.KafkaTopics.GetTopic("platform.inventory.events")
-	topicIn, err := kt.KafkaTopics.GetTopic(kt.name)
+	topicIn, err := kt.KafkaTopics.GetTopic(kt.Name())
 
 	if err != nil {
 		return fmt.Errorf("Error encountered when getting KafkaTopic named, %s", kt.name), errors.Wrap(err, 0)
