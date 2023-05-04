@@ -51,7 +51,7 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 		return nil, errors.Wrap(err, 0)
 	}
 	if !found {
-		return fmt.Errorf("KafkaTopic named, %s, does not exist.", kt.name), nil
+		return fmt.Errorf("KafkaTopic named, %s, does not exist.", kt.Name()), nil
 	}
 
 	// leave this commented line for testing.
@@ -59,7 +59,7 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 	topicIn, err := kt.KafkaTopics.GetTopic(kt.Name())
 
 	if err != nil {
-		return fmt.Errorf("Error encountered when getting KafkaTopic named, %s", kt.name), errors.Wrap(err, 0)
+		return nil, fmt.Errorf("Error encountered when getting KafkaTopic: %w", err)
 	}
 
 	if topicIn != nil {
@@ -72,7 +72,7 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 		// make the topic data accessible, which is private by design
 		topicInPtr, ok := topicIn.(*unstructured.Unstructured)
 		if !ok {
-			return fmt.Errorf("problem getting the topic %s details", topicIn), nil
+			return nil, fmt.Errorf("Problem getting the topic %t", ok)
 		}
 
 		for _, topic := range allTopics {
@@ -85,7 +85,7 @@ func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
 			}
 		}
 	} else {
-		problem = fmt.Errorf("Kafka topic named, \"%s\", not found", kt.name)
+		problem = fmt.Errorf("Kafka topic named, \"%s\", not found", kt.Name())
 	}
 	return
 }
