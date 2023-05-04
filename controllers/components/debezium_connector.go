@@ -62,16 +62,16 @@ func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
 
 	// leave this commented line for testing
 	// debConPtr, err := dc.KafkaClient.GetConnector("xjoinindexpipeline.hosts.1679941693938094928")
-	debConPtr, err := dc.KafkaClient.GetConnector(dc.name)
+	debConPtr, err := dc.KafkaClient.GetConnector(dc.Name())
 
 	if err != nil {
-		return fmt.Errorf("Error encountered when getting DebeziumConnector named, %s", dc.name), errors.Wrap(err, 0)
+		return nil, fmt.Errorf("Error encountered when getting DebeziumConnector: %w", err)
 	}
 	if debConPtr != nil {
 		var allconns *unstructured.UnstructuredList
 		allconns, err := dc.KafkaClient.ListConnectors()
 		if err != nil {
-			return nil, errors.Wrap(err, 0)
+			return nil, fmt.Errorf("Error encountered when listing connectors: %w", err)
 		}
 
 		for _, conn := range allconns.Items {
