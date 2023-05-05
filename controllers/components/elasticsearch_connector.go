@@ -1,9 +1,13 @@
 package components
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
-	"strings"
+	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 type ElasticsearchConnector struct {
@@ -48,6 +52,37 @@ func (es ElasticsearchConnector) Delete() (err error) {
 }
 
 func (es *ElasticsearchConnector) CheckDeviation() (problem, err error) {
+	found, err := es.Exists()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	if !found {
+		return fmt.Errorf("ElasticsearchConnector named, %s, does not exist.", es.Name()), nil
+	}
+
+	esConPtr, err := es.KafkaClient.GetConnector(es.Name())
+
+	if err != nil {
+		return nil, fmt.Errorf("Error encountered when getting ElasticsearchConnector: %w", err)
+	}
+	if esConPtr != nil {
+		var allConns *unstructured.UnstructuredList
+		allConns, err := es.KafkaClient.ListConnectors()
+
+		if err != nil {
+			return nil, fmt.Errorf("Error encountered when listing connectors: %w", err)
+		}
+
+		for _, conn := range allConns.Items {
+			if esConPtr.GetName() == conn.GetName() {
+				if equality.Semantic.DeepEqual(*esConPtr, conn) {
+					return nil, nil
+				} else {
+					return fmt.Errorf("Elasticsearch connector named %s has changed", conn.GetName()), nil
+				}
+			}
+		}
+	}
 	return
 }
 
