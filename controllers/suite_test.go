@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/go-errors/errors"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/go-errors/errors"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	strimziApi "github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
 	. "github.com/onsi/ginkgo/v2"
@@ -40,7 +41,7 @@ var K8sGetInterval = 100 * time.Millisecond
 
 var testLogger = logf.Log.WithName("test")
 
-//this is used to output stack traces when an error occurs
+// this is used to output stack traces when an error occurs
 func checkError(err error) {
 	if err != nil {
 		testLogger.Error(errors.Wrap(err, 0), "test failure")

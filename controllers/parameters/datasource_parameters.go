@@ -86,7 +86,7 @@ func BuildDataSourceParameters() *DataSourceParameters {
 				"database.server.name": "{{.DatabaseServerName}}",
 				"database.sslmode": "{{.DatabaseSSLMode}}",
 				"database.sslrootcert": "{{.DatabaseSSLRootCert}}",
-				"table.allowlist": "{{.DatabaseTable}}",
+				"table.whitelist": "{{.DatabaseTable}}",
 				"plugin.name": "pgoutput",
 				"transforms": "unwrap, reroute",
 				"transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",

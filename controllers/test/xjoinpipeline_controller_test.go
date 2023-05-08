@@ -68,7 +68,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(dbConnectorConfig["max.queue.size"]).To(Equal(int64(1000)))
 			Expect(dbConnectorConfig["poll.interval.ms"]).To(Equal(int64(100)))
 			Expect(dbConnectorConfig["slot.name"]).To(Equal(ResourceNamePrefix + "_" + pipeline.Status.PipelineVersion))
-			Expect(dbConnectorConfig["table.allowlist"]).To(Equal("public.hosts"))
+			Expect(dbConnectorConfig["table.whitelist"]).To(Equal("public.hosts"))
 			Expect(dbConnectorConfig["database.server.name"]).To(Equal(ResourceNamePrefix + "." + pipeline.Status.PipelineVersion))
 			Expect(dbConnectorConfig["errors.log.enable"]).To(Equal(true))
 			Expect(dbConnectorConfig["transforms.unwrap.type"]).To(Equal("io.debezium.transforms.ExtractNewRecordState"))

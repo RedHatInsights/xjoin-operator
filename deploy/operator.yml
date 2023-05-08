@@ -125,7 +125,7 @@ parameters:
       "${env:HOST_INVENTORY_DB_NAME}", "database.server.name":
       "{{.ResourceNamePrefix}}.{{.Version}}", "database.sslmode":
       "{{.HBIDBSSLMode}}", "database.sslrootcert": "{{.HBIDBSSLRootCert}}",
-      "table.allowlist": "public.hosts", "plugin.name": "pgoutput",
+      "table.whitelist": "public.hosts", "plugin.name": "pgoutput",
       "transforms": "unwrap", "transforms.unwrap.type":
       "io.debezium.transforms.ExtractNewRecordState",
       "transforms.unwrap.delete.handling.mode": "rewrite", "errors.log.enable":

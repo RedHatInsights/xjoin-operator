@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 )
@@ -25,8 +26,9 @@ func (c *Custodian) AddComponent(component Component) {
 }
 
 // Scrub removes any components not in validVersions.
-//       When a removal fails it continues scrubbing.
-//       Each error is returned when the scrubbing is complete.
+//
+//	When a removal fails it continues scrubbing.
+//	Each error is returned when the scrubbing is complete.
 func (c *Custodian) Scrub() (allErrors []error) {
 	for _, component := range c.components {
 		installedVersions, err := component.ListInstalledVersions()

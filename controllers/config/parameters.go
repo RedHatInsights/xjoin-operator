@@ -14,7 +14,7 @@ var secretTypes = secrets{
 	schemaRegistry: "schemaregistry",
 }
 
-//Parameters are the xjoin.v1 parameters
+// Parameters are the xjoin.v1 parameters
 type Parameters struct {
 	Ephemeral                            Parameter
 	ResourceNamePrefix                   Parameter
@@ -268,7 +268,7 @@ func NewXJoinConfiguration() Parameters {
 						    "type": "keyword"
 						  },
 						  "name": {
-s							"type": "keyword",
+							"type": "keyword",
 							"fields": {
 							  "lowercase": {
 								"type": "keyword",
@@ -535,7 +535,7 @@ s							"type": "keyword",
 				"database.server.name": "{{.ResourceNamePrefix}}.{{.Version}}",
 				"database.sslmode": "{{.HBIDBSSLMode}}",
 				"database.sslrootcert": "{{.HBIDBSSLRootCert}}",
-				"table.allowlist": "public.hosts",
+				"table.whitelist": "public.hosts",
 				"plugin.name": "pgoutput",
 				"transforms": "unwrap",
 				"transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",

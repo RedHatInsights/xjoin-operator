@@ -17,7 +17,7 @@
   "plugin.name": "pgoutput",
   "poll.interval.ms": 100,
   "slot.name": "xjoindatasourcepipeline_test-data-source-pipeline_1234",
-  "table.allowlist": "dbTable",
+  "table.whitelist": "dbTable",
   "tasks.max": "1",
   "transforms": "unwrap, reroute",
   "transforms.reroute.topic.regex": ".*",
