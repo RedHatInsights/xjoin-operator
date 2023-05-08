@@ -57,7 +57,7 @@ func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
 		return nil, errors.Wrap(err, 0)
 	}
 	if !found {
-		return fmt.Errorf("DebeziumConnector named, %s, does not exist.", dc.name), nil
+		return fmt.Errorf("DebeziumConnector named, %s, does not exist.", dc.Name()), nil
 	}
 
 	// leave this commented line for testing
@@ -67,14 +67,21 @@ func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error encountered when getting DebeziumConnector: %w", err)
 	}
-	if debConPtr != nil {
-		var allconns *unstructured.UnstructuredList
-		allconns, err := dc.KafkaClient.ListConnectors()
+
+	if debConPtr == nil {
+		return fmt.Errorf("Error encountered when getting DebeziumConnector: %w", err), nil
+	} else {
+		var allConns *unstructured.UnstructuredList
+		allConns, err := dc.KafkaClient.ListConnectors()
 		if err != nil {
 			return nil, fmt.Errorf("Error encountered when listing connectors: %w", err)
 		}
 
-		for _, conn := range allconns.Items {
+		if allConns.Items == nil || len(allConns.Items) == 0 {
+			return fmt.Errorf("No Debezium connector available"), nil
+		}
+
+		for _, conn := range allConns.Items {
 			if debConPtr.GetName() == conn.GetName() {
 				if equality.Semantic.DeepEqual(*debConPtr, conn) {
 					return nil, nil
