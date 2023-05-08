@@ -65,12 +65,19 @@ func (es *ElasticsearchConnector) CheckDeviation() (problem, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error encountered when getting ElasticsearchConnector: %w", err)
 	}
-	if esConPtr != nil {
+
+	if esConPtr == nil {
+		return fmt.Errorf("Problem encountered when getting ElasticsearchConnector: %w", err), nil
+	} else {
 		var allConns *unstructured.UnstructuredList
 		allConns, err := es.KafkaClient.ListConnectors()
 
 		if err != nil {
 			return nil, fmt.Errorf("Error encountered when listing connectors: %w", err)
+		}
+
+		if allConns.Items == nil || len(allConns.Items) == 0 {
+			return fmt.Errorf("No Elasticsearch connector available"), nil
 		}
 
 		for _, conn := range allConns.Items {
