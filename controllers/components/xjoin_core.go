@@ -1,12 +1,16 @@
-package components
+package componentsxjoin
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+
 	"github.com/go-errors/errors"
+	. "github.com/redhatinsights/xjoin-go-lib/pkg/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
 )
 
 type XJoinCore struct {
@@ -133,6 +137,22 @@ func (xc XJoinCore) Delete() (err error) {
 }
 
 func (xc *XJoinCore) CheckDeviation() (problem, err error) {
+	schema, err := xc.SetSchemaNameNamespace()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	srschema := xc.Client.Scheme()
+
+	srschemaBytes, err := json.Marshal(srschema)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	if schema != string(srschemaBytes) {
+		problem = fmt.Errorf("schema in registry changed for subject %s", xc.Name())
+	}
+
 	return
 }
 
@@ -171,4 +191,22 @@ func (xc XJoinCore) ListInstalledVersions() (versions []string, err error) {
 	}
 
 	return
+}
+
+func (xc XJoinCore) SetSchemaNameNamespace() (schema string, err error) {
+	var schemaObj Schema
+	err = json.Unmarshal([]byte(xc.Schema), &schemaObj)
+	if err != nil {
+		return schema, errors.Wrap(err, 0)
+	}
+
+	schemaObj.Namespace = xc.name
+	schemaObj.Name = xc.Namespace
+
+	schemaBytes, err := json.Marshal(schemaObj)
+	if err != nil {
+		return schema, errors.Wrap(err, 0)
+	}
+
+	return string(schemaBytes), err
 }
