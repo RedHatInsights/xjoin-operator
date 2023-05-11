@@ -17,6 +17,18 @@ type XJoinIndexIteration struct {
 
 func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (err error) {
 	indexPipeline := unstructured.Unstructured{}
+
+	spec := map[string]interface{}{
+		"name":       name,
+		"version":    version,
+		"avroSchema": i.Parameters.AvroSchema.String(),
+		"pause":      i.Parameters.Pause.Bool(),
+	}
+
+	if len(i.Parameters.CustomSubgraphImages.Value().([]v1alpha1.CustomSubgraphImage)) != 0 {
+		spec["customSubgraphImages"] = i.Parameters.CustomSubgraphImages.Value()
+	}
+
 	indexPipeline.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      name + "." + version,
@@ -25,13 +37,7 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 				common.COMPONENT_NAME_LABEL: name,
 			},
 		},
-		"spec": map[string]interface{}{
-			"name":                 name,
-			"version":              version,
-			"avroSchema":           i.Parameters.AvroSchema.String(),
-			"pause":                i.Parameters.Pause.Bool(),
-			"customSubgraphImages": i.Parameters.CustomSubgraphImages.Value(),
-		},
+		"spec": spec,
 	}
 	indexPipeline.SetGroupVersionKind(common.IndexPipelineGVK)
 

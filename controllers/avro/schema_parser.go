@@ -215,23 +215,25 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 			return references, errors.Wrap(err, 0)
 		}
 		statusMap := status.(map[string]interface{})
-		//version := statusMap["activeVersion"] //TODO temporary
-		version := statusMap["refreshingVersion"]
-		if version == nil {
-			err = errors.New("activeVersion missing from datasource.status")
-			return references, errors.Wrap(err, 0)
-		}
-		versionString := version.(string)
 
-		if versionString == "" {
-			d.Log.Info("Data source is not ready yet. It has no active version.",
-				"datasource", dataSourceName)
-			return
+		//determine which datasource version to use
+		activeVersion := statusMap["activeVersion"].(string)
+		refreshingVersion := statusMap["refreshingVersion"].(string)
+		activeVersionIsValid := statusMap["activeVersionIsValid"].(bool)
+		var chosenVersion string
+
+		if activeVersion != "" && activeVersionIsValid {
+			chosenVersion = statusMap["activeVersion"].(string)
+		} else if refreshingVersion != "" {
+			chosenVersion = refreshingVersion
+		} else {
+			return nil, errors.Wrap(errors.New(
+				"Datasource ("+dataSourceName+") is not ready yet. It has no active or refreshing version."), 0)
 		}
 
 		ref := srclient.Reference{
 			Name:    field.Type[0].Type,
-			Subject: "xjoindatasourcepipeline." + dataSourceName + "." + versionString + "-value",
+			Subject: "xjoindatasourcepipeline." + dataSourceName + "." + chosenVersion + "-value",
 			Version: 1,
 		}
 
