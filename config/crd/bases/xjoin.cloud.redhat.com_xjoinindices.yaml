@@ -60,10 +60,6 @@ spec:
                 type: string
               activeVersionIsValid:
                 type: boolean
-              dataSources:
-                additionalProperties:
-                  type: string
-                type: object
               refreshingVersion:
                 type: string
               refreshingVersionIsValid:

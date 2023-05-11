@@ -170,7 +170,13 @@ func (c *RestClient) ListVersionsForSchemaName(schemaName string) (versions []st
 			resCode, resBody["message"])), 0)
 	}
 
-	for _, schema := range resBody["artifacts"].([]interface{}) {
+	artifacts, ok := resBody["artifacts"].([]interface{})
+	if !ok {
+		return nil, errors.Wrap(errors.New(
+			"Invalid response from apicurio GET /search/artifacts, artifacts is not an array"), 0)
+	}
+
+	for _, schema := range artifacts {
 		schemaMap := schema.(map[string]interface{})
 		schemaId := schemaMap["id"].(string)
 		schemaIdParts := strings.Split(schemaId, ".")

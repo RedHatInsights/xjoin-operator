@@ -29,8 +29,8 @@ type XJoinAPISubGraph struct {
 }
 
 func (x *XJoinAPISubGraph) SetName(name string) {
-	x.schemaName = strings.ToLower(strings.ReplaceAll(name, ".", "-"))
-	x.name = x.schemaName
+	x.schemaName = strings.ToLower(name)
+	x.name = strings.ToLower(strings.ReplaceAll(name, ".", "-"))
 
 	if x.Suffix != "" {
 		x.name = x.name + "-" + x.Suffix
@@ -41,11 +41,11 @@ func (x *XJoinAPISubGraph) SetVersion(version string) {
 	x.version = version
 }
 
-func (x XJoinAPISubGraph) Name() string {
+func (x *XJoinAPISubGraph) Name() string {
 	return x.name + "-" + x.version
 }
 
-func (x XJoinAPISubGraph) Create() (err error) {
+func (x *XJoinAPISubGraph) Create() (err error) {
 	deployment := &unstructured.Unstructured{}
 
 	labels := map[string]interface{}{
@@ -180,7 +180,7 @@ func (x XJoinAPISubGraph) Create() (err error) {
 	return
 }
 
-func (x XJoinAPISubGraph) Delete() (err error) {
+func (x *XJoinAPISubGraph) Delete() (err error) {
 	//delete the deployment
 	deployment := &unstructured.Unstructured{}
 	deployment.SetGroupVersionKind(common.DeploymentGVK)
@@ -208,10 +208,10 @@ func (x XJoinAPISubGraph) Delete() (err error) {
 	}
 
 	//delete the gql schema from registry
-	exists, err := x.Registry.CheckIfSchemaVersionExists(x.schemaName+"-"+x.version, 1) //TODO
+	exists, err := x.Registry.CheckIfSchemaVersionExists(x.schemaName+"."+x.version, 1) //TODO
 
 	if exists {
-		err = x.Registry.DeleteSchema(x.schemaName + "-" + x.version)
+		err = x.Registry.DeleteSchema(x.schemaName + "." + x.version)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
@@ -224,7 +224,7 @@ func (x *XJoinAPISubGraph) CheckDeviation() (problem, err error) {
 	return
 }
 
-func (x XJoinAPISubGraph) Exists() (exists bool, err error) {
+func (x *XJoinAPISubGraph) Exists() (exists bool, err error) {
 	deployments := &unstructured.UnstructuredList{}
 	deployments.SetGroupVersionKind(common.DeploymentGVK)
 	fields := client.MatchingFields{}
@@ -242,7 +242,7 @@ func (x XJoinAPISubGraph) Exists() (exists bool, err error) {
 	return
 }
 
-func (x XJoinAPISubGraph) ListInstalledVersions() (versions []string, err error) {
+func (x *XJoinAPISubGraph) ListInstalledVersions() (versions []string, err error) {
 	deployments := &unstructured.UnstructuredList{}
 	deployments.SetGroupVersionKind(common.DeploymentGVK)
 	fields := client.MatchingFields{

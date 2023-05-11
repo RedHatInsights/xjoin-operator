@@ -60,6 +60,10 @@ spec:
             type: object
           status:
             properties:
+              dataSources:
+                additionalProperties:
+                  type: string
+                type: object
               validationResponse:
                 properties:
                   details:

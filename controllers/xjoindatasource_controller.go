@@ -8,11 +8,13 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	. "github.com/redhatinsights/xjoin-operator/controllers/datasource"
+	"github.com/redhatinsights/xjoin-operator/controllers/index"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -126,6 +128,35 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
+	//check status of active and refreshing IndexPipelines, update instance.Status accordingly
+	if instance.Status.ActiveVersion != "" {
+		datasourcePipelineNamespacedName := types.NamespacedName{
+			Name:      i.Instance.GetName() + "." + instance.Status.ActiveVersion,
+			Namespace: i.Instance.GetNamespace(),
+		}
+
+		activeDataSourcePipeline, err := k8sUtils.FetchXJoinDataSourcePipeline(i.Client, datasourcePipelineNamespacedName, i.Context)
+		if err != nil {
+			return reconcile.Result{}, errors.Wrap(err, 0)
+		}
+
+		instance.Status.ActiveVersionIsValid = activeDataSourcePipeline.Status.ValidationResponse.Result == index.Valid
+	}
+
+	if instance.Status.RefreshingVersion != "" {
+		dataSourcePipelineNamespacedName := types.NamespacedName{
+			Name:      i.Instance.GetName() + "." + instance.Status.RefreshingVersion,
+			Namespace: i.Instance.GetNamespace(),
+		}
+
+		refreshingDataSourcePipeline, err := k8sUtils.FetchXJoinDataSourcePipeline(i.Client, dataSourcePipelineNamespacedName, i.Context)
+		if err != nil {
+			return reconcile.Result{}, errors.Wrap(err, 0)
+		}
+
+		instance.Status.RefreshingVersionIsValid = refreshingDataSourcePipeline.Status.ValidationResponse.Result == index.Valid
+	}
+
 	dataSourceReconciler := NewReconcileMethods(i, common.DataSourceGVK)
 	reconciler := common.NewReconciler(dataSourceReconciler, instance, reqLogger)
 	err = reconciler.Reconcile(false)
@@ -141,12 +172,6 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 	instance.Status.SpecHash, err = k8sUtils.SpecHash(instance.Spec)
 	if err != nil {
 		return result, errors.Wrap(err, 0)
-	}
-
-	//TODO actually validate
-	if originalInstance.Status.RefreshingVersion != "" {
-		instance.Status.ActiveVersionIsValid = true
-		instance.Status.ActiveVersion = instance.Status.RefreshingVersion
 	}
 
 	return i.UpdateStatusAndRequeue(time.Second * 30)

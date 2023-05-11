@@ -32,7 +32,7 @@ func (c *Custodian) Scrub() (allErrors []error) {
 	for _, component := range c.components {
 		installedVersions, err := component.ListInstalledVersions()
 		if err != nil {
-			err = fmt.Errorf("%w; Unable to list versions for component while scrubbing: %s", err, component.Name())
+			err = fmt.Errorf("%w; Unable to list versions for component while scrubbing: %T, %s", err, component, component.Name())
 			allErrors = append(allErrors, errors.Wrap(err, 0))
 			continue
 		}

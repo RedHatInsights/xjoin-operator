@@ -209,6 +209,48 @@ spec:
                 type: string
             type: object
           status:
+            properties:
+              validationResponse:
+                properties:
+                  details:
+                    properties:
+                      idsMissingFromElasticsearch:
+                        items:
+                          type: string
+                        type: array
+                      idsMissingFromElasticsearchCount:
+                        type: integer
+                      idsOnlyInElasticsearch:
+                        items:
+                          type: string
+                        type: array
+                      idsOnlyInElasticsearchCount:
+                        type: integer
+                      idsWithMismatchContent:
+                        items:
+                          type: string
+                        type: array
+                      mismatchContentDetails:
+                        items:
+                          properties:
+                            databaseContent:
+                              type: string
+                            elasticsearchContent:
+                              type: string
+                            id:
+                              type: string
+                          type: object
+                        type: array
+                      totalMismatch:
+                        type: integer
+                    type: object
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                  result:
+                    type: string
+                type: object
             type: object
         type: object
     served: true

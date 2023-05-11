@@ -29,6 +29,9 @@ const ValidatorPodRunning = "running"
 const ValidatorPodSuccess = "success"
 const ValidatorPodFailed = "failed"
 
+const Valid = "valid"
+const Invalid = "invalid"
+
 type XJoinIndexValidatorIteration struct {
 	common.Iteration
 	Parameters             parameters.IndexParameters
@@ -115,28 +118,41 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 			return "", errors.Wrap(err, 0)
 		}
 
-		//update xjoinindexpipeline resource based on xjoin-validation pod's output
 		i.Log.Info(response.Message)
 
-		indexNamespacedName := types.NamespacedName{
+		//get xjoinindexpipeline
+		indexPipelineNamespacedName := types.NamespacedName{
 			Name:      i.Instance.GetOwnerReferences()[0].Name,
 			Namespace: i.Instance.GetNamespace(),
 		}
-		xjoinIndexPipeline, err := k8sUtils.FetchXJoinIndexPipeline(i.Client, indexNamespacedName, i.Context)
+		xjoinIndexPipeline, err := k8sUtils.FetchXJoinIndexPipeline(i.Client, indexPipelineNamespacedName, i.Context)
 		if err != nil {
 			return "", errors.Wrap(err, 0)
 		}
-		xjoinIndexPipeline.Status.ValidationResponse = response
 
-		if err := i.Client.Status().Update(i.Context, xjoinIndexPipeline); err != nil {
-			if k8errors.IsConflict(err) {
-				i.Log.Error(err, "Status conflict")
+		//update datasource resource based on xjoin-validation pod's output
+		for dataSourceName, dataSourcePipelineVersion := range xjoinIndexPipeline.Status.DataSources {
+			datasourceNamespacedName := types.NamespacedName{
+				Name:      dataSourceName + "." + dataSourcePipelineVersion,
+				Namespace: i.Instance.GetNamespace(),
+			}
+			datasourcePipeline, err := k8sUtils.FetchXJoinDataSourcePipeline(i.Client, datasourceNamespacedName, i.Context)
+			if err != nil {
 				return "", errors.Wrap(err, 0)
 			}
 
-			return "", errors.Wrap(err, 0)
+			datasourcePipeline.Status.ValidationResponse = response
+
+			if err := i.Client.Status().Update(i.Context, datasourcePipeline); err != nil {
+				if k8errors.IsConflict(err) {
+					i.Log.Error(err, "Status conflict")
+					return "", errors.Wrap(err, 0)
+				}
+				return "", errors.Wrap(err, 0)
+			}
 		}
 
+		//cleanup the validation pod
 		err = i.Client.Delete(i.Context, pod)
 		if err != nil {
 			return "", errors.Wrap(err, 0)
@@ -160,7 +176,7 @@ func (i *XJoinIndexValidatorIteration) GetInstance() *v1alpha1.XJoinIndexValidat
 }
 
 func (i *XJoinIndexValidatorIteration) ValidationPodName() string {
-	name := "xjoin-validation-" + i.Instance.GetName()
+	name := i.Instance.GetName()
 	name = strings.ReplaceAll(name, ".", "-")
 	return name
 }
