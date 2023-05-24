@@ -23,11 +23,11 @@ func (es *ElasticsearchConnector) SetVersion(version string) {
 	es.version = version
 }
 
-func (es ElasticsearchConnector) Name() string {
+func (es *ElasticsearchConnector) Name() string {
 	return es.name + "." + es.version
 }
 
-func (es ElasticsearchConnector) Create() (err error) {
+func (es *ElasticsearchConnector) Create() (err error) {
 	m := es.TemplateParameters
 	m["Topic"] = es.Topic
 	//m["RenameTopicReplacement"] = fmt.Sprintf("%s.%s", kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
@@ -39,7 +39,7 @@ func (es ElasticsearchConnector) Create() (err error) {
 	return
 }
 
-func (es ElasticsearchConnector) Delete() (err error) {
+func (es *ElasticsearchConnector) Delete() (err error) {
 	err = es.KafkaClient.DeleteConnector(es.Name())
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -51,7 +51,7 @@ func (es *ElasticsearchConnector) CheckDeviation() (problem, err error) {
 	return
 }
 
-func (es ElasticsearchConnector) Exists() (exists bool, err error) {
+func (es *ElasticsearchConnector) Exists() (exists bool, err error) {
 	exists, err = es.KafkaClient.CheckIfConnectorExists(es.Name())
 	if err != nil {
 		return false, errors.Wrap(err, 0)
@@ -59,7 +59,7 @@ func (es ElasticsearchConnector) Exists() (exists bool, err error) {
 	return exists, nil
 }
 
-func (es ElasticsearchConnector) ListInstalledVersions() (versions []string, err error) {
+func (es *ElasticsearchConnector) ListInstalledVersions() (versions []string, err error) {
 	installedConnectors, err := es.KafkaClient.ListConnectorNamesForPrefix(es.name)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
@@ -69,4 +69,8 @@ func (es ElasticsearchConnector) ListInstalledVersions() (versions []string, err
 		versions = append(versions, strings.Split(connector, es.name+".")[1])
 	}
 	return
+}
+
+func (es *ElasticsearchConnector) Reconcile() (err error) {
+	return nil
 }

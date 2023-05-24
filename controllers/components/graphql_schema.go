@@ -13,12 +13,14 @@ type GraphQLSchema struct {
 	name       string
 	version    string
 	suffix     string
+	active     bool
 }
 
 type GraphQLSchemaParameters struct {
 	Schema   string
 	Registry *schemaregistry.RestClient
 	Suffix   string
+	Active   bool
 }
 
 func NewGraphQLSchema(parameters GraphQLSchemaParameters) *GraphQLSchema {
@@ -26,10 +28,11 @@ func NewGraphQLSchema(parameters GraphQLSchemaParameters) *GraphQLSchema {
 		schema:     parameters.Schema,
 		restClient: parameters.Registry,
 		suffix:     parameters.Suffix,
+		active:     parameters.Active,
 	}
 }
 
-func (as GraphQLSchema) NameSuffix() string {
+func (as *GraphQLSchema) NameSuffix() string {
 	return as.suffix
 }
 
@@ -84,4 +87,20 @@ func (as *GraphQLSchema) ListInstalledVersions() (installedVersions []string, er
 		return installedVersions, errors.Wrap(err, 0)
 	}
 	return
+}
+
+func (as *GraphQLSchema) Reconcile() (err error) {
+	if as.active {
+		err = as.restClient.EnableSchema(as.Name())
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	} else {
+		err = as.restClient.DisableSchema(as.Name())
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+
+	return nil
 }

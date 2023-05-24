@@ -222,6 +222,11 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
+	err = componentManager.Reconcile()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
 	problems, err := componentManager.CheckForDeviations()
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)

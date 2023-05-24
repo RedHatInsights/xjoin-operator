@@ -126,7 +126,7 @@ func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err e
 	return
 }
 
-func (as AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
+func (as *AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
 	var schemaObj Schema
 	err = json.Unmarshal([]byte(as.schema), &schemaObj)
 	if err != nil {
@@ -142,4 +142,8 @@ func (as AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
 	}
 
 	return string(schemaBytes), err
+}
+
+func (as *AvroSchema) Reconcile() (err error) {
+	return nil
 }

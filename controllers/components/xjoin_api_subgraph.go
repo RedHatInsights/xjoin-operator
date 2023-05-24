@@ -261,3 +261,7 @@ func (x *XJoinAPISubGraph) ListInstalledVersions() (versions []string, err error
 
 	return
 }
+
+func (x *XJoinAPISubGraph) Reconcile() (err error) {
+	return nil
+}

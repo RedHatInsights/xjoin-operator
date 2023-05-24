@@ -148,3 +148,7 @@ func (xv *XJoinIndexValidator) ListInstalledVersions() (versions []string, err e
 
 	return
 }
+
+func (xv *XJoinIndexValidator) Reconcile() (err error) {
+	return nil
+}

@@ -107,6 +107,14 @@ func (x *XJoinIndexPipelineTestReconciler) registerDeleteMocks() {
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(200, `{}`))
 
+	//graphql schema state update mocks
+	getMetaResponder, err := httpmock.NewJsonResponder(200, map[string]string{"state": "ENABLED"})
+	checkError(err)
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/meta",
+		getMetaResponder)
+
 	//elasticsearch index mocks
 	httpmock.RegisterResponder(
 		"HEAD",
@@ -201,6 +209,19 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 		"http://apicurio:1080/apis/ccompat/v6/schemas/ids/1",
 		httpmock.NewStringResponder(200, `{"schema":"{\"name\":\"Value\",\"namespace\":\"xjoindatasourcepipeline.`+x.GetName()+`\"}","schemaType":"AVRO","references":[]}`))
 
+	//graphql schema state update mocks
+	getMetaResponder, err := httpmock.NewJsonResponder(200, map[string]string{"state": "ENABLED"})
+	checkError(err)
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/meta",
+		getMetaResponder)
+
+	httpmock.RegisterResponder(
+		"PUT",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/state",
+		httpmock.NewStringResponder(200, `{}`))
+
 	//graphql schema mocks
 	httpmock.RegisterResponder(
 		"GET",
@@ -232,6 +253,19 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 		httpmock.RegisterResponder(
 			"PUT",
 			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version+"/meta",
+			httpmock.NewStringResponder(200, `{}`))
+
+		//graphql schema state update mocks
+		getMetaResponder, err = httpmock.NewJsonResponder(200, map[string]string{"state": "ENABLED"})
+		checkError(err)
+		httpmock.RegisterResponder(
+			"GET",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version+"/meta",
+			getMetaResponder)
+
+		httpmock.RegisterResponder(
+			"PUT",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version+"/state",
 			httpmock.NewStringResponder(200, `{}`))
 	}
 
@@ -279,6 +313,19 @@ func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks() {
 		"GET",
 		"http://localhost:9200/_ingest/pipeline/"+x.Name+"%2A",
 		httpmock.NewStringResponder(200, "{}"))
+
+	//graphql schema state update mocks
+	getMetaResponder, err := httpmock.NewJsonResponder(200, map[string]string{"state": "ENABLED"})
+	checkError(err)
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/meta",
+		getMetaResponder)
+
+	httpmock.RegisterResponder(
+		"PUT",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/state",
+		httpmock.NewStringResponder(200, `{}`))
 
 	//avro schema mocks
 	httpmock.RegisterResponder(

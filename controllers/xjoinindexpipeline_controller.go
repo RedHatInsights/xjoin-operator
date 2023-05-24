@@ -286,6 +286,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	}))
 	graphqlSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{
 		Registry: registryRestClient,
+		Active:   i.GetInstance().Status.Active,
 	})
 	componentManager.AddComponent(graphqlSchemaComponent)
 	componentManager.AddComponent(&components.XJoinCore{
@@ -325,6 +326,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		customSubgraphGraphQLSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{
 			Registry: registryRestClient,
 			Suffix:   customSubgraphImage.Name,
+			Active:   i.GetInstance().Status.Active,
 		})
 		componentManager.AddComponent(customSubgraphGraphQLSchemaComponent)
 		componentManager.AddComponent(&components.XJoinAPISubGraph{
@@ -364,6 +366,11 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	}
 
 	err = componentManager.CreateAll()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	err = componentManager.Reconcile()
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}

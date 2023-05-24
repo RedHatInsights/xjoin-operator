@@ -2,12 +2,14 @@ package index
 
 import (
 	"github.com/go-errors/errors"
+	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type ReconcileMethods struct {
@@ -71,12 +73,32 @@ func (d *ReconcileMethods) Refreshing() (err error) {
 }
 
 func (d *ReconcileMethods) RefreshComplete() (err error) {
+	//update the status of the refreshing IndexPipeline to be active so the gateway starts using it
+	refreshingPipeline := &v1alpha1.XJoinIndexPipeline{}
+	indexPipelineLookup := types.NamespacedName{
+		Namespace: d.iteration.GetInstance().GetNamespace(),
+		Name:      d.iteration.GetInstance().GetName() + "." + d.iteration.GetInstance().Status.RefreshingVersion,
+	}
+	err = d.iteration.Client.Get(d.iteration.Context, indexPipelineLookup, refreshingPipeline)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	refreshingPipeline.Status.Active = true
+
+	err = d.iteration.Client.Status().Update(d.iteration.Context, refreshingPipeline)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	//remove the invalid IndexPipeline
 	if d.iteration.GetInstance().Status.ActiveVersion != "" {
 		err = d.iteration.DeleteIndexPipeline(d.iteration.GetInstance().Name, d.iteration.GetInstance().Status.ActiveVersion)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 	}
+
 	return
 }
 

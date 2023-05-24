@@ -88,6 +88,13 @@ func (c *RestClient) RegisterGraphQLSchema(name string) (id string, err error) {
 			"unable to create graphql schema, statusCode: %v, message: %s", resCode, resBody["message"])), 0)
 	}
 
+	//set schema state to disabled
+	//it will be enabled when the pipeline becomes valid
+	err = c.DisableSchema(name)
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
+
 	//add labels
 	url := "http://" + strings.ReplaceAll(name, ".", "-") + ".test.svc:4000/graphql" //TODO url is static
 	labelsBody := make(map[string]interface{})
@@ -115,6 +122,104 @@ func (c *RestClient) RegisterGraphQLSchema(name string) (id string, err error) {
 	}
 
 	return name, nil
+}
+
+func (c *RestClient) GetSchemaState(name string) (state string, err error) {
+	resCode, resBody, err := c.MakeRequest(Request{
+		Method: http.MethodGet,
+		Path:   "/groups/default/artifacts/" + name + "/meta",
+		Headers: map[string]string{
+			"Accept": "application/json",
+		},
+	})
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
+
+	if resCode >= 300 {
+		return "", errors.Wrap(errors.New(fmt.Sprintf(
+			"unable to get schema state, statusCode: %v, message: %s", resCode, resBody["message"])), 0)
+	}
+
+	state, ok := resBody["state"].(string)
+	if !ok {
+		return "", errors.Wrap(errors.New(fmt.Sprintf(
+			"invalid response when getting schema state: %s", resBody)), 0)
+	}
+	return state, nil
+}
+
+func (c *RestClient) IsSchemaEnabled(name string) (bool, error) {
+	state, err := c.GetSchemaState(name)
+	if err != nil {
+		return false, errors.Wrap(err, 0)
+	}
+
+	if state == "ENABLED" {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func (c *RestClient) SetSchemaState(name string, state string) (err error) {
+	stateBody := make(map[string]interface{})
+	stateBody["state"] = state
+	stateBodyJson, err := json.Marshal(stateBody)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	resCode, resBody, err := c.MakeRequest(Request{
+		Method: http.MethodPut,
+		Path:   "/groups/default/artifacts/" + name + "/state",
+		Body:   string(stateBodyJson),
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	if resCode >= 300 {
+		return errors.Wrap(errors.New(fmt.Sprintf(
+			"unable to set schema state, statusCode: %v, message: %s", resCode, resBody["message"])), 0)
+	}
+
+	return nil
+}
+
+func (c *RestClient) EnableSchema(name string) (err error) {
+	alreadyEnabled, err := c.IsSchemaEnabled(name)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	if !alreadyEnabled {
+		err = c.SetSchemaState(name, "ENABLED")
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+
+	return
+}
+
+func (c *RestClient) DisableSchema(name string) (err error) {
+	isEnabled, err := c.IsSchemaEnabled(name)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	if isEnabled {
+		err = c.SetSchemaState(name, "DISABLED")
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+
+	return
 }
 
 func (c *RestClient) DeleteGraphQLSchema(name string) (err error) {
