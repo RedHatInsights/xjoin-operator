@@ -70,3 +70,7 @@ func (dc *DebeziumConnector) ListInstalledVersions() (versions []string, err err
 	}
 	return
 }
+
+func (dc *DebeziumConnector) Reconcile() (err error) {
+	return nil
+}

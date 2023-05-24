@@ -64,3 +64,7 @@ func (kt *KafkaTopic) ListInstalledVersions() (versions []string, err error) {
 	}
 	return
 }
+
+func (kt *KafkaTopic) Reconcile() (err error) {
+	return nil
+}

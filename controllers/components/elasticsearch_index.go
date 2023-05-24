@@ -62,3 +62,7 @@ func (es *ElasticsearchIndex) ListInstalledVersions() (versions []string, err er
 	}
 	return
 }
+
+func (es *ElasticsearchIndex) Reconcile() (err error) {
+	return nil
+}

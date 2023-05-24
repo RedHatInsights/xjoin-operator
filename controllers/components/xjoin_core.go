@@ -30,11 +30,11 @@ func (xc *XJoinCore) SetVersion(version string) {
 	xc.version = version
 }
 
-func (xc XJoinCore) Name() string {
+func (xc *XJoinCore) Name() string {
 	return xc.name + "-" + xc.version
 }
 
-func (xc XJoinCore) Create() (err error) {
+func (xc *XJoinCore) Create() (err error) {
 	deployment := &unstructured.Unstructured{}
 
 	labels := map[string]interface{}{
@@ -117,7 +117,7 @@ func (xc XJoinCore) Create() (err error) {
 	return
 }
 
-func (xc XJoinCore) Delete() (err error) {
+func (xc *XJoinCore) Delete() (err error) {
 	deployment := &unstructured.Unstructured{}
 	deployment.SetGroupVersionKind(common.DeploymentGVK)
 	err = xc.Client.Get(xc.Context, client.ObjectKey{Name: xc.Name(), Namespace: xc.Namespace}, deployment)
@@ -136,7 +136,7 @@ func (xc *XJoinCore) CheckDeviation() (problem, err error) {
 	return
 }
 
-func (xc XJoinCore) Exists() (exists bool, err error) {
+func (xc *XJoinCore) Exists() (exists bool, err error) {
 	deployments := &unstructured.UnstructuredList{}
 	deployments.SetGroupVersionKind(common.DeploymentGVK)
 	fields := client.MatchingFields{}
@@ -153,7 +153,7 @@ func (xc XJoinCore) Exists() (exists bool, err error) {
 	return
 }
 
-func (xc XJoinCore) ListInstalledVersions() (versions []string, err error) {
+func (xc *XJoinCore) ListInstalledVersions() (versions []string, err error) {
 	deployments := &unstructured.UnstructuredList{}
 	deployments.SetGroupVersionKind(common.DeploymentGVK)
 	labels := client.MatchingLabels{}
@@ -171,4 +171,8 @@ func (xc XJoinCore) ListInstalledVersions() (versions []string, err error) {
 	}
 
 	return
+}
+
+func (xc *XJoinCore) Reconcile() (err error) {
+	return nil
 }

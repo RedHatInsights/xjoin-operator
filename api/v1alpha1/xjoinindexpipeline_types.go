@@ -25,6 +25,10 @@ type XJoinIndexPipelineSpec struct {
 type XJoinIndexPipelineStatus struct {
 	ValidationResponse validation.ValidationResponse `json:"validationResponse,omitempty"`
 	DataSources        map[string]string             `json:"dataSources,omitempty"`
+
+	// +kubebuilder:validation:Required
+	// +kubebuilder:default:=false
+	Active bool `json:"active,omitempty"`
 }
 
 // +kubebuilder:object:root=true

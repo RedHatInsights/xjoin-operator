@@ -71,6 +71,10 @@ func (es *ElasticsearchPipeline) ListInstalledVersions() (versions []string, err
 	return
 }
 
+func (es *ElasticsearchPipeline) Reconcile() (err error) {
+	return nil
+}
+
 func (es *ElasticsearchPipeline) jsonFieldsToESPipeline() (pipeline string, err error) {
 	var pipelineObj elasticsearch.Pipeline
 	pipelineObj.Description = "test"
