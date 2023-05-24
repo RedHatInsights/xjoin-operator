@@ -7,8 +7,6 @@ set -e
 #
 ##########################################################################
 
-env
-
 function log ()
 {
   echo "######## $1 ########"
@@ -141,7 +139,3 @@ function build_a_tag ()
   docker push $CATALOG_IMAGE:$tag
   docker push $BUNDLE_IMAGE:$tag
 }
-
-build_a_tag latest
-build_a_tag security-compliance
-
