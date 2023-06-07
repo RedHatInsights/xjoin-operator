@@ -15,8 +15,8 @@ type ElasticsearchPipeline struct {
 	GenericElasticsearch elasticsearch.GenericElasticsearch
 }
 
-func (es *ElasticsearchPipeline) SetName(name string) {
-	es.name = strings.ToLower(name)
+func (es *ElasticsearchPipeline) SetName(kind string, name string) {
+	es.name = strings.ToLower(kind + "." + name)
 }
 
 func (es *ElasticsearchPipeline) SetVersion(version string) {

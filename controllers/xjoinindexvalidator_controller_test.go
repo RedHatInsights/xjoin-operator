@@ -133,7 +133,7 @@ var _ = Describe("XJoinIndexValidator", func() {
 			//avro environment variables
 			Expect(pod.Spec.Containers[0].Env).To(ContainElement(corev1.EnvVar{
 				Name:      "FULL_AVRO_SCHEMA",
-				Value:     "{\"type\":\"record\",\"name\":\"Value\",\"namespace\":\"test-index-validator.1234\",\"fields\":[{\"name\":\"testdatasource\",\"type\":{\"name\":\"xjoindatasourcepipeline.testdatasource.Value\",\"xjoin.type\":\"reference\"}}]}",
+				Value:     "{\"type\":\"record\",\"name\":\"Value\",\"namespace\":\"test-index-validator.1234\",\"fields\":[{\"name\":\"testdatasource\",\"type\":{\"name\":\"testdatasource.Value\",\"xjoin.type\":\"reference\"}}]}",
 				ValueFrom: nil,
 			}))
 
@@ -322,7 +322,10 @@ var _ = Describe("XJoinIndexValidator", func() {
 					ApiCurioResponseFilename: "datasource-latest-version",
 				}},
 			}
-			reconciler.ReconcileUpdated()
+			reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "DISABLED",
+			})
 
 			//assert datasourcepipeline is invalid
 			datasourcePipelineLookup := types.NamespacedName{

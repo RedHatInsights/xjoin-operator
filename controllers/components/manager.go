@@ -8,7 +8,7 @@ type Component interface {
 	Delete() error
 	CheckDeviation() (error, error)
 	Exists() (bool, error)
-	SetName(string)
+	SetName(string, string)
 	SetVersion(string)
 	ListInstalledVersions() ([]string, error)
 
@@ -21,17 +21,19 @@ type ComponentManager struct {
 	components []Component
 	name       string
 	version    string
+	kind       string
 }
 
-func NewComponentManager(name string, version string) ComponentManager {
+func NewComponentManager(kind string, name string, version string) ComponentManager {
 	return ComponentManager{
 		name:    name,
 		version: version,
+		kind:    kind,
 	}
 }
 
 func (c *ComponentManager) AddComponent(component Component) {
-	component.SetName(c.name)
+	component.SetName(c.kind, c.name)
 	component.SetVersion(c.version)
 	c.components = append(c.components, component)
 }

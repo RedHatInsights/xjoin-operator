@@ -144,6 +144,12 @@ func (i *IndexTestReconciler) reconcile() reconcile.Result {
 	return result
 }
 
+func (i *IndexTestReconciler) ReconcileUpdated() v1alpha1.XJoinIndex {
+	i.registerNewMocks()
+	i.reconcile()
+	return i.GetIndex()
+}
+
 func (i *IndexTestReconciler) registerNewMocks() {
 	httpmock.Reset()
 	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
@@ -162,12 +168,12 @@ func (i *IndexTestReconciler) registerNewMocks() {
 
 	httpmock.RegisterResponder(
 		"GET",
-		"http://localhost:9200/_ingest/pipeline/"+i.Name+"%2A",
+		"http://localhost:9200/_ingest/pipeline/xjoinindex."+i.Name+"%2A",
 		httpmock.NewStringResponder(404, "{}"))
 
 	httpmock.RegisterResponder(
 		"GET",
-		"http://localhost:9200/_cat/indices/"+i.Name+".%2A?format=JSON&h=index",
+		"http://localhost:9200/_cat/indices/xjoinindex."+i.Name+".%2A?format=JSON&h=index",
 		httpmock.NewStringResponder(200, "[]"))
 }
 

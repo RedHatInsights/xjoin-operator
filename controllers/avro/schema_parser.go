@@ -41,6 +41,7 @@ type IndexAvroSchemaParser struct {
 	SchemaNamespace string
 	Log             log.Log
 	SchemaRegistry  *schemaregistry.ConfluentClient
+	Active          bool
 }
 
 // Parse AvroSchema string into various structures represented by IndexAvroSchema to be used in component creation
@@ -199,7 +200,7 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 		if len(field.Type) == 0 || len(strings.Split(field.Type[0].Type, ".")) < 2 {
 			return references, errors.Wrap(errors.New("unable to parse dataSourceName from avro schema fields"), 0)
 		}
-		dataSourceName := strings.Split(field.Type[0].Type, ".")[1]
+		dataSourceName := strings.Split(field.Type[0].Type, ".")[0]
 
 		//get data source obj from field.Ref
 		dataSource := &unstructured.Unstructured{}
@@ -222,7 +223,7 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 		activeVersionIsValid := statusMap["activeVersionIsValid"].(bool)
 		var chosenVersion string
 
-		if activeVersion != "" && activeVersionIsValid {
+		if activeVersion != "" && (activeVersionIsValid || d.Active) {
 			chosenVersion = statusMap["activeVersion"].(string)
 		} else if refreshingVersion != "" {
 			chosenVersion = refreshingVersion

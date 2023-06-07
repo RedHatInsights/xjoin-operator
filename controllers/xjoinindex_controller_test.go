@@ -128,11 +128,13 @@ var _ = Describe("XJoinIndex", func() {
 					ApiCurioResponseFilename: "datasource-latest-version",
 				}},
 			}
-			indexPipelineReconciler.ReconcileUpdated()
+			indexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "DISABLED",
+			})
 
 			//validate the index's status is updated
-			indexReconciler.reconcile()
-			updatedIndex := indexReconciler.GetIndex()
+			updatedIndex := indexReconciler.ReconcileUpdated()
 			Expect(updatedIndex.Status.RefreshingVersion).To(Equal(""))
 			Expect(updatedIndex.Status.RefreshingVersionIsValid).To(Equal(false))
 			Expect(updatedIndex.Status.ActiveVersion).To(Equal(createdIndex.Status.RefreshingVersion))
@@ -177,11 +179,13 @@ var _ = Describe("XJoinIndex", func() {
 					ApiCurioResponseFilename: "datasource-latest-version",
 				}},
 			}
-			indexPipelineReconciler.ReconcileUpdated()
+			indexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "DISABLED",
+			})
 
 			//reconcile the index to the valid state
-			indexReconciler.reconcile()
-			updatedIndex := indexReconciler.GetIndex()
+			updatedIndex := indexReconciler.ReconcileUpdated()
 			Expect(updatedIndex.Status.RefreshingVersion).To(Equal(""))
 			Expect(updatedIndex.Status.RefreshingVersionIsValid).To(Equal(false))
 			Expect(updatedIndex.Status.ActiveVersion).To(Equal(createdIndex.Status.RefreshingVersion))
@@ -196,11 +200,13 @@ var _ = Describe("XJoinIndex", func() {
 			datasourcePipelineReconciler.ReconcileInvalid()
 
 			//reconcile the active index pipeline to transition to invalid
-			indexPipelineReconciler.ReconcileUpdated()
+			indexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "DISABLED",
+			})
 
 			//validate the index creates a new refreshing version and invalidates the active version
-			indexReconciler.reconcile()
-			updatedIndex = indexReconciler.GetIndex()
+			updatedIndex = indexReconciler.ReconcileUpdated()
 
 			Expect(updatedIndex.Status.RefreshingVersion).ToNot(Equal(""))
 			Expect(updatedIndex.Status.RefreshingVersionIsValid).To(Equal(false))

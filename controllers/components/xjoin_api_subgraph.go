@@ -28,8 +28,8 @@ type XJoinAPISubGraph struct {
 	GraphQLSchemaName     string
 }
 
-func (x *XJoinAPISubGraph) SetName(name string) {
-	x.schemaName = strings.ToLower(name)
+func (x *XJoinAPISubGraph) SetName(kind string, name string) {
+	x.schemaName = strings.ToLower(kind + "." + name)
 	x.name = strings.ToLower(strings.ReplaceAll(name, ".", "-"))
 
 	if x.Suffix != "" {
@@ -256,7 +256,7 @@ func (x *XJoinAPISubGraph) ListInstalledVersions() (versions []string, err error
 	}
 
 	for _, deployment := range deployments.Items {
-		versions = append(versions, deployment.GetName())
+		versions = append(versions, strings.Split(deployment.GetName(), x.name+"-")[1])
 	}
 
 	return

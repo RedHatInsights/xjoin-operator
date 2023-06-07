@@ -35,8 +35,8 @@ func NewAvroSchema(parameters AvroSchemaParameters) *AvroSchema {
 	}
 }
 
-func (as *AvroSchema) SetName(name string) {
-	as.name = strings.ToLower(name)
+func (as *AvroSchema) SetName(kind string, name string) {
+	as.name = strings.ToLower(kind + "." + name)
 }
 
 func (as *AvroSchema) SetVersion(version string) {
@@ -119,6 +119,7 @@ func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err e
 	for _, subject := range subjects {
 		if strings.Index(subject, as.name+".") == 0 {
 			version := strings.Split(subject, ".")[1]
+			version = strings.Split(version, "-")[0]
 			installedVersions = append(installedVersions, version)
 		}
 	}
