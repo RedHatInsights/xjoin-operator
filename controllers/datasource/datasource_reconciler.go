@@ -103,7 +103,7 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 	registry.Init()
 
 	custodian := components.NewCustodian(
-		d.gvk.Kind+"."+d.iteration.GetInstance().Name, validVersions)
+		d.gvk.Kind, d.iteration.GetInstance().Name, validVersions)
 	custodian.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{Registry: registry}))
 
 	kafkaTopics := kafka.StrimziTopics{

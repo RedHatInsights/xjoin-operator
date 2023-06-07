@@ -141,7 +141,7 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 	registryRestClient := schemaregistry.NewSchemaRegistryRestClient(schemaRegistryConnectionParams)
 
 	custodian := components.NewCustodian(
-		d.iteration.GetInstance().Name, validVersions)
+		d.gvk.Kind, d.iteration.GetInstance().Name, validVersions)
 	custodian.AddComponent(&components.ElasticsearchPipeline{
 		GenericElasticsearch: *genericElasticsearch,
 	})

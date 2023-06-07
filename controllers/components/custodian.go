@@ -10,17 +10,19 @@ type Custodian struct {
 	validVersions []string
 	name          string
 	components    []Component
+	kind          string
 }
 
-func NewCustodian(name string, validVersions []string) *Custodian {
+func NewCustodian(kind string, name string, validVersions []string) *Custodian {
 	return &Custodian{
 		validVersions: validVersions,
 		name:          name,
+		kind:          kind,
 	}
 }
 
 func (c *Custodian) AddComponent(component Component) {
-	component.SetName(c.name)
+	component.SetName(c.kind, c.name)
 	c.components = append(c.components, component)
 }
 

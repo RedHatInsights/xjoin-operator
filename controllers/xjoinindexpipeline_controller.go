@@ -251,13 +251,14 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Log:             i.Log,
 		SchemaRegistry:  confluentClient,
 		SchemaNamespace: i.Instance.GetName(),
+		Active:          i.GetInstance().Status.Active,
 	}
 	indexAvroSchema, err := indexAvroSchemaParser.Parse()
 	if err != nil {
 		return result, errors.Wrap(err, 0)
 	}
 
-	componentManager := components.NewComponentManager(common.IndexPipelineGVK.Kind+"."+instance.Spec.Name, p.Version.String())
+	componentManager := components.NewComponentManager(common.IndexPipelineGVK.Kind, instance.Spec.Name, p.Version.String())
 
 	if indexAvroSchema.JSONFields != nil {
 		componentManager.AddComponent(&components.ElasticsearchPipeline{
@@ -390,8 +391,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	allDataSourcesValid := true
 	for _, ref := range indexAvroSchema.References {
 		//get each datasource name and resource version
-		datasourceName := strings.Split(ref.Name, "xjoindatasourcepipeline.")[1]
-		datasourceName = strings.Split(datasourceName, ".Value")[0]
+		datasourceName := strings.Split(ref.Name, ".Value")[0]
 
 		datasourcePipelineVersion := strings.Split(ref.Subject, "xjoindatasourcepipeline.")[1]
 		datasourcePipelineVersion = strings.Split(datasourcePipelineVersion, ".")[1]

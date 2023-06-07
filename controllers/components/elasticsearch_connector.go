@@ -15,8 +15,8 @@ type ElasticsearchConnector struct {
 	Topic              string
 }
 
-func (es *ElasticsearchConnector) SetName(name string) {
-	es.name = strings.ToLower(name)
+func (es *ElasticsearchConnector) SetName(kind string, name string) {
+	es.name = strings.ToLower(kind + "." + name)
 }
 
 func (es *ElasticsearchConnector) SetVersion(version string) {

@@ -36,8 +36,8 @@ func (as *GraphQLSchema) NameSuffix() string {
 	return as.suffix
 }
 
-func (as *GraphQLSchema) SetName(name string) {
-	as.name = strings.ToLower(name)
+func (as *GraphQLSchema) SetName(kind string, name string) {
+	as.name = strings.ToLower(kind + "." + name)
 	if as.suffix != "" {
 		as.name = as.name + "-" + as.suffix
 	}

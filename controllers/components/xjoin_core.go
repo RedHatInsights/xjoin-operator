@@ -22,8 +22,8 @@ type XJoinCore struct {
 	Schema            string
 }
 
-func (xc *XJoinCore) SetName(name string) {
-	xc.name = "xjoin-core-" + strings.ToLower(strings.ReplaceAll(name, ".", "-"))
+func (xc *XJoinCore) SetName(kind string, name string) {
+	xc.name = "xjoin-core-" + strings.ToLower(strings.ReplaceAll(kind+"-"+name, ".", "-"))
 }
 
 func (xc *XJoinCore) SetVersion(version string) {

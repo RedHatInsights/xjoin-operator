@@ -24,8 +24,8 @@ type XJoinIndexValidator struct {
 	ElasticsearchIndexName string
 }
 
-func (xv *XJoinIndexValidator) SetName(name string) {
-	xv.name = strings.ToLower(name)
+func (xv *XJoinIndexValidator) SetName(kind string, name string) {
+	xv.name = strings.ToLower(kind + "." + name)
 }
 
 func (xv *XJoinIndexValidator) SetVersion(version string) {

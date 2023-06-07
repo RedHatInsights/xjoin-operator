@@ -2,6 +2,8 @@ package controllers_test
 
 import (
 	"context"
+	"os"
+
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -11,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -51,8 +52,8 @@ func (x *XJoinIndexPipelineTestReconciler) ReconcileNew() v1alpha1.XJoinIndexPip
 	return x.createdIndexPipeline
 }
 
-func (x *XJoinIndexPipelineTestReconciler) ReconcileUpdated() v1alpha1.XJoinIndexPipeline {
-	x.registerUpdatedMocks()
+func (x *XJoinIndexPipelineTestReconciler) ReconcileUpdated(params UpdatedMocksParams) v1alpha1.XJoinIndexPipeline {
+	x.registerUpdatedMocks(params)
 	result := x.reconcile()
 	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
 	indexPipelineLookup := types.NamespacedName{Name: x.GetName(), Namespace: x.Namespace}
@@ -217,9 +218,10 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/meta",
 		getMetaResponder)
 
-	httpmock.RegisterResponder(
+	httpmock.RegisterMatcherResponder(
 		"PUT",
 		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/state",
+		httpmock.BodyContainsString(`"state":"DISABLED"`).WithName("DisabledState"),
 		httpmock.NewStringResponder(200, `{}`))
 
 	//graphql schema mocks
@@ -263,9 +265,10 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version+"/meta",
 			getMetaResponder)
 
-		httpmock.RegisterResponder(
+		httpmock.RegisterMatcherResponder(
 			"PUT",
 			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version+"/state",
+			httpmock.BodyContainsString(`"state":"DISABLED"`).WithName("DisabledState"),
 			httpmock.NewStringResponder(200, `{}`))
 	}
 
@@ -294,7 +297,7 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 		httpmock.NewStringResponder(200, "{}"))
 }
 
-func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks() {
+func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks(params UpdatedMocksParams) {
 	httpmock.Reset()
 	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
 
@@ -315,16 +318,32 @@ func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks() {
 		httpmock.NewStringResponder(200, "{}"))
 
 	//graphql schema state update mocks
-	getMetaResponder, err := httpmock.NewJsonResponder(200, map[string]string{"state": "ENABLED"})
-	checkError(err)
+	var getMetaResponder httpmock.Responder
+	var err error
+	if params.GraphQLSchemaExistingState == "ENABLED" {
+		getMetaResponder, err = httpmock.NewJsonResponder(200, map[string]string{"state": "ENABLED"})
+		checkError(err)
+	} else {
+		getMetaResponder, err = httpmock.NewJsonResponder(200, map[string]string{"state": "DISABLED"})
+		checkError(err)
+	}
+
+	var matcher httpmock.Matcher
+	if params.GraphQLSchemaNewState == "ENABLED" {
+		matcher = httpmock.BodyContainsString(`"state":"ENABLED"`).WithName("EnabledState")
+	} else {
+		matcher = httpmock.BodyContainsString(`"state":"DISABLED"`).WithName("DisabledState")
+	}
+
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/meta",
 		getMetaResponder)
 
-	httpmock.RegisterResponder(
+	httpmock.RegisterMatcherResponder(
 		"PUT",
 		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/state",
+		matcher,
 		httpmock.NewStringResponder(200, `{}`))
 
 	//avro schema mocks
@@ -364,8 +383,8 @@ func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks() {
 		//custom subgraph graphql schema mocks
 		httpmock.RegisterResponder(
 			"GET",
-			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version+"/versions",
-			httpmock.NewStringResponder(404, `{}`))
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+"-"+customImage.Name+"."+x.Version+"/versions",
+			getMetaResponder)
 
 		httpmock.RegisterResponder(
 			"POST",
@@ -374,7 +393,18 @@ func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks() {
 
 		httpmock.RegisterResponder(
 			"PUT",
-			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version+"/meta",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+"-"+customImage.Name+"."+x.Version+"/meta",
+			httpmock.NewStringResponder(200, `{}`))
+
+		httpmock.RegisterResponder(
+			"GET",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+"-"+customImage.Name+"."+x.Version+"/meta",
+			getMetaResponder)
+
+		httpmock.RegisterMatcherResponder(
+			"PUT",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+"-"+customImage.Name+"."+x.Version+"/state",
+			matcher,
 			httpmock.NewStringResponder(200, `{}`))
 	}
 

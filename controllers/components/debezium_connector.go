@@ -14,8 +14,8 @@ type DebeziumConnector struct {
 	TemplateParameters map[string]interface{}
 }
 
-func (dc *DebeziumConnector) SetName(name string) {
-	dc.name = strings.ToLower(name)
+func (dc *DebeziumConnector) SetName(kind string, name string) {
+	dc.name = strings.ToLower(kind + "." + name)
 }
 
 func (dc *DebeziumConnector) SetVersion(version string) {
