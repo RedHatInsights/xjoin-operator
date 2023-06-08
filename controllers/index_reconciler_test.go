@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -17,9 +18,11 @@ import (
 )
 
 type IndexTestReconciler struct {
-	Namespace string
-	Name      string
-	K8sClient client.Client
+	Namespace            string
+	Name                 string
+	K8sClient            client.Client
+	AvroSchemaFileName   string
+	CustomSubgraphImages []v1alpha1.CustomSubgraphImage
 }
 
 func (i *IndexTestReconciler) ReconcileNew() v1alpha1.XJoinIndex {
@@ -61,6 +64,16 @@ func (i *IndexTestReconciler) ReconcileDelete() {
 	Expect(indexList.Items).To(HaveLen(0))
 }
 
+func (i *IndexTestReconciler) GetIndex() v1alpha1.XJoinIndex {
+	index := &v1alpha1.XJoinIndex{}
+	indexLookupKey := types.NamespacedName{Name: i.Name, Namespace: i.Namespace}
+	Eventually(func() bool {
+		err := i.K8sClient.Get(context.Background(), indexLookupKey, index)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+	return *index
+}
+
 func (i *IndexTestReconciler) newXJoinIndexReconciler() *controllers.XJoinIndexReconciler {
 	return controllers.NewXJoinIndexReconciler(
 		i.K8sClient,
@@ -74,15 +87,23 @@ func (i *IndexTestReconciler) newXJoinIndexReconciler() *controllers.XJoinIndexR
 func (i *IndexTestReconciler) createValidIndex() {
 	ctx := context.Background()
 
-	customSubgraphImage := []v1alpha1.CustomSubgraphImage{{
-		Name:  "test",
-		Image: "test",
-	}}
+	var avroSchemaFilename string
+	if i.AvroSchemaFileName == "" {
+		avroSchemaFilename = "xjoinindex"
+	} else {
+		avroSchemaFilename = i.AvroSchemaFileName
+	}
+
+	indexAvroSchema, err := os.ReadFile("./test/data/avro/" + avroSchemaFilename + ".json")
+	checkError(err)
 
 	indexSpec := v1alpha1.XJoinIndexSpec{
-		AvroSchema:           "{}",
-		Pause:                false,
-		CustomSubgraphImages: customSubgraphImage,
+		AvroSchema: string(indexAvroSchema),
+		Pause:      false,
+	}
+
+	if i.CustomSubgraphImages != nil {
+		indexSpec.CustomSubgraphImages = i.CustomSubgraphImages
 	}
 
 	index := &v1alpha1.XJoinIndex{
@@ -108,8 +129,11 @@ func (i *IndexTestReconciler) createValidIndex() {
 		return err == nil
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
 	Expect(createdIndex.Spec.Pause).Should(Equal(false))
-	Expect(createdIndex.Spec.AvroSchema).Should(Equal("{}"))
-	Expect(createdIndex.Spec.CustomSubgraphImages).Should(Equal(customSubgraphImage))
+	Expect(createdIndex.Spec.AvroSchema).Should(Equal(string(indexAvroSchema)))
+
+	if i.CustomSubgraphImages != nil {
+		Expect(createdIndex.Spec.CustomSubgraphImages).Should(Equal(i.CustomSubgraphImages))
+	}
 }
 
 func (i *IndexTestReconciler) reconcile() reconcile.Result {
@@ -118,6 +142,12 @@ func (i *IndexTestReconciler) reconcile() reconcile.Result {
 	result, err := xjoinIndexReconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: indexLookupKey})
 	checkError(err)
 	return result
+}
+
+func (i *IndexTestReconciler) ReconcileUpdated() v1alpha1.XJoinIndex {
+	i.registerNewMocks()
+	i.reconcile()
+	return i.GetIndex()
 }
 
 func (i *IndexTestReconciler) registerNewMocks() {

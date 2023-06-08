@@ -14,8 +14,8 @@ type DebeziumConnector struct {
 	TemplateParameters map[string]interface{}
 }
 
-func (dc *DebeziumConnector) SetName(name string) {
-	dc.name = strings.ToLower(name)
+func (dc *DebeziumConnector) SetName(kind string, name string) {
+	dc.name = strings.ToLower(kind + "." + name)
 }
 
 func (dc *DebeziumConnector) SetVersion(version string) {
@@ -69,4 +69,8 @@ func (dc *DebeziumConnector) ListInstalledVersions() (versions []string, err err
 		versions = append(versions, strings.Split(connector, dc.name+".")[1])
 	}
 	return
+}
+
+func (dc *DebeziumConnector) Reconcile() (err error) {
+	return nil
 }

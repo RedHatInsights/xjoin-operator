@@ -24,6 +24,11 @@ type XJoinIndexPipelineSpec struct {
 
 type XJoinIndexPipelineStatus struct {
 	ValidationResponse validation.ValidationResponse `json:"validationResponse,omitempty"`
+	DataSources        map[string]string             `json:"dataSources,omitempty"`
+
+	// +kubebuilder:validation:Required
+	// +kubebuilder:default:=false
+	Active bool `json:"active,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -36,6 +41,26 @@ type XJoinIndexPipeline struct {
 
 	Spec   XJoinIndexPipelineSpec   `json:"spec,omitempty"`
 	Status XJoinIndexPipelineStatus `json:"status,omitempty"`
+}
+
+func (in *XJoinIndexPipeline) GetDataSources() map[string]string {
+	return in.Status.DataSources
+}
+
+func (in *XJoinIndexPipeline) GetDataSourceNames() []string {
+	keys := make([]string, 0, len(in.Status.DataSources))
+	for key := range in.Status.DataSources {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+func (in *XJoinIndexPipeline) GetDataSourcePipelineNames() []string {
+	pipelineNames := make([]string, 0, len(in.Status.DataSources))
+	for key, value := range in.Status.DataSources {
+		pipelineNames = append(pipelineNames, key+"."+value)
+	}
+	return pipelineNames
 }
 
 // +kubebuilder:object:root=true

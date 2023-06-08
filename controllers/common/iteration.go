@@ -100,11 +100,30 @@ func (i *Iteration) CreateChildResource(resourceDefinition unstructured.Unstruct
 }
 
 func (i *Iteration) DeleteResource(name string, gvk schema.GroupVersionKind) error {
-	resource := &unstructured.Unstructured{}
-	resource.SetGroupVersionKind(gvk)
-	resource.SetName(name)
-	resource.SetNamespace(i.Instance.GetNamespace())
-	return i.Client.Delete(i.Context, resource)
+	//check if resources exists before trying to delete it
+	listResource := &unstructured.UnstructuredList{}
+	listResource.SetGroupVersionKind(gvk)
+	err := i.Client.List(i.Context, listResource)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	//delete resource if it exists
+	for _, item := range listResource.Items {
+		if item.GetName() == name {
+			resource := &unstructured.Unstructured{}
+			resource.SetGroupVersionKind(gvk)
+			resource.SetName(name)
+			resource.SetNamespace(i.Instance.GetNamespace())
+
+			err = i.Client.Delete(i.Context, resource)
+			if err != nil {
+				return errors.Wrap(err, 0)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (i *Iteration) AddFinalizer(finalizer string) error {

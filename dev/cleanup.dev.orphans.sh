@@ -83,10 +83,19 @@ done
 echo "Deleting ES indexes"
 ES_PASSWORD=$(kubectl get secret/xjoin-elasticsearch-es-elastic-user -o custom-columns=:data.elastic | base64 -d)
 ES_HOSTNAME=xjoin-elasticsearch-es-default.test.svc
-curl -u "elastic:$ES_PASSWORD" "http://$ES_HOSTNAME:9200/_cat/indices?format=json" | jq '.[] | .index' | grep xjoinindexpipeline | while read -r index ; do
+curl -u "elastic:$ES_PASSWORD" "http://$ES_HOSTNAME:9200/_cat/indices?format=json" | jq '.[] | .index' | grep -e xjoinindexpipeline -e test.hosts -e xjointest -e prefix | while read -r index ; do
   index="${index:1}"
   index="${index::-1}"
   curl -u "elastic:$ES_PASSWORD" -X DELETE "http://$ES_HOSTNAME:9200/$index"
+done
+
+echo "Deleting ES pipelines"
+ES_PASSWORD=$(kubectl get secret/xjoin-elasticsearch-es-elastic-user -o custom-columns=:data.elastic | base64 -d)
+ES_HOSTNAME=xjoin-elasticsearch-es-default.test.svc
+curl -u "elastic:$ES_PASSWORD" "http://$ES_HOSTNAME:9200/_ingest/pipeline?format=json" | jq 'keys[]' | grep -e xjoinindexpipeline -e prefix -e test.hosts -e xjointest | while read -r index ; do
+  index="${index:1}"
+  index="${index::-1}"
+  curl -u "elastic:$ES_PASSWORD" -X DELETE "http://$ES_HOSTNAME:9200/_ingest/pipeline/$index"
 done
 
 echo "Deleting subgraph pods"

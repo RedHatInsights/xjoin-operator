@@ -13,8 +13,8 @@ type KafkaTopic struct {
 	TopicParameters kafka.TopicParameters
 }
 
-func (kt *KafkaTopic) SetName(name string) {
-	kt.name = strings.ToLower(name)
+func (kt *KafkaTopic) SetName(kind string, name string) {
+	kt.name = strings.ToLower(kind + "." + name)
 }
 
 func (kt *KafkaTopic) SetVersion(version string) {
@@ -63,4 +63,8 @@ func (kt *KafkaTopic) ListInstalledVersions() (versions []string, err error) {
 		versions = append(versions, strings.Split(name, kt.name+".")[1])
 	}
 	return
+}
+
+func (kt *KafkaTopic) Reconcile() (err error) {
+	return nil
 }

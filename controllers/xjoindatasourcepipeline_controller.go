@@ -153,7 +153,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 
 	registry.Init()
 
-	componentManager := components.NewComponentManager(common.DataSourcePipelineGVK.Kind+"."+instance.Spec.Name, p.Version.String())
+	componentManager := components.NewComponentManager(common.DataSourcePipelineGVK.Kind, instance.Spec.Name, p.Version.String())
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
 		Schema:   p.AvroSchema.String(),
 		Registry: registry,
@@ -218,6 +218,11 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 	}
 
 	err = componentManager.CreateAll()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	err = componentManager.Reconcile()
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}

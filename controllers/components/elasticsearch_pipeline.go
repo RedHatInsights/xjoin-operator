@@ -15,19 +15,19 @@ type ElasticsearchPipeline struct {
 	GenericElasticsearch elasticsearch.GenericElasticsearch
 }
 
-func (es *ElasticsearchPipeline) SetName(name string) {
-	es.name = strings.ToLower(name)
+func (es *ElasticsearchPipeline) SetName(kind string, name string) {
+	es.name = strings.ToLower(kind + "." + name)
 }
 
 func (es *ElasticsearchPipeline) SetVersion(version string) {
 	es.version = version
 }
 
-func (es ElasticsearchPipeline) Name() string {
+func (es *ElasticsearchPipeline) Name() string {
 	return es.name + "." + es.version
 }
 
-func (es ElasticsearchPipeline) Create() (err error) {
+func (es *ElasticsearchPipeline) Create() (err error) {
 	pipeline, err := es.jsonFieldsToESPipeline()
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -39,7 +39,7 @@ func (es ElasticsearchPipeline) Create() (err error) {
 	return
 }
 
-func (es ElasticsearchPipeline) Delete() (err error) {
+func (es *ElasticsearchPipeline) Delete() (err error) {
 	err = es.GenericElasticsearch.DeletePipeline(es.Name())
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -51,7 +51,7 @@ func (es *ElasticsearchPipeline) CheckDeviation() (problem, err error) {
 	return
 }
 
-func (es ElasticsearchPipeline) Exists() (exists bool, err error) {
+func (es *ElasticsearchPipeline) Exists() (exists bool, err error) {
 	exists, err = es.GenericElasticsearch.PipelineExists(es.Name())
 	if err != nil {
 		return false, errors.Wrap(err, 0)
@@ -59,7 +59,7 @@ func (es ElasticsearchPipeline) Exists() (exists bool, err error) {
 	return
 }
 
-func (es ElasticsearchPipeline) ListInstalledVersions() (versions []string, err error) {
+func (es *ElasticsearchPipeline) ListInstalledVersions() (versions []string, err error) {
 	pipelines, err := es.GenericElasticsearch.ListPipelinesForPrefix(es.name)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
@@ -71,7 +71,11 @@ func (es ElasticsearchPipeline) ListInstalledVersions() (versions []string, err 
 	return
 }
 
-func (es ElasticsearchPipeline) jsonFieldsToESPipeline() (pipeline string, err error) {
+func (es *ElasticsearchPipeline) Reconcile() (err error) {
+	return nil
+}
+
+func (es *ElasticsearchPipeline) jsonFieldsToESPipeline() (pipeline string, err error) {
 	var pipelineObj elasticsearch.Pipeline
 	pipelineObj.Description = "test"
 	for _, jsonField := range es.JsonFields {

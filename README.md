@@ -262,3 +262,34 @@ Both the DataSourcePipeline and the IndexPipeline manage multiple resources to c
 The code for the top level resources (XJoinDataSource and XJoinIndex) can be found in the [controllers/datasource](controllers/datasource) and the [controllers/index](controllers/index) directory.
 
 There are many different parameters and sources of parameters across the operator. These are handled by the [ConfigManager](controllers/config/manager.go). The parameters for the xjoin.v2 resources are defined in [controllers/parameters](controllers/parameters).
+
+### Validation
+
+Each IndexPipeline is continuously validated via an IndexValidator. For a given Index there can be at most 2 IndexPipelines. One pipeline is considered `active` while the other is `refreshing`. The `active` pipeline is served to users via the GraphQL Gateway. When the `refreshing` pipeline becomes valid it replaces the `active` pipeline. The status fields on each Kubernetes CRD is used to manage the `active` and `refreshing` state.
+
+This is the high level flow of what happens when an active IndexPipeline becomes out of sync:
+
+- The IndexValidator updates the status to invalid for each DataSourcePipeline that is referenced by the IndexPipeline
+- The DataSource (parent of the DataSourcePipeline) watches the DataSourcePipeline. So, when the active DataSourcePipeline's status is set to invalid, the DataSource is reconciled and starts to refresh by creating a new DataSourcePipeline
+- The IndexPipeline also watches the DataSourcePipeline and is reconciled to be invalid
+- The Index is watching the IndexPipeline, so it is reconciled and starts to refresh by creating a new IndexPipeline
+
+This is a summary of the different states an Index can be in:
+
+- Newly created
+   - ActiveVersion: ""
+   - ActiveVersionIsValid: false
+   - RefreshingVersion: "1234"
+- Data is in sync
+   - ActiveVersion: "1234"
+   - ActiveVersionIsValid: true
+   - RefreshingVersion: ""
+- Data is out of sync, refreshing
+   - ActiveVersion: "1234"
+   - ActiveVersionIsValid: false
+   - RefreshingVersion: "5678"
+- Data is back in sync, refreshing version replaced active version
+   - ActiveVersion: "5678"
+   - ActiveVersionIsValid: true
+   - RefreshingVersion: ""
+
