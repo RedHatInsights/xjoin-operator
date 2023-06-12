@@ -13,7 +13,7 @@ spec:
       "name": "testindex",
       "fields": [{
         "type": {
-          "type": "xjoindatasourcepipeline.hosts.Value",
+          "type": "hosts.Value",
           "xjoin.type": "reference"
         },
         "name": "host"

@@ -11,17 +11,19 @@ type Custodian struct {
 	validVersions []string
 	name          string
 	components    []Component
+	kind          string
 }
 
-func NewCustodian(name string, validVersions []string) *Custodian {
+func NewCustodian(kind string, name string, validVersions []string) *Custodian {
 	return &Custodian{
 		validVersions: validVersions,
 		name:          name,
+		kind:          kind,
 	}
 }
 
 func (c *Custodian) AddComponent(component Component) {
-	component.SetName(c.name)
+	component.SetName(c.kind, c.name)
 	c.components = append(c.components, component)
 }
 
@@ -33,7 +35,7 @@ func (c *Custodian) Scrub() (allErrors []error) {
 	for _, component := range c.components {
 		installedVersions, err := component.ListInstalledVersions()
 		if err != nil {
-			err = fmt.Errorf("%w; Unable to list versions for component while scrubbing: %s", err, component.Name())
+			err = fmt.Errorf("%w; Unable to list versions for component while scrubbing: %T, %s", err, component, component.Name())
 			allErrors = append(allErrors, errors.Wrap(err, 0))
 			continue
 		}

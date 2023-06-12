@@ -22,12 +22,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/utils/strings/slices"
 	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 	"strings"
 	"time"
 )
@@ -74,6 +77,34 @@ func (r *XJoinIndexPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			LogConstructor: logConstructor,
 			RateLimiter:    workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
+
+		// trigger Reconcile if DataSource changes
+		Watches(
+			&source.Kind{Type: &xjoin.XJoinDataSourcePipeline{}},
+			handler.EnqueueRequestsFromMapFunc(func(dataSourcePipeline client.Object) (requests []reconcile.Request) {
+				ctx, cancel := utils.DefaultContext()
+				defer cancel()
+
+				indexPipelines, err := k8sUtils.FetchXJoinIndexPipelines(r.Client, ctx)
+				if err != nil {
+					r.Log.Error(err, "Failed to fetch IndexPipelines in Watch")
+					return requests
+				}
+
+				for _, indexPipeline := range indexPipelines.Items {
+					if slices.Contains(indexPipeline.GetDataSourcePipelineNames(), dataSourcePipeline.GetName()) {
+						requests = append(requests, reconcile.Request{
+							NamespacedName: types.NamespacedName{
+								Namespace: indexPipeline.GetNamespace(),
+								Name:      indexPipeline.GetName(),
+							},
+						})
+					}
+				}
+
+				return requests
+			}),
+		).
 		Complete(r)
 }
 
@@ -95,6 +126,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
+			reqLogger.Warn("XJoinIndex not found", "XJoinIndex", request.Name)
 			return result, nil
 		}
 		// Error reading the object - requeue the request.
@@ -219,13 +251,14 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Log:             i.Log,
 		SchemaRegistry:  confluentClient,
 		SchemaNamespace: i.Instance.GetName(),
+		Active:          i.GetInstance().Status.Active,
 	}
 	indexAvroSchema, err := indexAvroSchemaParser.Parse()
 	if err != nil {
 		return result, errors.Wrap(err, 0)
 	}
 
-	componentManager := components.NewComponentManager(common.IndexPipelineGVK.Kind+"."+instance.Spec.Name, p.Version.String())
+	componentManager := components.NewComponentManager(common.IndexPipelineGVK.Kind, instance.Spec.Name, p.Version.String())
 
 	if indexAvroSchema.JSONFields != nil {
 		componentManager.AddComponent(&components.ElasticsearchPipeline{
@@ -254,6 +287,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	}))
 	graphqlSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{
 		Registry: registryRestClient,
+		Active:   i.GetInstance().Status.Active,
 	})
 	componentManager.AddComponent(graphqlSchemaComponent)
 	componentManager.AddComponent(&components.XJoinCore{
@@ -293,6 +327,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		customSubgraphGraphQLSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{
 			Registry: registryRestClient,
 			Suffix:   customSubgraphImage.Name,
+			Active:   i.GetInstance().Status.Active,
 		})
 		componentManager.AddComponent(customSubgraphGraphQLSchemaComponent)
 		componentManager.AddComponent(&components.XJoinAPISubGraph{
@@ -336,6 +371,11 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
+	err = componentManager.Reconcile()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
 	problems, err := componentManager.CheckForDeviations()
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
@@ -348,43 +388,42 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 
 	//build list of datasources
 	dataSources := make(map[string]string)
+	allDataSourcesValid := true
 	for _, ref := range indexAvroSchema.References {
 		//get each datasource name and resource version
-		name := strings.Split(ref.Name, "xjoindatasourcepipeline.")[1]
-		name = strings.Split(name, ".Value")[0]
-		datasourceNamespacedName := types.NamespacedName{
-			Name:      name,
-			Namespace: i.Instance.GetNamespace(),
+		datasourceName := strings.Split(ref.Name, ".Value")[0]
+
+		datasourcePipelineVersion := strings.Split(ref.Subject, "xjoindatasourcepipeline.")[1]
+		datasourcePipelineVersion = strings.Split(datasourcePipelineVersion, ".")[1]
+		datasourcePipelineVersion = strings.Split(datasourcePipelineVersion, "-value")[0]
+
+		dataSources[datasourceName] = datasourcePipelineVersion
+
+		//GET each datasourcePipeline
+		dataSourcePipelineName := types.NamespacedName{
+			Namespace: instance.GetNamespace(),
+			Name:      datasourceName + "." + datasourcePipelineVersion,
 		}
-		datasource, err := k8sUtils.FetchXJoinDataSource(i.Client, datasourceNamespacedName, ctx)
+		dataSourcePipeline, err := k8sUtils.FetchXJoinDataSourcePipeline(r.Client, dataSourcePipelineName, ctx)
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
-		dataSources[name] = datasource.ResourceVersion
-	}
 
-	//update parent status
-	indexNamespacedName := types.NamespacedName{
-		Name:      instance.OwnerReferences[0].Name,
-		Namespace: i.Instance.GetNamespace(),
-	}
-	xjoinIndex, err := k8sUtils.FetchXJoinIndex(i.Client, indexNamespacedName, ctx)
-	if err != nil {
-		return reconcile.Result{}, errors.Wrap(err, 0)
-	}
-
-	if !reflect.DeepEqual(xjoinIndex.Status.DataSources, dataSources) {
-		xjoinIndex.Status.DataSources = dataSources
-
-		if err := i.Client.Status().Update(ctx, xjoinIndex); err != nil {
-			if k8errors.IsConflict(err) {
-				i.Log.Error(err, "Status conflict")
-				return reconcile.Result{}, err
-			}
-
-			return reconcile.Result{}, err
+		if dataSourcePipeline.Status.ValidationResponse.Result == Invalid {
+			allDataSourcesValid = false
 		}
 	}
 
-	return reconcile.Result{RequeueAfter: time.Second * 30}, nil
+	if allDataSourcesValid {
+		instance.Status.ValidationResponse.Result = Valid
+	} else {
+		instance.Status.ValidationResponse.Result = Invalid
+	}
+
+	if !reflect.DeepEqual(instance.Status.DataSources, dataSources) {
+		instance.Status.DataSources = dataSources
+	}
+
+	i.Instance = instance
+	return i.UpdateStatusAndRequeue(time.Second * 30)
 }

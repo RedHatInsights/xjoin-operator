@@ -120,6 +120,77 @@ func LoadExpectedKafkaResourceConfig(filename string) *bytes.Buffer {
 	return buffer
 }
 
+type IndexPipelineTestResources struct {
+	IndexReconciler         IndexTestReconciler
+	IndexPipelineReconciler XJoinIndexPipelineTestReconciler
+	DatasourceReconciler    DatasourceTestReconciler
+	IndexPipeline           xjoinApi.XJoinIndexPipeline
+	Index                   xjoinApi.XJoinIndex
+	DataSource              xjoinApi.XJoinDataSource
+}
+
+type UpdatedMocksParams struct {
+	GraphQLSchemaExistingState string
+	GraphQLSchemaNewState      string
+}
+
+func CreateValidIndexPipeline(namespace string, customSubgraphImages []xjoinApi.CustomSubgraphImage) IndexPipelineTestResources {
+	indexReconciler := IndexTestReconciler{
+		Namespace:            namespace,
+		Name:                 "test-index",
+		K8sClient:            k8sClient,
+		AvroSchemaFileName:   "xjoinindex-with-referenced-field",
+		CustomSubgraphImages: customSubgraphImages,
+	}
+	createdIndex := indexReconciler.ReconcileNew()
+
+	//create a valid datasource
+	dataSourceName := "testdatasource"
+	datasourceReconciler := DatasourceTestReconciler{
+		Namespace: namespace,
+		Name:      dataSourceName,
+		K8sClient: k8sClient,
+	}
+	datasourceReconciler.ReconcileNew()
+	createdDataSource := datasourceReconciler.ReconcileValid()
+
+	//reconcile the refreshing indexpipeline to be valid
+	indexPipelineReconciler := XJoinIndexPipelineTestReconciler{
+		Namespace:            namespace,
+		Name:                 createdIndex.Name,
+		Version:              createdIndex.Status.RefreshingVersion,
+		ConfigFileName:       "xjoinindex-with-referenced-field",
+		K8sClient:            k8sClient,
+		CustomSubgraphImages: customSubgraphImages,
+		DataSources: []DataSource{{
+			Name:                     dataSourceName,
+			Version:                  createdDataSource.Status.ActiveVersion,
+			ApiCurioResponseFilename: "datasource-latest-version",
+		}},
+	}
+	indexPipeline := indexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+		GraphQLSchemaExistingState: "DISABLED",
+		GraphQLSchemaNewState:      "DISABLED",
+	})
+	Expect(indexPipeline.Status.Active).To(Equal(false))
+
+	//reconcile the index to flip the refreshing pipeline to be active
+	indexReconciler.ReconcileUpdated()
+	indexPipeline = indexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+		GraphQLSchemaExistingState: "DISABLED",
+		GraphQLSchemaNewState:      "ENABLED",
+	})
+
+	return IndexPipelineTestResources{
+		IndexReconciler:         indexReconciler,
+		IndexPipelineReconciler: indexPipelineReconciler,
+		DatasourceReconciler:    datasourceReconciler,
+		IndexPipeline:           indexPipeline,
+		Index:                   createdIndex,
+		DataSource:              createdDataSource,
+	}
+}
+
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 

@@ -24,17 +24,21 @@ import (
 type XJoinIndexValidatorTestReconciler struct {
 	Namespace             string
 	Name                  string
+	Version               string
 	K8sClient             client.Client
 	ConfigFileName        string
 	createdIndexValidator v1alpha1.XJoinIndexValidator
 	PodLogReader          k8s.LogReader
 }
 
+func (x *XJoinIndexValidatorTestReconciler) GetName() string {
+	return x.Name + "." + x.Version
+}
+
 func (x *XJoinIndexValidatorTestReconciler) ReconcileCreate() (v1alpha1.XJoinIndexValidator, reconcile.Result) {
 	x.createIndexValidator()
-	x.createDatasource()
 	result := x.reconcile()
-	validatorLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
+	validatorLookupKey := types.NamespacedName{Name: x.GetName(), Namespace: x.Namespace}
 	Eventually(func() bool {
 		err := x.K8sClient.Get(context.Background(), validatorLookupKey, &x.createdIndexValidator)
 		return err == nil
@@ -43,29 +47,13 @@ func (x *XJoinIndexValidatorTestReconciler) ReconcileCreate() (v1alpha1.XJoinInd
 }
 
 func (x *XJoinIndexValidatorTestReconciler) ReconcileRunning() (v1alpha1.XJoinIndexValidator, reconcile.Result) {
-	x.createIndexValidator()
-	x.createDatasource()
-	x.reconcile()
-	validatorLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
-	Eventually(func() bool {
-		err := x.K8sClient.Get(context.Background(), validatorLookupKey, &x.createdIndexValidator)
-		return err == nil
-	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
-
+	x.registerRunningMocks()
 	result := x.reconcile()
 	return x.createdIndexValidator, result
 }
 
 func (x *XJoinIndexValidatorTestReconciler) ReconcileSuccess() (validator v1alpha1.XJoinIndexValidator, result reconcile.Result) {
-	x.createIndexValidator()
-	x.createDatasource()
-	x.reconcile()
-	validatorLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
-	Eventually(func() bool {
-		err := x.K8sClient.Get(context.Background(), validatorLookupKey, &x.createdIndexValidator)
-		return err == nil
-	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
-
+	x.registerSuccessMocks()
 	validatorPods := x.ListValidatorPods()
 	validatorPods.Items[0].Status.Phase = corev1.PodSucceeded
 	err := x.K8sClient.Status().Update(context.Background(), &validatorPods.Items[0])
@@ -74,6 +62,26 @@ func (x *XJoinIndexValidatorTestReconciler) ReconcileSuccess() (validator v1alph
 	checkError(err)
 
 	result = x.reconcile()
+	validatorLookupKey := types.NamespacedName{Name: x.GetName(), Namespace: x.Namespace}
+	Eventually(func() bool {
+		err := x.K8sClient.Get(context.Background(), validatorLookupKey, &validator)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+	return
+}
+
+func (x *XJoinIndexValidatorTestReconciler) ReconcileFailure() (validator v1alpha1.XJoinIndexValidator, result reconcile.Result) {
+	x.registerFailureMocks()
+	validatorPods := x.ListValidatorPods()
+	validatorPods.Items[0].Status.Phase = corev1.PodFailed
+	err := x.K8sClient.Status().Update(context.Background(), &validatorPods.Items[0])
+	newPods := x.ListValidatorPods()
+	newPods.Items[0].GetNamespace()
+	checkError(err)
+
+	result = x.reconcile()
+	validatorLookupKey := types.NamespacedName{Name: x.GetName(), Namespace: x.Namespace}
 	Eventually(func() bool {
 		err := x.K8sClient.Get(context.Background(), validatorLookupKey, &validator)
 		return err == nil
@@ -84,7 +92,7 @@ func (x *XJoinIndexValidatorTestReconciler) ReconcileSuccess() (validator v1alph
 
 func (x *XJoinIndexValidatorTestReconciler) ListValidatorPods() *corev1.PodList {
 	labels := client.MatchingLabels{}
-	labels["xjoin.index"] = x.Name
+	labels["xjoin.index"] = x.GetName()
 	labels[common.COMPONENT_NAME_LABEL] = "XJoinIndexValidator"
 
 	pods := &corev1.PodList{}
@@ -93,7 +101,7 @@ func (x *XJoinIndexValidatorTestReconciler) ListValidatorPods() *corev1.PodList 
 	return pods
 }
 
-func (x *XJoinIndexValidatorTestReconciler) createDatasource() {
+func (x *XJoinIndexValidatorTestReconciler) CreateDatasource() {
 	reconciler := DatasourceTestReconciler{
 		Namespace:          x.Namespace,
 		Name:               "testdatasource",
@@ -119,7 +127,7 @@ func (x *XJoinIndexValidatorTestReconciler) createIndexValidator() {
 	//XjoinIndexValidator requires an XJoinIndexPipeline owner. Create one here
 	indexPipelineSpec := v1alpha1.XJoinIndexPipelineSpec{
 		AvroSchema: string(indexAvroSchema),
-		Version:    "1234",
+		Version:    x.Version,
 		Pause:      false,
 	}
 
@@ -140,11 +148,10 @@ func (x *XJoinIndexValidatorTestReconciler) createIndexValidator() {
 	Expect(x.K8sClient.Create(ctx, index)).Should(Succeed())
 
 	//create the XJoinIndexValidator
-	validatorVersion := "1234"
-	validatorIndexName := "xjoinindexpipeline.test-index.1234"
+	validatorIndexName := "xjoinindexpipeline." + x.GetName()
 	indexValidatorSpec := v1alpha1.XJoinIndexValidatorSpec{
 		Name:       x.Name,
-		Version:    validatorVersion,
+		Version:    x.Version,
 		AvroSchema: string(indexAvroSchema),
 		Pause:      false,
 		IndexName:  validatorIndexName,
@@ -154,7 +161,7 @@ func (x *XJoinIndexValidatorTestReconciler) createIndexValidator() {
 	controller := true
 	indexValidator := &v1alpha1.XJoinIndexValidator{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      x.Name,
+			Name:      x.GetName(),
 			Namespace: x.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -177,7 +184,7 @@ func (x *XJoinIndexValidatorTestReconciler) createIndexValidator() {
 	Expect(x.K8sClient.Create(ctx, indexValidator)).Should(Succeed())
 
 	//validate indexValidator spec is created correctly
-	indexValidatorLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
+	indexValidatorLookupKey := types.NamespacedName{Name: x.GetName(), Namespace: x.Namespace}
 	createdIndexValidator := &v1alpha1.XJoinIndexValidator{}
 
 	Eventually(func() bool {
@@ -186,7 +193,7 @@ func (x *XJoinIndexValidatorTestReconciler) createIndexValidator() {
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	Expect(createdIndexValidator.Spec.Name).Should(Equal(x.Name))
-	Expect(createdIndexValidator.Spec.Version).Should(Equal(validatorVersion))
+	Expect(createdIndexValidator.Spec.Version).Should(Equal(x.Version))
 	Expect(createdIndexValidator.Spec.Pause).Should(Equal(false))
 	Expect(createdIndexValidator.Spec.AvroSchema).Should(Equal(string(indexAvroSchema)))
 	Expect(createdIndexValidator.Spec.IndexName).Should(Equal(validatorIndexName))
@@ -207,8 +214,8 @@ func (x *XJoinIndexValidatorTestReconciler) newXJoinIndexValidatorReconciler() *
 func (x *XJoinIndexValidatorTestReconciler) reconcile() reconcile.Result {
 	ctx := context.Background()
 	xjoinIndexValidatorReconciler := x.newXJoinIndexValidatorReconciler()
-	indexLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
-	result, err := xjoinIndexValidatorReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: indexLookupKey})
+	indexValidatorLookup := types.NamespacedName{Name: x.GetName(), Namespace: x.Namespace}
+	result, err := xjoinIndexValidatorReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: indexValidatorLookup})
 	checkError(err)
 	return result
 }
@@ -219,7 +226,7 @@ func (x *XJoinIndexValidatorTestReconciler) registerCreateMocks() {
 		x.Name, x.Name, x.Name)
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions/1",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/1",
 		httpmock.NewStringResponder(
 			200, fmt.Sprintf(`{"id": 1, "subject": "xjoindatasourcepipeline.hosts.1674571335703357092-value", "version": 1, "schema": "%s", "references": "[]"}`, schema)))
 
@@ -233,4 +240,34 @@ func (x *XJoinIndexValidatorTestReconciler) registerCreateMocks() {
 	//	"GET",
 	//	"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions/latest",
 	//	httpmock.NewStringResponder(200, `{"schema":"{\"name\":\"Value\",\"namespace\":\"xjoinindexpipelinepipeline.`+x.Name+`\"}","schemaType":"AVRO","references":[]}`))
+}
+
+func (x *XJoinIndexValidatorTestReconciler) registerRunningMocks() {
+	schema := fmt.Sprintf(`{"type":"record","name":"Value","namespace":"xjoinindexpipeline.%s","fields":[{"name":"%s","type":{"type":"record","name":"xjoindatasourcepipeline.%s.Value","fields":[]}}}`,
+		x.Name, x.Name, x.Name)
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/1",
+		httpmock.NewStringResponder(
+			200, fmt.Sprintf(`{"id": 1, "subject": "xjoindatasourcepipeline.hosts.1674571335703357092-value", "version": 1, "schema": "%s", "references": "[]"}`, schema)))
+}
+
+func (x *XJoinIndexValidatorTestReconciler) registerSuccessMocks() {
+	schema := fmt.Sprintf(`{"type":"record","name":"Value","namespace":"xjoinindexpipeline.%s","fields":[{"name":"%s","type":{"type":"record","name":"xjoindatasourcepipeline.%s.Value","fields":[]}}}`,
+		x.Name, x.Name, x.Name)
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/1",
+		httpmock.NewStringResponder(
+			200, fmt.Sprintf(`{"id": 1, "subject": "xjoindatasourcepipeline.hosts.1674571335703357092-value", "version": 1, "schema": "%s", "references": "[]"}`, schema)))
+}
+
+func (x *XJoinIndexValidatorTestReconciler) registerFailureMocks() {
+	schema := fmt.Sprintf(`{"type":"record","name":"Value","namespace":"xjoinindexpipeline.%s","fields":[{"name":"%s","type":{"type":"record","name":"xjoindatasourcepipeline.%s.Value","fields":[]}}}`,
+		x.Name, x.Name, x.Name)
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/1",
+		httpmock.NewStringResponder(
+			200, fmt.Sprintf(`{"id": 1, "subject": "xjoindatasourcepipeline.hosts.1674571335703357092-value", "version": 1, "schema": "%s", "references": "[]"}`, schema)))
 }

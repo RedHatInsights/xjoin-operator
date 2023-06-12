@@ -60,6 +60,13 @@ spec:
             type: object
           status:
             properties:
+              active:
+                default: false
+                type: boolean
+              dataSources:
+                additionalProperties:
+                  type: string
+                type: object
               validationResponse:
                 properties:
                   details:

@@ -93,7 +93,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["transforms.flattenListString.sourceField"]).To(Equal("tags"))
 			Expect(esConnectorConfig["auto.create.indices.at.start"]).To(Equal(false))
 			Expect(esConnectorConfig["behavior.on.null.values"]).To(Equal("delete"))
-			Expect(esConnectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-http.test.svc:9200"))
+			Expect(esConnectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-default.test.svc:9200"))
 			Expect(esConnectorConfig["errors.log.enable"]).To(Equal(true))
 			Expect(esConnectorConfig["max.retries"]).To(Equal(int64(8)))
 			Expect(esConnectorConfig["transforms.deleteIf.field"]).To(Equal("__deleted"))
@@ -651,7 +651,7 @@ var _ = Describe("Pipeline operations", func() {
 			connectorConfig := connectorSpec["config"].(map[string]interface{})
 			Expect(connectorConfig["connection.username"]).To(Equal("test"))
 			Expect(connectorConfig["connection.password"]).To(Equal("test1337"))
-			Expect(connectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-http.test.svc:9200"))
+			Expect(connectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-default.test.svc:9200"))
 		})
 
 		It("Triggers refresh if index disappears", func() {

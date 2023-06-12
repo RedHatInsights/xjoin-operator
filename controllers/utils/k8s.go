@@ -54,6 +54,12 @@ func FetchXJoinIndexPipeline(c client.Client, namespacedName types.NamespacedNam
 	return instance, err
 }
 
+func FetchXJoinIndexPipelines(c client.Client, ctx context.Context) (*xjoin.XJoinIndexPipelineList, error) {
+	list := &xjoin.XJoinIndexPipelineList{}
+	err := c.List(ctx, list)
+	return list, err
+}
+
 func FetchXJoinIndexValidator(c client.Client, namespacedName types.NamespacedName, ctx context.Context) (*xjoin.XJoinIndexValidator, error) {
 	instance := &xjoin.XJoinIndexValidator{}
 	err := c.Get(ctx, namespacedName, instance)
