@@ -1,9 +1,13 @@
 package components
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
-	"strings"
+	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 type KafkaTopic struct {
@@ -42,7 +46,48 @@ func (kt *KafkaTopic) Delete() (err error) {
 }
 
 func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
-	return //TODO
+	found, err := kt.Exists()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	if !found {
+		return fmt.Errorf("KafkaTopic named, %s, does not exist.", kt.Name()), nil
+	}
+
+	// leave this commented line for testing.
+	// topicIn, err := kt.KafkaTopics.GetTopic("platform.inventory.events")
+	topicIn, err := kt.KafkaTopics.GetTopic(kt.Name())
+
+	if err != nil {
+		return nil, fmt.Errorf("Error encountered when getting KafkaTopic: %w", err)
+	}
+
+	if topicIn != nil {
+		var allTopics []unstructured.Unstructured
+		allTopics, err := kt.KafkaTopics.GetAllTopics()
+		if err != nil {
+			return nil, errors.Wrap(err, 0)
+		}
+
+		// make the topic data accessible, which is private by design
+		topicInPtr, ok := topicIn.(*unstructured.Unstructured)
+		if !ok {
+			return nil, fmt.Errorf("Problem getting the topic %t", ok)
+		}
+
+		for _, topic := range allTopics {
+			if topicInPtr.GetName() == topic.GetName() {
+				if equality.Semantic.DeepEqual(*topicInPtr, topic) {
+					return nil, nil
+				} else {
+					return fmt.Errorf("KafkaTopic named %s has changed.", topic.GetName()), nil
+				}
+			}
+		}
+	} else {
+		problem = fmt.Errorf("Kafka topic named, \"%s\", not found", kt.Name())
+	}
+	return
 }
 
 func (kt *KafkaTopic) Exists() (exists bool, err error) {

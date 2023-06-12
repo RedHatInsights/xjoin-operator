@@ -1,8 +1,9 @@
 package parameters
 
 import (
-	. "github.com/redhatinsights/xjoin-operator/controllers/config"
 	"reflect"
+
+	. "github.com/redhatinsights/xjoin-operator/controllers/config"
 )
 
 type DataSourceParameters struct {

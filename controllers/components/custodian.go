@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 )

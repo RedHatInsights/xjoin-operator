@@ -2,11 +2,14 @@ package controllers_test
 
 import (
 	"context"
+
 	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"github.com/redhatinsights/xjoin-operator/controllers"
 	"github.com/redhatinsights/xjoin-operator/controllers/index"
 	"os"
 	"time"
+
+	"github.com/redhatinsights/xjoin-operator/controllers"
 
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
