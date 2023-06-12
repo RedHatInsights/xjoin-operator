@@ -9,8 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/redhatinsights/xjoin-operator/controllers"
-
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
