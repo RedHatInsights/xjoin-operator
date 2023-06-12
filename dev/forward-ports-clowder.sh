@@ -14,7 +14,7 @@ KAFKA_NAME=$(kubectl get kafka -o custom-columns=:metadata.name -n "$PROJECT_NAM
 CONNECT_NAME=$(kubectl get kafkaconnect -o custom-columns=:metadata.name -n "$PROJECT_NAME" | xargs)
 KAFKA_SVC="svc/$KAFKA_NAME-kafka-bootstrap"
 CONNECT_SVC="svc/$CONNECT_NAME-connect-api"
-ELASTICSEARCH_SVC="svc/xjoin-elasticsearch-es-http"
+ELASTICSEARCH_SVC="svc/xjoin-elasticsearch-es-default"
 HBI_DB_SVC="svc/host-inventory-db"
 XJOIN_SVC="svc/xjoin-search"
 HBI_SVC="svc/host-inventory-service"
