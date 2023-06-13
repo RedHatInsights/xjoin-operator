@@ -2,11 +2,12 @@ package components
 
 import (
 	"fmt"
+	"github.com/google/go-cmp/cmp"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"strings"
 
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -30,7 +31,7 @@ func (kt *KafkaTopic) Name() string {
 }
 
 func (kt *KafkaTopic) Create() (err error) {
-	err = kt.KafkaTopics.CreateGenericTopic(kt.Name(), kt.TopicParameters)
+	_, err = kt.KafkaTopics.CreateGenericTopic(kt.Name(), kt.TopicParameters, false)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -46,46 +47,53 @@ func (kt *KafkaTopic) Delete() (err error) {
 }
 
 func (kt *KafkaTopic) CheckDeviation() (problem, err error) {
+	//build the expected topic
+	expectedTopic, err := kt.KafkaTopics.CreateGenericTopic(kt.Name(), kt.TopicParameters, true)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	//get the already created (existing) topic
 	found, err := kt.Exists()
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
 	if !found {
-		return fmt.Errorf("KafkaTopic named, %s, does not exist.", kt.Name()), nil
+		return fmt.Errorf("the KafkaTopic named, %s, does not exist", kt.Name()), nil
 	}
 
-	// leave this commented line for testing.
-	// topicIn, err := kt.KafkaTopics.GetTopic("platform.inventory.events")
-	topicIn, err := kt.KafkaTopics.GetTopic(kt.Name())
-
+	existingTopic, err := kt.KafkaTopics.GetTopic(kt.Name())
 	if err != nil {
-		return nil, fmt.Errorf("Error encountered when getting KafkaTopic: %w", err)
+		return nil, errors.Wrap(err, 0)
 	}
 
-	if topicIn != nil {
-		var allTopics []unstructured.Unstructured
-		allTopics, err := kt.KafkaTopics.GetAllTopics()
-		if err != nil {
-			return nil, errors.Wrap(err, 0)
+	if existingTopic != nil {
+		existingTopicPtr, existingTopicOk := existingTopic.(*unstructured.Unstructured)
+		if !existingTopicOk {
+			return nil, errors.Wrap(errors.New(
+				"existingTopic is the wrong type in KafkaTopic.CheckDeviation"), 0)
 		}
 
-		// make the topic data accessible, which is private by design
-		topicInPtr, ok := topicIn.(*unstructured.Unstructured)
-		if !ok {
-			return nil, fmt.Errorf("Problem getting the topic %t", ok)
+		expectedTopicUnstructured := expectedTopic.UnstructuredContent()
+		existingTopicUnstructured := existingTopicPtr.UnstructuredContent()
+
+		specDiff := cmp.Diff(
+			expectedTopicUnstructured["spec"].(map[string]interface{}),
+			existingTopicUnstructured["spec"].(map[string]interface{}),
+			utils.NumberNormalizer)
+
+		if len(specDiff) > 0 {
+			return fmt.Errorf("topic spec has changed: %s", specDiff), nil
 		}
 
-		for _, topic := range allTopics {
-			if topicInPtr.GetName() == topic.GetName() {
-				if equality.Semantic.DeepEqual(*topicInPtr, topic) {
-					return nil, nil
-				} else {
-					return fmt.Errorf("KafkaTopic named %s has changed.", topic.GetName()), nil
-				}
-			}
+		if existingTopicPtr.GetNamespace() != expectedTopic.GetNamespace() {
+			return fmt.Errorf(
+				"topic namespace has changed from: %s to %s",
+				existingTopicPtr.GetNamespace(),
+				expectedTopic.GetNamespace()), nil
 		}
 	} else {
-		problem = fmt.Errorf("Kafka topic named, \"%s\", not found", kt.Name())
+		problem = fmt.Errorf("the Kafka topic named, %s, not found", kt.Name())
 	}
 	return
 }

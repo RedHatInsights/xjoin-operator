@@ -950,7 +950,8 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//set the DatasourcePipeline to invalid
 			datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      dataSourceName + "." + createdDataSource.Status.ActiveVersion,
+				Name:      dataSourceName,
+				Version:   createdDataSource.Status.ActiveVersion,
 				K8sClient: k8sClient,
 			}
 			datasourcePipelineReconciler.ReconcileInvalid()
@@ -1041,7 +1042,8 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//set the datasource to invalid
 			datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      resources.DataSource.Name + "." + resources.DataSource.Status.ActiveVersion,
+				Name:      resources.DataSource.Name,
+				Version:   resources.DataSource.Status.ActiveVersion,
 				K8sClient: k8sClient,
 			}
 			datasourcePipelineReconciler.ReconcileInvalid()
@@ -1156,7 +1158,8 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//set the datasource to invalid
 			datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      resources.DataSource.Name + "." + resources.DataSource.Status.ActiveVersion,
+				Name:      resources.DataSource.Name,
+				Version:   resources.DataSource.Status.ActiveVersion,
 				K8sClient: k8sClient,
 			}
 			datasourcePipelineReconciler.ReconcileInvalid()
@@ -1258,7 +1261,8 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//set the datasource to invalid
 			datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      resources.DataSource.Name + "." + resources.DataSource.Status.ActiveVersion,
+				Name:      resources.DataSource.Name,
+				Version:   resources.DataSource.Status.ActiveVersion,
 				K8sClient: k8sClient,
 			}
 			datasourcePipelineReconciler.ReconcileInvalid()
