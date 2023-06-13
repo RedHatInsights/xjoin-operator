@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/redhatinsights/xjoin-operator/controllers/index"
 	"os"
 
 	"github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
@@ -37,6 +38,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      "test-data-source-pipeline",
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			createdDataSourcePipeline := reconciler.ReconcileNew()
 			Expect(createdDataSourcePipeline.Finalizers).To(HaveLen(1))
@@ -48,6 +50,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      "test-data-source-pipeline",
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			reconciler.ReconcileNew()
 
@@ -85,6 +88,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      "test-data-source-pipeline",
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			reconciler.ReconcileNew()
 
@@ -106,6 +110,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      "test-data-source-pipeline",
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			reconciler.ReconcileNew()
 
@@ -149,6 +154,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      name,
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			createdDataSourcePipeline := reconciler.ReconcileNew()
 
@@ -177,6 +183,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      name,
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			createdDataSourcePipeline := reconciler.ReconcileNew()
 
@@ -195,6 +202,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      name,
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			createdDataSourcePipeline := reconciler.ReconcileNew()
 
@@ -211,6 +219,58 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			err = k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
 			checkError(err)
 			Expect(topics.Items).To(HaveLen(0))
+		})
+	})
+
+	Context("Deviation", func() {
+		It("Leaves the status alone when there is no deviation", func() {
+			//create a valid DatasourcePipeline
+			name := "test-data-source-pipeline"
+			version := "1234"
+			reconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      name,
+				K8sClient: k8sClient,
+				Version:   version,
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+			updatedDatasourcePipeline := reconciler.ReconcileUpdated()
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Result).To(Equal(index.Valid))
+		})
+
+		It("Sets the status to invalid when the KafkaTopic has deviated", func() {
+			//create a valid DatasourcePipeline
+			name := "test-data-source-pipeline"
+			version := "1234"
+			reconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      name,
+				K8sClient: k8sClient,
+				Version:   version,
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+
+			//update the KafkaTopic to make it different from what the DatasourcePipeline defines
+			topicLookup := types.NamespacedName{
+				Namespace: namespace,
+				Name:      "xjoindatasourcepipeline." + name + "." + version,
+			}
+			existingTopic := &v1beta2.KafkaTopic{}
+			err := k8sClient.Get(context.Background(), topicLookup, existingTopic)
+			checkError(err)
+
+			replicas := int32(11)
+			existingTopic.Spec.Replicas = &replicas
+
+			err = k8sClient.Update(context.Background(), existingTopic)
+			checkError(err)
+
+			updatedDatasourcePipeline := reconciler.ReconcileUpdated()
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Message).To(ContainSubstring("topic spec has changed"))
 		})
 	})
 })

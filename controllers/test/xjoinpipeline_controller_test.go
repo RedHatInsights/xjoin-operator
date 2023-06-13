@@ -323,9 +323,9 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Removes stale topics", func() {
-			err := i.KafkaTopics.CreateTopic("1", false)
+			_, err := i.KafkaTopics.CreateTopic("1", false)
 			Expect(err).ToNot(HaveOccurred())
-			err = i.KafkaTopics.CreateTopic("2", false)
+			_, err = i.KafkaTopics.CreateTopic("2", false)
 			Expect(err).ToNot(HaveOccurred())
 
 			topics, err := i.KafkaTopics.ListTopicNamesForPrefix(ResourceNamePrefix)
@@ -1206,7 +1206,7 @@ var _ = Describe("Pipeline operations", func() {
 				version := strconv.FormatInt(time.Now().UnixNano(), 10)
 
 				log.Info("CREATING TOPIC " + version)
-				err := i.KafkaTopics.CreateTopic(version, false)
+				_, err := i.KafkaTopics.CreateTopic(version, false)
 				if err != nil {
 					return
 				}

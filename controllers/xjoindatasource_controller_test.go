@@ -111,7 +111,8 @@ var _ = Describe("XJoinDataSource", func() {
 			//set the refreshing pipeline to valid
 			pipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      createdDatasource.GetName() + "." + createdDatasource.Status.RefreshingVersion,
+				Name:      createdDatasource.GetName(),
+				Version:   createdDatasource.Status.RefreshingVersion,
 				K8sClient: k8sClient,
 			}
 			pipelineReconciler.ReconcileValid()
@@ -137,7 +138,8 @@ var _ = Describe("XJoinDataSource", func() {
 			//set the refreshing pipeline to valid
 			pipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      createdDatasource.GetName() + "." + createdDatasource.Status.RefreshingVersion,
+				Name:      createdDatasource.GetName(),
+				Version:   createdDatasource.Status.RefreshingVersion,
 				K8sClient: k8sClient,
 			}
 			pipelineReconciler.ReconcileValid()
@@ -153,7 +155,8 @@ var _ = Describe("XJoinDataSource", func() {
 			//set the active pipeline to invalid
 			activePipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      createdDatasource.GetName() + "." + updatedDatasource.Status.ActiveVersion,
+				Name:      createdDatasource.GetName(),
+				Version:   updatedDatasource.Status.ActiveVersion,
 				K8sClient: k8sClient,
 			}
 			activePipelineReconciler.ReconcileInvalid()
@@ -179,7 +182,8 @@ var _ = Describe("XJoinDataSource", func() {
 			//set the refreshing pipeline to valid
 			pipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      createdDatasource.GetName() + "." + createdDatasource.Status.RefreshingVersion,
+				Name:      createdDatasource.GetName(),
+				Version:   createdDatasource.Status.RefreshingVersion,
 				K8sClient: k8sClient,
 			}
 			pipelineReconciler.ReconcileValid()
@@ -195,7 +199,8 @@ var _ = Describe("XJoinDataSource", func() {
 			//set the active pipeline to invalid
 			activePipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      createdDatasource.GetName() + "." + updatedDatasource.Status.ActiveVersion,
+				Name:      createdDatasource.GetName(),
+				Version:   updatedDatasource.Status.ActiveVersion,
 				K8sClient: k8sClient,
 			}
 			activePipelineReconciler.ReconcileInvalid()
@@ -211,7 +216,8 @@ var _ = Describe("XJoinDataSource", func() {
 			//set the refreshing pipeline to valid
 			refreshingPipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      createdDatasource.GetName() + "." + updatedDatasource.Status.RefreshingVersion,
+				Name:      createdDatasource.GetName(),
+				Version:   updatedDatasource.Status.RefreshingVersion,
 				K8sClient: k8sClient,
 			}
 			refreshingPipelineReconciler.ReconcileValid()
@@ -238,7 +244,8 @@ var _ = Describe("XJoinDataSource", func() {
 			//set the refreshing pipeline to valid
 			pipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      createdDatasource.GetName() + "." + createdDatasource.Status.RefreshingVersion,
+				Name:      createdDatasource.GetName(),
+				Version:   createdDatasource.Status.RefreshingVersion,
 				K8sClient: k8sClient,
 			}
 			pipelineReconciler.ReconcileValid()
@@ -254,7 +261,8 @@ var _ = Describe("XJoinDataSource", func() {
 			//set the active pipeline to invalid
 			activePipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      createdDatasource.GetName() + "." + updatedDatasource.Status.ActiveVersion,
+				Name:      createdDatasource.GetName(),
+				Version:   updatedDatasource.Status.ActiveVersion,
 				K8sClient: k8sClient,
 			}
 			activePipelineReconciler.ReconcileInvalid()

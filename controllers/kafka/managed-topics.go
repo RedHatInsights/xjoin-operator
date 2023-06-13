@@ -78,8 +78,8 @@ func (t *ManagedTopics) CreateTopicByName(topicName string) error {
 	return nil
 }
 
-func (t *ManagedTopics) CreateTopic(pipelineVersion string, dryRun bool) error {
-	return t.CreateTopicByName(t.TopicName(pipelineVersion))
+func (t *ManagedTopics) CreateTopic(pipelineVersion string, dryRun bool) (interface{}, error) {
+	return nil, t.CreateTopicByName(t.TopicName(pipelineVersion))
 }
 
 func (t *ManagedTopics) CheckDeviation(pipelineVersion string) (problem error, err error) {
