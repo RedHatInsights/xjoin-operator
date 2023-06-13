@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -37,6 +38,7 @@ type XJoinDataSourcePipelineSpec struct {
 }
 
 type XJoinDataSourcePipelineStatus struct {
+	ValidationResponse validation.ValidationResponse `json:"validationResponse,omitempty"`
 }
 
 // +kubebuilder:object:root=true

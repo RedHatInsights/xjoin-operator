@@ -2,7 +2,10 @@ package controllers_test
 
 import (
 	"context"
+
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"github.com/redhatinsights/xjoin-operator/controllers"
+	"github.com/redhatinsights/xjoin-operator/controllers/index"
 	"os"
 	"time"
 
@@ -123,6 +126,48 @@ func (d *DatasourcePipelineTestReconciler) ReconcileDelete() {
 	Expect(datasourcePipelineList.Items).To(HaveLen(0))
 }
 
+func (d *DatasourcePipelineTestReconciler) ReconcileValid() v1alpha1.XJoinDataSourcePipeline {
+	d.registerValidMocks()
+	result := d.reconcile()
+	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
+
+	createdDataSourcePipeline := &v1alpha1.XJoinDataSourcePipeline{}
+	datasourceLookupKey := types.NamespacedName{Name: d.Name, Namespace: d.Namespace}
+	Eventually(func() bool {
+		err := d.K8sClient.Get(context.Background(), datasourceLookupKey, createdDataSourcePipeline)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+	createdDataSourcePipeline.Status.ValidationResponse = validation.ValidationResponse{
+		Result: index.Valid,
+	}
+	err := d.K8sClient.Status().Update(context.Background(), createdDataSourcePipeline)
+	Expect(err).ToNot(HaveOccurred())
+
+	return *createdDataSourcePipeline
+}
+
+func (d *DatasourcePipelineTestReconciler) ReconcileInvalid() v1alpha1.XJoinDataSourcePipeline {
+	d.registerValidMocks()
+	result := d.reconcile()
+	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
+
+	createdDataSourcePipeline := &v1alpha1.XJoinDataSourcePipeline{}
+	datasourceLookupKey := types.NamespacedName{Name: d.Name, Namespace: d.Namespace}
+	Eventually(func() bool {
+		err := d.K8sClient.Get(context.Background(), datasourceLookupKey, createdDataSourcePipeline)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+	createdDataSourcePipeline.Status.ValidationResponse = validation.ValidationResponse{
+		Result: index.Invalid,
+	}
+	err := d.K8sClient.Status().Update(context.Background(), createdDataSourcePipeline)
+	Expect(err).ToNot(HaveOccurred())
+
+	return *createdDataSourcePipeline
+}
+
 func (d *DatasourcePipelineTestReconciler) reconcile() reconcile.Result {
 	xjoinDataSourcePipelineReconciler := d.newXJoinDataSourcePipelineReconciler()
 	datasourceLookupKey := types.NamespacedName{Name: d.Name, Namespace: d.Namespace}
@@ -187,4 +232,25 @@ func (d *DatasourcePipelineTestReconciler) registerNewMocks() {
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+".1234-value/versions/latest",
 		httpmock.NewStringResponder(200, "{}"))
+}
+
+func (d *DatasourcePipelineTestReconciler) registerValidMocks() {
+	httpmock.Reset()
+	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
+
+	//avro schema mocks
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+"-value/versions/1",
+		httpmock.NewStringResponder(200, `{}`).Times(1))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.Name+"-value/versions/latest",
+		httpmock.NewStringResponder(200, "{}"))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects",
+		httpmock.NewStringResponder(200, "[]"))
 }

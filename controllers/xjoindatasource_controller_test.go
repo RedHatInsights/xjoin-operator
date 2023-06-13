@@ -92,4 +92,195 @@ var _ = Describe("XJoinDataSource", func() {
 			Expect(dataSourcePipelineList.Items).To(HaveLen(0))
 		})
 	})
+
+	Context("Pipeline management", func() {
+		It("Should update the refreshing status when the refreshing DataSourcePipeline status changes", func() {
+			//setup initial state with an invalid refreshing pipeline
+			datasourceReconciler := DatasourceTestReconciler{
+				Namespace: namespace,
+				Name:      "test-data-source",
+				K8sClient: k8sClient,
+			}
+			createdDatasource := datasourceReconciler.ReconcileNew()
+
+			Expect(createdDatasource.Status.RefreshingVersion).ToNot(Equal(""))
+			Expect(createdDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(createdDatasource.Status.ActiveVersion).To(Equal(""))
+			Expect(createdDatasource.Status.ActiveVersionIsValid).To(Equal(false))
+
+			//set the refreshing pipeline to valid
+			pipelineReconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      createdDatasource.GetName() + "." + createdDatasource.Status.RefreshingVersion,
+				K8sClient: k8sClient,
+			}
+			pipelineReconciler.ReconcileValid()
+
+			//validate the DataSource's status is updated
+			datasourceReconciler.reconcile()
+			updatedDatasource := datasourceReconciler.GetDataSource()
+			Expect(updatedDatasource.Status.RefreshingVersion).To(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
+			Expect(updatedDatasource.Status.ActiveVersionIsValid).To(Equal(true))
+		})
+
+		It("Should update the active pipeline status when the active DataSourcePipeline status changes", func() {
+			//setup initial state with an invalid refreshing pipeline
+			datasourceReconciler := DatasourceTestReconciler{
+				Namespace: namespace,
+				Name:      "test-data-source",
+				K8sClient: k8sClient,
+			}
+			createdDatasource := datasourceReconciler.ReconcileNew()
+
+			//set the refreshing pipeline to valid
+			pipelineReconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      createdDatasource.GetName() + "." + createdDatasource.Status.RefreshingVersion,
+				K8sClient: k8sClient,
+			}
+			pipelineReconciler.ReconcileValid()
+
+			//validate the DataSource's status is in the correct state
+			datasourceReconciler.reconcile()
+			updatedDatasource := datasourceReconciler.GetDataSource()
+			Expect(updatedDatasource.Status.RefreshingVersion).To(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
+			Expect(updatedDatasource.Status.ActiveVersionIsValid).To(Equal(true))
+
+			//set the active pipeline to invalid
+			activePipelineReconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      createdDatasource.GetName() + "." + updatedDatasource.Status.ActiveVersion,
+				K8sClient: k8sClient,
+			}
+			activePipelineReconciler.ReconcileInvalid()
+
+			//validate the DataSource's status is updated
+			datasourceReconciler.reconcile()
+			updatedDatasource = datasourceReconciler.GetDataSource()
+			Expect(updatedDatasource.Status.RefreshingVersion).ToNot(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
+			Expect(updatedDatasource.Status.ActiveVersionIsValid).To(Equal(false))
+		})
+
+		It("Should replace the active pipeline with the refreshing DataSourcePipeline when it becomes valid", func() {
+			//setup initial state with an invalid refreshing pipeline
+			datasourceReconciler := DatasourceTestReconciler{
+				Namespace: namespace,
+				Name:      "test-data-source",
+				K8sClient: k8sClient,
+			}
+			createdDatasource := datasourceReconciler.ReconcileNew()
+
+			//set the refreshing pipeline to valid
+			pipelineReconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      createdDatasource.GetName() + "." + createdDatasource.Status.RefreshingVersion,
+				K8sClient: k8sClient,
+			}
+			pipelineReconciler.ReconcileValid()
+
+			//validate the DataSource's active pipeline is invalid with no refreshing pipeline
+			datasourceReconciler.reconcile()
+			updatedDatasource := datasourceReconciler.GetDataSource()
+			Expect(updatedDatasource.Status.RefreshingVersion).To(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
+			Expect(updatedDatasource.Status.ActiveVersionIsValid).To(Equal(true))
+
+			//set the active pipeline to invalid
+			activePipelineReconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      createdDatasource.GetName() + "." + updatedDatasource.Status.ActiveVersion,
+				K8sClient: k8sClient,
+			}
+			activePipelineReconciler.ReconcileInvalid()
+
+			//validate the DataSource's status is in the refreshing state with an invalid active pipeline
+			datasourceReconciler.reconcile()
+			updatedDatasource = datasourceReconciler.GetDataSource()
+			Expect(updatedDatasource.Status.RefreshingVersion).ToNot(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
+			Expect(updatedDatasource.Status.ActiveVersionIsValid).To(Equal(false))
+
+			//set the refreshing pipeline to valid
+			refreshingPipelineReconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      createdDatasource.GetName() + "." + updatedDatasource.Status.RefreshingVersion,
+				K8sClient: k8sClient,
+			}
+			refreshingPipelineReconciler.ReconcileValid()
+
+			//validate the DataSource's status is updated
+			refreshingVersion := updatedDatasource.Status.RefreshingVersion
+			datasourceReconciler.reconcile()
+			updatedDatasource = datasourceReconciler.GetDataSource()
+			Expect(updatedDatasource.Status.RefreshingVersion).To(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(refreshingVersion))
+			Expect(updatedDatasource.Status.ActiveVersionIsValid).To(Equal(true))
+		})
+
+		It("Should create a refreshing pipeline when the active DataSourcePipeline becomes invalid", func() {
+			//setup initial state with an invalid refreshing pipeline
+			datasourceReconciler := DatasourceTestReconciler{
+				Namespace: namespace,
+				Name:      "test-data-source",
+				K8sClient: k8sClient,
+			}
+			createdDatasource := datasourceReconciler.ReconcileNew()
+
+			//set the refreshing pipeline to valid
+			pipelineReconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      createdDatasource.GetName() + "." + createdDatasource.Status.RefreshingVersion,
+				K8sClient: k8sClient,
+			}
+			pipelineReconciler.ReconcileValid()
+
+			//validate the DataSource's status is in the correct state
+			datasourceReconciler.reconcile()
+			updatedDatasource := datasourceReconciler.GetDataSource()
+			Expect(updatedDatasource.Status.RefreshingVersion).To(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
+			Expect(updatedDatasource.Status.ActiveVersionIsValid).To(Equal(true))
+
+			//set the active pipeline to invalid
+			activePipelineReconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      createdDatasource.GetName() + "." + updatedDatasource.Status.ActiveVersion,
+				K8sClient: k8sClient,
+			}
+			activePipelineReconciler.ReconcileInvalid()
+
+			//validate the DataSource's status is updated
+			datasourceReconciler.reconcile()
+			updatedDatasource = datasourceReconciler.GetDataSource()
+
+			Expect(updatedDatasource.Status.RefreshingVersion).ToNot(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
+			Expect(updatedDatasource.Status.ActiveVersionIsValid).To(Equal(false))
+
+			//validate the refreshing pipeline was created
+			refreshingPipeline := &v1alpha1.XJoinDataSourcePipeline{}
+			datasourceLookupKey := types.NamespacedName{
+				Name:      updatedDatasource.GetName() + "." + updatedDatasource.Status.RefreshingVersion,
+				Namespace: updatedDatasource.Namespace,
+			}
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), datasourceLookupKey, refreshingPipeline)
+				return err == nil
+			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+			Expect(refreshingPipeline.Name).To(Equal(
+				updatedDatasource.GetName() + "." + updatedDatasource.Status.RefreshingVersion))
+		})
+	})
 })

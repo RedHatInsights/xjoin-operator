@@ -2,6 +2,10 @@ package test
 
 import (
 	"context"
+	"os/exec"
+	"reflect"
+	"time"
+
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers"
 	. "github.com/redhatinsights/xjoin-operator/controllers/config"
@@ -17,11 +21,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"os/exec"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"time"
 )
 
 var log = logger.NewLogger("test_utils")
@@ -71,7 +72,7 @@ func parametersToMap(parameters Parameters) map[string]interface{} {
 
 func getParameters() (Parameters, map[string]interface{}, error) {
 	options := viper.New()
-	options.SetDefault("ElasticSearchURL", "http://xjoin-elasticsearch-es-http.test.svc:9200")
+	options.SetDefault("ElasticSearchURL", "http://xjoin-elasticsearch-es-default.test.svc:9200")
 	options.SetDefault("ElasticSearchUsername", "test")
 	options.SetDefault("ElasticSearchPassword", "test1337")
 	options.SetDefault("HBIDBHost", "host-inventory-db.test.svc")
@@ -176,7 +177,7 @@ func Before() (*Iteration, error) {
 	}
 
 	es, err := elasticsearch.NewElasticSearch(
-		"http://xjoin-elasticsearch-es-http.test.svc:9200",
+		"http://xjoin-elasticsearch-es-default.test.svc:9200",
 		"xjoin",
 		"xjoin1337",
 		ResourceNamePrefix,

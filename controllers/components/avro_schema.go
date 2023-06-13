@@ -35,8 +35,8 @@ func NewAvroSchema(parameters AvroSchemaParameters) *AvroSchema {
 	}
 }
 
-func (as *AvroSchema) SetName(name string) {
-	as.name = strings.ToLower(name)
+func (as *AvroSchema) SetName(kind string, name string) {
+	as.name = strings.ToLower(kind + "." + name)
 }
 
 func (as *AvroSchema) SetVersion(version string) {
@@ -119,6 +119,7 @@ func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err e
 	for _, subject := range subjects {
 		if strings.Index(subject, as.name+".") == 0 {
 			version := strings.Split(subject, ".")[1]
+			version = strings.Split(version, "-")[0]
 			installedVersions = append(installedVersions, version)
 		}
 	}
@@ -126,7 +127,7 @@ func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err e
 	return
 }
 
-func (as AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
+func (as *AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
 	var schemaObj Schema
 	err = json.Unmarshal([]byte(as.schema), &schemaObj)
 	if err != nil {
@@ -142,4 +143,8 @@ func (as AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
 	}
 
 	return string(schemaBytes), err
+}
+
+func (as *AvroSchema) Reconcile() (err error) {
+	return nil
 }

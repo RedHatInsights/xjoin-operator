@@ -357,6 +357,16 @@ func (t *StrimziTopics) ListTopicNamesForPrefix(prefix string) ([]string, error)
 	return response, err
 }
 
+func (t *StrimziTopics) GetAllTopics() ([]unstructured.Unstructured, error) {
+	topics := &unstructured.UnstructuredList{}
+	topics.SetGroupVersionKind(topicsGroupVersionKind)
+
+	err := t.Client.List(
+		t.Context, topics, client.InNamespace(t.KafkaClusterNamespace))
+
+	return topics.Items, err
+}
+
 func (t *StrimziTopics) GetTopic(topicName string) (interface{}, error) {
 	topic := &unstructured.Unstructured{}
 	topic.SetGroupVersionKind(topicGroupVersionKind)

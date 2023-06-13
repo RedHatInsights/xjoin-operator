@@ -90,6 +90,10 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
+			if r.Test {
+				reqLogger.Error(
+					err, "Unable to find XJoinIndexValidator", "name", request.Name)
+			}
 			return result, nil
 		}
 		// Error reading the object - requeue the request.
@@ -151,6 +155,8 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 	instance.Status.ValidationPodPhase = phase
 	if phase == ValidatorPodSuccess {
 		return i.UpdateStatusAndRequeue(time.Second * time.Duration(p.ValidationInterval.Int()))
+	} else if phase == ValidatorPodFailed {
+		return i.UpdateStatusAndRequeue(time.Second * time.Duration(0))
 	} else {
 		return i.UpdateStatusAndRequeue(time.Second * time.Duration(p.ValidationPodStatusInterval.Int()))
 	}
