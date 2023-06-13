@@ -79,23 +79,26 @@ func (as *AvroSchema) DeleteByVersion(version string) (err error) {
 }
 
 func (as *AvroSchema) CheckDeviation() (problem, err error) {
-	schema, err := as.SetSchemaNameNamespace()
+	expectedSchema, err := as.SetSchemaNameNamespace()
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
 
 	as.registry.Client.ResetCache()
-	srschema, err := as.registry.Client.GetLatestSchema(as.Name())
+	existingSchema, err := as.registry.Client.GetLatestSchema(as.Name())
 	if err != nil {
-		srerr, isSrerr := err.(srclient.Error)
-		if isSrerr && srerr.Code == 40401 {
+		srErr, ok := err.(srclient.Error)
+		if !ok {
+			return nil, errors.Wrap(errors.New("invalid error type in AvroSchema.CheckDeviation"), 0)
+		}
+		if srErr.Code == 40401 {
 			// Error code 40401 – Subject not found
 			return fmt.Errorf("schema for subject %s not found in registry", as.Name()), nil
 		}
 		return nil, errors.Wrap(err, 0)
 	}
 
-	if schema != srschema.Schema() {
+	if expectedSchema != existingSchema.Schema() {
 		problem = fmt.Errorf("schema in registry changed for subject %s", as.Name())
 	}
 

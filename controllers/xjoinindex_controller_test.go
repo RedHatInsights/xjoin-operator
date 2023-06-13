@@ -194,7 +194,8 @@ var _ = Describe("XJoinIndex", func() {
 			//invalidate the active datasource pipeline
 			datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
 				Namespace: namespace,
-				Name:      createdDataSource.GetName() + "." + createdDataSource.Status.ActiveVersion,
+				Name:      createdDataSource.GetName(),
+				Version:   createdDataSource.Status.ActiveVersion,
 				K8sClient: k8sClient,
 			}
 			datasourcePipelineReconciler.ReconcileInvalid()

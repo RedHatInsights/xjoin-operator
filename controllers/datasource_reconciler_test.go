@@ -59,8 +59,9 @@ func (d *DatasourceTestReconciler) ReconcileNew() v1alpha1.XJoinDataSource {
 func (d *DatasourceTestReconciler) ReconcileValid() v1alpha1.XJoinDataSource {
 	//set the refreshing pipeline to valid
 	datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
+		Version:   d.createdDatasource.Status.RefreshingVersion,
 		Namespace: d.Namespace,
-		Name:      d.Name + "." + d.createdDatasource.Status.RefreshingVersion,
+		Name:      d.Name,
 		K8sClient: k8sClient,
 	}
 	datasourcePipelineReconciler.ReconcileValid()
