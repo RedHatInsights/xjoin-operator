@@ -118,9 +118,12 @@ func (t *StrimziTopics) createTopicByFullName(topicName string, dryRun bool) (*u
 	return topic, nil
 }
 
-func (t *StrimziTopics) CreateTopic(pipelineVersion string, dryRun bool) error {
-	_, err := t.createTopicByFullName(t.TopicName(pipelineVersion), dryRun)
-	return err
+func (t *StrimziTopics) CreateTopic(pipelineVersion string, dryRun bool) (interface{}, error) {
+	topic, err := t.createTopicByFullName(t.TopicName(pipelineVersion), dryRun)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	return topic, nil
 }
 
 func (t *StrimziTopics) DeleteTopicByPipelineVersion(pipelineVersion string) error {
@@ -235,7 +238,7 @@ func (t *StrimziTopics) CheckDeviation(pipelineVersion string) (problem error, e
 	return nil, nil
 }
 
-func (t *StrimziTopics) CreateGenericTopic(topicName string, topicParameters TopicParameters) error {
+func (t *StrimziTopics) CreateGenericTopic(topicName string, topicParameters TopicParameters, dryRun bool) (unstructured.Unstructured, error) {
 	topic := &unstructured.Unstructured{}
 	topic.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
@@ -261,9 +264,13 @@ func (t *StrimziTopics) CreateGenericTopic(topicName string, topicParameters Top
 
 	topic.SetGroupVersionKind(topicGroupVersionKind)
 
+	if dryRun {
+		return *topic, nil
+	}
+
 	err := t.Client.Create(t.Context, topic)
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return *topic, errors.Wrap(err, 0)
 	}
 
 	log.Info("Waiting for topic to be created.", "topic", topicName)
@@ -315,10 +322,10 @@ func (t *StrimziTopics) CreateGenericTopic(topicName string, topicParameters Top
 	})
 
 	if err != nil {
-		return errors.Wrap(errors.New(fmt.Sprintf("timed out waiting for Kafka Topic %s to be created", topicName)), 0)
+		return *topic, errors.Wrap(errors.New(fmt.Sprintf("timed out waiting for Kafka Topic %s to be created", topicName)), 0)
 	}
 
-	return nil
+	return *topic, nil
 }
 
 func (t *StrimziTopics) DeleteTopic(topicName string) error {
@@ -355,6 +362,16 @@ func (t *StrimziTopics) ListTopicNamesForPrefix(prefix string) ([]string, error)
 	}
 
 	return response, err
+}
+
+func (t *StrimziTopics) GetAllTopics() ([]unstructured.Unstructured, error) {
+	topics := &unstructured.UnstructuredList{}
+	topics.SetGroupVersionKind(topicsGroupVersionKind)
+
+	err := t.Client.List(
+		t.Context, topics, client.InNamespace(t.KafkaClusterNamespace))
+
+	return topics.Items, err
 }
 
 func (t *StrimziTopics) GetTopic(topicName string) (interface{}, error) {

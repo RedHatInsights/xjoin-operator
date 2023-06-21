@@ -153,8 +153,8 @@ if [ "$SETUP_ELASTICSEARCH" = true ] || [ "$SETUP_ALL" = true ]; then
     echo "Unable to get ES_PASSWORD"
   fi
 
-  pkill -f "kubectl port-forward svc/xjoin-elasticsearch-es-http"
-  kubectl port-forward svc/xjoin-elasticsearch-es-http 9200:9200 -n "$PROJECT_NAME" &
+  pkill -f "kubectl port-forward svc/xjoin-elasticsearch-es-default"
+  kubectl port-forward svc/xjoin-elasticsearch-es-default 9200:9200 -n "$PROJECT_NAME" &
   sleep 3
 
   curl -X POST -u "elastic:$ES_PASSWORD" -k "http://localhost:9200/_security/user/xjoin" \

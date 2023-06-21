@@ -1,7 +1,13 @@
 package controllers_test
 
 import (
+	"bytes"
 	"context"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
+	"github.com/redhatinsights/xjoin-operator/controllers/index"
+	"os"
+	"text/template"
+
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
@@ -11,20 +17,21 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 type XJoinIndexPipelineTestReconciler struct {
-	Namespace            string
-	Name                 string
-	ConfigFileName       string
-	CustomSubgraphImages []v1alpha1.CustomSubgraphImage
-	K8sClient            client.Client
-	DataSources          []DataSource
-	createdIndexPipeline v1alpha1.XJoinIndexPipeline
+	Namespace                string
+	Name                     string
+	Version                  string
+	AvroSchemaFileName       string
+	CustomSubgraphImages     []v1alpha1.CustomSubgraphImage
+	K8sClient                client.Client
+	DataSources              []DataSource
+	createdIndexPipeline     v1alpha1.XJoinIndexPipeline
+	ApiCurioResponseFilename string
 }
 
 type DataSource struct {
@@ -33,16 +40,61 @@ type DataSource struct {
 	ApiCurioResponseFilename string
 }
 
+func (x *XJoinIndexPipelineTestReconciler) getNamespacedName() types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: x.Namespace,
+		Name:      x.GetName(),
+	}
+}
+
+func (x *XJoinIndexPipelineTestReconciler) GetName() string {
+	return x.Name + "." + x.Version
+}
+
 func (x *XJoinIndexPipelineTestReconciler) ReconcileNew() v1alpha1.XJoinIndexPipeline {
 	x.registerNewMocks()
 	x.createValidIndexPipeline()
 	result := x.reconcile()
 	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
-	indexLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
+	indexPipelineLookupKey := types.NamespacedName{Name: x.GetName(), Namespace: x.Namespace}
 	Eventually(func() bool {
-		err := x.K8sClient.Get(context.Background(), indexLookupKey, &x.createdIndexPipeline)
+		err := x.K8sClient.Get(context.Background(), indexPipelineLookupKey, &x.createdIndexPipeline)
 		return err == nil
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+	return x.createdIndexPipeline
+}
+
+func (x *XJoinIndexPipelineTestReconciler) ReconcileUpdated(params UpdatedMocksParams) v1alpha1.XJoinIndexPipeline {
+	x.registerUpdatedMocks(params)
+	result := x.reconcile()
+	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
+	indexPipelineLookup := types.NamespacedName{Name: x.GetName(), Namespace: x.Namespace}
+	Eventually(func() bool {
+		err := x.K8sClient.Get(context.Background(), indexPipelineLookup, &x.createdIndexPipeline)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+	return x.createdIndexPipeline
+}
+
+func (x *XJoinIndexPipelineTestReconciler) ReconcileValid() v1alpha1.XJoinIndexPipeline {
+	x.registerValidMocks()
+	result := x.reconcile()
+	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
+
+	indexPipeline := &v1alpha1.XJoinIndexPipeline{}
+	Eventually(func() bool {
+		err := x.K8sClient.Get(context.Background(), x.getNamespacedName(), indexPipeline)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+	indexPipeline.Status.ValidationResponse = validation.ValidationResponse{
+		Result: index.Valid,
+	}
+	indexPipeline.Status.Active = true
+	err := x.K8sClient.Status().Update(context.Background(), indexPipeline)
+	Expect(err).ToNot(HaveOccurred())
+
+	x.createdIndexPipeline = *indexPipeline
 	return x.createdIndexPipeline
 }
 
@@ -60,7 +112,7 @@ func (x *XJoinIndexPipelineTestReconciler) ReconcileDelete() {
 func (x *XJoinIndexPipelineTestReconciler) reconcile() reconcile.Result {
 	ctx := context.Background()
 	xjoinIndexPipelineReconciler := x.newXJoinIndexPipelineReconciler()
-	indexLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
+	indexLookupKey := types.NamespacedName{Name: x.GetName(), Namespace: x.Namespace}
 	result, err := xjoinIndexPipelineReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: indexLookupKey})
 	checkError(err)
 	return result
@@ -73,63 +125,71 @@ func (x *XJoinIndexPipelineTestReconciler) registerDeleteMocks() {
 	//connector mocks
 	httpmock.RegisterResponder(
 		"GET",
-		"http://connect-connect-api."+x.Namespace+".svc:8083/connectors/xjoinindexpipeline."+x.Name+".1234",
+		"http://connect-connect-api."+x.Namespace+".svc:8083/connectors/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(404, `{}`))
 
 	//gql schema mocks
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline-"+x.Name+"-1234/versions/1",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"/versions/1",
 		httpmock.NewStringResponder(200, `{}`))
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline-"+x.Name+"-1234/versions/latest",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"/versions/latest",
 		httpmock.NewStringResponder(200, `{}`))
 	httpmock.RegisterResponder(
 		"DELETE",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline-"+x.Name+"-1234",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(200, `{}`))
+
+	//graphql schema state update mocks
+	getMetaResponder, err := httpmock.NewJsonResponder(200, map[string]string{"state": "ENABLED"})
+	checkError(err)
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/meta",
+		getMetaResponder)
 
 	//elasticsearch index mocks
 	httpmock.RegisterResponder(
 		"HEAD",
-		"http://localhost:9200/xjoinindexpipeline."+x.Name+".1234",
+		"http://localhost:9200/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(200, `{}`))
 	httpmock.RegisterResponder(
 		"DELETE",
-		"http://localhost:9200/xjoinindexpipeline."+x.Name+".1234",
+		"http://localhost:9200/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(200, `{}`))
 
 	//avro schema mocks
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions/1",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/1",
 		httpmock.NewStringResponder(200, `{}`))
 
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions/latest",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/latest",
 		httpmock.NewStringResponder(200, `{}`))
 
 	httpmock.RegisterResponder(
 		"DELETE",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value",
 		httpmock.NewStringResponder(200, `{}`))
 
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+".1234/versions",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/versions",
 		httpmock.NewStringResponder(404, `{}`))
 
 	for _, customImage := range x.CustomSubgraphImages {
 		httpmock.RegisterResponder(
 			"GET",
-			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+".1234/versions",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version+"/versions",
 			httpmock.NewStringResponder(200, `{}`).Once())
 
 		httpmock.RegisterResponder(
 			"DELETE",
-			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+".1234",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version,
 			httpmock.NewStringResponder(200, `{}`).Once())
 	}
 
@@ -143,12 +203,12 @@ func (x *XJoinIndexPipelineTestReconciler) registerDeleteMocks() {
 
 		httpmock.RegisterResponder(
 			"GET",
-			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234",
+			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline."+x.GetName(),
 			httpmock.NewStringResponder(200, "{}").Once())
 
 		httpmock.RegisterResponder(
 			"DELETE",
-			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234",
+			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline."+x.GetName(),
 			httpmock.NewStringResponder(200, "{}").Once())
 	}
 }
@@ -160,34 +220,48 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 	//elasticsearch index mocks
 	httpmock.RegisterResponder(
 		"HEAD",
-		"http://localhost:9200/xjoinindexpipeline."+x.Name+".1234",
+		"http://localhost:9200/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(404, `{}`))
 
 	httpmock.RegisterResponder(
 		"PUT",
-		"http://localhost:9200/xjoinindexpipeline."+x.Name+".1234",
+		"http://localhost:9200/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(201, `{}`))
 
 	//avro schema mocks
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions/1",
-		httpmock.NewStringResponder(404, `{"message":"No version '1' found for artifact with ID 'xjoinindexpipelinepipeline.`+x.Name+`.1234-value' in group 'null'.","error_code":40402}`))
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/1",
+		httpmock.NewStringResponder(404, `{"message":"No version '1' found for artifact with ID 'xjoinindexpipelinepipeline.`+x.GetName()+`-value' in group 'null'.","error_code":40402}`))
 
 	httpmock.RegisterResponder(
 		"POST",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions",
 		httpmock.NewStringResponder(200, `{"createdBy":"","createdOn":"2022-07-27T17:28:11+0000","modifiedBy":"","modifiedOn":"2022-07-27T17:28:11+0000","id":1,"version":1,"type":"AVRO","globalId":1,"state":"ENABLED","groupId":"null","contentId":1,"references":[]}`))
 
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/schemas/ids/1",
-		httpmock.NewStringResponder(200, `{"schema":"{\"name\":\"Value\",\"namespace\":\"xjoindatasourcepipeline.`+x.Name+`\"}","schemaType":"AVRO","references":[]}`))
+		httpmock.NewStringResponder(200, `{"schema":"{\"name\":\"Value\",\"namespace\":\"xjoindatasourcepipeline.`+x.GetName()+`\"}","schemaType":"AVRO","references":[]}`))
+
+	//graphql schema state update mocks
+	getMetaResponder, err := httpmock.NewJsonResponder(200, map[string]string{"state": "ENABLED"})
+	checkError(err)
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/meta",
+		getMetaResponder)
+
+	httpmock.RegisterMatcherResponder(
+		"PUT",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/state",
+		httpmock.BodyContainsString(`"state":"DISABLED"`).WithName("DisabledState"),
+		httpmock.NewStringResponder(200, `{}`))
 
 	//graphql schema mocks
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+".1234/versions",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/versions",
 		httpmock.NewStringResponder(404, `{}`))
 
 	httpmock.RegisterResponder(
@@ -197,14 +271,14 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 
 	httpmock.RegisterResponder(
 		"PUT",
-		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+".1234/meta",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/meta",
 		httpmock.NewStringResponder(200, `{}`))
 
 	for _, customImage := range x.CustomSubgraphImages {
 		//custom subgraph graphql schema mocks
 		httpmock.RegisterResponder(
 			"GET",
-			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+".1234/versions",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version+"/versions",
 			httpmock.NewStringResponder(404, `{}`))
 
 		httpmock.RegisterResponder(
@@ -214,7 +288,21 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 
 		httpmock.RegisterResponder(
 			"PUT",
-			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+".1234/meta",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version+"/meta",
+			httpmock.NewStringResponder(200, `{}`))
+
+		//graphql schema state update mocks
+		getMetaResponder, err = httpmock.NewJsonResponder(200, map[string]string{"state": "ENABLED"})
+		checkError(err)
+		httpmock.RegisterResponder(
+			"GET",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version+"/meta",
+			getMetaResponder)
+
+		httpmock.RegisterMatcherResponder(
+			"PUT",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-"+customImage.Name+"."+x.Version+"/state",
+			httpmock.BodyContainsString(`"state":"DISABLED"`).WithName("DisabledState"),
 			httpmock.NewStringResponder(200, `{}`))
 	}
 
@@ -228,19 +316,180 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 
 		httpmock.RegisterResponder(
 			"GET",
-			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234",
+			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline."+x.GetName(),
 			httpmock.NewStringResponder(404, "{}").Once())
 
 		httpmock.RegisterResponder(
 			"PUT",
-			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234",
+			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline."+x.GetName(),
+			httpmock.NewStringResponder(200, "{}"))
+	}
+
+	response := x.parseResponseFile()
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/latest",
+		httpmock.NewStringResponder(200, response))
+}
+
+func (x *XJoinIndexPipelineTestReconciler) parseResponseFile() string {
+	filename := "index-empty"
+	if x.ApiCurioResponseFilename != "" {
+		filename = x.ApiCurioResponseFilename
+	}
+	responseTemplate, err := os.ReadFile("./test/data/apicurio/" + filename + ".json")
+	checkError(err)
+	tmpl, err := template.New("apicurioResponse").Parse(string(responseTemplate))
+	checkError(err)
+	var templateBuffer bytes.Buffer
+	err = tmpl.Execute(&templateBuffer, map[string]interface{}{"Namespace": "xjoinindexpipeline." + x.Name})
+	checkError(err)
+	return templateBuffer.String()
+}
+
+func (x *XJoinIndexPipelineTestReconciler) registerValidMocks() {
+	x.registerUpdatedMocks(UpdatedMocksParams{
+		GraphQLSchemaExistingState: "DISABLED",
+		GraphQLSchemaNewState:      "ENABLED",
+	})
+}
+
+func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks(params UpdatedMocksParams) {
+	httpmock.Reset()
+	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
+
+	//elasticsearch mocks
+	httpmock.RegisterResponder(
+		"HEAD",
+		"http://localhost:9200/xjoinindexpipeline."+x.GetName(),
+		httpmock.NewStringResponder(200, `{}`))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://localhost:9200/_cat/indices/"+x.Name+".%2A",
+		httpmock.NewStringResponder(200, "[]"))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://localhost:9200/_ingest/pipeline/"+x.Name+"%2A",
+		httpmock.NewStringResponder(200, "{}"))
+
+	//graphql schema state update mocks
+	var getMetaResponder httpmock.Responder
+	var err error
+	if params.GraphQLSchemaExistingState == "ENABLED" {
+		getMetaResponder, err = httpmock.NewJsonResponder(200, map[string]string{"state": "ENABLED"})
+		checkError(err)
+	} else {
+		getMetaResponder, err = httpmock.NewJsonResponder(200, map[string]string{"state": "DISABLED"})
+		checkError(err)
+	}
+
+	var matcher httpmock.Matcher
+	if params.GraphQLSchemaNewState == "ENABLED" {
+		matcher = httpmock.BodyContainsString(`"state":"ENABLED"`).WithName("EnabledState")
+	} else {
+		matcher = httpmock.BodyContainsString(`"state":"DISABLED"`).WithName("DisabledState")
+	}
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/meta",
+		getMetaResponder)
+
+	httpmock.RegisterMatcherResponder(
+		"PUT",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/state",
+		matcher,
+		httpmock.NewStringResponder(200, `{}`))
+
+	//avro schema mocks
+	response := x.parseResponseFile()
+	checkError(err)
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/1",
+		httpmock.NewStringResponder(200, response))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/latest",
+		httpmock.NewStringResponder(200, response))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/latest",
+		httpmock.NewStringResponder(200, response))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects",
+		httpmock.NewStringResponder(200, `[]`))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.GetName()+"/versions",
+		httpmock.NewStringResponder(200, `{}`))
+
+	responder, err := httpmock.NewJsonResponder(200, httpmock.File("./test/data/apicurio/empty-response.json"))
+	checkError(err)
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/registry/v2/search/artifacts?limit=500&labels=graphql",
+		responder)
+
+	for _, customImage := range x.CustomSubgraphImages {
+		//custom subgraph graphql schema mocks
+		httpmock.RegisterResponder(
+			"GET",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+"-"+customImage.Name+"."+x.Version+"/versions",
+			getMetaResponder)
+
+		httpmock.RegisterResponder(
+			"POST",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts",
+			httpmock.NewStringResponder(201, `{}`))
+
+		httpmock.RegisterResponder(
+			"PUT",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+"-"+customImage.Name+"."+x.Version+"/meta",
+			httpmock.NewStringResponder(200, `{}`))
+
+		httpmock.RegisterResponder(
+			"GET",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+"-"+customImage.Name+"."+x.Version+"/meta",
+			getMetaResponder)
+
+		httpmock.RegisterMatcherResponder(
+			"PUT",
+			"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+x.Name+"-"+customImage.Name+"."+x.Version+"/state",
+			matcher,
+			httpmock.NewStringResponder(200, `{}`))
+	}
+
+	for _, dataSource := range x.DataSources {
+		response, err := os.ReadFile("./test/data/apicurio/" + dataSource.ApiCurioResponseFilename + ".json")
+		checkError(err)
+		httpmock.RegisterResponder(
+			"GET",
+			"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+dataSource.Name+"."+dataSource.Version+"-value/versions/latest",
+			httpmock.NewStringResponder(200, string(response)))
+
+		httpmock.RegisterResponder(
+			"GET",
+			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline."+x.GetName(),
+			httpmock.NewStringResponder(404, "{}").Once())
+
+		httpmock.RegisterResponder(
+			"PUT",
+			"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline."+x.GetName(),
 			httpmock.NewStringResponder(200, "{}"))
 	}
 
 	httpmock.RegisterResponder(
 		"GET",
-		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+".1234-value/versions/latest",
-		httpmock.NewStringResponder(200, "{}"))
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/latest",
+		httpmock.NewStringResponder(200, response))
 }
 
 func (x *XJoinIndexPipelineTestReconciler) newXJoinIndexPipelineReconciler() *controllers.XJoinIndexPipelineReconciler {
@@ -255,7 +504,7 @@ func (x *XJoinIndexPipelineTestReconciler) newXJoinIndexPipelineReconciler() *co
 
 func (x *XJoinIndexPipelineTestReconciler) createValidIndexPipeline() {
 	ctx := context.Background()
-	indexAvroSchema, err := os.ReadFile("./test/data/avro/" + x.ConfigFileName + ".json")
+	indexAvroSchema, err := os.ReadFile("./test/data/avro/" + x.AvroSchemaFileName + ".json")
 	checkError(err)
 	xjoinIndexName := "test-xjoin-index"
 
@@ -283,7 +532,7 @@ func (x *XJoinIndexPipelineTestReconciler) createValidIndexPipeline() {
 	//create the XJoinIndexPipeline
 	indexPipelineSpec := v1alpha1.XJoinIndexPipelineSpec{
 		Name:                 x.Name,
-		Version:              "1234",
+		Version:              x.Version,
 		AvroSchema:           string(indexAvroSchema),
 		Pause:                false,
 		CustomSubgraphImages: x.CustomSubgraphImages,
@@ -293,7 +542,7 @@ func (x *XJoinIndexPipelineTestReconciler) createValidIndexPipeline() {
 	controller := true
 	indexPipeline := &v1alpha1.XJoinIndexPipeline{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      x.Name,
+			Name:      x.GetName(),
 			Namespace: x.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -316,7 +565,7 @@ func (x *XJoinIndexPipelineTestReconciler) createValidIndexPipeline() {
 	Expect(x.K8sClient.Create(ctx, indexPipeline)).Should(Succeed())
 
 	//validate indexPipeline spec is created correctly
-	indexPipelineLookupKey := types.NamespacedName{Name: x.Name, Namespace: x.Namespace}
+	indexPipelineLookupKey := types.NamespacedName{Name: x.GetName(), Namespace: x.Namespace}
 	createdIndexPipeline := &v1alpha1.XJoinIndexPipeline{}
 
 	Eventually(func() bool {
@@ -325,7 +574,7 @@ func (x *XJoinIndexPipelineTestReconciler) createValidIndexPipeline() {
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	Expect(createdIndexPipeline.Spec.Name).Should(Equal(x.Name))
-	Expect(createdIndexPipeline.Spec.Version).Should(Equal("1234"))
+	Expect(createdIndexPipeline.Spec.Version).Should(Equal(x.Version))
 	Expect(createdIndexPipeline.Spec.Pause).Should(Equal(false))
 	Expect(createdIndexPipeline.Spec.AvroSchema).Should(Equal(string(indexAvroSchema)))
 	Expect(createdIndexPipeline.Spec.CustomSubgraphImages).Should(Equal(x.CustomSubgraphImages))

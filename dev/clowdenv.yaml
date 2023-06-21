@@ -58,7 +58,7 @@ objects:
         pvc: true
         cluster:
           name: kafka
-          version: "3.0.0"
+          version: "3.3.2"
           replicas: 1
           storageSize: 5Gi
           deleteClaim: true

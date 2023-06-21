@@ -2,6 +2,10 @@ package test
 
 import (
 	"fmt"
+	"reflect"
+	"strconv"
+	"time"
+
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
@@ -10,9 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/tools/record"
-	"reflect"
-	"strconv"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -92,7 +93,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(esConnectorConfig["transforms.flattenListString.sourceField"]).To(Equal("tags"))
 			Expect(esConnectorConfig["auto.create.indices.at.start"]).To(Equal(false))
 			Expect(esConnectorConfig["behavior.on.null.values"]).To(Equal("delete"))
-			Expect(esConnectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-http.test.svc:9200"))
+			Expect(esConnectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-default.test.svc:9200"))
 			Expect(esConnectorConfig["errors.log.enable"]).To(Equal(true))
 			Expect(esConnectorConfig["max.retries"]).To(Equal(int64(8)))
 			Expect(esConnectorConfig["transforms.deleteIf.field"]).To(Equal("__deleted"))
@@ -322,9 +323,9 @@ var _ = Describe("Pipeline operations", func() {
 		})
 
 		It("Removes stale topics", func() {
-			err := i.KafkaTopics.CreateTopic("1", false)
+			_, err := i.KafkaTopics.CreateTopic("1", false)
 			Expect(err).ToNot(HaveOccurred())
-			err = i.KafkaTopics.CreateTopic("2", false)
+			_, err = i.KafkaTopics.CreateTopic("2", false)
 			Expect(err).ToNot(HaveOccurred())
 
 			topics, err := i.KafkaTopics.ListTopicNamesForPrefix(ResourceNamePrefix)
@@ -650,7 +651,7 @@ var _ = Describe("Pipeline operations", func() {
 			connectorConfig := connectorSpec["config"].(map[string]interface{})
 			Expect(connectorConfig["connection.username"]).To(Equal("test"))
 			Expect(connectorConfig["connection.password"]).To(Equal("test1337"))
-			Expect(connectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-http.test.svc:9200"))
+			Expect(connectorConfig["connection.url"]).To(Equal("http://xjoin-elasticsearch-es-default.test.svc:9200"))
 		})
 
 		It("Triggers refresh if index disappears", func() {
@@ -1205,7 +1206,7 @@ var _ = Describe("Pipeline operations", func() {
 				version := strconv.FormatInt(time.Now().UnixNano(), 10)
 
 				log.Info("CREATING TOPIC " + version)
-				err := i.KafkaTopics.CreateTopic(version, false)
+				_, err := i.KafkaTopics.CreateTopic(version, false)
 				if err != nil {
 					return
 				}

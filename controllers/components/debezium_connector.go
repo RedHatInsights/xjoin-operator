@@ -18,8 +18,8 @@ type DebeziumConnector struct {
 	TemplateParameters map[string]interface{}
 }
 
-func (dc *DebeziumConnector) SetName(name string) {
-	dc.name = strings.ToLower(name)
+func (dc *DebeziumConnector) SetName(kind string, name string) {
+	dc.name = strings.ToLower(kind + "." + name)
 }
 
 func (dc *DebeziumConnector) SetVersion(version string) {
@@ -36,7 +36,7 @@ func (dc *DebeziumConnector) Create() (err error) {
 	m["ReplicationSlotName"] = strings.ReplaceAll(dc.Name(), ".", "_")
 	m["TopicName"] = dc.Name()
 
-	err = dc.KafkaClient.CreateGenericDebeziumConnector(dc.Name(), dc.Template, m)
+	_, err = dc.KafkaClient.CreateGenericDebeziumConnector(dc.Name(), dc.Template, m, false)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -112,4 +112,8 @@ func (dc *DebeziumConnector) ListInstalledVersions() (versions []string, err err
 		versions = append(versions, strings.Split(connector, dc.name+".")[1])
 	}
 	return
+}
+
+func (dc *DebeziumConnector) Reconcile() (err error) {
+	return nil
 }

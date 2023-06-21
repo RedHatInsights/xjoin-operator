@@ -8,26 +8,32 @@ type Component interface {
 	Delete() error
 	CheckDeviation() (error, error)
 	Exists() (bool, error)
-	SetName(string)
+	SetName(string, string)
 	SetVersion(string)
 	ListInstalledVersions() ([]string, error)
+
+	//Reconcile is called after creation.
+	//e.g. it is used to enable/disable graphql schemas after validation
+	Reconcile() error
 }
 
 type ComponentManager struct {
 	components []Component
 	name       string
 	version    string
+	kind       string
 }
 
-func NewComponentManager(name string, version string) ComponentManager {
+func NewComponentManager(kind string, name string, version string) ComponentManager {
 	return ComponentManager{
 		name:    name,
 		version: version,
+		kind:    kind,
 	}
 }
 
 func (c *ComponentManager) AddComponent(component Component) {
-	component.SetName(c.name)
+	component.SetName(c.kind, c.name)
 	component.SetVersion(c.version)
 	c.components = append(c.components, component)
 }
@@ -79,4 +85,15 @@ func (c *ComponentManager) CheckForDeviations() (problems []error, err error) {
 	}
 
 	return problems, nil
+}
+
+func (c *ComponentManager) Reconcile() error {
+	for _, component := range c.components {
+		err := component.Reconcile()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -38,5 +38,6 @@
     "key": "key1",
     "value": "special, val!*"
   }],
-  "tags_string": ["Sat/prod/", "ANS/key1/val1", "ANS/akey2/val2", "ZNS/key1/val1", "ZNS/key1/special%2C+val%21*", "ZNS/key1/val3"]
+  "tags_string": ["Sat/prod/", "ANS/key1/val1", "ANS/akey2/val2", "ZNS/key1/val1", "ZNS/key1/special%2C+val%21*", "ZNS/key1/val3"],
+  "groups": []
 }

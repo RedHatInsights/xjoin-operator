@@ -2,11 +2,6 @@ package test
 
 import (
 	"fmt"
-	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
-	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	"github.com/redhatinsights/xjoin-operator/controllers/database"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -14,6 +9,12 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
+	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/database"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	. "github.com/onsi/ginkgo/v2"
 

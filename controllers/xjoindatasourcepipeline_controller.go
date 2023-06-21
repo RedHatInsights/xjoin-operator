@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"github.com/redhatinsights/xjoin-operator/controllers/index"
+	"strings"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -153,7 +155,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 
 	registry.Init()
 
-	componentManager := components.NewComponentManager(common.DataSourcePipelineGVK.Kind+"."+instance.Spec.Name, p.Version.String())
+	componentManager := components.NewComponentManager(common.DataSourcePipelineGVK.Kind, instance.Spec.Name, p.Version.String())
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
 		Schema:   p.AvroSchema.String(),
 		Registry: registry,
@@ -222,14 +224,24 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
+	err = componentManager.Reconcile()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
 	problems, err := componentManager.CheckForDeviations()
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
 	if len(problems) > 0 {
-		//TODO: set instance status to invalid, add problems to status
-		reqLogger.Info("TODO: Set Instance status to invalid, add", "problems", len(problems))
+		i.GetInstance().Status.ValidationResponse.Result = index.Invalid
+		i.GetInstance().Status.ValidationResponse.Reason = "Deviation found"
+		var messages []string
+		for _, problem := range problems {
+			messages = append(messages, problem.Error())
+		}
+		i.GetInstance().Status.ValidationResponse.Message = strings.Join(messages, ", ")
 	}
 
 	return i.UpdateStatusAndRequeue(time.Second * 30)

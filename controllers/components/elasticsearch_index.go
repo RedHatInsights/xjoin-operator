@@ -15,8 +15,8 @@ type ElasticsearchIndex struct {
 	WithPipeline         bool
 }
 
-func (es *ElasticsearchIndex) SetName(name string) {
-	es.name = strings.ToLower(name)
+func (es *ElasticsearchIndex) SetName(kind string, name string) {
+	es.name = strings.ToLower(kind + "." + name)
 }
 
 func (es *ElasticsearchIndex) SetVersion(version string) {
@@ -61,4 +61,8 @@ func (es *ElasticsearchIndex) ListInstalledVersions() (versions []string, err er
 		return nil, errors.Wrap(err, 0)
 	}
 	return
+}
+
+func (es *ElasticsearchIndex) Reconcile() (err error) {
+	return nil
 }

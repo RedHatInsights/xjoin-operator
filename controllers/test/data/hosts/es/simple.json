@@ -18,5 +18,6 @@
     "key": "prod",
     "value": "val"
   }],
-  "tags_string": ["Sat/prod/val"]
+  "tags_string": ["Sat/prod/val"],
+  "groups": []
 }

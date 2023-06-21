@@ -134,6 +134,7 @@ print_message "Setting up host-inventory"
 bonfire process host-inventory -n test --no-get-dependencies | oc apply -f - -n test
 delete_clowdapp_dependencies host-inventory
 wait_for_pod_to_be_running app=host-inventory,service=db
+
 # xjoin resources
 bonfire process xjoin -n test --no-get-dependencies | oc apply -f - -n test
 wait_for_pod_to_be_running elasticsearch.k8s.elastic.co/cluster-name=xjoin-elasticsearch
@@ -141,6 +142,12 @@ wait_for_pod_to_be_running pod=xjoin-search-api
 wait_for_pod_to_be_running pod=xjoin-apicurio-service
 wait_for_pod_to_be_running app=xjoin-apicurio,service=db
 wait_for_pod_to_be_running app=xjoin-api-gateway
+
+# advisor
+print_message "Setting up advisor"
+bonfire process advisor -n test --no-get-dependencies | oc apply -f - -n test
+delete_clowdapp_dependencies advisor-backend
+wait_for_pod_to_be_running app=advisor-backend,service=db
 
 # setup xjoin.v2 resources, remove v1 resource
 kubectl delete xjoinpipeline --all -n test

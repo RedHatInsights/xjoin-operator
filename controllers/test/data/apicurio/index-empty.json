@@ -1,0 +1,7 @@
+{
+  "id": 1,
+  "subject": "xjoinindex.hosts.1659442863894333970-value",
+  "version": 1,
+  "schema": "{\"type\":\"record\",\"name\":\"Value\",\"namespace\":\"{{.Namespace}}\"}",
+  "references": []
+}

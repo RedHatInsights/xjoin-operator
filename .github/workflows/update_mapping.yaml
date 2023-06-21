@@ -25,14 +25,14 @@ jobs:
       - name: Set vars
         id: vars
         run: |
-          git config user.name 'GitHub Actions' 
-          git config user.email 'actions@github.com'
           echo "schema_sha=$(git ls-remote https://github.com/RedHatInsights/inventory-schemas.git master | cut -c -7)" >> $GITHUB_OUTPUT
       - name: update mapping from schema
         run: |
           cd scripts
           npm ci
           node update_mapping.js
+          git config user.name 'Update-a-bot'
+          git config user.email 'insights@redhat.com'
           git diff
           git add -u
           git commit -m "update mapping ${{ steps.vars.outputs.schema_sha }}" || echo "No new changes"
@@ -41,14 +41,6 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
-          base: master
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          committer: GitHub <noreply@github.com>
-          author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
-          signoff: false
-          branch: system_profile_schema_update
-          branch-suffix: short-commit-hash
-          delete-branch: true
-          title: '[Automated] Update mapping'
+          title: 'chore(update_mapping) Update mapping'
           body: |
             Updated xjoin-operator to support the latest inventory-schemas change

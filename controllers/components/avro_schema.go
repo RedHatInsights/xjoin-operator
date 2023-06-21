@@ -3,6 +3,7 @@ package components
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/google/go-cmp/cmp"
 	"strings"
 
 	"github.com/go-errors/errors"
@@ -35,8 +36,8 @@ func NewAvroSchema(parameters AvroSchemaParameters) *AvroSchema {
 	}
 }
 
-func (as *AvroSchema) SetName(name string) {
-	as.name = strings.ToLower(name)
+func (as *AvroSchema) SetName(kind string, name string) {
+	as.name = strings.ToLower(kind + "." + name)
 }
 
 func (as *AvroSchema) SetVersion(version string) {
@@ -79,24 +80,31 @@ func (as *AvroSchema) DeleteByVersion(version string) (err error) {
 }
 
 func (as *AvroSchema) CheckDeviation() (problem, err error) {
-	schema, err := as.SetSchemaNameNamespace()
+	expectedSchema, err := as.SetSchemaNameNamespace()
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
 
 	as.registry.Client.ResetCache()
-	srschema, err := as.registry.Client.GetLatestSchema(as.Name())
+	existingSchema, err := as.registry.Client.GetLatestSchema(as.Name())
 	if err != nil {
-		srerr, isSrerr := err.(srclient.Error)
-		if isSrerr && srerr.Code == 40401 {
+		srErr, ok := err.(srclient.Error)
+		if !ok {
+			return nil, errors.Wrap(errors.New("invalid error type in AvroSchema.CheckDeviation"), 0)
+		}
+		if srErr.Code == 40401 {
 			// Error code 40401 – Subject not found
 			return fmt.Errorf("schema for subject %s not found in registry", as.Name()), nil
 		}
 		return nil, errors.Wrap(err, 0)
 	}
 
-	if schema != srschema.Schema() {
-		problem = fmt.Errorf("schema in registry changed for subject %s", as.Name())
+	diff := cmp.Diff(
+		expectedSchema,
+		existingSchema.Schema())
+
+	if len(diff) > 0 {
+		problem = fmt.Errorf("schema in registry changed for subject %s, diff: %s", as.Name(), diff)
 	}
 
 	return
@@ -119,6 +127,7 @@ func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err e
 	for _, subject := range subjects {
 		if strings.Index(subject, as.name+".") == 0 {
 			version := strings.Split(subject, ".")[1]
+			version = strings.Split(version, "-")[0]
 			installedVersions = append(installedVersions, version)
 		}
 	}
@@ -126,7 +135,7 @@ func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err e
 	return
 }
 
-func (as AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
+func (as *AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
 	var schemaObj Schema
 	err = json.Unmarshal([]byte(as.schema), &schemaObj)
 	if err != nil {
@@ -142,4 +151,8 @@ func (as AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
 	}
 
 	return string(schemaBytes), err
+}
+
+func (as *AvroSchema) Reconcile() (err error) {
+	return nil
 }

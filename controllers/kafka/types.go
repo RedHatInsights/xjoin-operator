@@ -36,7 +36,7 @@ type GenericKafka struct {
 
 type Topics interface {
 	TopicName(pipelineVersion string) string
-	CreateTopic(pipelineVersion string, dryRun bool) error
+	CreateTopic(pipelineVersion string, dryRun bool) (interface{}, error)
 	DeleteTopicByPipelineVersion(pipelineVersion string) error
 	CheckDeviation(string) (error, error)
 	ListTopicNamesForPipelineVersion(pipelineVersion string) ([]string, error)

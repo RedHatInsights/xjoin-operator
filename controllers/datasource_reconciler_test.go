@@ -23,6 +23,7 @@ type DatasourceTestReconciler struct {
 	Name               string
 	K8sClient          client.Client
 	AvroSchemaFileName string
+	createdDatasource  v1alpha1.XJoinDataSource
 }
 
 func (d *DatasourceTestReconciler) ReconcileNew() v1alpha1.XJoinDataSource {
@@ -51,35 +52,45 @@ func (d *DatasourceTestReconciler) ReconcileNew() v1alpha1.XJoinDataSource {
 	count := info["GET http://apicurio:1080/apis/ccompat/v6/subjects"]
 	Expect(count).To(Equal(1))
 
+	d.createdDatasource = *createdDatasource
 	return *createdDatasource
 }
 
 func (d *DatasourceTestReconciler) ReconcileValid() v1alpha1.XJoinDataSource {
-	d.registerValidMocks()
+	//set the refreshing pipeline to valid
+	datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
+		Version:   d.createdDatasource.Status.RefreshingVersion,
+		Namespace: d.Namespace,
+		Name:      d.Name,
+		K8sClient: k8sClient,
+	}
+	datasourcePipelineReconciler.ReconcileValid()
+
+	//assert datasource is in valid state
+	d.reconcile()
 	result := d.reconcile()
 	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
 
-	createdDatasource := &v1alpha1.XJoinDataSource{}
+	updatedDatasource := &v1alpha1.XJoinDataSource{}
 	datasourceLookupKey := types.NamespacedName{Name: d.Name, Namespace: d.Namespace}
 
 	Eventually(func() bool {
-		err := d.K8sClient.Get(context.Background(), datasourceLookupKey, createdDatasource)
+		err := d.K8sClient.Get(context.Background(), datasourceLookupKey, updatedDatasource)
 		return err == nil
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
-
-	Expect(createdDatasource.Status.ActiveVersion).ToNot(Equal(""))
-	Expect(createdDatasource.Status.ActiveVersionIsValid).To(Equal(true))
-	Expect(createdDatasource.Status.RefreshingVersion).ToNot(Equal(""))
-	Expect(createdDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
-	Expect(createdDatasource.Status.SpecHash).ToNot(Equal(""))
-	Expect(createdDatasource.Finalizers).To(HaveLen(1))
-	Expect(createdDatasource.Finalizers).To(ContainElement("finalizer.xjoin.datasource.cloud.redhat.com"))
+	Expect(updatedDatasource.Status.ActiveVersion).ToNot(Equal(""))
+	Expect(updatedDatasource.Status.ActiveVersionIsValid).To(Equal(true))
+	Expect(updatedDatasource.Status.RefreshingVersion).To(Equal(""))
+	Expect(updatedDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
+	Expect(updatedDatasource.Status.SpecHash).ToNot(Equal(""))
+	Expect(updatedDatasource.Finalizers).To(HaveLen(1))
+	Expect(updatedDatasource.Finalizers).To(ContainElement("finalizer.xjoin.datasource.cloud.redhat.com"))
 
 	info := httpmock.GetCallCountInfo()
 	count := info["GET http://apicurio:1080/apis/ccompat/v6/subjects"]
-	Expect(count).To(Equal(1))
+	Expect(count).To(Equal(2))
 
-	return *createdDatasource
+	return *updatedDatasource
 }
 
 func (d *DatasourceTestReconciler) ReconcileDelete() {
@@ -91,6 +102,16 @@ func (d *DatasourceTestReconciler) ReconcileDelete() {
 	err := d.K8sClient.List(context.Background(), &datasourceList, client.InNamespace(d.Namespace))
 	checkError(err)
 	Expect(datasourceList.Items).To(HaveLen(0))
+}
+
+func (d *DatasourceTestReconciler) GetDataSource() v1alpha1.XJoinDataSource {
+	dataSource := &v1alpha1.XJoinDataSource{}
+	datasourceLookupKey := types.NamespacedName{Name: d.Name, Namespace: d.Namespace}
+	Eventually(func() bool {
+		err := d.K8sClient.Get(context.Background(), datasourceLookupKey, dataSource)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+	return *dataSource
 }
 
 func (d *DatasourceTestReconciler) createValidDataSource() {
@@ -167,16 +188,6 @@ func (d *DatasourceTestReconciler) registerNewMocks() {
 }
 
 func (d *DatasourceTestReconciler) registerDeleteMocks() {
-	httpmock.Reset()
-	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
-
-	httpmock.RegisterResponder(
-		"GET",
-		"http://apicurio:1080/apis/ccompat/v6/subjects",
-		httpmock.NewStringResponder(200, `[]`))
-}
-
-func (d *DatasourceTestReconciler) registerValidMocks() {
 	httpmock.Reset()
 	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
 
