@@ -20,9 +20,9 @@ XJOIN_SVC="svc/xjoin-search"
 HBI_SVC="svc/host-inventory-service"
 APICURIO_SVC="svc/xjoin-apicurio-service"
 XJOIN_API_GATEWAY="svc/xjoin-api-gateway-api"
-CATS_DB_SVC="svc/cats-db"
+ADVISOR_DB_SVC="svc/advisor-backend-db"
 
-kubectl port-forward "$CATS_DB_SVC" 5433:5432 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward "$ADVISOR_DB_SVC" 5433:5432 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$HBI_DB_SVC" 5432:5432 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$CONNECT_SVC" 8083:8083 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$ELASTICSEARCH_SVC" 9200:9200 -n "$PROJECT_NAME" >/dev/null 2>&1 &
