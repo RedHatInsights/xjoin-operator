@@ -2,12 +2,12 @@ package components
 
 import (
 	"fmt"
+	"github.com/google/go-cmp/cmp"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"strings"
 
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
-	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 type DebeziumConnector struct {
@@ -52,43 +52,50 @@ func (dc *DebeziumConnector) Delete() (err error) {
 }
 
 func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
+	//build the expected connector
+	m := dc.TemplateParameters
+	m["DatabaseServerName"] = dc.Name()
+	m["ReplicationSlotName"] = strings.ReplaceAll(dc.Name(), ".", "_")
+	m["TopicName"] = dc.Name()
+	expectedConnector, err := dc.KafkaClient.CreateGenericDebeziumConnector(dc.Name(), dc.Template, m, true)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	//get the already created (existing) connector
 	found, err := dc.Exists()
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
 	if !found {
-		return fmt.Errorf("DebeziumConnector named, %s, does not exist.", dc.Name()), nil
+		return fmt.Errorf("the Debezium connector named, %s, does not exist", dc.Name()), nil
 	}
 
-	// leave this commented line for testing
-	// debConPtr, err := dc.KafkaClient.GetConnector("xjoinindexpipeline.hosts.1679941693938094928")
-	debConPtr, err := dc.KafkaClient.GetConnector(dc.Name())
-
+	existingConnector, err := dc.KafkaClient.GetConnector(dc.Name())
 	if err != nil {
-		return nil, fmt.Errorf("Error encountered when getting DebeziumConnector: %w", err)
+		return nil, errors.Wrap(err, 0)
 	}
 
-	if debConPtr == nil {
-		return fmt.Errorf("Error encountered when getting DebeziumConnector: %w", err), nil
+	if existingConnector == nil {
+		return fmt.Errorf("the Debezium connector named, %s, was not found", dc.Name()), nil
 	} else {
-		var allConns *unstructured.UnstructuredList
-		allConns, err := dc.KafkaClient.ListConnectors()
-		if err != nil {
-			return nil, fmt.Errorf("Error encountered when listing connectors: %w", err)
+		expectedTopicUnstructured := expectedConnector.UnstructuredContent()
+		existingTopicUnstructured := existingConnector.UnstructuredContent()
+
+		specDiff := cmp.Diff(
+			expectedTopicUnstructured["spec"].(map[string]interface{}),
+			existingTopicUnstructured["spec"].(map[string]interface{}),
+			utils.NumberNormalizer)
+
+		if len(specDiff) > 0 {
+			return fmt.Errorf("debezium connector spec has changed: %s", specDiff), nil
 		}
 
-		if allConns.Items == nil || len(allConns.Items) == 0 {
-			return fmt.Errorf("No Debezium connector available"), nil
-		}
-
-		for _, conn := range allConns.Items {
-			if debConPtr.GetName() == conn.GetName() {
-				if equality.Semantic.DeepEqual(*debConPtr, conn) {
-					return nil, nil
-				} else {
-					return fmt.Errorf("Debezium connector named %s has changed", conn.GetName()), nil
-				}
-			}
+		if existingConnector.GetNamespace() != expectedConnector.GetNamespace() {
+			return fmt.Errorf(
+				"debezium connector namespace has changed from: %s to %s",
+				existingConnector.GetNamespace(),
+				expectedConnector.GetNamespace()), nil
 		}
 	}
 	return
