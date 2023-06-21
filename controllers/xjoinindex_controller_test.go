@@ -117,11 +117,12 @@ var _ = Describe("XJoinIndex", func() {
 
 			//reconcile the refreshing index pipeline
 			indexPipelineReconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           createdIndex.Name,
-				Version:        createdIndex.Status.RefreshingVersion,
-				ConfigFileName: "xjoinindex-with-referenced-field",
-				K8sClient:      k8sClient,
+				Namespace:                namespace,
+				Name:                     createdIndex.Name,
+				Version:                  createdIndex.Status.RefreshingVersion,
+				AvroSchemaFileName:       "xjoinindex-with-referenced-field",
+				K8sClient:                k8sClient,
+				ApiCurioResponseFilename: "index",
 				DataSources: []DataSource{{
 					Name:                     dataSourceName,
 					Version:                  createdDataSource.Status.ActiveVersion,
@@ -168,11 +169,12 @@ var _ = Describe("XJoinIndex", func() {
 
 			//reconcile the refreshing index pipeline
 			indexPipelineReconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           createdIndex.Name,
-				Version:        createdIndex.Status.RefreshingVersion,
-				ConfigFileName: "xjoinindex-with-referenced-field",
-				K8sClient:      k8sClient,
+				Namespace:                namespace,
+				Name:                     createdIndex.Name,
+				Version:                  createdIndex.Status.RefreshingVersion,
+				AvroSchemaFileName:       "xjoinindex-with-referenced-field",
+				K8sClient:                k8sClient,
+				ApiCurioResponseFilename: "index",
 				DataSources: []DataSource{{
 					Name:                     dataSourceName,
 					Version:                  createdDataSource.Status.ActiveVersion,

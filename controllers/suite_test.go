@@ -156,12 +156,13 @@ func CreateValidIndexPipeline(namespace string, customSubgraphImages []xjoinApi.
 
 	//reconcile the refreshing indexpipeline to be valid
 	indexPipelineReconciler := XJoinIndexPipelineTestReconciler{
-		Namespace:            namespace,
-		Name:                 createdIndex.Name,
-		Version:              createdIndex.Status.RefreshingVersion,
-		ConfigFileName:       "xjoinindex-with-referenced-field",
-		K8sClient:            k8sClient,
-		CustomSubgraphImages: customSubgraphImages,
+		Namespace:                namespace,
+		Name:                     createdIndex.Name,
+		Version:                  createdIndex.Status.RefreshingVersion,
+		AvroSchemaFileName:       "xjoinindex-with-referenced-field",
+		K8sClient:                k8sClient,
+		CustomSubgraphImages:     customSubgraphImages,
+		ApiCurioResponseFilename: "index",
 		DataSources: []DataSource{{
 			Name:                     dataSourceName,
 			Version:                  createdDataSource.Status.ActiveVersion,

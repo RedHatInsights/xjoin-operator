@@ -2,12 +2,12 @@ package components
 
 import (
 	"fmt"
+	"github.com/google/go-cmp/cmp"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"strings"
 
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
-	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 type ElasticsearchConnector struct {
@@ -36,7 +36,7 @@ func (es *ElasticsearchConnector) Create() (err error) {
 	m["Topic"] = es.Topic
 	//m["RenameTopicReplacement"] = fmt.Sprintf("%s.%s", kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
 
-	err = es.KafkaClient.CreateGenericElasticsearchConnector(es.Name(), es.Template, m)
+	_, err = es.KafkaClient.CreateGenericElasticsearchConnector(es.Name(), es.Template, m, false)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -52,42 +52,48 @@ func (es *ElasticsearchConnector) Delete() (err error) {
 }
 
 func (es *ElasticsearchConnector) CheckDeviation() (problem, err error) {
+	//build the expected connector
+	m := es.TemplateParameters
+	m["Topic"] = es.Topic
+	expectedConnector, err := es.KafkaClient.CreateGenericElasticsearchConnector(es.Name(), es.Template, m, true)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	//get the already created (existing) connector
 	found, err := es.Exists()
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
 	if !found {
-		return fmt.Errorf("ElasticsearchConnector named, %s, does not exist.", es.Name()), nil
+		return fmt.Errorf("the Elasticsearch connector named, %s, does not exist", es.Name()), nil
 	}
 
-	esConPtr, err := es.KafkaClient.GetConnector(es.Name())
-
+	existingConnector, err := es.KafkaClient.GetConnector(es.Name())
 	if err != nil {
-		return nil, fmt.Errorf("Error encountered when getting ElasticsearchConnector: %w", err)
+		return nil, errors.Wrap(err, 0)
 	}
 
-	if esConPtr == nil {
-		return fmt.Errorf("Problem encountered when getting ElasticsearchConnector: %w", err), nil
+	if existingConnector == nil {
+		return fmt.Errorf("the Elasticsearch connector named, %s, was not found", es.Name()), nil
 	} else {
-		var allConns *unstructured.UnstructuredList
-		allConns, err := es.KafkaClient.ListConnectors()
+		expectedTopicUnstructured := expectedConnector.UnstructuredContent()
+		existingTopicUnstructured := existingConnector.UnstructuredContent()
 
-		if err != nil {
-			return nil, fmt.Errorf("Error encountered when listing connectors: %w", err)
+		specDiff := cmp.Diff(
+			expectedTopicUnstructured["spec"].(map[string]interface{}),
+			existingTopicUnstructured["spec"].(map[string]interface{}),
+			utils.NumberNormalizer)
+
+		if len(specDiff) > 0 {
+			return fmt.Errorf("elasticsearch connector spec has changed: %s", specDiff), nil
 		}
 
-		if allConns.Items == nil || len(allConns.Items) == 0 {
-			return fmt.Errorf("No Elasticsearch connector available"), nil
-		}
-
-		for _, conn := range allConns.Items {
-			if esConPtr.GetName() == conn.GetName() {
-				if equality.Semantic.DeepEqual(*esConPtr, conn) {
-					return nil, nil
-				} else {
-					return fmt.Errorf("Elasticsearch connector named %s has changed", conn.GetName()), nil
-				}
-			}
+		if existingConnector.GetNamespace() != expectedConnector.GetNamespace() {
+			return fmt.Errorf(
+				"elasticsearch connector namespace has changed from: %s to %s",
+				existingConnector.GetNamespace(),
+				expectedConnector.GetNamespace()), nil
 		}
 	}
 	return
