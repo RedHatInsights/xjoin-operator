@@ -311,11 +311,11 @@ var _ = Describe("XJoinIndexValidator", func() {
 
 			//reconcile indexpipeline to create the indexpipelinevalidator resource
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           createdIndex.Name,
-				Version:        createdIndex.Status.RefreshingVersion,
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               createdIndex.Name,
+				Version:            createdIndex.Status.RefreshingVersion,
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 				DataSources: []DataSource{{
 					Name:                     datasource.Name,
 					Version:                  datasource.Status.RefreshingVersion,

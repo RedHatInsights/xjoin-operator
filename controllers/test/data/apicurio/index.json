@@ -1,0 +1,7 @@
+{
+  "id": 1,
+  "subject": "xjoinindex.hosts.1659442863894333970-value",
+  "version": 1,
+  "schema": "{\"type\":\"record\",\"name\":\"Value\",\"namespace\":\"{{.Namespace}}\",\"fields\":[{\"name\":\"testdatasource\",\"type\":{\"type\":\"record\",\"name\":\"testdatasource.Value\",\"fields\":[{\"name\":\"id\",\"type\":{\"type\":\"string\",\"xjoin.type\":\"string\",\"connect.version\":1,\"connect.name\":\"io.debezium.data.Uuid\",\"xjoin.primary.key\":true}},{\"name\":\"facts\",\"type\":{\"type\":\"string\",\"xjoin.type\":\"json\",\"connect.version\":1,\"connect.name\":\"io.debezium.data.Json\"}}],\"xjoin.type\":\"reference\"}}]}",
+  "references": []
+}

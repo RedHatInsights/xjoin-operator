@@ -32,7 +32,7 @@ func (dc *DebeziumConnector) Create() (err error) {
 	m["ReplicationSlotName"] = strings.ReplaceAll(dc.Name(), ".", "_")
 	m["TopicName"] = dc.Name()
 
-	err = dc.KafkaClient.CreateGenericDebeziumConnector(dc.Name(), dc.Template, m)
+	_, err = dc.KafkaClient.CreateGenericDebeziumConnector(dc.Name(), dc.Template, m, false)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

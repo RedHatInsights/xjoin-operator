@@ -376,17 +376,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	problems, err := componentManager.CheckForDeviations()
-	if err != nil {
-		return reconcile.Result{}, errors.Wrap(err, 0)
-	}
-
-	if len(problems) > 0 {
-		//TODO: set instance status to invalid, add problems to status
-		reqLogger.Info("TODO: Set Instance status to invalid, add", "problems", len(problems))
-	}
-
-	//build list of datasources
+	//check each datasource is valid
 	dataSources := make(map[string]string)
 	allDataSourcesValid := true
 	for _, ref := range indexAvroSchema.References {
@@ -422,6 +412,22 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 
 	if !reflect.DeepEqual(instance.Status.DataSources, dataSources) {
 		instance.Status.DataSources = dataSources
+	}
+
+	//deviation check
+	problems, err := componentManager.CheckForDeviations()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	if len(problems) > 0 {
+		i.GetInstance().Status.ValidationResponse.Result = Invalid
+		i.GetInstance().Status.ValidationResponse.Reason = "Deviation found"
+		var messages []string
+		for _, problem := range problems {
+			messages = append(messages, problem.Error())
+		}
+		i.GetInstance().Status.ValidationResponse.Message = strings.Join(messages, ", ")
 	}
 
 	i.Instance = instance

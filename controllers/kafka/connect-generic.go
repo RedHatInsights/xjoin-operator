@@ -16,13 +16,13 @@ import (
 )
 
 func (kafka *GenericKafka) CreateGenericDebeziumConnector(
-	name string, connectorTemplate string, connectorTemplateParameters map[string]interface{}) error {
+	name string, connectorTemplate string, connectorTemplateParameters map[string]interface{}, dryRun bool) (unstructured.Unstructured, error) {
 
+	connectorObj := &unstructured.Unstructured{}
 	connectorConfig, err := kafka.parseConnectorTemplate(connectorTemplate, connectorTemplateParameters)
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return *connectorObj, errors.Wrap(err, 0)
 	}
-	connectorObj := &unstructured.Unstructured{}
 	connectorObj.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      name,
@@ -41,23 +41,27 @@ func (kafka *GenericKafka) CreateGenericDebeziumConnector(
 
 	connectorObj.SetGroupVersionKind(connectorGVK)
 
-	err = kafka.Client.Create(kafka.Context, connectorObj)
-	if err != nil {
-		return errors.Wrap(err, 0)
+	if dryRun {
+		return *connectorObj, nil
 	}
 
-	return nil
+	err = kafka.Client.Create(kafka.Context, connectorObj)
+	if err != nil {
+		return *connectorObj, errors.Wrap(err, 0)
+	}
+
+	return *connectorObj, nil
 }
 
 func (kafka *GenericKafka) CreateGenericElasticsearchConnector(
-	name string, connectorTemplate string, connectorTemplateParameters map[string]interface{}) error {
-
-	connectorConfig, err := kafka.parseConnectorTemplate(connectorTemplate, connectorTemplateParameters)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
+	name string, connectorTemplate string, connectorTemplateParameters map[string]interface{}, dryRun bool) (unstructured.Unstructured, error) {
 
 	connectorObj := &unstructured.Unstructured{}
+	connectorConfig, err := kafka.parseConnectorTemplate(connectorTemplate, connectorTemplateParameters)
+	if err != nil {
+		return *connectorObj, errors.Wrap(err, 0)
+	}
+
 	connectorObj.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      name,
@@ -75,12 +79,16 @@ func (kafka *GenericKafka) CreateGenericElasticsearchConnector(
 
 	connectorObj.SetGroupVersionKind(connectorGVK)
 
-	err = kafka.Client.Create(kafka.Context, connectorObj)
-	if err != nil {
-		return errors.Wrap(err, 0)
+	if dryRun {
+		return *connectorObj, nil
 	}
 
-	return nil
+	err = kafka.Client.Create(kafka.Context, connectorObj)
+	if err != nil {
+		return *connectorObj, errors.Wrap(err, 0)
+	}
+
+	return *connectorObj, nil
 }
 
 func (kafka *GenericKafka) parseConnectorTemplate(connectorTemplate string, connectorTemplateParameters map[string]interface{}) (interface{}, error) {

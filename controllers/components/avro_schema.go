@@ -3,6 +3,7 @@ package components
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/google/go-cmp/cmp"
 	"strings"
 
 	"github.com/go-errors/errors"
@@ -98,8 +99,12 @@ func (as *AvroSchema) CheckDeviation() (problem, err error) {
 		return nil, errors.Wrap(err, 0)
 	}
 
-	if expectedSchema != existingSchema.Schema() {
-		problem = fmt.Errorf("schema in registry changed for subject %s", as.Name())
+	diff := cmp.Diff(
+		expectedSchema,
+		existingSchema.Schema())
+
+	if len(diff) > 0 {
+		problem = fmt.Errorf("schema in registry changed for subject %s, diff: %s", as.Name(), diff)
 	}
 
 	return

@@ -1,8 +1,12 @@
 package controllers_test
 
 import (
+	"bytes"
 	"context"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
+	"github.com/redhatinsights/xjoin-operator/controllers/index"
 	"os"
+	"text/template"
 
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
@@ -19,20 +23,28 @@ import (
 )
 
 type XJoinIndexPipelineTestReconciler struct {
-	Namespace            string
-	Name                 string
-	Version              string
-	ConfigFileName       string
-	CustomSubgraphImages []v1alpha1.CustomSubgraphImage
-	K8sClient            client.Client
-	DataSources          []DataSource
-	createdIndexPipeline v1alpha1.XJoinIndexPipeline
+	Namespace                string
+	Name                     string
+	Version                  string
+	AvroSchemaFileName       string
+	CustomSubgraphImages     []v1alpha1.CustomSubgraphImage
+	K8sClient                client.Client
+	DataSources              []DataSource
+	createdIndexPipeline     v1alpha1.XJoinIndexPipeline
+	ApiCurioResponseFilename string
 }
 
 type DataSource struct {
 	Name                     string
 	Version                  string
 	ApiCurioResponseFilename string
+}
+
+func (x *XJoinIndexPipelineTestReconciler) getNamespacedName() types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: x.Namespace,
+		Name:      x.GetName(),
+	}
 }
 
 func (x *XJoinIndexPipelineTestReconciler) GetName() string {
@@ -61,6 +73,28 @@ func (x *XJoinIndexPipelineTestReconciler) ReconcileUpdated(params UpdatedMocksP
 		err := x.K8sClient.Get(context.Background(), indexPipelineLookup, &x.createdIndexPipeline)
 		return err == nil
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+	return x.createdIndexPipeline
+}
+
+func (x *XJoinIndexPipelineTestReconciler) ReconcileValid() v1alpha1.XJoinIndexPipeline {
+	x.registerValidMocks()
+	result := x.reconcile()
+	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
+
+	indexPipeline := &v1alpha1.XJoinIndexPipeline{}
+	Eventually(func() bool {
+		err := x.K8sClient.Get(context.Background(), x.getNamespacedName(), indexPipeline)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+	indexPipeline.Status.ValidationResponse = validation.ValidationResponse{
+		Result: index.Valid,
+	}
+	indexPipeline.Status.Active = true
+	err := x.K8sClient.Status().Update(context.Background(), indexPipeline)
+	Expect(err).ToNot(HaveOccurred())
+
+	x.createdIndexPipeline = *indexPipeline
 	return x.createdIndexPipeline
 }
 
@@ -291,10 +325,33 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 			httpmock.NewStringResponder(200, "{}"))
 	}
 
+	response := x.parseResponseFile()
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/latest",
-		httpmock.NewStringResponder(200, "{}"))
+		httpmock.NewStringResponder(200, response))
+}
+
+func (x *XJoinIndexPipelineTestReconciler) parseResponseFile() string {
+	filename := "index-empty"
+	if x.ApiCurioResponseFilename != "" {
+		filename = x.ApiCurioResponseFilename
+	}
+	responseTemplate, err := os.ReadFile("./test/data/apicurio/" + filename + ".json")
+	checkError(err)
+	tmpl, err := template.New("apicurioResponse").Parse(string(responseTemplate))
+	checkError(err)
+	var templateBuffer bytes.Buffer
+	err = tmpl.Execute(&templateBuffer, map[string]interface{}{"Namespace": "xjoinindexpipeline." + x.Name})
+	checkError(err)
+	return templateBuffer.String()
+}
+
+func (x *XJoinIndexPipelineTestReconciler) registerValidMocks() {
+	x.registerUpdatedMocks(UpdatedMocksParams{
+		GraphQLSchemaExistingState: "DISABLED",
+		GraphQLSchemaNewState:      "ENABLED",
+	})
 }
 
 func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks(params UpdatedMocksParams) {
@@ -347,20 +404,22 @@ func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks(params UpdatedMo
 		httpmock.NewStringResponder(200, `{}`))
 
 	//avro schema mocks
+	response := x.parseResponseFile()
+	checkError(err)
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/1",
-		httpmock.NewStringResponder(200, `{}`))
+		httpmock.NewStringResponder(200, response))
 
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/latest",
-		httpmock.NewStringResponder(200, `{}`))
+		httpmock.NewStringResponder(200, response))
 
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/latest",
-		httpmock.NewStringResponder(200, `{}`))
+		httpmock.NewStringResponder(200, response))
 
 	httpmock.RegisterResponder(
 		"GET",
@@ -430,7 +489,7 @@ func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks(params UpdatedMo
 	httpmock.RegisterResponder(
 		"GET",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/latest",
-		httpmock.NewStringResponder(200, "{}"))
+		httpmock.NewStringResponder(200, response))
 }
 
 func (x *XJoinIndexPipelineTestReconciler) newXJoinIndexPipelineReconciler() *controllers.XJoinIndexPipelineReconciler {
@@ -445,7 +504,7 @@ func (x *XJoinIndexPipelineTestReconciler) newXJoinIndexPipelineReconciler() *co
 
 func (x *XJoinIndexPipelineTestReconciler) createValidIndexPipeline() {
 	ctx := context.Background()
-	indexAvroSchema, err := os.ReadFile("./test/data/avro/" + x.ConfigFileName + ".json")
+	indexAvroSchema, err := os.ReadFile("./test/data/avro/" + x.AvroSchemaFileName + ".json")
 	checkError(err)
 	xjoinIndexName := "test-xjoin-index"
 
