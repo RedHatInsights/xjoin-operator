@@ -1,9 +1,13 @@
 package components
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
-	"strings"
+	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 type DebeziumConnector struct {
@@ -48,6 +52,45 @@ func (dc *DebeziumConnector) Delete() (err error) {
 }
 
 func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
+	found, err := dc.Exists()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	if !found {
+		return fmt.Errorf("DebeziumConnector named, %s, does not exist.", dc.Name()), nil
+	}
+
+	// leave this commented line for testing
+	// debConPtr, err := dc.KafkaClient.GetConnector("xjoinindexpipeline.hosts.1679941693938094928")
+	debConPtr, err := dc.KafkaClient.GetConnector(dc.Name())
+
+	if err != nil {
+		return nil, fmt.Errorf("Error encountered when getting DebeziumConnector: %w", err)
+	}
+
+	if debConPtr == nil {
+		return fmt.Errorf("Error encountered when getting DebeziumConnector: %w", err), nil
+	} else {
+		var allConns *unstructured.UnstructuredList
+		allConns, err := dc.KafkaClient.ListConnectors()
+		if err != nil {
+			return nil, fmt.Errorf("Error encountered when listing connectors: %w", err)
+		}
+
+		if allConns.Items == nil || len(allConns.Items) == 0 {
+			return fmt.Errorf("No Debezium connector available"), nil
+		}
+
+		for _, conn := range allConns.Items {
+			if debConPtr.GetName() == conn.GetName() {
+				if equality.Semantic.DeepEqual(*debConPtr, conn) {
+					return nil, nil
+				} else {
+					return fmt.Errorf("Debezium connector named %s has changed", conn.GetName()), nil
+				}
+			}
+		}
+	}
 	return
 }
 
