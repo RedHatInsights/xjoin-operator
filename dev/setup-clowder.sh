@@ -149,10 +149,10 @@ bonfire process advisor -n test --no-get-dependencies | oc apply -f - -n test
 delete_clowdapp_dependencies advisor-backend
 wait_for_pod_to_be_running app=advisor-backend,service=db
 
-# setup xjoin.v2 resources, remove v1 resource
-kubectl delete xjoinpipeline --all -n test
-kubectl apply -f config/samples/xjoin_v1alpha1_xjoindatasource.yaml -n test
-kubectl apply -f config/samples/xjoin_v1alpha1_xjoinindex.yaml -n test
+# setup xjoin.v2 resources, uncomment the following 3 lines when using xjoin.v2
+# kubectl delete xjoinpipeline --all -n test
+# kubectl apply -f config/samples/xjoin_v1alpha1_xjoindatasource.yaml -n test
+# kubectl apply -f config/samples/xjoin_v1alpha1_xjoinindex.yaml -n test
 
 # create a custom apicurio service/port to avoid conflicts
 kubectl apply -f dev/apicurio.yaml -n test
@@ -180,5 +180,8 @@ dev/forward-ports-clowder.sh test
 END_TIME=`date +%s`
 DEPLOYMENT_TIME=`expr $END_TIME - $START_TIME`
 print_message "Deployment of strimzi kafka, host-inventory, and xjoin-operator took $DEPLOYMENT_TIME seconds"
+
+# Run the operator code to create "xjoin.inventory.hosts"
+make run ENABLE_WEBHOOKS=false &
 
 print_message "Done!"
