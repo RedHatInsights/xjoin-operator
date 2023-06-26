@@ -132,6 +132,7 @@ type IndexPipelineTestResources struct {
 type UpdatedMocksParams struct {
 	GraphQLSchemaExistingState string
 	GraphQLSchemaNewState      string
+	ElasticsearchIndexFilename string
 }
 
 func CreateValidIndexPipeline(namespace string, customSubgraphImages []xjoinApi.CustomSubgraphImage) IndexPipelineTestResources {
