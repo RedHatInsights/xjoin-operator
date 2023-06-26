@@ -23,15 +23,16 @@ import (
 )
 
 type XJoinIndexPipelineTestReconciler struct {
-	Namespace                string
-	Name                     string
-	Version                  string
-	AvroSchemaFileName       string
-	CustomSubgraphImages     []v1alpha1.CustomSubgraphImage
-	K8sClient                client.Client
-	DataSources              []DataSource
-	createdIndexPipeline     v1alpha1.XJoinIndexPipeline
-	ApiCurioResponseFilename string
+	Namespace                  string
+	Name                       string
+	Version                    string
+	AvroSchemaFileName         string
+	ElasticsearchIndexFileName string
+	CustomSubgraphImages       []v1alpha1.CustomSubgraphImage
+	K8sClient                  client.Client
+	DataSources                []DataSource
+	createdIndexPipeline       v1alpha1.XJoinIndexPipeline
+	ApiCurioResponseFilename   string
 }
 
 type DataSource struct {
@@ -77,10 +78,7 @@ func (x *XJoinIndexPipelineTestReconciler) ReconcileUpdated(params UpdatedMocksP
 }
 
 func (x *XJoinIndexPipelineTestReconciler) ReconcileValid() v1alpha1.XJoinIndexPipeline {
-	x.registerValidMocks()
-	result := x.reconcile()
-	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
-
+	//mock the validation controller by directly setting the status to valid
 	indexPipeline := &v1alpha1.XJoinIndexPipeline{}
 	Eventually(func() bool {
 		err := x.K8sClient.Get(context.Background(), x.getNamespacedName(), indexPipeline)
@@ -93,6 +91,19 @@ func (x *XJoinIndexPipelineTestReconciler) ReconcileValid() v1alpha1.XJoinIndexP
 	indexPipeline.Status.Active = true
 	err := x.K8sClient.Status().Update(context.Background(), indexPipeline)
 	Expect(err).ToNot(HaveOccurred())
+
+	//reconcile the indexpipeline
+	x.registerValidMocks()
+	result := x.reconcile()
+	Expect(result).To(Equal(reconcile.Result{Requeue: false, RequeueAfter: 30000000000}))
+
+	//get the indexpipeline
+	Eventually(func() bool {
+		err = x.K8sClient.Get(context.Background(), x.getNamespacedName(), indexPipeline)
+		return err == nil
+	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+	Expect(indexPipeline.Status.ValidationResponse.Result).To(Equal(index.Valid))
 
 	x.createdIndexPipeline = *indexPipeline
 	return x.createdIndexPipeline
@@ -218,15 +229,22 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
 
 	//elasticsearch index mocks
+	indexExistsResponder := httpmock.NewStringResponder(200, `{}`)
 	httpmock.RegisterResponder(
 		"HEAD",
 		"http://localhost:9200/xjoinindexpipeline."+x.GetName(),
-		httpmock.NewStringResponder(404, `{}`))
+		httpmock.NewStringResponder(404, `{}`).Then(indexExistsResponder))
 
 	httpmock.RegisterResponder(
 		"PUT",
 		"http://localhost:9200/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(201, `{}`))
+
+	esIndexResponse := x.parseElasticsearchIndex("get-index-response")
+	httpmock.RegisterResponder(
+		"GET",
+		"http://localhost:9200/xjoinindexpipeline."+x.GetName(),
+		httpmock.NewStringResponder(200, esIndexResponse))
 
 	//avro schema mocks
 	httpmock.RegisterResponder(
@@ -354,6 +372,25 @@ func (x *XJoinIndexPipelineTestReconciler) registerValidMocks() {
 	})
 }
 
+func (x *XJoinIndexPipelineTestReconciler) parseElasticsearchIndex(filename string) string {
+	if filename == "" {
+		if x.ElasticsearchIndexFileName == "" {
+			filename = "get-index-response"
+		} else {
+			filename = x.ElasticsearchIndexFileName
+		}
+	}
+
+	indexResponseTemplate, err := os.ReadFile("./test/data/elasticsearch/" + filename + ".json")
+	checkError(err)
+	tmpl, err := template.New("esIndex").Parse(string(indexResponseTemplate))
+	checkError(err)
+	var templateBuffer bytes.Buffer
+	err = tmpl.Execute(&templateBuffer, map[string]interface{}{"IndexName": "xjoinindexpipeline." + x.GetName()})
+	checkError(err)
+	return templateBuffer.String()
+}
+
 func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks(params UpdatedMocksParams) {
 	httpmock.Reset()
 	httpmock.RegisterNoResponder(httpmock.InitialTransport.RoundTrip) //disable mocks for unregistered http requests
@@ -363,6 +400,12 @@ func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks(params UpdatedMo
 		"HEAD",
 		"http://localhost:9200/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(200, `{}`))
+
+	esIndexResponse := x.parseElasticsearchIndex(params.ElasticsearchIndexFilename)
+	httpmock.RegisterResponder(
+		"GET",
+		"http://localhost:9200/xjoinindexpipeline."+x.GetName(),
+		httpmock.NewStringResponder(200, esIndexResponse))
 
 	httpmock.RegisterResponder(
 		"GET",
@@ -375,8 +418,8 @@ func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks(params UpdatedMo
 		httpmock.NewStringResponder(200, "{}"))
 
 	//graphql schema state update mocks
-	var getMetaResponder httpmock.Responder
 	var err error
+	var getMetaResponder httpmock.Responder
 	if params.GraphQLSchemaExistingState == "ENABLED" {
 		getMetaResponder, err = httpmock.NewJsonResponder(200, map[string]string{"state": "ENABLED"})
 		checkError(err)

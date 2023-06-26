@@ -154,7 +154,29 @@ func BuildIndexParameters() *IndexParameters {
 			Type:          reflect.String,
 			ConfigMapKey:  "elasticsearch.index.template",
 			ConfigMapName: "xjoin-generic",
-			DefaultValue:  "",
+			DefaultValue: `
+				{
+				  "settings": {
+					  "index": {
+						  "number_of_shards": "{{.ElasticSearchIndexShards}}",
+						  "number_of_replicas": "{{.ElasticSearchIndexReplicas}}",
+						  "max_result_window": 100000,
+						  "default_pipeline": "{{.ElasticSearchPipeline}}",
+						  "analysis": {
+							  "normalizer": {
+								  "case_insensitive": {
+									  "filter": "lowercase"
+								  }
+							  }
+						  }
+					  }
+				  },
+				  "mappings": {
+					  "dynamic": "false",
+					  "properties": {{.ElasticSearchProperties}}
+				  }
+				}
+			`,
 		},
 		KafkaBootstrapURL: Parameter{
 			Type:          reflect.String,
