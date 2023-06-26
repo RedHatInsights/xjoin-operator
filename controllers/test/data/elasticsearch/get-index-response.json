@@ -1,0 +1,35 @@
+{
+  "{{.IndexName}}": {
+    "settings": {
+      "index": {
+        "number_of_shards": "3",
+        "number_of_replicas": "1",
+        "max_result_window": 100000,
+        "default_pipeline": "{{.IndexName}}",
+        "analysis": {
+          "normalizer": {
+            "case_insensitive": {
+              "filter": "lowercase"
+            }
+          }
+        }
+      }
+    },
+    "mappings": {
+      "dynamic": "false",
+      "properties": {
+        "testdatasource": {
+          "properties": {
+            "facts": {
+              "type": "object"
+            },
+            "id": {
+              "type": "keyword"
+            }
+          },
+          "type": "object"
+        }
+      }
+    }
+  }
+}

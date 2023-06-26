@@ -1350,12 +1350,13 @@ var _ = Describe("XJoinIndexPipeline", func() {
 	Context("Deviation", func() {
 		It("Leaves the status alone when there is no deviation", func() {
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:                namespace,
-				Name:                     "test-index-pipeline",
-				Version:                  "1234",
-				AvroSchemaFileName:       "xjoinindex",
-				K8sClient:                k8sClient,
-				ApiCurioResponseFilename: "index-empty",
+				Namespace:                  namespace,
+				Name:                       "test-index-pipeline",
+				Version:                    "1234",
+				AvroSchemaFileName:         "xjoinindex",
+				ElasticsearchIndexFileName: "get-index-response-empty",
+				K8sClient:                  k8sClient,
+				ApiCurioResponseFilename:   "index-empty",
 			}
 			reconciler.ReconcileNew()
 			reconciler.ReconcileValid()
@@ -1371,11 +1372,12 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			name := "test-index-pipeline"
 			version := "1234"
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:          namespace,
-				Name:               name,
-				Version:            version,
-				AvroSchemaFileName: "xjoinindex",
-				K8sClient:          k8sClient,
+				Namespace:                  namespace,
+				Name:                       name,
+				Version:                    version,
+				AvroSchemaFileName:         "xjoinindex",
+				ElasticsearchIndexFileName: "get-index-response-empty",
+				K8sClient:                  k8sClient,
 			}
 			reconciler.ReconcileNew()
 			reconciler.ReconcileValid()
@@ -1414,11 +1416,12 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			name := "test-index-pipeline"
 			version := "1234"
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:          namespace,
-				Name:               name,
-				Version:            version,
-				AvroSchemaFileName: "xjoinindex",
-				K8sClient:          k8sClient,
+				Namespace:                  namespace,
+				Name:                       name,
+				Version:                    version,
+				AvroSchemaFileName:         "xjoinindex",
+				ElasticsearchIndexFileName: "get-index-response-empty",
+				K8sClient:                  k8sClient,
 			}
 			reconciler.ReconcileNew()
 			reconciler.ReconcileValid()
@@ -1450,6 +1453,52 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring("elasticsearch connector spec has changed"))
+		})
+
+		It("Sets the status to invalid when the Elasticsearch index has deviated", func() {
+			//create a valid datasource
+			dataSourceName := "testdatasource"
+			datasourceReconciler := DatasourceTestReconciler{
+				Namespace: namespace,
+				Name:      dataSourceName,
+				K8sClient: k8sClient,
+			}
+			datasourceReconciler.ReconcileNew()
+			createdDataSource := datasourceReconciler.ReconcileValid()
+
+			//create a valid IndexPipeline
+			name := "test-index-pipeline"
+			version := "1234"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:                  namespace,
+				Name:                       name,
+				Version:                    version,
+				AvroSchemaFileName:         "xjoinindex-with-referenced-field",
+				ElasticsearchIndexFileName: "get-index-response",
+				ApiCurioResponseFilename:   "index",
+				K8sClient:                  k8sClient,
+				DataSources: []DataSource{{
+					Name:                     dataSourceName,
+					Version:                  createdDataSource.Status.ActiveVersion,
+					ApiCurioResponseFilename: "datasource-latest-version",
+				}},
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+			reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+
+			//reconcile the IndexPipeline and validate the status is updated correctly
+			updatedIndexPipeline := reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+				ElasticsearchIndexFilename: "get-index-response-modified",
+			})
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring("the Elasticsearch index mappings changed"))
 		})
 	})
 })
