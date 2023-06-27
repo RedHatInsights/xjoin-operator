@@ -2,9 +2,18 @@ package components
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-errors/errors"
+	"github.com/google/go-cmp/cmp"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 )
@@ -34,81 +43,115 @@ func (xc *XJoinCore) Name() string {
 	return xc.name + "-" + xc.version
 }
 
-func (xc *XJoinCore) Create() (err error) {
-	deployment := &unstructured.Unstructured{}
-
-	labels := map[string]interface{}{
+func (xc *XJoinCore) buildDeploymentStructure() (*v1.Deployment, error) {
+	labels := map[string]string{
 		"app":         xc.Name(),
 		"xjoin.index": xc.name,
 	}
 
-	deployment.Object = map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"name":      xc.Name(),
-			"namespace": xc.Namespace,
-			"labels":    labels,
+	replicas := int32(1)
+
+	cpuLimit, err := resource.ParseQuantity("250m")
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	cpuRequests, err := resource.ParseQuantity("100m")
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	memoryLimit, err := resource.ParseQuantity("512Mi")
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	memoryRequests, err := resource.ParseQuantity("64Mi")
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	container := corev1.Container{
+		Name:  xc.Name(),
+		Image: "quay.io/cloudservices/xjoin-core:latest",
+		Env: []corev1.EnvVar{{
+			Name:  "SOURCE_TOPICS",
+			Value: xc.SourceTopics,
+		}, {
+			Name:  "SINK_TOPIC",
+			Value: xc.SinkTopic,
+		}, {
+			Name:  "SCHEMA_REGISTRY_URL",
+			Value: xc.SchemaRegistryURL + "/apis/registry/v2",
+		}, {
+			Name:  "KAFKA_BOOTSTRAP",
+			Value: xc.KafkaBootstrap,
+		}, {
+			Name:  "SINK_SCHEMA",
+			Value: xc.Schema,
+		}},
+		Resources: corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    cpuLimit,
+				corev1.ResourceMemory: memoryLimit,
+			},
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    cpuRequests,
+				corev1.ResourceMemory: memoryRequests,
+			},
 		},
-		"spec": map[string]interface{}{
-			"replicas": 1,
-			"selector": map[string]interface{}{
-				"matchLabels": labels,
+		ImagePullPolicy:          corev1.PullAlways,
+		TerminationMessagePath:   "/dev/termination-log",
+		TerminationMessagePolicy: corev1.TerminationMessageReadFile,
+	}
+
+	maxUnavailable := intstr.Parse("25%")
+	maxSurge := intstr.Parse("25%")
+	terminationGracePeriod := int64(30)
+	revisionHistoryLimit := int32(10)
+	progressDeadlineSeconds := int32(600)
+
+	deployment := v1.Deployment{
+		TypeMeta: metav1.TypeMeta{},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      xc.Name(),
+			Namespace: xc.Namespace,
+			Labels:    labels,
+		},
+		Spec: v1.DeploymentSpec{
+			Replicas:                &replicas,
+			RevisionHistoryLimit:    &revisionHistoryLimit,
+			ProgressDeadlineSeconds: &progressDeadlineSeconds,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
 			},
-			"strategy": map[string]interface{}{
-				"rollingUpdate": map[string]interface{}{
-					"maxSurge":       "25%",
-					"maxUnavailable": "25%",
+			Strategy: v1.DeploymentStrategy{
+				Type: "RollingUpdate",
+				RollingUpdate: &v1.RollingUpdateDeployment{
+					MaxUnavailable: &maxUnavailable,
+					MaxSurge:       &maxSurge,
 				},
-				"type": "RollingUpdate",
 			},
-			"template": map[string]interface{}{
-				"metadata": map[string]interface{}{
-					"labels": labels,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
 				},
-				"spec": map[string]interface{}{
-					"containers": []map[string]interface{}{{
-						"env": []map[string]interface{}{
-							{
-								"name":  "SOURCE_TOPICS",
-								"value": xc.SourceTopics,
-							},
-							{
-								"name":  "SINK_TOPIC",
-								"value": xc.SinkTopic,
-							},
-							{
-								"name":  "SCHEMA_REGISTRY_URL",
-								"value": xc.SchemaRegistryURL + "/apis/registry/v2",
-							},
-							{
-								"name":  "KAFKA_BOOTSTRAP",
-								"value": xc.KafkaBootstrap,
-							},
-							{
-								"name":  "SINK_SCHEMA",
-								"value": xc.Schema,
-							},
-						},
-						"image":           "quay.io/cloudservices/xjoin-core:latest",
-						"imagePullPolicy": "Always",
-						"name":            xc.Name(),
-						"resources": map[string]interface{}{
-							"limits": map[string]interface{}{
-								"cpu":    "250m",
-								"memory": "512Mi",
-							},
-							"requests": map[string]interface{}{
-								"cpu":    "100m",
-								"memory": "64Mi",
-							},
-						},
-					}},
+				Spec: corev1.PodSpec{
+					Containers:                    []corev1.Container{container},
+					RestartPolicy:                 corev1.RestartPolicyAlways,
+					TerminationGracePeriodSeconds: &terminationGracePeriod,
+					DNSPolicy:                     corev1.DNSClusterFirst,
+					SchedulerName:                 corev1.DefaultSchedulerName,
 				},
 			},
 		},
 	}
 
-	deployment.SetGroupVersionKind(common.DeploymentGVK)
+	return &deployment, nil
+}
 
+func (xc *XJoinCore) Create() (err error) {
+	deployment, err := xc.buildDeploymentStructure()
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
 	err = xc.Client.Create(xc.Context, deployment)
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -133,6 +176,50 @@ func (xc *XJoinCore) Delete() (err error) {
 }
 
 func (xc *XJoinCore) CheckDeviation() (problem, err error) {
+	//build the expected deployment
+	expectedDeployment, err := xc.buildDeploymentStructure()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	//get the already created (existing) deployment
+	found, err := xc.Exists()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	if !found {
+		return fmt.Errorf("the xjoin-core deployment named, %s, does not exist", xc.Name()), nil
+	}
+
+	existingDeployment := &v1.Deployment{}
+	existingDeploymentLookup := types.NamespacedName{
+		Namespace: xc.Namespace,
+		Name:      xc.Name(),
+	}
+	err = xc.Client.Get(context.Background(), existingDeploymentLookup, existingDeployment)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	//compare
+	expectedDeployment.Spec.Template.Spec.SecurityContext = nil //these are automatically set by kubernetes
+	existingDeployment.Spec.Template.Spec.SecurityContext = nil
+
+	specDiff := cmp.Diff(
+		expectedDeployment.Spec,
+		existingDeployment.Spec,
+		utils.NumberNormalizer)
+
+	if len(specDiff) > 0 {
+		return fmt.Errorf("xjoin-core deployment spec has changed: %s", specDiff), nil
+	}
+
+	if existingDeployment.GetNamespace() != expectedDeployment.GetNamespace() {
+		return fmt.Errorf(
+			"xjoin-core deployment namespace has changed from: %s to %s",
+			expectedDeployment.GetNamespace(),
+			existingDeployment.GetNamespace()), nil
+	}
 	return
 }
 
