@@ -177,7 +177,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//validates the correct API calls were made
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline.1234/versions"]
-			Expect(count).To(Equal(1))
+			Expect(count).To(Equal(2))
 
 			count = info["POST http://apicurio:1080/apis/registry/v2/groups/default/artifacts"]
 			Expect(count).To(Equal(1))
@@ -393,7 +393,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//validates the correct API calls were made
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-test-custom-image.1234/versions"]
-			Expect(count).To(Equal(1))
+			Expect(count).To(Equal(2))
 
 			count = info["POST http://apicurio:1080/apis/registry/v2/groups/default/artifacts"]
 			Expect(count).To(Equal(2)) //called once for generic gql schema, then a second time for custom subgraph schema
@@ -1018,7 +1018,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//assert the REST API call to disable the schema was made
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline.1234/meta"]
-			Expect(count).To(Equal(2))
+			Expect(count).To(Equal(3))
 			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline.1234/state <DisabledState>"]
 			Expect(count).To(Equal(2))
 		})
@@ -1032,7 +1032,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//assert the REST API call to enable the schema was made
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+resources.IndexPipeline.Name+"/meta"]
-			Expect(count).To(Equal(1))
+			Expect(count).To(Equal(2))
 			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+resources.IndexPipeline.Name+"/state <EnabledState>"]
 			Expect(count).To(Equal(1))
 		})
@@ -1099,7 +1099,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//assert the REST API call to enable the schema was made
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+newIndexPipeline.Name+"/meta"]
-			Expect(count).To(Equal(1))
+			Expect(count).To(Equal(2))
 			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+newIndexPipeline.Name+"/state <EnabledState>"]
 			Expect(count).To(Equal(1))
 		})
@@ -1122,7 +1122,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//assert the REST API call to disable the schema was made
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-test-custom-image.1234/meta"]
-			Expect(count).To(Equal(2))
+			Expect(count).To(Equal(3))
 			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-test-custom-image.1234/state <DisabledState>"]
 			Expect(count).To(Equal(2))
 		})
@@ -1142,7 +1142,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+
 				resources.Index.Name+"-"+customImageName+"."+resources.Index.Status.RefreshingVersion+"/meta"]
-			Expect(count).To(Equal(1))
+			Expect(count).To(Equal(2))
 			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+
 				resources.Index.Name+"-"+customImageName+"."+resources.Index.Status.RefreshingVersion+"/state <EnabledState>"]
 			Expect(count).To(Equal(1))
@@ -1217,7 +1217,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+
 				updatedIndex.Name+"-"+customImageName+"."+updatedIndex.Status.ActiveVersion+"/meta"]
-			Expect(count).To(Equal(1))
+			Expect(count).To(Equal(2))
 			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+
 				updatedIndex.Name+"-"+customImageName+"."+updatedIndex.Status.ActiveVersion+"/state <EnabledState>"]
 			Expect(count).To(Equal(1))
@@ -1237,7 +1237,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//assert the REST API call to disable the schema was made
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline.1234/meta"]
-			Expect(count).To(Equal(2))
+			Expect(count).To(Equal(3))
 			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline.1234/state <DisabledState>"]
 			Expect(count).To(Equal(2))
 		})
@@ -1251,7 +1251,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//assert the REST API call to enable the schema was made
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+resources.IndexPipeline.Name+"/meta"]
-			Expect(count).To(Equal(1))
+			Expect(count).To(Equal(2))
 			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+resources.IndexPipeline.Name+"/state <EnabledState>"]
 			Expect(count).To(Equal(1))
 		})
@@ -1318,7 +1318,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//assert the REST API call to enable the schema was made
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+newIndexPipeline.Name+"/meta"]
-			Expect(count).To(Equal(1))
+			Expect(count).To(Equal(2))
 			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+newIndexPipeline.Name+"/state <EnabledState>"]
 			Expect(count).To(Equal(1))
 		})
@@ -1341,7 +1341,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//assert the REST API call to disable the schema was made
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-test-custom-image.1234/meta"]
-			Expect(count).To(Equal(2))
+			Expect(count).To(Equal(3))
 			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-test-custom-image.1234/state <DisabledState>"]
 			Expect(count).To(Equal(2))
 		})
@@ -1499,6 +1499,53 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring("the Elasticsearch index mappings changed"))
+		})
+
+		It("Sets the status to invalid when the GraphQL Schema has deviated", func() {
+			//create a valid datasource
+			dataSourceName := "testdatasource"
+			datasourceReconciler := DatasourceTestReconciler{
+				Namespace: namespace,
+				Name:      dataSourceName,
+				K8sClient: k8sClient,
+			}
+			datasourceReconciler.ReconcileNew()
+			createdDataSource := datasourceReconciler.ReconcileValid()
+
+			//create a valid IndexPipeline
+			name := "test-index-pipeline"
+			version := "1234"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:                  namespace,
+				Name:                       name,
+				Version:                    version,
+				AvroSchemaFileName:         "xjoinindex-with-referenced-field",
+				ElasticsearchIndexFileName: "get-index-response",
+				ApiCurioResponseFilename:   "index",
+				K8sClient:                  k8sClient,
+				DataSources: []DataSource{{
+					Name:                     dataSourceName,
+					Version:                  createdDataSource.Status.ActiveVersion,
+					ApiCurioResponseFilename: "datasource-latest-version",
+				}},
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+			reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+
+			//reconcile the IndexPipeline and validate the status is updated correctly
+			updatedIndexPipeline := reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+				GraphQLSchemaLabels:        []string{},
+			})
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring(
+				"graphql schema, xjoinindexpipeline.test-index-pipeline.1234, labels changed"))
 		})
 	})
 })

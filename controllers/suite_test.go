@@ -132,6 +132,7 @@ type IndexPipelineTestResources struct {
 type UpdatedMocksParams struct {
 	GraphQLSchemaExistingState string
 	GraphQLSchemaNewState      string
+	GraphQLSchemaLabels        []string
 	ElasticsearchIndexFilename string
 }
 

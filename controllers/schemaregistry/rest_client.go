@@ -65,6 +65,12 @@ func (c *RestClient) MakeRequest(requestParams Request) (resCode int, body map[s
 	return res.StatusCode, body, nil
 }
 
+func (c *RestClient) BuildGraphQLSchemaLabels(name string) []interface{} {
+	url := "http://" + strings.ReplaceAll(name, ".", "-") + ".test.svc:4000/graphql" //TODO url is static
+	labels := []interface{}{"xjoin-subgraph-url=" + url, "graphql"}
+	return labels
+}
+
 func (c *RestClient) RegisterGraphQLSchema(name string) (id string, err error) {
 	headers := make(map[string]string)
 	headers["Content-Type"] = "application/graphql"
@@ -96,9 +102,8 @@ func (c *RestClient) RegisterGraphQLSchema(name string) (id string, err error) {
 	}
 
 	//add labels
-	url := "http://" + strings.ReplaceAll(name, ".", "-") + ".test.svc:4000/graphql" //TODO url is static
 	labelsBody := make(map[string]interface{})
-	labelsBody["labels"] = []string{"xjoin-subgraph-url=" + url, "graphql"}
+	labelsBody["labels"] = c.BuildGraphQLSchemaLabels(name)
 	labelsBodyJson, err := json.Marshal(labelsBody)
 	if err != nil {
 		return "", errors.Wrap(err, 0)
@@ -295,4 +300,32 @@ func (c *RestClient) ListVersionsForSchemaName(schemaName string) (versions []st
 	}
 
 	return versions, nil
+}
+
+func (c *RestClient) GetSchemaLabels(schemaName string) ([]interface{}, error) {
+	resCode, resBody, err := c.MakeRequest(Request{
+		Method: http.MethodGet,
+		Path:   fmt.Sprintf("/groups/default/artifacts/%s/meta", schemaName),
+	})
+
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	if resCode >= 300 {
+		message := ""
+		if resBody != nil {
+			message, _ = resBody["message"].(string)
+		}
+		return nil, errors.Wrap(errors.New(fmt.Sprintf(
+			"unable to get schema metadata, statusCode %v, message %s",
+			resCode, message)), 0)
+	}
+
+	response, ok := resBody["labels"].([]interface{})
+	if !ok {
+		return nil, errors.Wrap(errors.New(
+			"metadata field 'labels' is not an array for schema: "+schemaName), 0)
+	}
+	return response, nil
 }
