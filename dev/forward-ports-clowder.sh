@@ -21,6 +21,9 @@ HBI_SVC="svc/host-inventory-service"
 APICURIO_SVC="svc/xjoin-apicurio-service"
 XJOIN_API_GATEWAY="svc/xjoin-api-gateway-api"
 ADVISOR_DB_SVC="svc/advisor-backend-db"
+PAYLOAD_TRACKER_DB_SVC="svc/payload-tracker-db"
+PAYLOAD_TRACKER_API_SVC="svc/payload-tracker-api"
+PAYLOAD_TRACKER_CONSUMER="svc/payload-tracker-consumer"
 
 kubectl port-forward "$ADVISOR_DB_SVC" 5433:5432 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$HBI_DB_SVC" 5432:5432 -n "$PROJECT_NAME" >/dev/null 2>&1 &
@@ -28,10 +31,12 @@ kubectl port-forward "$CONNECT_SVC" 8083:8083 -n "$PROJECT_NAME" >/dev/null 2>&1
 kubectl port-forward "$ELASTICSEARCH_SVC" 9200:9200 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$KAFKA_SVC" 9092:9092 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$KAFKA_SVC" 29092:9092 -n "$PROJECT_NAME" >/dev/null 2>&1 &
-#kubectl port-forward "$XJOIN_SVC" 4000:4000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+# kubectl port-forward "$XJOIN_SVC" 4000:4000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$HBI_SVC" 8000:8000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$APICURIO_SVC" 10001:10000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$XJOIN_API_GATEWAY" 10000:10000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 kubectl port-forward "$CONNECT_SVC" 5005:5005 -n "$PROJECT_NAME" >/dev/null 2>&1 &
-
+kubectl port-forward "$PAYLOAD_TRACKER_DB_SVC" 5434:5432 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward "$PAYLOAD_TRACKER_API_SVC" 8001:8000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
+kubectl port-forward "$PAYLOAD_TRACKER_CONSUMER" 9001:9000 -n "$PROJECT_NAME" >/dev/null 2>&1 &
 pgrep -fla "kubectl port-forward"

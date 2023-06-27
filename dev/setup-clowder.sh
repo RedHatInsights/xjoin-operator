@@ -149,7 +149,7 @@ bonfire process advisor -n test --no-get-dependencies | oc apply -f - -n test
 delete_clowdapp_dependencies advisor-backend
 wait_for_pod_to_be_running app=advisor-backend,service=db
 
-# setup xjoin.v2 resources, remove v1 resource
+# setup xjoin.v2 resources.  For xjoin.v1 deployment, comment out the following three lines.
 kubectl delete xjoinpipeline --all -n test
 kubectl apply -f config/samples/xjoin_v1alpha1_xjoindatasource.yaml -n test
 kubectl apply -f config/samples/xjoin_v1alpha1_xjoinindex.yaml -n test

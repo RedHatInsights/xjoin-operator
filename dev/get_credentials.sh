@@ -44,6 +44,27 @@ if [ -n "$HAS_ELASTICSEARCH_SECRET" ]; then
   export ES_PASSWORD
 fi
 
+# Payload tracker
+PAYLOAD_TRACKER_DATABASE_SECRET_NAME="payload-tracker-db"
+HAS_INVENTORY_SECRET=$(kubectl get secrets -o json -n $PROJECT_NAME | jq ".items[] | select(.metadata.name==\"$PAYLOAD_TRACKER_DATABASE_SECRET_NAME\")")
+if [ -n "$HAS_INVENTORY_SECRET" ]; then
+  PAYLOAD_TRACKER_USER=$(kubectl -n "$PROJECT_NAME" get secret/"$PAYLOAD_TRACKER_DATABASE_SECRET_NAME" -o custom-columns=:data.username | base64 -d)
+  PAYLOAD_TRACKER_PASSWORD=$(kubectl -n "$PROJECT_NAME" get secret/"$PAYLOAD_TRACKER_DATABASE_SECRET_NAME" -o custom-columns=:data.password | base64 -d)
+  PAYLOAD_TRACKER_NAME=$(kubectl -n "$PROJECT_NAME" get secret/"$PAYLOAD_TRACKER_DATABASE_SECRET_NAME" -o custom-columns=:data.name | base64 -d)
+  PAYLOAD_TRACKER_HOSTNAME=$(kubectl -n "$PROJECT_NAME" get secret/"$PAYLOAD_TRACKER_DATABASE_SECRET_NAME" -o custom-columns=:data.hostname | base64 -d)
+  echo "PAYLOAD_TRACKER_USER: $PAYLOAD_TRACKER_USER"
+  echo "PAYLOAD_TRACKER_PASSWORD: $PAYLOAD_TRACKER_PASSWORD"
+  echo "PAYLOAD_TRACKER_NAME: $PAYLOAD_TRACKER_NAME"
+  echo "PAYLOAD_TRACKER_HOSTNAME: $PAYLOAD_TRACKER_HOSTNAME"
+  echo -e ""
+  export PAYLOAD_TRACKER_USER
+  export PAYLOAD_TRACKER_PASSWORD
+  export PAYLOAD_TRACKER_NAME
+  export PAYLOAD_TRACKER_HOSTNAME
+else
+  echo "$PAYLOAD_TRACKER_DATABASE_SECRET_NAME secret not found"
+fi
+
 # advisor
 ADVISOR_SECRET_NAME="advisor-backend-db"
 HAS_ADVISOR_SECRET=$(kubectl get secrets -o json  -n $PROJECT_NAME | jq ".items[] | select(.metadata.name==\"$ADVISOR_SECRET_NAME\")")
