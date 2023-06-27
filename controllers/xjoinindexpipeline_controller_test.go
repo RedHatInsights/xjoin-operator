@@ -1591,5 +1591,50 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring("xjoin-core deployment spec has changed"))
 		})
+
+		It("Sets the status to invalid when the xjoin-api-subgraph deployment has deviated", func() {
+			//create a valid IndexPipeline
+			name := "test-index-pipeline"
+			version := "1234"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:                  namespace,
+				Name:                       name,
+				Version:                    version,
+				AvroSchemaFileName:         "xjoinindex",
+				ElasticsearchIndexFileName: "get-index-response-empty",
+				K8sClient:                  k8sClient,
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+			reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+
+			//update the xjoin-api-subgraph deployment to make it different from what the IndexPipeline defines
+			deploymentLookup := types.NamespacedName{
+				Namespace: namespace,
+				Name:      name + "-" + version,
+			}
+			existingDeployment := &v1.Deployment{}
+			err := k8sClient.Get(context.Background(), deploymentLookup, existingDeployment)
+			checkError(err)
+
+			replicas := int32(11)
+			existingDeployment.Spec.Replicas = &replicas
+
+			err = k8sClient.Update(context.Background(), existingDeployment)
+			checkError(err)
+
+			//reconcile the IndexPipeline and validate the status is updated correctly
+			updatedIndexPipeline := reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring(
+				"xjoin-api-subgraph deployment spec has changed"))
+		})
 	})
 })
