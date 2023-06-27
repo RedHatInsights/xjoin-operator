@@ -3,7 +3,7 @@
 
 const fs = require('fs');
 const yaml = require('js-yaml');
-const { buildMappingsFor } = require("json-schema-to-es-mapping");
+const { buildMappingsFor } = require("@ckyrouac/json-schema-to-es-mapping");
 
 function remove_blocked_fields(schema) {
     for (const [key, value] of Object.entries(schema["properties"])) {
