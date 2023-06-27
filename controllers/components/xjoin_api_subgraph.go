@@ -2,10 +2,19 @@ package components
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-errors/errors"
+	"github.com/google/go-cmp/cmp"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 )
@@ -45,103 +54,159 @@ func (x *XJoinAPISubGraph) Name() string {
 	return x.name + "-" + x.version
 }
 
-func (x *XJoinAPISubGraph) Create() (err error) {
-	deployment := &unstructured.Unstructured{}
+func (x *XJoinAPISubGraph) buildServiceStructure() *corev1.Service {
+	labels := x.buildLabels()
+	targetPort := intstr.Parse("4000")
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      x.Name(),
+			Namespace: x.Namespace,
+			Labels:    labels,
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{{
+				Protocol:   "TCP",
+				Port:       4000,
+				TargetPort: targetPort,
+			}},
+			Selector: map[string]string{
+				"app": labels["app"],
+			},
+		},
+		Status: corev1.ServiceStatus{},
+	}
 
-	labels := map[string]interface{}{
+	return service
+}
+
+func (x *XJoinAPISubGraph) buildDeploymentStructure() (*v1.Deployment, error) {
+	labels := x.buildLabels()
+	replicas := int32(1)
+
+	cpuLimit, err := resource.ParseQuantity("250m")
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	cpuRequests, err := resource.ParseQuantity("100m")
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	memoryLimit, err := resource.ParseQuantity("512Mi")
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	memoryRequests, err := resource.ParseQuantity("64Mi")
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	container := corev1.Container{
+		Name:  x.Name(),
+		Image: x.Image,
+		Ports: []corev1.ContainerPort{{
+			Name:          "web",
+			ContainerPort: 8000,
+			Protocol:      "TCP",
+		}},
+		Env: []corev1.EnvVar{{
+			Name:  "AVRO_SCHEMA",
+			Value: x.AvroSchema,
+		}, {
+			Name:  "SCHEMA_REGISTRY_PROTOCOL",
+			Value: x.Registry.ConnectionParams.Protocol,
+		}, {
+			Name:  "SCHEMA_REGISTRY_HOSTNAME",
+			Value: x.Registry.ConnectionParams.Hostname,
+		}, {
+			Name:  "SCHEMA_REGISTRY_PORT",
+			Value: x.Registry.ConnectionParams.Port,
+		}, {
+			Name:  "ELASTIC_SEARCH_URL",
+			Value: x.ElasticSearchURL,
+		}, {
+			Name:  "ELASTIC_SEARCH_USERNAME",
+			Value: x.ElasticSearchUsername,
+		}, {
+			Name:  "ELASTIC_SEARCH_PASSWORD",
+			Value: x.ElasticSearchPassword,
+		}, {
+			Name:  "ELASTIC_SEARCH_INDEX",
+			Value: x.ElasticSearchIndex,
+		}, {
+			Name:  "GRAPHQL_SCHEMA_NAME",
+			Value: x.GraphQLSchemaName,
+		}},
+		Resources: corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    cpuLimit,
+				corev1.ResourceMemory: memoryLimit,
+			},
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    cpuRequests,
+				corev1.ResourceMemory: memoryRequests,
+			},
+		},
+		ImagePullPolicy:          corev1.PullAlways,
+		TerminationMessagePath:   "/dev/termination-log",
+		TerminationMessagePolicy: corev1.TerminationMessageReadFile,
+	}
+
+	maxUnavailable := intstr.Parse("25%")
+	maxSurge := intstr.Parse("25%")
+	terminationGracePeriod := int64(30)
+	revisionHistoryLimit := int32(10)
+	progressDeadlineSeconds := int32(600)
+
+	deployment := v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      x.Name(),
+			Namespace: x.Namespace,
+			Labels:    labels,
+		},
+		Spec: v1.DeploymentSpec{
+			Replicas:                &replicas,
+			RevisionHistoryLimit:    &revisionHistoryLimit,
+			ProgressDeadlineSeconds: &progressDeadlineSeconds,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Strategy: v1.DeploymentStrategy{
+				Type: "RollingUpdate",
+				RollingUpdate: &v1.RollingUpdateDeployment{
+					MaxUnavailable: &maxUnavailable,
+					MaxSurge:       &maxSurge,
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					Containers:                    []corev1.Container{container},
+					RestartPolicy:                 corev1.RestartPolicyAlways,
+					TerminationGracePeriodSeconds: &terminationGracePeriod,
+					DNSPolicy:                     corev1.DNSClusterFirst,
+					SchedulerName:                 corev1.DefaultSchedulerName,
+				},
+			},
+		},
+	}
+
+	return &deployment, nil
+}
+
+func (x *XJoinAPISubGraph) buildLabels() map[string]string {
+	return map[string]string{
 		"app":         x.Name(),
 		"xjoin.index": x.name,
 	}
+}
 
-	deployment.Object = map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"name":      x.Name(),
-			"namespace": x.Namespace,
-			"labels":    labels,
-		},
-		"spec": map[string]interface{}{
-			"replicas": 1,
-			"selector": map[string]interface{}{
-				"matchLabels": labels,
-			},
-			"strategy": map[string]interface{}{
-				"rollingUpdate": map[string]interface{}{
-					"maxSurge":       "25%",
-					"maxUnavailable": "25%",
-				},
-				"type": "RollingUpdate",
-			},
-			"template": map[string]interface{}{
-				"metadata": map[string]interface{}{
-					"labels": labels,
-				},
-				"spec": map[string]interface{}{
-					"containers": []map[string]interface{}{{
-						"ports": []map[string]interface{}{
-							{
-								"containerPort": 8000,
-								"name":          "web",
-								"protocol":      "TCP",
-							},
-						},
-						"env": []map[string]interface{}{
-							{
-								"name":  "AVRO_SCHEMA",
-								"value": x.AvroSchema,
-							},
-							{
-								"name":  "SCHEMA_REGISTRY_PROTOCOL",
-								"value": x.Registry.ConnectionParams.Protocol,
-							},
-							{
-								"name":  "SCHEMA_REGISTRY_HOSTNAME",
-								"value": x.Registry.ConnectionParams.Hostname,
-							},
-							{
-								"name":  "SCHEMA_REGISTRY_PORT",
-								"value": x.Registry.ConnectionParams.Port,
-							},
-							{
-								"name":  "ELASTIC_SEARCH_URL",
-								"value": x.ElasticSearchURL,
-							},
-							{
-								"name":  "ELASTIC_SEARCH_USERNAME",
-								"value": x.ElasticSearchUsername,
-							},
-							{
-								"name":  "ELASTIC_SEARCH_PASSWORD",
-								"value": x.ElasticSearchPassword,
-							},
-							{
-								"name":  "ELASTIC_SEARCH_INDEX",
-								"value": x.ElasticSearchIndex,
-							},
-							{
-								"name":  "GRAPHQL_SCHEMA_NAME",
-								"value": x.GraphQLSchemaName,
-							},
-						},
-						"image":           x.Image,
-						"imagePullPolicy": "Always",
-						"name":            x.Name(),
-						"resources": map[string]interface{}{
-							"limits": map[string]interface{}{
-								"cpu":    "250m",
-								"memory": "512Mi",
-							},
-							"requests": map[string]interface{}{
-								"cpu":    "100m",
-								"memory": "64Mi",
-							},
-						},
-					}},
-				},
-			},
-		},
+func (x *XJoinAPISubGraph) Create() (err error) {
+	deployment, err := x.buildDeploymentStructure()
+	if err != nil {
+		return errors.Wrap(err, 0)
 	}
-
-	deployment.SetGroupVersionKind(common.DeploymentGVK)
 
 	err = x.Client.Create(x.Context, deployment)
 	if err != nil {
@@ -149,29 +214,7 @@ func (x *XJoinAPISubGraph) Create() (err error) {
 	}
 
 	//create the service
-	service := &unstructured.Unstructured{}
-
-	service.Object = map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"name":      x.Name(),
-			"namespace": x.Namespace,
-			"labels":    labels,
-		},
-		"spec": map[string]interface{}{
-			"ports": []map[string]interface{}{
-				{
-					"port":       4000,
-					"protocol":   "TCP",
-					"targetPort": 4000,
-				},
-			},
-			"selector": map[string]interface{}{
-				"app": labels["app"],
-			},
-		},
-	}
-
-	service.SetGroupVersionKind(common.ServiceGVK)
+	service := x.buildServiceStructure()
 	err = x.Client.Create(x.Context, service)
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -221,6 +264,50 @@ func (x *XJoinAPISubGraph) Delete() (err error) {
 }
 
 func (x *XJoinAPISubGraph) CheckDeviation() (problem, err error) {
+	//build the expected deployment
+	expectedDeployment, err := x.buildDeploymentStructure()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	//get the already created (existing) deployment
+	found, err := x.Exists()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	if !found {
+		return fmt.Errorf("the xjoin-api-subgraph deployment named, %s, does not exist", x.Name()), nil
+	}
+
+	existingDeployment := &v1.Deployment{}
+	existingDeploymentLookup := types.NamespacedName{
+		Namespace: x.Namespace,
+		Name:      x.Name(),
+	}
+	err = x.Client.Get(context.Background(), existingDeploymentLookup, existingDeployment)
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	//compare
+	expectedDeployment.Spec.Template.Spec.SecurityContext = nil //these are automatically set by kubernetes
+	existingDeployment.Spec.Template.Spec.SecurityContext = nil
+
+	specDiff := cmp.Diff(
+		expectedDeployment.Spec,
+		existingDeployment.Spec,
+		utils.NumberNormalizer)
+
+	if len(specDiff) > 0 {
+		return fmt.Errorf("xjoin-api-subgraph deployment spec has changed: %s", specDiff), nil
+	}
+
+	if existingDeployment.GetNamespace() != expectedDeployment.GetNamespace() {
+		return fmt.Errorf(
+			"xjoin-api-subgraph deployment namespace has changed from: %s to %s",
+			expectedDeployment.GetNamespace(),
+			existingDeployment.GetNamespace()), nil
+	}
 	return
 }
 
