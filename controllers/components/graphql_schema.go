@@ -1,7 +1,9 @@
 package components
 
 import (
+	"fmt"
 	"github.com/go-errors/errors"
+	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"strings"
 )
@@ -70,7 +72,34 @@ func (as *GraphQLSchema) DeleteByVersion(version string) (err error) {
 }
 
 func (as *GraphQLSchema) CheckDeviation() (problem, err error) {
-	return //TODO
+	//validate schema exists, body is managed by subgraph
+	found, err := as.Exists()
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+	if !found {
+		return fmt.Errorf("the GraphQL schema named, %s, does not exist", as.Name()), nil
+	}
+
+	//validate labels are correct
+	existingLabels, err := as.restClient.GetSchemaLabels(as.Name())
+	if err != nil {
+		return nil, errors.Wrap(err, 0)
+	}
+
+	//build expected labels
+	expectedLabels := as.restClient.BuildGraphQLSchemaLabels(as.Name())
+
+	//compare
+	specDiff := cmp.Diff(
+		existingLabels,
+		expectedLabels)
+
+	if len(specDiff) > 0 {
+		return fmt.Errorf("graphql schema, %s, labels changed: %s", as.Name(), specDiff), nil
+	}
+
+	return
 }
 
 func (as *GraphQLSchema) Exists() (exists bool, err error) {
