@@ -41,6 +41,8 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
+          branch: create-pull-request/update-mapping
+          delete-branch: true
           title: 'chore(update_mapping) Update mapping'
           body: |
             Updated xjoin-operator to support the latest inventory-schemas change

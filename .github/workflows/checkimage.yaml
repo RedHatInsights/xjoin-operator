@@ -26,4 +26,6 @@ jobs:
       - name: Create pull request
         uses: peter-evans/create-pull-request@v4
         with:
+          branch: create-pull-request/base-image
+          delete-branch: true
           title: 'chore(image): update base image'
