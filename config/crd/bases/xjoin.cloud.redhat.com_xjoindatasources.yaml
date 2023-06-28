@@ -201,6 +201,8 @@ spec:
                         x-kubernetes-map-type: atomic
                     type: object
                 type: object
+              ephemeral:
+                type: boolean
               pause:
                 type: boolean
             type: object

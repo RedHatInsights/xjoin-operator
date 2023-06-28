@@ -23,6 +23,7 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 		"version":    version,
 		"avroSchema": i.Parameters.AvroSchema.String(),
 		"pause":      i.Parameters.Pause.Bool(),
+		"ephemeral":  i.GetInstance().Spec.Ephemeral,
 	}
 
 	if len(i.Parameters.CustomSubgraphImages.Value().([]v1alpha1.CustomSubgraphImage)) != 0 {

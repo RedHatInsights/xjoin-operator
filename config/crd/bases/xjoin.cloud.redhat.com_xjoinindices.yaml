@@ -51,6 +51,8 @@ spec:
                   - name
                   type: object
                 type: array
+              ephemeral:
+                type: boolean
               pause:
                 type: boolean
             type: object

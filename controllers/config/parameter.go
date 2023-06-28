@@ -15,6 +15,7 @@ type Parameter struct {
 	DefaultValue  interface{}
 	value         interface{}
 	Type          reflect.Kind
+	Ephemeral     func(manager Manager) (interface{}, error)
 }
 
 func (p *Parameter) String() string {

@@ -110,6 +110,7 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 		Namespace:      instance.Namespace,
 		Spec:           instance.Spec,
 		Context:        ctx,
+		Ephemeral:      instance.Spec.Ephemeral,
 	})
 	if err != nil {
 		return

@@ -108,6 +108,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		Spec:           instance.Spec,
 		Context:        ctx,
 		Log:            reqLogger,
+		Ephemeral:      instance.Spec.Ephemeral,
 	})
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)

@@ -3,6 +3,7 @@ kind: XJoinDataSource
 metadata:
   name: hosts
 spec:
+  ephemeral: true
   pause: false
   databaseHostname:
     valueFrom:

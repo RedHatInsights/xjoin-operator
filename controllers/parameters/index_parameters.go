@@ -1,8 +1,15 @@
 package parameters
 
 import (
+	"github.com/go-errors/errors"
+	xjoinUtils "github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	. "github.com/redhatinsights/xjoin-operator/controllers/config"
+	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strconv"
 )
 
 type IndexParameters struct {
@@ -89,18 +96,39 @@ func BuildIndexParameters() *IndexParameters {
 			Secret:       "xjoin-elasticsearch",
 			SecretKey:    []string{"endpoint"},
 			DefaultValue: "http://localhost:9200",
+			Ephemeral: func(manager Manager) (interface{}, error) {
+				return "http://xjoin-elasticsearch-es-default." + manager.Namespace + ".svc:9200", nil
+			},
 		},
 		ElasticSearchUsername: Parameter{
 			Type:         reflect.String,
 			Secret:       "xjoin-elasticsearch",
 			SecretKey:    []string{"username"},
 			DefaultValue: "xjoin",
+			Ephemeral: func(manager Manager) (interface{}, error) {
+				return "elastic", nil
+			},
 		},
 		ElasticSearchPassword: Parameter{
 			Type:         reflect.String,
 			Secret:       "xjoin-elasticsearch",
 			SecretKey:    []string{"password"},
 			DefaultValue: "xjoin1337",
+			Ephemeral: func(manager Manager) (interface{}, error) {
+				ctx, cancel := xjoinUtils.DefaultContext()
+				defer cancel()
+				esSecret, err := k8sUtils.FetchSecret(
+					manager.Client, manager.Namespace, "xjoin-elasticsearch-es-elastic-user", ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				password, err := k8sUtils.ReadSecretValue(esSecret, []string{"elastic"})
+				if err != nil {
+					return nil, err
+				}
+				return password, nil
+			},
 		},
 		ElasticSearchTasksMax: Parameter{
 			Type:          reflect.Int,
@@ -183,6 +211,33 @@ func BuildIndexParameters() *IndexParameters {
 			ConfigMapKey:  "kafka.bootstrap.url",
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  "localhost:9092",
+			Ephemeral: func(manager Manager) (interface{}, error) {
+				var kafkaGVK = schema.GroupVersionKind{
+					Group:   "kafka.strimzi.io",
+					Kind:    "KafkaList",
+					Version: "v1beta2",
+				}
+
+				kafka := &unstructured.UnstructuredList{}
+				kafka.SetGroupVersionKind(kafkaGVK)
+
+				ctx, cancel := xjoinUtils.DefaultContext()
+				defer cancel()
+				err := manager.Client.List(
+					ctx,
+					kafka,
+					client.InNamespace(manager.Namespace))
+
+				if err != nil {
+					return nil, err
+				}
+
+				if len(kafka.Items) != 1 {
+					return nil, errors.New("invalid number of kafka instances found: " + strconv.Itoa(len(kafka.Items)))
+				}
+
+				return kafka.Items[0].GetName() + "-kafka-bootstrap." + manager.Namespace + ".svc:9092", nil
+			},
 		},
 		CustomSubgraphImages: Parameter{
 			Type:         reflect.Slice,

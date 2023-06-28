@@ -39,6 +39,8 @@ spec:
             properties:
               avroSchema:
                 type: string
+              ephemeral:
+                type: boolean
               indexName:
                 type: string
               name:

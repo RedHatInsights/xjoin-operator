@@ -137,3 +137,17 @@ func FetchSecret(c client.Client, namespace string, name string, ctx context.Con
 
 	return secret, err
 }
+
+func ReadSecretValue(secret *corev1.Secret, keys []string) (value string, err error) {
+	for _, key := range keys {
+		if secret != nil && secret.Data != nil {
+			value = string(secret.Data[key])
+			if value != "" {
+				break
+			}
+		} else {
+			return "", errors.Wrap(errors.New("Missing Data field from secret."), 0)
+		}
+	}
+	return
+}

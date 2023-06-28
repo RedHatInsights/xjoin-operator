@@ -150,6 +150,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Namespace:      instance.Namespace,
 		Spec:           instance.Spec,
 		Context:        ctx,
+		Ephemeral:      instance.Spec.Ephemeral,
 	})
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
@@ -321,6 +322,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Pause:                  i.Parameters.Pause.Bool(),
 		ParentInstance:         i.Instance,
 		ElasticsearchIndexName: elasticSearchIndexComponent.Name(),
+		Ephemeral:              i.GetInstance().Spec.Ephemeral,
 	})
 
 	for _, customSubgraphImage := range instance.Spec.CustomSubgraphImages {

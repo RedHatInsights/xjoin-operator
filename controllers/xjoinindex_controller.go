@@ -99,6 +99,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		Namespace:      instance.Namespace,
 		Spec:           instance.Spec,
 		Context:        ctx,
+		Ephemeral:      instance.Spec.Ephemeral,
 	})
 	if err != nil {
 		return result, errors.Wrap(err, 0)
