@@ -147,7 +147,7 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 		}
 	}
 
-	if param.SpecKey != "" {
+	if param.SpecKey != "" && value == nil {
 		specReflection := reflect.ValueOf(&m.spec).Elem().Elem()
 		field := specReflection.FieldByName(param.SpecKey)
 
@@ -175,7 +175,7 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 		}
 	}
 
-	if param.Secret != "" && param.value == nil {
+	if param.Secret != "" && value == nil {
 		if _, hasKey := m.secrets[param.Secret]; !hasKey {
 			return nil, errors.Wrap(errors.New(fmt.Sprintf(
 				"secret %s was not found. Did you register it when initializing the config.Manager?", param.Secret)), 0)
@@ -188,7 +188,7 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 		}
 	}
 
-	if param.ConfigMapKey != "" && param.value == nil {
+	if param.ConfigMapKey != "" && value == nil {
 		if _, hasKey := m.configMaps[param.ConfigMapName]; !hasKey {
 			return nil, errors.Wrap(errors.New(fmt.Sprintf(
 				"configmap %s was not found for key %s. Did you register it when initializing the config.Manager?",
