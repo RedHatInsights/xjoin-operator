@@ -241,7 +241,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	}
 	confluentClient := schemaregistry.NewSchemaRegistryConfluentClient(schemaRegistryConnectionParams)
 	confluentClient.Init()
-	registryRestClient := schemaregistry.NewSchemaRegistryRestClient(schemaRegistryConnectionParams)
+	registryRestClient := schemaregistry.NewSchemaRegistryRestClient(schemaRegistryConnectionParams, r.Namespace)
 
 	indexAvroSchemaParser := avro.IndexAvroSchemaParser{
 		AvroSchema:      p.AvroSchema.String(),

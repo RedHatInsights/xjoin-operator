@@ -14,6 +14,7 @@ import (
 type RestClient struct {
 	BaseUrl    string
 	HttpClient *http.Client
+	Namespace  string
 }
 
 type Request struct {
@@ -23,11 +24,12 @@ type Request struct {
 	Headers map[string]string
 }
 
-func NewSchemaRegistryRestClient(connectionParams ConnectionParams) *RestClient {
+func NewSchemaRegistryRestClient(connectionParams ConnectionParams, namespace string) *RestClient {
 	client := &http.Client{Timeout: time.Second * 60}
 	return &RestClient{
 		BaseUrl:    fmt.Sprintf("%s://%s:%s", connectionParams.Protocol, connectionParams.Hostname, connectionParams.Port) + "/apis/registry/v2",
 		HttpClient: client,
+		Namespace:  namespace,
 	}
 }
 
@@ -66,7 +68,7 @@ func (c *RestClient) MakeRequest(requestParams Request) (resCode int, body map[s
 }
 
 func (c *RestClient) BuildGraphQLSchemaLabels(name string) []interface{} {
-	url := "http://" + strings.ReplaceAll(name, ".", "-") + ".test.svc:4000/graphql" //TODO url is static
+	url := "http://" + strings.ReplaceAll(name, ".", "-") + "." + c.Namespace + ".svc:4000/graphql"
 	labels := []interface{}{"xjoin-subgraph-url=" + url, "graphql"}
 	return labels
 }

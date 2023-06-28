@@ -138,7 +138,8 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 	}
 	registryConfluentClient := schemaregistry.NewSchemaRegistryConfluentClient(schemaRegistryConnectionParams)
 	registryConfluentClient.Init()
-	registryRestClient := schemaregistry.NewSchemaRegistryRestClient(schemaRegistryConnectionParams)
+	registryRestClient := schemaregistry.NewSchemaRegistryRestClient(
+		schemaRegistryConnectionParams, d.iteration.GetInstance().Namespace)
 
 	custodian := components.NewCustodian(
 		d.gvk.Kind, d.iteration.GetInstance().Name, validVersions)
