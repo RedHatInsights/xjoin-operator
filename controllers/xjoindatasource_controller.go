@@ -101,6 +101,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		Spec:           instance.Spec,
 		Context:        ctx,
 		Log:            reqLogger,
+		Ephemeral:      instance.Spec.Ephemeral,
 	})
 	if err != nil {
 		return result, errors.Wrap(err, 0)

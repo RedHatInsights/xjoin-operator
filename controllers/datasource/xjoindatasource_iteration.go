@@ -36,6 +36,7 @@ func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version
 			"databasePassword": i.GetInstance().Spec.DatabasePassword,
 			"databaseTable":    i.GetInstance().Spec.DatabaseTable,
 			"pause":            i.Parameters.Pause.Bool(),
+			"ephemeral":        i.GetInstance().Spec.Ephemeral,
 		},
 	}
 	dataSourcePipeline.SetGroupVersionKind(common.DataSourcePipelineGVK)

@@ -20,6 +20,9 @@ type XJoinIndexValidatorSpec struct {
 
 	// +optional
 	Pause bool `json:"pause,omitempty"`
+
+	// +optional
+	Ephemeral bool `json:"ephemeral,omitempty"`
 }
 
 type XJoinIndexValidatorStatus struct {

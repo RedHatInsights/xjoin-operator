@@ -17,15 +17,16 @@ type Spec interface{}
 
 type Manager struct {
 	Parameters     interface{}
-	client         client.Client
+	Client         client.Client
 	ctx            context.Context
 	configMapNames []string
 	secretNames    []string
-	namespace      string
+	Namespace      string
 	configMaps     map[string]v1.ConfigMap
 	secrets        map[string]v1.Secret
 	spec           interface{}
 	log            logger.Log
+	ephemeral      bool
 }
 
 type ManagerOptions struct {
@@ -37,6 +38,7 @@ type ManagerOptions struct {
 	Spec           Spec
 	Context        context.Context
 	Log            logger.Log
+	Ephemeral      bool
 }
 
 func NewManager(opts ManagerOptions) (*Manager, error) {
@@ -48,16 +50,17 @@ func NewManager(opts ManagerOptions) (*Manager, error) {
 	}
 
 	return &Manager{
-		client:         opts.Client,
+		Client:         opts.Client,
 		Parameters:     opts.Parameters,
 		configMapNames: opts.ConfigMapNames,
 		secretNames:    opts.SecretNames,
-		namespace:      opts.Namespace,
+		Namespace:      opts.Namespace,
 		spec:           opts.Spec,
 		configMaps:     configMaps,
 		secrets:        managerSecrets,
 		ctx:            opts.Context,
 		log:            opts.Log,
+		ephemeral:      opts.Ephemeral,
 	}, nil
 }
 
@@ -109,7 +112,7 @@ func (m *Manager) Parse() error {
 
 func (m *Manager) loadConfigMaps() error {
 	for _, name := range m.configMapNames {
-		cm, err := k8sUtils.FetchConfigMap(m.client, m.namespace, name, m.ctx)
+		cm, err := k8sUtils.FetchConfigMap(m.Client, m.Namespace, name, m.ctx)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
@@ -123,7 +126,7 @@ func (m *Manager) loadConfigMaps() error {
 
 func (m *Manager) loadSecrets() error {
 	for _, name := range m.secretNames {
-		secret, err := k8sUtils.FetchSecret(m.client, m.namespace, name, m.ctx)
+		secret, err := k8sUtils.FetchSecret(m.Client, m.Namespace, name, m.ctx)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
@@ -135,8 +138,15 @@ func (m *Manager) loadSecrets() error {
 	return nil
 }
 
-// priority: spec > secret > configmap > default
+// priority: ephemeral > spec > secret > configmap > default
 func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err error) {
+	if param.Ephemeral != nil && m.ephemeral {
+		value, err = param.Ephemeral(*m)
+		if err != nil {
+			return nil, errors.Wrap(err, 0)
+		}
+	}
+
 	if param.SpecKey != "" {
 		specReflection := reflect.ValueOf(&m.spec).Elem().Elem()
 		field := specReflection.FieldByName(param.SpecKey)
@@ -151,7 +161,7 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 				value = fieldParam.Value
 			} else {
 				secret := &v1.Secret{}
-				err = m.client.Get(m.ctx, client.ObjectKey{Name: fieldParam.ValueFrom.SecretKeyRef.Name, Namespace: m.namespace}, secret)
+				err = m.Client.Get(m.ctx, client.ObjectKey{Name: fieldParam.ValueFrom.SecretKeyRef.Name, Namespace: m.Namespace}, secret)
 				if err != nil {
 					return value, errors.Wrap(err, 0)
 				}

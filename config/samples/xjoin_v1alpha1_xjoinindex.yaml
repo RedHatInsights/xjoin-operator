@@ -3,6 +3,7 @@ kind: XJoinIndex
 metadata:
   name: hosts
 spec:
+  ephemeral: true
   pause: false
   customSubgraphImages:
     - name: hbi-tags

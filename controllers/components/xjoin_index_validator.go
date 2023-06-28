@@ -22,6 +22,7 @@ type XJoinIndexValidator struct {
 	Pause                  bool
 	ParentInstance         client.Object
 	ElasticsearchIndexName string
+	Ephemeral              bool
 }
 
 func (xv *XJoinIndexValidator) SetName(kind string, name string) {
@@ -53,6 +54,7 @@ func (xv *XJoinIndexValidator) Create() (err error) {
 			"avroSchema": xv.Schema,
 			"pause":      xv.Pause,
 			"indexName":  xv.ElasticsearchIndexName,
+			"ephemeral":  xv.Ephemeral,
 		},
 	}
 	indexValidator.SetGroupVersionKind(common.IndexValidatorGVK)

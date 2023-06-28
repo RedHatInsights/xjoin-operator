@@ -455,15 +455,5 @@ func (config *Config) getIntValue(key string, defaultValue int) (int, error) {
 }
 
 func (config *Config) readSecretValue(secret *corev1.Secret, keys []string) (value string, err error) {
-	for _, key := range keys {
-		if secret != nil && secret.Data != nil {
-			value = string(secret.Data[key])
-			if value != "" {
-				break
-			}
-		} else {
-			return "", errors.New("Missing Data field from secret.")
-		}
-	}
-	return
+	return k8sUtils.ReadSecretValue(secret, keys)
 }
