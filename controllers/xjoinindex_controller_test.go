@@ -52,7 +52,7 @@ var _ = Describe("XJoinIndex", func() {
 			controller := true
 			blockOwnerDeletion := true
 			indexOwnerReference := metav1.OwnerReference{
-				APIVersion:         "v1alpha1",
+				APIVersion:         "xjoin.cloud.redhat.com/v1alpha1",
 				Kind:               "XJoinIndex",
 				Name:               createdIndex.Name,
 				UID:                createdIndex.UID,

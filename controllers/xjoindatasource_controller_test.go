@@ -57,7 +57,7 @@ var _ = Describe("XJoinDataSource", func() {
 			controller := true
 			blockOwnerDeletion := true
 			dataSourceOwnerReference := metav1.OwnerReference{
-				APIVersion:         "v1alpha1",
+				APIVersion:         "xjoin.cloud.redhat.com/v1alpha1",
 				Kind:               "XJoinDataSource",
 				Name:               createdDataSource.Name,
 				UID:                createdDataSource.UID,
