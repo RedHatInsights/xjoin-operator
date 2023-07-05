@@ -84,7 +84,7 @@ func (i *Iteration) CreateChildResource(resourceDefinition unstructured.Unstruct
 	blockOwnerDeletion := true
 	controller := true
 	ownerReference := metav1.OwnerReference{
-		APIVersion:         "xjoin.cloud.redhat.com/" + ownerGVK.Version,
+		APIVersion:         ownerGVK.Group + "/" + ownerGVK.Version,
 		Kind:               ownerGVK.Kind,
 		Name:               i.Instance.GetName(),
 		UID:                i.Instance.GetUID(),

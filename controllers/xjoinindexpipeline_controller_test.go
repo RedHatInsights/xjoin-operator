@@ -583,7 +583,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			truePtr := true
 			expectedOwnerRef := metav1.OwnerReference{
-				APIVersion:         "v1alpha1",
+				APIVersion:         "xjoin.cloud.redhat.com/v1alpha1",
 				Kind:               "XJoinIndexPipeline",
 				Name:               "test-index-pipeline.1234",
 				UID:                validator.OwnerReferences[0].UID,
