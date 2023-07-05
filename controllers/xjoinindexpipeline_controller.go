@@ -142,15 +142,25 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 
 	p := parameters.BuildIndexParameters()
 
+	var elasticsearchKubernetesSecretName string
+	if instance.Spec.Ephemeral {
+		elasticsearchKubernetesSecretName = "xjoin-elasticsearch-es-elastic-user"
+	} else {
+		elasticsearchKubernetesSecretName = "xjoin-elasticsearch"
+	}
+
 	configManager, err := config.NewManager(config.ManagerOptions{
 		Client:         r.Client,
 		Parameters:     p,
 		ConfigMapNames: []string{"xjoin-generic"},
-		SecretNames:    []string{"xjoin-elasticsearch"},
-		Namespace:      instance.Namespace,
-		Spec:           instance.Spec,
-		Context:        ctx,
-		Ephemeral:      instance.Spec.Ephemeral,
+		SecretNames: []config.SecretNames{{
+			KubernetesName: elasticsearchKubernetesSecretName,
+			ManagerName:    parameters.ElasticsearchSecret,
+		}},
+		Namespace: instance.Namespace,
+		Spec:      instance.Spec,
+		Context:   ctx,
+		Ephemeral: instance.Spec.Ephemeral,
 	})
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
