@@ -15,12 +15,22 @@ import (
 
 type Spec interface{}
 
+//SecretNames maps a user defined name (ManagerName) to the Kubernetes resource name (KubernetesName).
+//            The user defined name is used when defining parameters.
+type SecretNames struct {
+	//Name of the Kubernetes secret resource
+	KubernetesName string
+
+	//User defined
+	ManagerName string
+}
+
 type Manager struct {
 	Parameters     interface{}
 	Client         client.Client
 	ctx            context.Context
 	configMapNames []string
-	secretNames    []string
+	secretNames    []SecretNames
 	Namespace      string
 	configMaps     map[string]v1.ConfigMap
 	secrets        map[string]v1.Secret
@@ -33,7 +43,7 @@ type ManagerOptions struct {
 	Client         client.Client
 	Parameters     interface{}
 	ConfigMapNames []string
-	SecretNames    []string
+	SecretNames    []SecretNames
 	Namespace      string
 	Spec           Spec
 	Context        context.Context
@@ -126,14 +136,14 @@ func (m *Manager) loadConfigMaps() error {
 
 func (m *Manager) loadSecrets() error {
 	for _, name := range m.secretNames {
-		secret, err := k8sUtils.FetchSecret(m.Client, m.Namespace, name, m.ctx)
+		secret, err := k8sUtils.FetchSecret(m.Client, m.Namespace, name.KubernetesName, m.ctx)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 		if secret == nil {
 			return errors.Wrap(errors.New(fmt.Sprintf("secret not found: %s", name)), 0)
 		}
-		m.secrets[name] = *secret
+		m.secrets[name.ManagerName] = *secret
 	}
 	return nil
 }

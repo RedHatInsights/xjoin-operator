@@ -12,6 +12,8 @@ import (
 	"strconv"
 )
 
+const ElasticsearchSecret = "elasticsearch"
+
 type IndexParameters struct {
 	CommonParameters
 	ElasticSearchConnectorTemplate   Parameter
@@ -93,7 +95,7 @@ func BuildIndexParameters() *IndexParameters {
 		},
 		ElasticSearchURL: Parameter{
 			Type:         reflect.String,
-			Secret:       "xjoin-elasticsearch",
+			Secret:       ElasticsearchSecret,
 			SecretKey:    []string{"endpoint"},
 			DefaultValue: "http://localhost:9200",
 			Ephemeral: func(manager Manager) (interface{}, error) {
@@ -102,7 +104,7 @@ func BuildIndexParameters() *IndexParameters {
 		},
 		ElasticSearchUsername: Parameter{
 			Type:         reflect.String,
-			Secret:       "xjoin-elasticsearch",
+			Secret:       ElasticsearchSecret,
 			SecretKey:    []string{"username"},
 			DefaultValue: "xjoin",
 			Ephemeral: func(manager Manager) (interface{}, error) {
@@ -111,7 +113,7 @@ func BuildIndexParameters() *IndexParameters {
 		},
 		ElasticSearchPassword: Parameter{
 			Type:         reflect.String,
-			Secret:       "xjoin-elasticsearch",
+			Secret:       ElasticsearchSecret,
 			SecretKey:    []string{"password"},
 			DefaultValue: "xjoin1337",
 			Ephemeral: func(manager Manager) (interface{}, error) {
