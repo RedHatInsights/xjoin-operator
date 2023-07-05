@@ -243,6 +243,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 			messages = append(messages, problem.Error())
 		}
 		i.GetInstance().Status.ValidationResponse.Message = strings.Join(messages, ", ")
+		reqLogger.Warn("Deviation found", "problems", problems)
 	}
 
 	return i.UpdateStatusAndRequeue(time.Second * 30)

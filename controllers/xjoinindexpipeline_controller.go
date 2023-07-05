@@ -440,6 +440,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 			messages = append(messages, problem.Error())
 		}
 		i.GetInstance().Status.ValidationResponse.Message = strings.Join(messages, ", ")
+		reqLogger.Warn("Deviation found", "problems", problems)
 	}
 
 	i.Instance = instance
