@@ -76,7 +76,7 @@ func (xv *XJoinIndexValidator) Create() (err error) {
 	blockOwnerDeletion := true
 	controller := true
 	ownerReference := metav1.OwnerReference{
-		APIVersion:         common.IndexPipelineGVK.Version,
+		APIVersion:         common.IndexValidatorGVK.Group + "/" + common.IndexValidatorGVK.Version,
 		Kind:               common.IndexPipelineGVK.Kind,
 		Name:               xv.ParentInstance.GetName(),
 		UID:                xv.ParentInstance.GetUID(),
