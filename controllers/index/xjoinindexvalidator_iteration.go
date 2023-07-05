@@ -264,6 +264,51 @@ func (i *XJoinIndexValidatorIteration) buildDBConnectionEnvVars(references []src
 }
 
 func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars []v1.EnvVar, fullAvroSchema string) error {
+	if i.GetInstance().Spec.Ephemeral {
+		dbConnectionEnvVars = append(dbConnectionEnvVars, []v1.EnvVar{{
+			Name:  "ELASTICSEARCH_HOST_URL",
+			Value: i.Parameters.ElasticSearchURL.String(),
+		}, {
+			Name:  "ELASTICSEARCH_USERNAME",
+			Value: i.Parameters.ElasticSearchUsername.String(),
+		}, {
+			Name:  "ELASTICSEARCH_PASSWORD",
+			Value: i.Parameters.ElasticSearchPassword.String(),
+		}}...)
+	} else {
+		dbConnectionEnvVars = append(dbConnectionEnvVars, []v1.EnvVar{{
+			Name: "ELASTICSEARCH_HOST_URL",
+			ValueFrom: &v1.EnvVarSource{
+				SecretKeyRef: &v1.SecretKeySelector{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: "xjoin-elasticsearch",
+					},
+					Key: "endpoint",
+				},
+			},
+		}, {
+			Name: "ELASTICSEARCH_USERNAME",
+			ValueFrom: &v1.EnvVarSource{
+				SecretKeyRef: &v1.SecretKeySelector{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: "xjoin-elasticsearch",
+					},
+					Key: "username",
+				},
+			},
+		}, {
+			Name: "ELASTICSEARCH_PASSWORD",
+			ValueFrom: &v1.EnvVarSource{
+				SecretKeyRef: &v1.SecretKeySelector{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: "xjoin-elasticsearch",
+					},
+					Key: "password",
+				},
+			},
+		}}...)
+	}
+
 	//run separate xjoin-validation pod
 	err := i.Client.Create(i.Context, &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -281,36 +326,6 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 				Name:  i.ValidationPodName(),
 				Image: "quay.io/cloudservices/xjoin-validation:latest",
 				Env: append(dbConnectionEnvVars, []v1.EnvVar{{
-					Name: "ELASTICSEARCH_HOST_URL",
-					ValueFrom: &v1.EnvVarSource{
-						SecretKeyRef: &v1.SecretKeySelector{
-							LocalObjectReference: v1.LocalObjectReference{
-								Name: "xjoin-elasticsearch",
-							},
-							Key: "endpoint",
-						},
-					},
-				}, {
-					Name: "ELASTICSEARCH_USERNAME",
-					ValueFrom: &v1.EnvVarSource{
-						SecretKeyRef: &v1.SecretKeySelector{
-							LocalObjectReference: v1.LocalObjectReference{
-								Name: "xjoin-elasticsearch",
-							},
-							Key: "username",
-						},
-					},
-				}, {
-					Name: "ELASTICSEARCH_PASSWORD",
-					ValueFrom: &v1.EnvVarSource{
-						SecretKeyRef: &v1.SecretKeySelector{
-							LocalObjectReference: v1.LocalObjectReference{
-								Name: "xjoin-elasticsearch",
-							},
-							Key: "password",
-						},
-					},
-				}, {
 					Name:  "ELASTICSEARCH_INDEX",
 					Value: i.ElasticsearchIndexName,
 				}, {
