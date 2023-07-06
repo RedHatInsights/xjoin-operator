@@ -406,7 +406,7 @@ func (x *XJoinIndexPipelineTestReconciler) parseGraphQLSchemaLabels(name string,
 		labels = labelsOverride
 	} else {
 		labels = []string{
-			fmt.Sprintf("xjoin-subgraph-url=http://xjoinindexpipeline-%s.%s.svc:4000/graphql", strings.ReplaceAll(name, ".", "-"), x.Namespace),
+			fmt.Sprintf("xjoin-subgraph-url=http://%s:4000/graphql", strings.ReplaceAll(name, ".", "-")),
 			"graphql",
 		}
 	}

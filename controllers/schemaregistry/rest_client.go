@@ -68,7 +68,8 @@ func (c *RestClient) MakeRequest(requestParams Request) (resCode int, body map[s
 }
 
 func (c *RestClient) BuildGraphQLSchemaLabels(name string) []interface{} {
-	url := "http://" + strings.ReplaceAll(name, ".", "-") + "." + c.Namespace + ".svc:4000/graphql"
+	name = strings.ReplaceAll(name, "xjoinindexpipeline.", "")
+	url := "http://" + strings.ReplaceAll(name, ".", "-") + ":4000/graphql"
 	labels := []interface{}{"xjoin-subgraph-url=" + url, "graphql"}
 	return labels
 }
