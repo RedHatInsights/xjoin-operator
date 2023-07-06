@@ -283,7 +283,12 @@ func parseAvroFields(avroFields []Field, parent list.List) (map[string]interface
 			avroFieldType = avroField.Type[0]
 		}
 
-		esProperty["type"] = avroTypeToElasticsearchType(avroFieldType)
+		propertyType := avroTypeToElasticsearchType(avroFieldType)
+
+		if propertyType != "object" {
+			esProperty["type"] = propertyType
+		}
+
 		esProperty, err := parseXJoinFlags(avroFieldType, esProperty)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, 0)
@@ -301,7 +306,7 @@ func parseAvroFields(avroFields []Field, parent list.List) (map[string]interface
 		}
 
 		//recurse through nested object types
-		if esProperty["type"] == "object" {
+		if propertyType == "object" {
 			//nested json objects are "type: string", "xjoin.type: json" with xjoin.fields
 			//top level records are "type: record" with standard avro fields
 			var nestedFields []Field
@@ -321,6 +326,8 @@ func parseAvroFields(avroFields []Field, parent list.List) (map[string]interface
 				}
 				esProperty["properties"] = nestedProperties
 				jsonFields = append(jsonFields, nestedJsonFields...)
+			} else {
+				esProperty["type"] = propertyType
 			}
 		}
 
