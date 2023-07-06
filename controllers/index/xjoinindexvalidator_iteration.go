@@ -15,6 +15,7 @@ import (
 	"github.com/riferrei/srclient"
 	v1 "k8s.io/api/core/v1"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -309,8 +310,25 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 		}}...)
 	}
 
+	cpuLimit, err := resource.ParseQuantity("200m")
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	cpuRequests, err := resource.ParseQuantity("100m")
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	memoryLimit, err := resource.ParseQuantity("256Mi")
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	memoryRequests, err := resource.ParseQuantity("128Mi")
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
 	//run separate xjoin-validation pod
-	err := i.Client.Create(i.Context, &v1.Pod{
+	err = i.Client.Create(i.Context, &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      i.ValidationPodName(),
 			Namespace: i.Instance.GetNamespace(),
@@ -333,6 +351,16 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 					Value: fullAvroSchema,
 				}}...),
 				ImagePullPolicy: "Always",
+				Resources: v1.ResourceRequirements{
+					Limits: v1.ResourceList{
+						v1.ResourceCPU:    cpuLimit,
+						v1.ResourceMemory: memoryLimit,
+					},
+					Requests: v1.ResourceList{
+						v1.ResourceCPU:    cpuRequests,
+						v1.ResourceMemory: memoryRequests,
+					},
+				},
 			}},
 		},
 	})

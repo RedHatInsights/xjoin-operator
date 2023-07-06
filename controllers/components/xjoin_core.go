@@ -51,7 +51,7 @@ func (xc *XJoinCore) buildDeploymentStructure() (*v1.Deployment, error) {
 
 	replicas := int32(1)
 
-	cpuLimit, err := resource.ParseQuantity("250m")
+	cpuLimit, err := resource.ParseQuantity("200m")
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
@@ -59,11 +59,11 @@ func (xc *XJoinCore) buildDeploymentStructure() (*v1.Deployment, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
-	memoryLimit, err := resource.ParseQuantity("512Mi")
+	memoryLimit, err := resource.ParseQuantity("256Mi")
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
-	memoryRequests, err := resource.ParseQuantity("64Mi")
+	memoryRequests, err := resource.ParseQuantity("128Mi")
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
