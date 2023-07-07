@@ -145,6 +145,7 @@ wait_for_pod_to_be_running app=xjoin-api-gateway
 
 # advisor
 print_message "Setting up advisor"
+kubectl apply -k https://github.com/RedHatInsights/floorist-operator/config/crd?ref=main
 bonfire process advisor -n test --no-get-dependencies | oc apply -f - -n test
 delete_clowdapp_dependencies advisor-backend
 wait_for_pod_to_be_running app=advisor-backend,service=db
