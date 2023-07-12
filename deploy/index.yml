@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: xjoin-index
+
+parameters:
+  - name: NAME
+    required: true
+  - name: AVRO_SCHEMA
+    required: true
+  - name: CUSTOM_SUBGRAPH_IMAGES
+    value: "[]"
+
+objects:
+  - apiVersion: xjoin.cloud.redhat.com/v1alpha1
+    kind: XJoinIndex
+    metadata:
+      name: ${NAME}
+    spec:
+      avroSchema: ${AVRO_SCHEMA}
+      customSubgraphImages: ${{CUSTOM_SUBGRAPH_IMAGES}}
