@@ -630,7 +630,7 @@ objects:
       connect.cluster.namespace: ${CONNECT_CLUSTER_NAMESPACE}
       schemaregistry.protocol: ${SCHEMA_REGISTRY_PROTOCOL}
       schemaregistry.host: ${SCHEMA_REGISTRY_HOST}
-      schemaregistry.port: ${{SCHEMA_REGISTRY_PORT}}
+      schemaregistry.port: ${SCHEMA_REGISTRY_PORT}
   - apiVersion: v1
     kind: ConfigMap
     metadata:
