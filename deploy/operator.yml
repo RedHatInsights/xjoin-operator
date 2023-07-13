@@ -561,6 +561,23 @@ parameters:
           }
         }
       }
+
+  # version 2 parameters
+  - name: KAFKA_BOOTSTRAP_URL
+    value: "platform-mq-kafka-bootstrap.platform-mq-stage:9092"
+  - name: KAFKA_CLUSTER_NAMESPACE
+    value: "platform-mq-stage"
+  - name: KAFKA_CLUSTER
+    value: "platform-mq"
+  - name: CONNECT_CLUSTER_NAMESPACE
+    value: "platform-mq-stage"
+  - name: SCHEMA_REGISTRY_PROTOCOL
+    value: "http"
+  - name: SCHEMA_REGISTRY_HOST
+    value: "xjoin-apicurio-service.xjoin-stage.svc"
+  - name: SCHEMA_REGISTRY_PORT
+    value: "10000"
+
 objects:
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
@@ -601,6 +618,19 @@ objects:
           requests:
             cpu: ${MANAGER_POD_CPU_REQUESTS}
             memory: ${MANAGER_POD_MEM_REQUESTS}
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: xjoin-generic
+    data:
+      kafka.bootstrap.url: ${KAFKA_BOOTSTRAP_URL}
+      kafka.cluster.namespace: ${KAFKA_CLUSTER_NAMESPACE}
+      kafka.cluster: ${KAFKA_CLUSTER}
+      connect.cluster: ${CONNECT_CLUSTER}
+      connect.cluster.namespace: ${CONNECT_CLUSTER_NAMESPACE}
+      schemaregistry.protocol: ${SCHEMA_REGISTRY_PROTOCOL}
+      schemaregistry.host: ${SCHEMA_REGISTRY_HOST}
+      schemaregistry.port: ${{SCHEMA_REGISTRY_PORT}}
   - apiVersion: v1
     kind: ConfigMap
     metadata:
