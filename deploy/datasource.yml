@@ -45,4 +45,5 @@ objects:
           secretKeyRef:
             key: username
             name: ${DATABASE_SECRET}
-      databaseTable: ${DATABASE_TABLE}
+      databaseTable:
+        value: ${DATABASE_TABLE}
