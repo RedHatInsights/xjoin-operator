@@ -34,7 +34,7 @@ objects:
         valueFrom:
           secretKeyRef:
             key: password
-            name: ${DATABASE_SECRET}}
+            name: ${DATABASE_SECRET}
       databasePort:
         valueFrom:
           secretKeyRef:
