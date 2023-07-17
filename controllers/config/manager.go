@@ -91,7 +91,8 @@ func (m *Manager) Parse() error {
 			commonParams := parameters.Field(i)
 			for j := 0; j < commonParams.NumField(); j++ {
 				commonParam := commonParams.Field(j).Interface().(Parameter)
-				value, err := m.parseParameterValue(commonParam)
+				paramName := commonParams.Type().Field(j).Name
+				value, err := m.parseParameterValue(paramName, commonParam)
 				if err != nil {
 					return errors.Wrap(err, 0)
 				}
@@ -104,7 +105,8 @@ func (m *Manager) Parse() error {
 			parameters.Field(i).Set(commonParams)
 		} else {
 			param := parameters.Field(i).Interface().(Parameter)
-			value, err := m.parseParameterValue(param)
+			paramName := parameters.Type().Field(i).Name
+			value, err := m.parseParameterValue(paramName, param)
 			if err != nil {
 				return errors.Wrap(err, 0)
 			}
@@ -149,8 +151,10 @@ func (m *Manager) loadSecrets() error {
 }
 
 // priority: ephemeral > spec > secret > configmap > default
-func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err error) {
+func (m *Manager) parseParameterValue(name string, param Parameter) (value interface{}, err error) {
 	if param.Ephemeral != nil && m.ephemeral {
+		m.log.Debug(fmt.Sprintf("Loading parameter %s from ephemeral", name))
+
 		value, err = param.Ephemeral(*m)
 		if err != nil {
 			return nil, errors.Wrap(err, 0)
@@ -158,15 +162,17 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 	}
 
 	if param.SpecKey != "" && value == nil {
+		m.log.Debug(fmt.Sprintf("Loading parameter %s from specKey %s", name, param.SpecKey))
+
 		specReflection := reflect.ValueOf(&m.spec).Elem().Elem()
 		field := specReflection.FieldByName(param.SpecKey)
 
 		if !field.IsValid() {
-			log.Debug(fmt.Sprintf("key %s not found in spec", param.SpecKey))
+			m.log.Debug(fmt.Sprintf("key %s not found in spec", param.SpecKey))
 		} else if field.Type() == reflect.TypeOf(&v1alpha1.StringOrSecretParameter{}) {
 			fieldParam := field.Interface().(*v1alpha1.StringOrSecretParameter)
 			if fieldParam == nil {
-				log.Warn(fmt.Sprintf("string or secret key %s not found in spec", param.SpecKey))
+				m.log.Warn(fmt.Sprintf("string or secret key %s not found in spec", param.SpecKey))
 			} else if fieldParam.Value != "" {
 				value = fieldParam.Value
 			} else {
@@ -186,6 +192,9 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 	}
 
 	if param.Secret != "" && value == nil {
+		m.log.Debug(fmt.Sprintf("Loading parameter %s from Secret: %s, SecretKey: param.SecretKey: %s",
+			name, param.Secret, param.SecretKey))
+
 		if _, hasKey := m.secrets[param.Secret]; !hasKey {
 			return nil, errors.Wrap(errors.New(fmt.Sprintf(
 				"secret %s was not found. Did you register it when initializing the config.Manager?", param.Secret)), 0)
@@ -206,11 +215,19 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 		}
 
 		if _, hasKey := m.configMaps[param.ConfigMapName].Data[param.ConfigMapKey]; !hasKey {
+			m.log.Debug(fmt.Sprintf("Using default value for parameter %s", name))
+
 			value = param.DefaultValue
 		} else {
 			if param.Type == reflect.String {
+				m.log.Debug(fmt.Sprintf("Loading parameter %s from ConfigMap: %s, ConfigMapKey %s",
+					name, param.ConfigMapName, param.ConfigMapKey))
+
 				value = m.configMaps[param.ConfigMapName].Data[param.ConfigMapKey]
 			} else if param.Type == reflect.Int {
+				m.log.Debug(fmt.Sprintf("Loading parameter %s from ConfigMap: %s, ConfigMapKey %s",
+					name, param.ConfigMapName, param.ConfigMapKey))
+
 				cmValue := m.configMaps[param.ConfigMapName].Data[param.ConfigMapKey]
 
 				if parsed, err := strconv.ParseInt(cmValue, 10, 64); err != nil {
@@ -220,6 +237,9 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 					value = int(parsed)
 				}
 			} else if param.Type == reflect.Bool {
+				m.log.Debug(fmt.Sprintf("Loading parameter %s from ConfigMap: %s, ConfigMapKey %s",
+					name, param.ConfigMapName, param.ConfigMapKey))
+
 				cmValue := m.configMaps[param.ConfigMapName].Data[param.ConfigMapKey]
 
 				if parsed, err := strconv.ParseBool(cmValue); err != nil {
@@ -237,6 +257,7 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 	}
 
 	if value == nil {
+		m.log.Debug(fmt.Sprintf("Using default value for parameter %s", name))
 		return param.DefaultValue, nil
 	}
 

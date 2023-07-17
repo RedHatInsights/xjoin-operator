@@ -84,7 +84,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		Recorder:         r.Recorder,
 	}
 
-	xjoinConfig, err := config.NewConfig(i.Instance, i.Client, ctx)
+	xjoinConfig, err := config.NewConfig(i.Instance, i.Client, ctx, reqLogger)
 	if xjoinConfig != nil {
 		i.Parameters = xjoinConfig.Parameters
 	}

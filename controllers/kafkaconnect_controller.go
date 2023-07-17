@@ -43,7 +43,7 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 	}
 	r.instance = instance
 
-	xjoinConfig, err := config.NewConfig(instance, r.Client, ctx)
+	xjoinConfig, err := config.NewConfig(instance, r.Client, ctx, reqLogger)
 	if xjoinConfig != nil {
 		r.parameters = xjoinConfig.Parameters
 	}

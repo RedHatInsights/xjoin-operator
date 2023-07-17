@@ -19,8 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var log = logger.NewLogger("config")
-
 // These keys are excluded when computing a configMap hash.
 // Therefore, if they change that won't trigger a pipeline refresh
 var keysIgnoredByRefresh []string
@@ -34,10 +32,13 @@ type Config struct {
 	Parameters           Parameters
 	ParametersMap        map[string]interface{}
 	client               client.Client
+	log                  logger.Log
 }
 
-func NewConfig(instance *xjoin.XJoinPipeline, client client.Client, ctx context.Context) (*Config, error) {
+func NewConfig(instance *xjoin.XJoinPipeline, client client.Client, ctx context.Context, log logger.Log) (*Config, error) {
 	config := Config{}
+
+	config.log = log
 
 	config.Parameters = NewXJoinConfiguration()
 	cm, err := k8sUtils.FetchConfigMap(client, instance.Namespace, "xjoin", ctx)
@@ -178,7 +179,7 @@ func (config *Config) checkIfManagedKafka(ctx context.Context) (isManaged bool, 
 	clowdenvKafka := clowdenvProviders["kafka"].(map[string]interface{})
 	clowdenvKafkaMode := clowdenvKafka["mode"].(string)
 
-	log.Info("ClowdEnvironment Kafka Mode: " + clowdenvKafkaMode)
+	config.log.Info("ClowdEnvironment Kafka Mode: " + clowdenvKafkaMode)
 
 	if clowdenvKafkaMode == "managed-ephem" {
 		isManaged = true
@@ -191,14 +192,14 @@ func (config *Config) checkIfManagedKafka(ctx context.Context) (isManaged bool, 
 
 // Unable to pass ephemeral environment's kafka/connect cluster name into the deployment template
 func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
-	log.Info("Loading Kafka parameters for ephemeral environment: " + config.instance.Namespace)
+	config.log.Info("Loading Kafka parameters for ephemeral environment: " + config.instance.Namespace)
 
 	isManagedKafka, err := config.checkIfManagedKafka(ctx)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 	if isManagedKafka {
-		log.Info("Using Managed Kafka instance")
+		config.log.Info("Using Managed Kafka instance")
 		//set config.parameters value to true
 		err = config.Parameters.ManagedKafka.SetValue(true)
 		if err != nil {
@@ -283,7 +284,7 @@ func (config *Config) buildEphemeralConfig(ctx context.Context) (err error) {
 	}
 
 	if !isManagedKafka {
-		log.Info("Using Strimzi Kafka instance")
+		config.log.Info("Using Strimzi Kafka instance")
 		var kafkaGVK = schema.GroupVersionKind{
 			Group:   "kafka.strimzi.io",
 			Kind:    "KafkaList",
@@ -448,7 +449,7 @@ func (config *Config) getIntValue(key string, defaultValue int) (int, error) {
 			return int(parsed), nil
 		}
 	} else {
-		log.Debug("Key missing from configmap, falling back to default value", "key", key)
+		config.log.Debug("Key missing from configmap, falling back to default value", "key", key)
 	}
 
 	return defaultValue, nil

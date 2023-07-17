@@ -161,6 +161,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Spec:      instance.Spec,
 		Context:   ctx,
 		Ephemeral: instance.Spec.Ephemeral,
+		Log:       reqLogger,
 	})
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)

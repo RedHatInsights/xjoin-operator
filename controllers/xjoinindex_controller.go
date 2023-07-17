@@ -110,6 +110,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		Spec:      instance.Spec,
 		Context:   ctx,
 		Ephemeral: instance.Spec.Ephemeral,
+		Log:       reqLogger,
 	})
 	if err != nil {
 		return result, errors.Wrap(err, 0)
