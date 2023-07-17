@@ -121,6 +121,7 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 		Spec:      instance.Spec,
 		Context:   ctx,
 		Ephemeral: instance.Spec.Ephemeral,
+		Log:       reqLogger,
 	})
 	if err != nil {
 		return
