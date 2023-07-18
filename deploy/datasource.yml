@@ -23,27 +23,27 @@ objects:
       databaseHostname:
         valueFrom:
           secretKeyRef:
-            key: hostname
+            key: db.host
             name: ${DATABASE_SECRET}
       databaseName:
         valueFrom:
           secretKeyRef:
-            key: name
+            key: db.name
             name: ${DATABASE_SECRET}
       databasePassword:
         valueFrom:
           secretKeyRef:
-            key: password
+            key: db.password
             name: ${DATABASE_SECRET}
       databasePort:
         valueFrom:
           secretKeyRef:
-            key: port
+            key: db.port
             name: ${DATABASE_SECRET}
       databaseUsername:
         valueFrom:
           secretKeyRef:
-            key: username
+            key: db.user
             name: ${DATABASE_SECRET}
       databaseTable:
         value: ${DATABASE_TABLE}
