@@ -287,26 +287,6 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 					Key: "endpoint",
 				},
 			},
-		}, {
-			Name: "ELASTICSEARCH_USERNAME",
-			ValueFrom: &v1.EnvVarSource{
-				SecretKeyRef: &v1.SecretKeySelector{
-					LocalObjectReference: v1.LocalObjectReference{
-						Name: "xjoin-elasticsearch",
-					},
-					Key: "username",
-				},
-			},
-		}, {
-			Name: "ELASTICSEARCH_PASSWORD",
-			ValueFrom: &v1.EnvVarSource{
-				SecretKeyRef: &v1.SecretKeySelector{
-					LocalObjectReference: v1.LocalObjectReference{
-						Name: "xjoin-elasticsearch",
-					},
-					Key: "password",
-				},
-			},
 		}}...)
 	}
 
