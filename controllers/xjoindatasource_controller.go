@@ -93,15 +93,16 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 	}
 
 	configManager, err := config.NewManager(config.ManagerOptions{
-		Client:         r.Client,
-		Parameters:     p,
-		ConfigMapNames: []string{"xjoin-generic"},
-		SecretNames:    nil,
-		Namespace:      instance.Namespace,
-		Spec:           instance.Spec,
-		Context:        ctx,
-		Log:            reqLogger,
-		Ephemeral:      instance.Spec.Ephemeral,
+		Client:            r.Client,
+		Parameters:        p,
+		ConfigMapNames:    []string{"xjoin-generic"},
+		SecretNames:       nil,
+		ResourceNamespace: instance.Namespace,
+		OperatorNamespace: r.Namespace,
+		Spec:              instance.Spec,
+		Context:           ctx,
+		Log:               reqLogger,
+		Ephemeral:         instance.Spec.Ephemeral,
 	})
 	if err != nil {
 		return result, errors.Wrap(err, 0)
