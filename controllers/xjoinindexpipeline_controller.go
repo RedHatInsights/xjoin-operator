@@ -327,6 +327,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		ElasticSearchIndex:    elasticSearchIndexComponent.Name(),
 		Image:                 "quay.io/cloudservices/xjoin-api-subgraph:latest", //TODO
 		GraphQLSchemaName:     graphqlSchemaComponent.Name(),
+		LogLevel:              p.SubgraphLogLevel.String(),
 	})
 	componentManager.AddComponent(&components.XJoinIndexValidator{
 		Client:                 i.Client,
@@ -359,6 +360,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 			Image:                 customSubgraphImage.Image,
 			Suffix:                customSubgraphImage.Name,
 			GraphQLSchemaName:     customSubgraphGraphQLSchemaComponent.Name(),
+			LogLevel:              p.SubgraphLogLevel.String(),
 		})
 	}
 

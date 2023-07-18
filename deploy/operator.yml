@@ -577,6 +577,8 @@ parameters:
     value: "xjoin-apicurio-service.xjoin-stage.svc"
   - name: SCHEMA_REGISTRY_PORT
     value: "10000"
+  - name: SUBGRAPH_LOG_LEVEL
+    value: "WARN"
 
 objects:
   - apiVersion: operators.coreos.com/v1
@@ -633,6 +635,7 @@ objects:
       schemaregistry.protocol: ${SCHEMA_REGISTRY_PROTOCOL}
       schemaregistry.host: ${SCHEMA_REGISTRY_HOST}
       schemaregistry.port: ${SCHEMA_REGISTRY_PORT}
+      subgraph.log.level: ${SUBGRAPH_LOG_LEVEL}
   - apiVersion: v1
     kind: ConfigMap
     metadata:

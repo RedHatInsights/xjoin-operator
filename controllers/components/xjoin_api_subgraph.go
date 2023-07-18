@@ -35,6 +35,7 @@ type XJoinAPISubGraph struct {
 	Image                 string
 	Suffix                string
 	GraphQLSchemaName     string
+	LogLevel              string
 }
 
 func (x *XJoinAPISubGraph) SetName(kind string, name string) {
@@ -135,6 +136,9 @@ func (x *XJoinAPISubGraph) buildDeploymentStructure() (*v1.Deployment, error) {
 		}, {
 			Name:  "GRAPHQL_SCHEMA_NAME",
 			Value: x.GraphQLSchemaName,
+		}, {
+			Name:  "LOG_LEVEL",
+			Value: x.LogLevel,
 		}},
 		Resources: corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{

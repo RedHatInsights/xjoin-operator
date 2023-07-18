@@ -305,7 +305,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal("test-index-pipeline-1234"))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/cloudservices/xjoin-api-subgraph:latest"))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(9))
+			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(10))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]corev1.EnvVar{
 				{
 					Name:      "AVRO_SCHEMA",
@@ -350,6 +350,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				{
 					Name:      "GRAPHQL_SCHEMA_NAME",
 					Value:     "xjoinindexpipeline.test-index-pipeline.1234",
+					ValueFrom: nil,
+				},
+				{
+					Name:      "LOG_LEVEL",
+					Value:     "WARN",
 					ValueFrom: nil,
 				},
 			}))
@@ -444,7 +449,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal(deploymentName))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/cloudservices/host-inventory-subgraph:latest"))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(9))
+			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(10))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]corev1.EnvVar{
 				{
 					Name:      "AVRO_SCHEMA",
@@ -489,6 +494,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				{
 					Name:      "GRAPHQL_SCHEMA_NAME",
 					Value:     "xjoinindexpipeline.test-index-pipeline-test-custom-image.1234",
+					ValueFrom: nil,
+				},
+				{
+					Name:      "LOG_LEVEL",
+					Value:     "WARN",
 					ValueFrom: nil,
 				},
 			}))
