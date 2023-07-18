@@ -16,7 +16,7 @@ import (
 )
 
 func (kafka *GenericKafka) CreateGenericDebeziumConnector(
-	name string, connectorTemplate string, connectorTemplateParameters map[string]interface{}, dryRun bool) (unstructured.Unstructured, error) {
+	name string, namespace string, connectorTemplate string, connectorTemplateParameters map[string]interface{}, dryRun bool) (unstructured.Unstructured, error) {
 
 	connectorObj := &unstructured.Unstructured{}
 	connectorConfig, err := kafka.parseConnectorTemplate(connectorTemplate, connectorTemplateParameters)
@@ -26,7 +26,7 @@ func (kafka *GenericKafka) CreateGenericDebeziumConnector(
 	connectorObj.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      name,
-			"namespace": kafka.ConnectNamespace,
+			"namespace": namespace,
 			"labels": map[string]interface{}{
 				LabelStrimziCluster: kafka.ConnectCluster,
 			},
@@ -54,7 +54,7 @@ func (kafka *GenericKafka) CreateGenericDebeziumConnector(
 }
 
 func (kafka *GenericKafka) CreateGenericElasticsearchConnector(
-	name string, connectorTemplate string, connectorTemplateParameters map[string]interface{}, dryRun bool) (unstructured.Unstructured, error) {
+	name string, namespace string, connectorTemplate string, connectorTemplateParameters map[string]interface{}, dryRun bool) (unstructured.Unstructured, error) {
 
 	connectorObj := &unstructured.Unstructured{}
 	connectorConfig, err := kafka.parseConnectorTemplate(connectorTemplate, connectorTemplateParameters)
@@ -65,7 +65,7 @@ func (kafka *GenericKafka) CreateGenericElasticsearchConnector(
 	connectorObj.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      name,
-			"namespace": kafka.ConnectNamespace,
+			"namespace": namespace,
 			"labels": map[string]interface{}{
 				LabelStrimziCluster: kafka.ConnectCluster,
 			},

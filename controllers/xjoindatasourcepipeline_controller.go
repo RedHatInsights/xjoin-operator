@@ -199,6 +199,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		TemplateParameters: config.ParametersToMap(*p),
 		KafkaClient:        kafkaClient,
 		Template:           p.DebeziumConnectorTemplate.String(),
+		Namespace:          instance.Namespace,
 	})
 
 	if instance.GetDeletionTimestamp() != nil {

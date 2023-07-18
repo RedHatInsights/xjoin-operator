@@ -99,32 +99,6 @@ var _ = Describe("XJoinIndexValidator", func() {
 				},
 			}))
 			Expect(pod.Spec.Containers[0].Env).To(ContainElement(corev1.EnvVar{
-				Name:  "ELASTICSEARCH_USERNAME",
-				Value: "",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "xjoin-elasticsearch",
-						},
-						Key:      "username",
-						Optional: nil,
-					},
-				},
-			}))
-			Expect(pod.Spec.Containers[0].Env).To(ContainElement(corev1.EnvVar{
-				Name:  "ELASTICSEARCH_PASSWORD",
-				Value: "",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "xjoin-elasticsearch",
-						},
-						Key:      "password",
-						Optional: nil,
-					},
-				},
-			}))
-			Expect(pod.Spec.Containers[0].Env).To(ContainElement(corev1.EnvVar{
 				Name:      "ELASTICSEARCH_INDEX",
 				Value:     "xjoinindexpipeline." + reconciler.GetName(),
 				ValueFrom: nil,

@@ -13,6 +13,7 @@ import (
 type ElasticsearchConnector struct {
 	name               string
 	version            string
+	Namespace          string
 	Template           string
 	KafkaClient        kafka.GenericKafka
 	TemplateParameters map[string]interface{}
@@ -36,7 +37,7 @@ func (es *ElasticsearchConnector) Create() (err error) {
 	m["Topic"] = es.Topic
 	//m["RenameTopicReplacement"] = fmt.Sprintf("%s.%s", kafka.Parameters.ResourceNamePrefix.String(), pipelineVersion)
 
-	_, err = es.KafkaClient.CreateGenericElasticsearchConnector(es.Name(), es.Template, m, false)
+	_, err = es.KafkaClient.CreateGenericElasticsearchConnector(es.Name(), es.Namespace, es.Template, m, false)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -55,7 +56,7 @@ func (es *ElasticsearchConnector) CheckDeviation() (problem, err error) {
 	//build the expected connector
 	m := es.TemplateParameters
 	m["Topic"] = es.Topic
-	expectedConnector, err := es.KafkaClient.CreateGenericElasticsearchConnector(es.Name(), es.Template, m, true)
+	expectedConnector, err := es.KafkaClient.CreateGenericElasticsearchConnector(es.Name(), es.Namespace, es.Template, m, true)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}

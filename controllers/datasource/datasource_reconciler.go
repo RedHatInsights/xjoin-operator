@@ -130,6 +130,7 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 
 	custodian.AddComponent(&components.DebeziumConnector{
 		KafkaClient: kafkaClient,
+		Namespace:   d.iteration.GetInstance().Namespace,
 	})
 	return custodian.Scrub()
 }

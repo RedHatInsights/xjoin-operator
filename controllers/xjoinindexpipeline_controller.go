@@ -294,6 +294,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		KafkaClient:        kafkaClient,
 		TemplateParameters: parametersMap,
 		Topic:              kafkaTopic.Name(),
+		Namespace:          instance.Namespace,
 	})
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
 		Schema:   indexAvroSchema.AvroSchemaString,

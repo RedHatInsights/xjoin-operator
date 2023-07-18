@@ -13,6 +13,7 @@ import (
 type DebeziumConnector struct {
 	name               string
 	version            string
+	Namespace          string
 	Template           string
 	KafkaClient        kafka.GenericKafka
 	TemplateParameters map[string]interface{}
@@ -36,7 +37,7 @@ func (dc *DebeziumConnector) Create() (err error) {
 	m["ReplicationSlotName"] = strings.ReplaceAll(dc.Name(), ".", "_")
 	m["TopicName"] = dc.Name()
 
-	_, err = dc.KafkaClient.CreateGenericDebeziumConnector(dc.Name(), dc.Template, m, false)
+	_, err = dc.KafkaClient.CreateGenericDebeziumConnector(dc.Name(), dc.Namespace, dc.Template, m, false)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -57,7 +58,7 @@ func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
 	m["DatabaseServerName"] = dc.Name()
 	m["ReplicationSlotName"] = strings.ReplaceAll(dc.Name(), ".", "_")
 	m["TopicName"] = dc.Name()
-	expectedConnector, err := dc.KafkaClient.CreateGenericDebeziumConnector(dc.Name(), dc.Template, m, true)
+	expectedConnector, err := dc.KafkaClient.CreateGenericDebeziumConnector(dc.Name(), dc.Namespace, dc.Template, m, true)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
