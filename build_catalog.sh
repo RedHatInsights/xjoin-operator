@@ -34,7 +34,7 @@ function build_a_tag ()
   num_commits=$(git rev-list $(git rev-list --max-parents=0 HEAD)..HEAD --count)
   current_commit=$(git rev-parse --short=7 HEAD)
   version="0.1.$num_commits-git$current_commit"
-  opm_version="1.24.0"
+  opm_version="1.28.0"
 
   # Download opm build
   curl -L https://github.com/operator-framework/operator-registry/releases/download/v$opm_version/linux-amd64-opm -o ./opm
@@ -72,18 +72,18 @@ function build_a_tag ()
     popd
     rm -rf $tmp_dir
     docker rm tmp_$$
-
-    ###############################
-    #Uncomment to reset the catalog
-    ###############################
-    #log "Resetting index"
-    ./opm index prune -f $CATALOG_IMAGE:$tag -c docker --tag $CATALOG_IMAGE:$tag -f $CATALOG_IMAGE -p blank
-    ./opm index prune-stranded -f $CATALOG_IMAGE:$tag -c docker --tag $CATALOG_IMAGE:$tag
-#    ./opm index rm -f $CATALOG_IMAGE:$tag -c docker --tag $CATALOG_IMAGE:$tag -o xjoin-operator
-    docker push $CATALOG_IMAGE:$tag
-    export SKIP_VERSION=$version
-    prev_version=""
-    unset REPLACE_VERSION
+#
+#    ###############################
+#    #Uncomment to reset the catalog
+#    ###############################
+#    #log "Resetting index"
+#    ./opm index prune -f $CATALOG_IMAGE:$tag -c docker --tag $CATALOG_IMAGE:$tag -f $CATALOG_IMAGE -p blank
+#    ./opm index prune-stranded -f $CATALOG_IMAGE:$tag -c docker --tag $CATALOG_IMAGE:$tag
+##    ./opm index rm -f $CATALOG_IMAGE:$tag -c docker --tag $CATALOG_IMAGE:$tag -o xjoin-operator
+#    docker push $CATALOG_IMAGE:$tag
+#    export SKIP_VERSION=$version
+#    prev_version=""
+#    unset REPLACE_VERSION
   fi
 
   # Build/push the new bundle
@@ -125,7 +125,7 @@ function build_a_tag ()
     log "Updating existing catalog $CATALOG_IMAGE"
   fi
 
-  ./opm index add --bundles $BUNDLE_IMAGE:$current_commit $from_arg --tag $CATALOG_IMAGE:$current_commit --build-tool docker
+  ./opm index add --overwrite-latest --mode semver $from_arg --bundles $BUNDLE_IMAGE:$current_commit --tag $CATALOG_IMAGE:$current_commit --build-tool docker
   if [ $? -ne 0 ]; then
     exit 1
   fi
