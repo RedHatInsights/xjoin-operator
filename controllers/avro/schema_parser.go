@@ -203,6 +203,8 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 		dataSourceName := strings.Split(field.Type[0].Type, ".")[0]
 
 		//get data source obj from field.Ref
+		d.Log.Debug("Getting dataSource during parseAvroSchemaReferences",
+			"dataSourceName", dataSourceName, "namespace", d.Namespace)
 		dataSource := &unstructured.Unstructured{}
 		dataSource.SetGroupVersionKind(common.DataSourceGVK)
 		err = d.Client.Get(d.Context, client.ObjectKey{Name: dataSourceName, Namespace: d.Namespace}, dataSource)

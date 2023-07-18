@@ -268,6 +268,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	}
 	indexAvroSchema, err := indexAvroSchemaParser.Parse()
 	if err != nil {
+		reqLogger.Error(errors.Wrap(err, 0), "error parsing index avro schema")
 		return result, errors.Wrap(err, 0)
 	}
 
