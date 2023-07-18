@@ -99,7 +99,7 @@ func BuildIndexParameters() *IndexParameters {
 			SecretKey:    []string{"endpoint"},
 			DefaultValue: "http://localhost:9200",
 			Ephemeral: func(manager Manager) (interface{}, error) {
-				return "http://xjoin-elasticsearch-es-default." + manager.Namespace + ".svc:9200", nil
+				return "http://xjoin-elasticsearch-es-default." + manager.ResourceNamespace + ".svc:9200", nil
 			},
 		},
 		ElasticSearchUsername: Parameter{
@@ -120,7 +120,7 @@ func BuildIndexParameters() *IndexParameters {
 				ctx, cancel := xjoinUtils.DefaultContext()
 				defer cancel()
 				esSecret, err := k8sUtils.FetchSecret(
-					manager.Client, manager.Namespace, "xjoin-elasticsearch-es-elastic-user", ctx)
+					manager.Client, manager.ResourceNamespace, "xjoin-elasticsearch-es-elastic-user", ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -228,7 +228,7 @@ func BuildIndexParameters() *IndexParameters {
 				err := manager.Client.List(
 					ctx,
 					kafka,
-					client.InNamespace(manager.Namespace))
+					client.InNamespace(manager.ResourceNamespace))
 
 				if err != nil {
 					return nil, err
@@ -238,7 +238,7 @@ func BuildIndexParameters() *IndexParameters {
 					return nil, errors.New("invalid number of kafka instances found: " + strconv.Itoa(len(kafka.Items)))
 				}
 
-				return kafka.Items[0].GetName() + "-kafka-bootstrap." + manager.Namespace + ".svc:9092", nil
+				return kafka.Items[0].GetName() + "-kafka-bootstrap." + manager.ResourceNamespace + ".svc:9092", nil
 			},
 		},
 		CustomSubgraphImages: Parameter{

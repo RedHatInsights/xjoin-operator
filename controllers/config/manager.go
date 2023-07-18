@@ -26,29 +26,31 @@ type SecretNames struct {
 }
 
 type Manager struct {
-	Parameters     interface{}
-	Client         client.Client
-	ctx            context.Context
-	configMapNames []string
-	secretNames    []SecretNames
-	Namespace      string
-	configMaps     map[string]v1.ConfigMap
-	secrets        map[string]v1.Secret
-	spec           interface{}
-	log            logger.Log
-	ephemeral      bool
+	Parameters        interface{}
+	Client            client.Client
+	ctx               context.Context
+	configMapNames    []string
+	secretNames       []SecretNames
+	ResourceNamespace string
+	operatorNamespace string
+	configMaps        map[string]v1.ConfigMap
+	secrets           map[string]v1.Secret
+	spec              interface{}
+	log               logger.Log
+	ephemeral         bool
 }
 
 type ManagerOptions struct {
-	Client         client.Client
-	Parameters     interface{}
-	ConfigMapNames []string
-	SecretNames    []SecretNames
-	Namespace      string
-	Spec           Spec
-	Context        context.Context
-	Log            logger.Log
-	Ephemeral      bool
+	Client            client.Client
+	Parameters        interface{}
+	ConfigMapNames    []string
+	SecretNames       []SecretNames
+	ResourceNamespace string
+	OperatorNamespace string
+	Spec              Spec
+	Context           context.Context
+	Log               logger.Log
+	Ephemeral         bool
 }
 
 func NewManager(opts ManagerOptions) (*Manager, error) {
@@ -60,17 +62,18 @@ func NewManager(opts ManagerOptions) (*Manager, error) {
 	}
 
 	return &Manager{
-		Client:         opts.Client,
-		Parameters:     opts.Parameters,
-		configMapNames: opts.ConfigMapNames,
-		secretNames:    opts.SecretNames,
-		Namespace:      opts.Namespace,
-		spec:           opts.Spec,
-		configMaps:     configMaps,
-		secrets:        managerSecrets,
-		ctx:            opts.Context,
-		log:            opts.Log,
-		ephemeral:      opts.Ephemeral,
+		Client:            opts.Client,
+		Parameters:        opts.Parameters,
+		configMapNames:    opts.ConfigMapNames,
+		secretNames:       opts.SecretNames,
+		ResourceNamespace: opts.ResourceNamespace,
+		operatorNamespace: opts.OperatorNamespace,
+		spec:              opts.Spec,
+		configMaps:        configMaps,
+		secrets:           managerSecrets,
+		ctx:               opts.Context,
+		log:               opts.Log,
+		ephemeral:         opts.Ephemeral,
 	}, nil
 }
 
@@ -124,12 +127,14 @@ func (m *Manager) Parse() error {
 
 func (m *Manager) loadConfigMaps() error {
 	for _, name := range m.configMapNames {
-		cm, err := k8sUtils.FetchConfigMap(m.Client, m.Namespace, name, m.ctx)
+		m.log.Debug(fmt.Sprintf("Loading config map '%s' from namespace '%s'", name, m.operatorNamespace))
+		cm, err := k8sUtils.FetchConfigMap(m.Client, m.operatorNamespace, name, m.ctx)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 		if cm == nil {
-			return errors.Wrap(errors.New(fmt.Sprintf("configmap not found: %s", name)), 0)
+			return errors.Wrap(errors.New(fmt.Sprintf(
+				"configmap '%s' not found in namespace '%s'", name, m.operatorNamespace)), 0)
 		}
 		m.configMaps[name] = *cm
 	}
@@ -138,12 +143,14 @@ func (m *Manager) loadConfigMaps() error {
 
 func (m *Manager) loadSecrets() error {
 	for _, name := range m.secretNames {
-		secret, err := k8sUtils.FetchSecret(m.Client, m.Namespace, name.KubernetesName, m.ctx)
+		m.log.Debug(fmt.Sprintf("Loading secret '%s' from namespace '%s'", name, m.ResourceNamespace))
+		secret, err := k8sUtils.FetchSecret(m.Client, m.ResourceNamespace, name.KubernetesName, m.ctx)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 		if secret == nil {
-			return errors.Wrap(errors.New(fmt.Sprintf("secret not found: %s", name)), 0)
+			return errors.Wrap(errors.New(fmt.Sprintf(
+				"secret '%s' not found in namespace '%s'", name, m.ResourceNamespace)), 0)
 		}
 		m.secrets[name.ManagerName] = *secret
 	}
@@ -177,7 +184,7 @@ func (m *Manager) parseParameterValue(name string, param Parameter) (value inter
 				value = fieldParam.Value
 			} else {
 				secret := &v1.Secret{}
-				err = m.Client.Get(m.ctx, client.ObjectKey{Name: fieldParam.ValueFrom.SecretKeyRef.Name, Namespace: m.Namespace}, secret)
+				err = m.Client.Get(m.ctx, client.ObjectKey{Name: fieldParam.ValueFrom.SecretKeyRef.Name, Namespace: m.ResourceNamespace}, secret)
 				if err != nil {
 					return value, errors.Wrap(err, 0)
 				}

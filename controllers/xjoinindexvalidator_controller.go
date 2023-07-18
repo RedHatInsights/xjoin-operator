@@ -117,11 +117,12 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 			KubernetesName: elasticsearchKubernetesSecretName,
 			ManagerName:    parameters.ElasticsearchSecret,
 		}},
-		Namespace: instance.Namespace,
-		Spec:      instance.Spec,
-		Context:   ctx,
-		Ephemeral: instance.Spec.Ephemeral,
-		Log:       reqLogger,
+		ResourceNamespace: instance.Namespace,
+		OperatorNamespace: r.Namespace,
+		Spec:              instance.Spec,
+		Context:           ctx,
+		Ephemeral:         instance.Spec.Ephemeral,
+		Log:               reqLogger,
 	})
 	if err != nil {
 		return

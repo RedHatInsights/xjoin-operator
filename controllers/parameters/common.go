@@ -67,7 +67,7 @@ func BuildCommonParameters() CommonParameters {
 				err := manager.Client.List(
 					ctx,
 					connect,
-					client.InNamespace(manager.Namespace))
+					client.InNamespace(manager.ResourceNamespace))
 
 				if err != nil {
 					return nil, err
@@ -104,7 +104,7 @@ func BuildCommonParameters() CommonParameters {
 			DefaultValue:  "test",
 			Type:          reflect.String,
 			Ephemeral: func(manager Manager) (interface{}, error) {
-				return manager.Namespace, nil
+				return manager.ResourceNamespace, nil
 			},
 		},
 
@@ -130,7 +130,7 @@ func BuildCommonParameters() CommonParameters {
 				err := manager.Client.List(
 					ctx,
 					kafka,
-					client.InNamespace(manager.Namespace))
+					client.InNamespace(manager.ResourceNamespace))
 
 				if err != nil {
 					return nil, err
@@ -150,7 +150,7 @@ func BuildCommonParameters() CommonParameters {
 			DefaultValue:  "test",
 			Type:          reflect.String,
 			Ephemeral: func(manager Manager) (interface{}, error) {
-				return manager.Namespace, nil
+				return manager.ResourceNamespace, nil
 			},
 		},
 
@@ -217,7 +217,7 @@ func BuildCommonParameters() CommonParameters {
 			ConfigMapKey:  "schemaregistry.host",
 			DefaultValue:  "apicurio.test.svc",
 			Ephemeral: func(manager Manager) (interface{}, error) {
-				return "xjoin-apicurio-service." + manager.Namespace + ".svc", nil
+				return "xjoin-apicurio-service." + manager.ResourceNamespace + ".svc", nil
 			},
 		},
 		SchemaRegistryPort: Parameter{
