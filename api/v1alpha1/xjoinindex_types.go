@@ -16,6 +16,10 @@ type XJoinIndexSpec struct {
 
 	// +optional
 	Ephemeral bool `json:"ephemeral,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:MinLength:=0
+	Refresh string `json:"refresh,omitempty"`
 }
 
 type XJoinIndexStatus struct {
