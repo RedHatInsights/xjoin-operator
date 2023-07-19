@@ -12,6 +12,9 @@ parameters:
     required: true
   - name: DATABASE_TABLE
     required: true
+  - name: REFRESH
+    required: false
+    value: ""
 
 objects:
   - apiVersion: xjoin.cloud.redhat.com/v1alpha1
@@ -47,3 +50,4 @@ objects:
             name: ${DATABASE_SECRET}
       databaseTable:
         value: ${DATABASE_TABLE}
+      refresh: ${REFRESH}

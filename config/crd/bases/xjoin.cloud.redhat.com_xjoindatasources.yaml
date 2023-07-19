@@ -205,6 +205,9 @@ spec:
                 type: boolean
               pause:
                 type: boolean
+              refresh:
+                minLength: 0
+                type: string
             type: object
           status:
             properties:

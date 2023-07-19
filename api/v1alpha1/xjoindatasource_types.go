@@ -14,6 +14,10 @@ type XJoinDataSourceSpec struct {
 	DatabaseTable    *StringOrSecretParameter `json:"databaseTable,omitempty"`
 
 	// +optional
+	// +kubebuilder:validation:MinLength:=0
+	Refresh string `json:"refresh,omitempty"`
+
+	// +optional
 	Pause bool `json:"pause,omitempty"`
 
 	// +optional
