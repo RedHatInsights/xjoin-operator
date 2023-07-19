@@ -294,12 +294,14 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Namespace).To(Equal(namespace))
 			Expect(deployment.Spec.Replicas).To(Equal(&replicas))
 			Expect(deployment.GetLabels()).To(Equal(map[string]string{
-				"app":         "test-index-pipeline-1234",
-				"xjoin.index": "test-index-pipeline",
+				"app":                  "test-index-pipeline-1234",
+				"xjoin.index":          "test-index-pipeline",
+				"xjoin.component.name": "XJoinAPISubgraph",
 			}))
 			Expect(deployment.Spec.Selector.MatchLabels).To(Equal(map[string]string{
-				"app":         "test-index-pipeline-1234",
-				"xjoin.index": "test-index-pipeline",
+				"app":                  "test-index-pipeline-1234",
+				"xjoin.index":          "test-index-pipeline",
+				"xjoin.component.name": "XJoinAPISubgraph",
 			}))
 
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
@@ -438,12 +440,14 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Namespace).To(Equal(namespace))
 			Expect(deployment.Spec.Replicas).To(Equal(&replicas))
 			Expect(deployment.GetLabels()).To(Equal(map[string]string{
-				"app":         "test-index-pipeline-test-custom-image-1234",
-				"xjoin.index": "test-index-pipeline-test-custom-image",
+				"app":                  "test-index-pipeline-test-custom-image-1234",
+				"xjoin.index":          "test-index-pipeline-test-custom-image",
+				"xjoin.component.name": "XJoinAPISubgraph",
 			}))
 			Expect(deployment.Spec.Selector.MatchLabels).To(Equal(map[string]string{
-				"app":         "test-index-pipeline-test-custom-image-1234",
-				"xjoin.index": "test-index-pipeline-test-custom-image",
+				"app":                  "test-index-pipeline-test-custom-image-1234",
+				"xjoin.index":          "test-index-pipeline-test-custom-image",
+				"xjoin.component.name": "XJoinAPISubgraph",
 			}))
 
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
