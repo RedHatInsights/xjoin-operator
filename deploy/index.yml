@@ -10,6 +10,9 @@ parameters:
     required: true
   - name: CUSTOM_SUBGRAPH_IMAGES
     value: "[]"
+  - name: REFRESH
+    required: false
+    value: ""
 
 objects:
   - apiVersion: xjoin.cloud.redhat.com/v1alpha1
@@ -19,3 +22,4 @@ objects:
     spec:
       avroSchema: ${AVRO_SCHEMA}
       customSubgraphImages: ${{CUSTOM_SUBGRAPH_IMAGES}}
+      refresh: ${REFRESH}
