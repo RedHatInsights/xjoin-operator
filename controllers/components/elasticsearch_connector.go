@@ -70,7 +70,7 @@ func (es *ElasticsearchConnector) CheckDeviation() (problem, err error) {
 		return fmt.Errorf("the Elasticsearch connector named, %s, does not exist", es.Name()), nil
 	}
 
-	existingConnector, err := es.KafkaClient.GetConnector(es.Name())
+	existingConnector, err := es.KafkaClient.GetConnector(es.Name(), es.Namespace)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
@@ -101,7 +101,7 @@ func (es *ElasticsearchConnector) CheckDeviation() (problem, err error) {
 }
 
 func (es *ElasticsearchConnector) Exists() (exists bool, err error) {
-	exists, err = es.KafkaClient.CheckIfConnectorExists(es.Name())
+	exists, err = es.KafkaClient.CheckIfConnectorExists(es.Name(), es.Namespace)
 	if err != nil {
 		return false, errors.Wrap(err, 0)
 	}

@@ -517,7 +517,7 @@ func (i *ReconcileIteration) CheckConnectorDeviation(connectorName string, conne
 	}
 
 	i.Log.Info("Getting connector")
-	connector, err := i.Kafka.GetConnector(connectorName)
+	connector, err := i.Kafka.GetConnector(connectorName, i.Kafka.ConnectNamespace)
 	if err != nil {
 		if k8errors.IsNotFound(err) {
 			return fmt.Errorf(

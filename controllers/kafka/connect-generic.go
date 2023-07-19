@@ -197,12 +197,12 @@ func (kafka *GenericKafka) ConnectUrl() string {
 	return url
 }
 
-func (kafka *GenericKafka) CheckIfConnectorExists(name string) (bool, error) {
+func (kafka *GenericKafka) CheckIfConnectorExists(name string, namespace string) (bool, error) {
 	if name == "" {
 		return false, nil
 	}
 
-	if _, err := kafka.GetConnector(name); err != nil && k8errors.IsNotFound(err) {
+	if _, err := kafka.GetConnector(name, namespace); err != nil && k8errors.IsNotFound(err) {
 		return false, nil
 	} else if err == nil {
 		return true, nil
@@ -211,13 +211,13 @@ func (kafka *GenericKafka) CheckIfConnectorExists(name string) (bool, error) {
 	}
 }
 
-func (kafka *GenericKafka) GetConnector(name string) (*unstructured.Unstructured, error) {
+func (kafka *GenericKafka) GetConnector(name string, namespace string) (*unstructured.Unstructured, error) {
 	connector := EmptyConnector()
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err := kafka.Client.Get(
 		ctx,
-		client.ObjectKey{Name: name, Namespace: kafka.ConnectNamespace},
+		client.ObjectKey{Name: name, Namespace: namespace},
 		connector)
 	return connector, err
 }

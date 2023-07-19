@@ -528,7 +528,7 @@ func (c *StrimziConnectors) ResumeElasticSearchConnector(pipelineVersion string)
 }
 
 func (c *StrimziConnectors) setElasticSearchConnectorPause(pipelineVersion string, pause bool) error {
-	connector, err := c.Kafka.GetConnector(c.ESConnectorName(pipelineVersion))
+	connector, err := c.Kafka.GetConnector(c.ESConnectorName(pipelineVersion), c.Kafka.ConnectNamespace)
 	if err != nil {
 		return err
 	}

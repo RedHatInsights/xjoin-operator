@@ -318,7 +318,7 @@ func (i *Iteration) ScaleDeployment(name string, namespace string, replicas int)
 }
 
 func (i *Iteration) EditESConnectorToBeInvalid(pipelineVersion string) error {
-	connector, err := i.KafkaClient.GetConnector(i.KafkaConnectors.ESConnectorName(pipelineVersion))
+	connector, err := i.KafkaClient.GetConnector(i.KafkaConnectors.ESConnectorName(pipelineVersion), i.KafkaClient.ConnectNamespace)
 	if err != nil {
 		return err
 	}
@@ -1168,7 +1168,7 @@ func (i *Iteration) setConnectorReconciliationPause(connectorName string, pause 
 
 	//strimzi might update the connector between the GET/PUT calls, so retry a few times
 	for j := 0; j < 5; j++ {
-		connector, err := i.KafkaClient.GetConnector(connectorName)
+		connector, err := i.KafkaClient.GetConnector(connectorName, i.KafkaClient.ConnectNamespace)
 		if err != nil {
 			return err
 		}

@@ -72,7 +72,7 @@ func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
 		return fmt.Errorf("the Debezium connector named, %s, does not exist", dc.Name()), nil
 	}
 
-	existingConnector, err := dc.KafkaClient.GetConnector(dc.Name())
+	existingConnector, err := dc.KafkaClient.GetConnector(dc.Name(), dc.Namespace)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
@@ -103,7 +103,7 @@ func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
 }
 
 func (dc *DebeziumConnector) Exists() (exists bool, err error) {
-	exists, err = dc.KafkaClient.CheckIfConnectorExists(dc.Name())
+	exists, err = dc.KafkaClient.CheckIfConnectorExists(dc.Name(), dc.Namespace)
 	if err != nil {
 		return false, errors.Wrap(err, 0)
 	}
