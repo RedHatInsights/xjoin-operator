@@ -202,7 +202,7 @@ func (d *DatasourceTestReconciler) newXJoinDataSourceReconciler() *controllers.X
 		d.K8sClient,
 		scheme.Scheme,
 		testLogger,
-		record.NewFakeRecorder(10),
+		record.NewFakeRecorder(100),
 		d.Namespace,
 		true)
 }

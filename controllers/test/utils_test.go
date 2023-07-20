@@ -32,7 +32,7 @@ func newXJoinReconciler(namespace string, isTest bool) *controllers.XJoinPipelin
 		Client,
 		scheme.Scheme,
 		logf.Log.WithName("test"),
-		record.NewFakeRecorder(10),
+		record.NewFakeRecorder(100),
 		namespace,
 		isTest)
 }
@@ -43,7 +43,7 @@ func newValidationReconciler(namespace string) *controllers.ValidationReconciler
 		scheme.Scheme,
 		logf.Log.WithName("test-validation"),
 		true,
-		record.NewFakeRecorder(10),
+		record.NewFakeRecorder(100),
 		namespace,
 		true)
 }
@@ -53,7 +53,7 @@ func newKafkaConnectReconciler(namespace string, isTest bool) *controllers.Kafka
 		Client,
 		scheme.Scheme,
 		logf.Log.WithName("test-kafkaconnect"),
-		record.NewFakeRecorder(10),
+		record.NewFakeRecorder(100),
 		namespace,
 		isTest)
 }

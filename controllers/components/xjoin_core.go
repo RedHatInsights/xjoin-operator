@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -29,6 +30,7 @@ type XJoinCore struct {
 	SchemaRegistryURL string
 	Namespace         string
 	Schema            string
+	events            events.Events
 }
 
 func (xc *XJoinCore) SetName(kind string, name string) {
@@ -150,13 +152,19 @@ func (xc *XJoinCore) buildDeploymentStructure() (*v1.Deployment, error) {
 func (xc *XJoinCore) Create() (err error) {
 	deployment, err := xc.buildDeploymentStructure()
 	if err != nil {
+		xc.events.Warning("CreateXJoinCoreFailed",
+			"Unable to build XJoinCore deployment spec %s", xc.Name())
 		return errors.Wrap(err, 0)
 	}
 	err = xc.Client.Create(xc.Context, deployment)
 	if err != nil {
+		xc.events.Warning("CreateXJoinCoreFailed",
+			"Unable to create XJoinCore deployment %s", xc.Name())
 		return errors.Wrap(err, 0)
 	}
 
+	xc.events.Normal("CreatedXJoinCore",
+		"XJoinCore deployment %s successfully created", xc.Name())
 	return
 }
 
@@ -165,13 +173,20 @@ func (xc *XJoinCore) Delete() (err error) {
 	deployment.SetGroupVersionKind(common.DeploymentGVK)
 	err = xc.Client.Get(xc.Context, client.ObjectKey{Name: xc.Name(), Namespace: xc.Namespace}, deployment)
 	if err != nil {
+		xc.events.Warning("DeleteXJoinCoreFailed",
+			"Unable to get XJoinCore deployment %s", xc.Name())
 		return errors.Wrap(err, 0)
 	}
 
 	err = xc.Client.Delete(xc.Context, deployment)
 	if err != nil {
+		xc.events.Warning("DeleteXJoinCoreFailed",
+			"Unable to delete XJoinCore deployment %s", xc.Name())
 		return errors.Wrap(err, 0)
 	}
+
+	xc.events.Normal("DeletedXJoinCore",
+		"XJoinCore deployment %s successfully deleted", xc.Name())
 	return
 }
 
@@ -179,15 +194,21 @@ func (xc *XJoinCore) CheckDeviation() (problem, err error) {
 	//build the expected deployment
 	expectedDeployment, err := xc.buildDeploymentStructure()
 	if err != nil {
+		xc.events.Warning("XJoinCoreCheckDeviationFailed",
+			"Unable to build expected deployment spec for XJoinCore %s", xc.Name())
 		return nil, errors.Wrap(err, 0)
 	}
 
 	//get the already created (existing) deployment
 	found, err := xc.Exists()
 	if err != nil {
+		xc.events.Warning("XJoinCoreCheckDeviationFailed",
+			"Unable to check if XJoinCore deployment %s exists", xc.Name())
 		return nil, errors.Wrap(err, 0)
 	}
 	if !found {
+		xc.events.Warning("XJoinCoreDeviationFound",
+			"XJoinCore %s does not exist", xc.Name())
 		return fmt.Errorf("the xjoin-core deployment named, %s, does not exist", xc.Name()), nil
 	}
 
@@ -198,6 +219,8 @@ func (xc *XJoinCore) CheckDeviation() (problem, err error) {
 	}
 	err = xc.Client.Get(context.Background(), existingDeploymentLookup, existingDeployment)
 	if err != nil {
+		xc.events.Warning("XJoinCoreCheckDeviationFailed",
+			"Unable to get XJoinCore deployment %s", xc.Name())
 		return nil, errors.Wrap(err, 0)
 	}
 
@@ -211,10 +234,14 @@ func (xc *XJoinCore) CheckDeviation() (problem, err error) {
 		utils.NumberNormalizer)
 
 	if len(specDiff) > 0 {
+		xc.events.Warning("XJoinCoreDeviationFound",
+			"XJoinCore %s spec has changed", xc.Name())
 		return fmt.Errorf("xjoin-core deployment spec has changed: %s", specDiff), nil
 	}
 
 	if existingDeployment.GetNamespace() != expectedDeployment.GetNamespace() {
+		xc.events.Warning("XJoinCoreDeviationFound",
+			"XJoinCore %s namespace has changed", xc.Name())
 		return fmt.Errorf(
 			"xjoin-core deployment namespace has changed from: %s to %s",
 			expectedDeployment.GetNamespace(),
@@ -231,6 +258,8 @@ func (xc *XJoinCore) Exists() (exists bool, err error) {
 	fields["metadata.namespace"] = xc.Namespace
 	err = xc.Client.List(xc.Context, deployments, fields)
 	if err != nil {
+		xc.events.Warning("XJoinCoreExistsFailed",
+			"Unable to list XJoinCore deployments %s", xc.Name())
 		return false, errors.Wrap(err, 0)
 	}
 
@@ -250,6 +279,8 @@ func (xc *XJoinCore) ListInstalledVersions() (versions []string, err error) {
 	}
 	err = xc.Client.List(xc.Context, deployments, labels, fields)
 	if err != nil {
+		xc.events.Warning("XJoinCoreListInstalledVersionsFailed",
+			"Unable to list XJoinCore deployments %s", xc.Name())
 		return nil, errors.Wrap(err, 0)
 	}
 
@@ -262,4 +293,8 @@ func (xc *XJoinCore) ListInstalledVersions() (versions []string, err error) {
 
 func (xc *XJoinCore) Reconcile() (err error) {
 	return nil
+}
+
+func (xc *XJoinCore) SetEvents(e events.Events) {
+	xc.events = e
 }

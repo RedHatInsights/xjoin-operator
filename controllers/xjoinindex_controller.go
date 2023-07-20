@@ -7,6 +7,7 @@ import (
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	. "github.com/redhatinsights/xjoin-operator/controllers/index"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
@@ -121,6 +122,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		return result, errors.Wrap(err, 0)
 	}
 
+	eventHandler := events.NewEvents(r.Recorder, instance, reqLogger)
 	originalInstance := instance.DeepCopy()
 	i := XJoinIndexIteration{
 		Parameters: *p,
@@ -132,6 +134,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 			Log:              reqLogger,
 			Test:             r.Test,
 		},
+		Events: eventHandler,
 	}
 
 	if err = i.AddFinalizer(i.GetFinalizerName()); err != nil {
@@ -168,7 +171,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 	}
 
 	indexReconcileMethods := NewReconcileMethods(i, common.IndexGVK)
-	reconciler := common.NewReconciler(indexReconcileMethods, instance, reqLogger)
+	reconciler := common.NewReconciler(indexReconcileMethods, instance, reqLogger, eventHandler)
 	err = reconciler.Reconcile(false)
 	if err != nil {
 		return result, errors.Wrap(err, 0)

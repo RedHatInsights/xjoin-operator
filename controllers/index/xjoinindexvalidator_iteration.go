@@ -8,6 +8,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	"github.com/redhatinsights/xjoin-operator/controllers/k8s"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
@@ -39,9 +40,11 @@ type XJoinIndexValidatorIteration struct {
 	ClientSet              kubernetes.Interface
 	ElasticsearchIndexName string
 	PodLogReader           k8s.LogReader
+	Events                 events.Events
 }
 
 func (i *XJoinIndexValidatorIteration) Finalize() (err error) {
+	i.Events.Normal("DeletingXJoinIndexValidator", "Starting finalizer")
 	i.Log.Info("Starting finalizer")
 	controllerutil.RemoveFinalizer(i.Instance, XJoinIndexValidatorFinalizer)
 
@@ -49,9 +52,13 @@ func (i *XJoinIndexValidatorIteration) Finalize() (err error) {
 	defer cancel()
 	err = i.Client.Update(ctx, i.Instance)
 	if err != nil {
+		i.Events.Warning(
+			"XJoinIndexValidatorFinalizerFailed", "Unable to remove XJoinIndexValidator finalizer")
 		return
 	}
 
+	i.Events.Normal(
+		"XJoinIndexValidatorFinalized", "Successfully finalized")
 	i.Log.Info("Successfully finalized")
 	return nil
 }
@@ -78,6 +85,7 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 	indexAvroSchema, err := indexAvroSchemaParser.Parse()
 
 	if err != nil {
+		i.Events.Warning("ReconcileValidationPodFailed", "Unable to parse IndexAvroSchema")
 		return "", errors.Wrap(err, 0)
 	}
 
@@ -88,6 +96,7 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 	podList := &v1.PodList{}
 	err = i.Client.List(i.Context, podList, client.InNamespace(i.Instance.GetNamespace()), labels)
 	if err != nil {
+		i.Events.Warning("ReconcileValidationPodFailed", "Unable to list pods")
 		return "", errors.Wrap(err, 0)
 	}
 
@@ -95,10 +104,12 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 	if len(podList.Items) == 0 {
 		dbConnectionEnvVars, err := i.buildDBConnectionEnvVars(indexAvroSchema.References)
 		if err != nil {
+			i.Events.Warning("ReconcileValidationPodFailed", "Unable to parse DB Connection Env vars")
 			return "", errors.Wrap(err, 0)
 		}
 		err = i.createValidationPod(dbConnectionEnvVars, indexAvroSchema.AvroSchemaString)
 		if err != nil {
+			i.Events.Warning("ReconcileValidationPodFailed", "Unable to create validation pod")
 			return "", errors.Wrap(err, 0)
 		}
 
@@ -109,13 +120,17 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 	pod := &v1.Pod{}
 	err = i.Client.Get(i.Context, client.ObjectKey{Name: i.ValidationPodName(), Namespace: i.Instance.GetNamespace()}, pod)
 	if err != nil {
+		i.Events.Warning("ReconcileValidationPodFailed",
+			"Unable to get validation pod %s", i.ValidationPodName())
 		return "", errors.Wrap(err, 0)
 	}
 
 	if pod.Status.Phase == v1.PodSucceeded {
 		//check output of xjoin-validation pod
-		response, err := i.ParsePodResponse()
+		response, responseString, err := i.ParsePodResponse()
 		if err != nil {
+			i.Events.Warning("ReconcileValidationPodFailed",
+				"Unable to parse response for validation pod %s", i.ValidationPodName())
 			return "", errors.Wrap(err, 0)
 		}
 
@@ -128,6 +143,9 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 		}
 		xjoinIndexPipeline, err := k8sUtils.FetchXJoinIndexPipeline(i.Client, indexPipelineNamespacedName, i.Context)
 		if err != nil {
+			i.Events.Warning("ReconcileValidationPodFailed",
+				"Unable to get XJoinIndexPipeline %s in Namespace %s",
+				i.Instance.GetOwnerReferences()[0].Name, i.Instance.GetNamespace())
 			return "", errors.Wrap(err, 0)
 		}
 
@@ -139,6 +157,9 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 			}
 			datasourcePipeline, err := k8sUtils.FetchXJoinDataSourcePipeline(i.Client, datasourceNamespacedName, i.Context)
 			if err != nil {
+				i.Events.Warning("ReconcileValidationPodFailed",
+					"Unable to get XJoinDatasourcePipeline %s in Namespace %s",
+					dataSourceName+"."+dataSourcePipelineVersion, i.Instance.GetNamespace())
 				return "", errors.Wrap(err, 0)
 			}
 
@@ -146,9 +167,16 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 
 			if err := i.Client.Status().Update(i.Context, datasourcePipeline); err != nil {
 				if k8errors.IsConflict(err) {
+					i.Events.Warning("ReconcileValidationPodFailed",
+						"Status conflict when updating XJoinDatasourcePipeline %s",
+						dataSourceName+"."+dataSourcePipelineVersion)
 					i.Log.Error(err, "Status conflict")
 					return "", errors.Wrap(err, 0)
 				}
+
+				i.Events.Warning("ReconcileValidationPodFailed",
+					"Unable to update XJoinDatasourcePipeline %s",
+					dataSourceName+"."+dataSourcePipelineVersion)
 				return "", errors.Wrap(err, 0)
 			}
 		}
@@ -156,18 +184,27 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 		//cleanup the validation pod
 		err = i.Client.Delete(i.Context, pod)
 		if err != nil {
+			i.Events.Warning("ReconcileValidationPodFailed",
+				"Unable to delete validation pod %s",
+				pod.Name)
 			return "", errors.Wrap(err, 0)
 		}
 
+		i.Events.Normal("ValidationPodSucceeded", responseString)
 		return ValidatorPodSuccess, nil
 	} else if pod.Status.Phase == v1.PodFailed {
 		err = i.Client.Delete(i.Context, pod)
 		if err != nil {
+			i.Events.Warning("ReconcileValidationPodFailed",
+				"Unable to delete failed validation pod %s", pod.Name)
 			return "", errors.Wrap(err, 0)
 		}
 
+		i.Events.Warning("ValidationPodFailed", "Validation pod %s failed to complete", pod.Name)
+
 		return ValidatorPodFailed, nil
 	} else {
+		i.Events.Warning("ValidationPodRunning", "Waiting for validation pod %s to complete", pod.Name)
 		return ValidatorPodRunning, nil
 	}
 }
@@ -182,12 +219,12 @@ func (i *XJoinIndexValidatorIteration) ValidationPodName() string {
 	return name
 }
 
-func (i *XJoinIndexValidatorIteration) ParsePodResponse() (validation.ValidationResponse, error) {
+func (i *XJoinIndexValidatorIteration) ParsePodResponse() (validation.ValidationResponse, string, error) {
 	var response validation.ValidationResponse
 
 	logString, err := i.PodLogReader.GetLogs(i.ValidationPodName(), i.Instance.GetNamespace())
 	if err != nil {
-		return response, errors.Wrap(err, 0)
+		return response, "", errors.Wrap(err, 0)
 	}
 	strArray := strings.Split(logString, "\n")
 
@@ -201,9 +238,9 @@ func (i *XJoinIndexValidatorIteration) ParsePodResponse() (validation.Validation
 
 	err = json.Unmarshal([]byte(resultString), &response)
 	if err != nil {
-		return response, errors.Wrap(err, 0)
+		return response, "", errors.Wrap(err, 0)
 	}
-	return response, nil
+	return response, resultString, nil
 }
 
 func (i *XJoinIndexValidatorIteration) buildDBConnectionEnvVars(references []srclient.Reference) (envVars []v1.EnvVar, err error) {
@@ -292,18 +329,22 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 
 	cpuLimit, err := resource.ParseQuantity("200m")
 	if err != nil {
+		i.Events.Warning("CreatedValidationPodFailed", "Unable to parse cpu limit")
 		return errors.Wrap(err, 0)
 	}
 	cpuRequests, err := resource.ParseQuantity("100m")
 	if err != nil {
+		i.Events.Warning("CreatedValidationPodFailed", "Unable to parse cpu requests")
 		return errors.Wrap(err, 0)
 	}
 	memoryLimit, err := resource.ParseQuantity("256Mi")
 	if err != nil {
+		i.Events.Warning("CreatedValidationPodFailed", "Unable to parse memory limit")
 		return errors.Wrap(err, 0)
 	}
 	memoryRequests, err := resource.ParseQuantity("128Mi")
 	if err != nil {
+		i.Events.Warning("CreatedValidationPodFailed", "Unable to parse memory requests")
 		return errors.Wrap(err, 0)
 	}
 
@@ -345,8 +386,13 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 		},
 	})
 	if err != nil {
+		i.Events.Warning("CreatedValidationPodFailed",
+			"Unable to create validation pod %s", i.ValidationPodName())
 		return errors.Wrap(err, 0)
 	}
+
+	i.Events.Normal("CreatedValidationPod",
+		"Sucessfully created validation pod %s", i.ValidationPodName())
 
 	return nil
 }

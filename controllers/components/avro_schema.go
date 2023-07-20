@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	"strings"
 
 	"github.com/go-errors/errors"
@@ -19,6 +20,7 @@ type AvroSchema struct {
 	name       string
 	version    string
 	references []srclient.Reference
+	events     events.Events
 }
 
 type AvroSchemaParameters struct {
@@ -51,13 +53,19 @@ func (as *AvroSchema) Name() string {
 func (as *AvroSchema) Create() (err error) {
 	schema, err := as.SetSchemaNameNamespace()
 	if err != nil {
+		as.events.Warning("CreateAvroSchemaFailure",
+			"Unable to set schema name namespace for avro schema %s", as.Name())
 		return errors.Wrap(err, 0)
 	}
 
 	id, err := as.registry.RegisterAvroSchema(as.Name(), schema, as.references)
 	if err != nil {
+		as.events.Warning("CreateAvroSchemaFailure",
+			"Unable to register avro schema %s", as.Name())
 		return errors.Wrap(err, 0)
 	}
+
+	as.events.Normal("CreatedAvroSchema", "Avro schema %s was successfully created", as.Name())
 
 	as.id = id
 	return
@@ -66,22 +74,32 @@ func (as *AvroSchema) Create() (err error) {
 func (as *AvroSchema) Delete() (err error) {
 	err = as.registry.DeleteSchema(as.Name())
 	if err != nil {
+		as.events.Warning("DeleteAvroSchemaFailure",
+			"Unable to delete avro schema %s", as.Name())
 		return errors.Wrap(err, 0)
 	}
+
+	as.events.Normal("DeleteAvroSchema", "Avro schema %s was successfully deleted", as.Name())
 	return
 }
 
 func (as *AvroSchema) DeleteByVersion(version string) (err error) {
-	err = as.registry.DeleteSchema(as.name + "." + version)
+	fullName := as.name + "." + version
+	err = as.registry.DeleteSchema(fullName)
 	if err != nil {
+		as.events.Warning("DeleteAvroSchemaFailure",
+			"Unable to delete avro schema %s", fullName)
 		return errors.Wrap(err, 0)
 	}
+	as.events.Normal("DeleteAvroSchema", "Avro schema %s was successfully deleted", fullName)
 	return
 }
 
 func (as *AvroSchema) CheckDeviation() (problem, err error) {
 	expectedSchema, err := as.SetSchemaNameNamespace()
 	if err != nil {
+		as.events.Warning("AvroSchemaCheckDeviationFailed",
+			"Unable to SetSchemaNameNamespace during CheckDeviation for AvroSchema: %s", as.Name())
 		return nil, errors.Wrap(err, 0)
 	}
 
@@ -90,12 +108,19 @@ func (as *AvroSchema) CheckDeviation() (problem, err error) {
 	if err != nil {
 		srErr, ok := err.(srclient.Error)
 		if !ok {
+			as.events.Warning("AvroSchemaCheckDeviationFailed",
+				"Unexpected error type when getting latest schema for AvroSchema %s", as.Name())
 			return nil, errors.Wrap(errors.New("invalid error type in AvroSchema.CheckDeviation"), 0)
 		}
 		if srErr.Code == 40401 {
 			// Error code 40401 – Subject not found
+			as.events.Warning("AvroSchemaDeviationFound",
+				"AvroSchema %s not found in registry", as.Name())
 			return fmt.Errorf("schema for subject %s not found in registry", as.Name()), nil
 		}
+
+		as.events.Warning("AvroSchemaCheckDeviationFailed",
+			"Unable to get latest schema for AvroSchema %s", as.Name())
 		return nil, errors.Wrap(err, 0)
 	}
 
@@ -104,7 +129,9 @@ func (as *AvroSchema) CheckDeviation() (problem, err error) {
 		existingSchema.Schema())
 
 	if len(diff) > 0 {
-		problem = fmt.Errorf("schema in registry changed for subject %s, diff: %s", as.Name(), diff)
+		msg := fmt.Sprintf("schema in registry changed for subject %s, diff: %s", as.Name(), diff)
+		as.events.Warning("AvroSchemaDeviationFound", msg)
+		problem = fmt.Errorf(msg)
 	}
 
 	return
@@ -113,6 +140,8 @@ func (as *AvroSchema) CheckDeviation() (problem, err error) {
 func (as *AvroSchema) Exists() (exists bool, err error) {
 	exists, err = as.registry.CheckIfSchemaVersionExists(as.Name(), as.id)
 	if err != nil {
+		as.events.Warning("AvroSchemaExistsFailed",
+			"Unable to check if schema version exists for AvroSchema %s", as.Name())
 		return false, errors.Wrap(err, 0)
 	}
 	return
@@ -121,6 +150,8 @@ func (as *AvroSchema) Exists() (exists bool, err error) {
 func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err error) {
 	subjects, err := as.registry.Client.GetSubjects()
 	if err != nil {
+		as.events.Warning("AvroSchemaListInstalledVersionsFailed",
+			"Unable to list installed versioned for AvroSchema %s", as.Name())
 		return nil, errors.Wrap(err, 0)
 	}
 
@@ -155,4 +186,8 @@ func (as *AvroSchema) SetSchemaNameNamespace() (schema string, err error) {
 
 func (as *AvroSchema) Reconcile() (err error) {
 	return nil
+}
+
+func (as *AvroSchema) SetEvents(e events.Events) {
+	as.events = e
 }

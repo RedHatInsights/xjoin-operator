@@ -11,6 +11,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	. "github.com/redhatinsights/xjoin-operator/controllers/index"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
@@ -272,7 +273,9 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return result, errors.Wrap(err, 0)
 	}
 
-	componentManager := components.NewComponentManager(common.IndexPipelineGVK.Kind, instance.Spec.Name, p.Version.String())
+	e := events.NewEvents(r.Recorder, instance, reqLogger)
+	componentManager := components.NewComponentManager(
+		common.IndexPipelineGVK.Kind, instance.Spec.Name, p.Version.String(), e)
 
 	if indexAvroSchema.JSONFields != nil {
 		componentManager.AddComponent(&components.ElasticsearchPipeline{
