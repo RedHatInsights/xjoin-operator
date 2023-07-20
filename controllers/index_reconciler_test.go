@@ -79,7 +79,7 @@ func (i *IndexTestReconciler) newXJoinIndexReconciler() *controllers.XJoinIndexR
 		i.K8sClient,
 		scheme.Scheme,
 		testLogger,
-		record.NewFakeRecorder(10),
+		record.NewFakeRecorder(100),
 		i.Namespace,
 		true)
 }

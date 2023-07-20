@@ -8,6 +8,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	. "github.com/redhatinsights/xjoin-operator/controllers/datasource"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	"github.com/redhatinsights/xjoin-operator/controllers/index"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
@@ -113,6 +114,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return result, errors.Wrap(err, 0)
 	}
 
+	eventHandler := events.NewEvents(r.Recorder, instance, reqLogger)
 	originalInstance := instance.DeepCopy()
 	i := XJoinDataSourceIteration{
 		Parameters: *p,
@@ -124,6 +126,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 			Log:              reqLogger,
 			Test:             r.Test,
 		},
+		Events: eventHandler,
 	}
 
 	if err = i.AddFinalizer(i.GetFinalizerName()); err != nil {
@@ -160,7 +163,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 	}
 
 	dataSourceReconciler := NewReconcileMethods(i, common.DataSourceGVK)
-	reconciler := common.NewReconciler(dataSourceReconciler, instance, reqLogger)
+	reconciler := common.NewReconciler(dataSourceReconciler, instance, reqLogger, eventHandler)
 	err = reconciler.Reconcile(false)
 	if err != nil {
 		return result, errors.Wrap(err, 0)

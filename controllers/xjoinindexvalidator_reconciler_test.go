@@ -205,7 +205,7 @@ func (x *XJoinIndexValidatorTestReconciler) newXJoinIndexValidatorReconciler() *
 		scheme.Scheme,
 		fake.NewSimpleClientset(),
 		testLogger,
-		record.NewFakeRecorder(10),
+		record.NewFakeRecorder(100),
 		x.Namespace,
 		true,
 		x.PodLogReader)

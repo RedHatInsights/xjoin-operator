@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +37,7 @@ type XJoinAPISubGraph struct {
 	Suffix                string
 	GraphQLSchemaName     string
 	LogLevel              string
+	events                events.Events
 }
 
 func (x *XJoinAPISubGraph) SetName(kind string, name string) {
@@ -210,20 +212,32 @@ func (x *XJoinAPISubGraph) buildLabels() map[string]string {
 func (x *XJoinAPISubGraph) Create() (err error) {
 	deployment, err := x.buildDeploymentStructure()
 	if err != nil {
+		x.events.Warning("CreateAPISubgraphFailed",
+			"Unable to build deployment structure for XJoinAPISubgraph %s", deployment.Name)
 		return errors.Wrap(err, 0)
 	}
 
 	err = x.Client.Create(x.Context, deployment)
 	if err != nil {
+		x.events.Warning("CreateAPISubgraphFailed",
+			"Unable to create XJoinAPISubgraph deployment %s", deployment.Name)
 		return errors.Wrap(err, 0)
 	}
+
+	x.events.Normal("CreatedAPISubgraphDeployment",
+		"XJoinAPISubgraph deployment %s was successfully created", deployment.Name)
 
 	//create the service
 	service := x.buildServiceStructure()
 	err = x.Client.Create(x.Context, service)
 	if err != nil {
+		x.events.Warning("CreateAPISubgraphFailed",
+			"Unable to create XJoinAPISubgraph service %s", service.Name)
 		return errors.Wrap(err, 0)
 	}
+
+	x.events.Normal("CreatedAPISubgraphService",
+		"XJoinAPISubgraph service %s was successfully created", service.Name)
 
 	return
 }
@@ -234,35 +248,62 @@ func (x *XJoinAPISubGraph) Delete() (err error) {
 	deployment.SetGroupVersionKind(common.DeploymentGVK)
 	err = x.Client.Get(x.Context, client.ObjectKey{Name: x.Name(), Namespace: x.Namespace}, deployment)
 	if err != nil {
+		x.events.Warning("DeleteAPISubgraphDeploymentFailed",
+			"Unable to get XJoinAPISubgraph deployment %s", x.Name())
 		return errors.Wrap(err, 0)
 	}
 
 	err = x.Client.Delete(x.Context, deployment)
 	if err != nil {
+		x.events.Warning("DeleteAPISubgraphDeploymentFailed",
+			"Unable to delete XJoinAPISubgraph deployment %s", x.Name())
 		return errors.Wrap(err, 0)
 	}
+
+	x.events.Normal("DeletedAPISubgraphDeployment",
+		"XJoinAPISubgraph deployment was successfully deleted", x.Name())
 
 	//delete the service
 	service := &unstructured.Unstructured{}
 	service.SetGroupVersionKind(common.ServiceGVK)
 	err = x.Client.Get(x.Context, client.ObjectKey{Name: x.Name(), Namespace: x.Namespace}, service)
 	if err != nil {
+		x.events.Warning("DeleteAPISubgraphServiceFailed",
+			"Unable to get XJoinAPISubgraph service %s", x.Name())
 		return errors.Wrap(err, 0)
 	}
 
 	err = x.Client.Delete(x.Context, service)
 	if err != nil {
+		x.events.Warning("DeleteAPISubgraphServiceFailed",
+			"Unable to delete XJoinAPISubgraph deployment %s", x.Name())
 		return errors.Wrap(err, 0)
 	}
 
+	x.events.Normal("DeletedAPISubgraphService",
+		"XJoinAPISubgraph service was successfully deleted", x.Name())
+
 	//delete the gql schema from registry
 	exists, err := x.Registry.CheckIfSchemaVersionExists(x.schemaName+"."+x.version, 1) //TODO
+	if err != nil {
+		x.events.Warning("DeleteAPISubgraphServiceFailed",
+			"Unable to check if GraphQLSchema %s exists for XJoinAPISubgraph %s",
+			x.schemaName+"."+x.version, x.Name())
+		return errors.Wrap(err, 0)
+	}
 
 	if exists {
 		err = x.Registry.DeleteSchema(x.schemaName + "." + x.version)
 		if err != nil {
+			x.events.Warning("DeleteAPISubgraphServiceFailed",
+				"Unable to delete GraphQLSchema for XJoinAPISubgraph %s",
+				x.schemaName+"."+x.version, x.Name())
 			return errors.Wrap(err, 0)
 		}
+
+		x.events.Normal("DeletedAPISubgraphGraphQLSchema",
+			"GraphQLSchema %s for XJoinAPISubgraph %s successfully deleted",
+			x.schemaName+"."+x.version, x.Name())
 	}
 
 	return
@@ -272,15 +313,21 @@ func (x *XJoinAPISubGraph) CheckDeviation() (problem, err error) {
 	//build the expected deployment
 	expectedDeployment, err := x.buildDeploymentStructure()
 	if err != nil {
+		x.events.Warning("APISubgraphCheckDeviationFailed",
+			"Unable to create expected deployments spec for XJoinAPISubgraph %s", x.Name())
 		return nil, errors.Wrap(err, 0)
 	}
 
 	//get the already created (existing) deployment
 	found, err := x.Exists()
 	if err != nil {
+		x.events.Warning("APISubgraphCheckDeviationFailed",
+			"Unable to check if XJoinApiSubgraph %s exists", x.Name())
 		return nil, errors.Wrap(err, 0)
 	}
 	if !found {
+		x.events.Warning("APISubgraphDeviationFound",
+			"XJoinAPISubgraph %s does not exists", x.Name())
 		return fmt.Errorf("the xjoin-api-subgraph deployment named, %s, does not exist", x.Name()), nil
 	}
 
@@ -291,6 +338,8 @@ func (x *XJoinAPISubGraph) CheckDeviation() (problem, err error) {
 	}
 	err = x.Client.Get(context.Background(), existingDeploymentLookup, existingDeployment)
 	if err != nil {
+		x.events.Warning("APISubgraphCheckDeviationFailed",
+			"Unable to get existing XJoinAPISubgraph deployment %s", x.Name())
 		return nil, errors.Wrap(err, 0)
 	}
 
@@ -304,10 +353,14 @@ func (x *XJoinAPISubGraph) CheckDeviation() (problem, err error) {
 		utils.NumberNormalizer)
 
 	if len(specDiff) > 0 {
+		x.events.Warning("APISubgraphDeviationFound",
+			"XJoinAPISubgraph %s spec has changed", x.Name())
 		return fmt.Errorf("xjoin-api-subgraph deployment spec has changed: %s", specDiff), nil
 	}
 
 	if existingDeployment.GetNamespace() != expectedDeployment.GetNamespace() {
+		x.events.Warning("APISubgraphDeviationFound",
+			"XJoinAPISubgraph %s namespace has changed", x.Name())
 		return fmt.Errorf(
 			"xjoin-api-subgraph deployment namespace has changed from: %s to %s",
 			expectedDeployment.GetNamespace(),
@@ -324,6 +377,8 @@ func (x *XJoinAPISubGraph) Exists() (exists bool, err error) {
 	fields["metadata.namespace"] = x.Namespace
 	err = x.Client.List(x.Context, deployments, fields)
 	if err != nil {
+		x.events.Warning("APISubgraphExistsFailed",
+			"Unable to list deployments for XJoinAPISubgraph %s", x.Name())
 		return false, errors.Wrap(err, 0)
 	}
 
@@ -344,6 +399,8 @@ func (x *XJoinAPISubGraph) ListInstalledVersions() (versions []string, err error
 	labels["xjoin.index"] = x.name
 	err = x.Client.List(x.Context, deployments, labels, fields)
 	if err != nil {
+		x.events.Warning("APISubgraphExistsFailed",
+			"Unable to ListInstalledVersions for XJoinAPISubgraph %s", x.Name())
 		return nil, errors.Wrap(err, 0)
 	}
 
@@ -356,4 +413,8 @@ func (x *XJoinAPISubGraph) ListInstalledVersions() (versions []string, err error
 
 func (x *XJoinAPISubGraph) Reconcile() (err error) {
 	return nil
+}
+
+func (x *XJoinAPISubGraph) SetEvents(e events.Events) {
+	x.events = e
 }

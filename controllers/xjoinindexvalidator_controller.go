@@ -7,6 +7,7 @@ import (
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	. "github.com/redhatinsights/xjoin-operator/controllers/index"
 	"github.com/redhatinsights/xjoin-operator/controllers/k8s"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
@@ -149,6 +150,7 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 		ClientSet:              r.ClientSet,
 		ElasticsearchIndexName: instance.Spec.IndexName,
 		PodLogReader:           r.PodLogReader,
+		Events:                 events.NewEvents(r.Recorder, instance, reqLogger),
 	}
 
 	if err = i.AddFinalizer(xjoinindexValidatorFinalizer); err != nil {

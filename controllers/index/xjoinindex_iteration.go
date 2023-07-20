@@ -5,6 +5,7 @@ import (
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -13,6 +14,7 @@ import (
 type XJoinIndexIteration struct {
 	common.Iteration
 	Parameters parameters.IndexParameters
+	Events     events.Events
 }
 
 func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (err error) {
@@ -57,11 +59,11 @@ func (i *XJoinIndexIteration) DeleteIndexPipeline(name string, version string) (
 	return
 }
 
-func (i XJoinIndexIteration) GetInstance() *v1alpha1.XJoinIndex {
+func (i *XJoinIndexIteration) GetInstance() *v1alpha1.XJoinIndex {
 	return i.Instance.(*v1alpha1.XJoinIndex)
 }
 
-func (i XJoinIndexIteration) GetFinalizerName() string {
+func (i *XJoinIndexIteration) GetFinalizerName() string {
 	return "finalizer.xjoin.index.cloud.redhat.com"
 }
 

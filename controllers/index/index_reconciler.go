@@ -25,6 +25,7 @@ func NewReconcileMethods(iteration XJoinIndexIteration, gvk schema.GroupVersionK
 }
 
 func (d *ReconcileMethods) Removed() (err error) {
+	d.iteration.Events.Normal("Removed", "Index was removed, running finalizer to cleanup child resources.")
 	err = d.iteration.Finalize()
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -33,6 +34,7 @@ func (d *ReconcileMethods) Removed() (err error) {
 }
 
 func (d *ReconcileMethods) New(version string) (err error) {
+	d.iteration.Events.Normal("New", "Creating new IndexPipeline to initialize data sync process")
 	err = d.iteration.CreateIndexPipeline(d.iteration.GetInstance().Name, version)
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -41,6 +43,7 @@ func (d *ReconcileMethods) New(version string) (err error) {
 }
 
 func (d *ReconcileMethods) InitialSync() (err error) {
+	d.iteration.Events.Normal("InitialSync", "Waiting for data to become in sync for the first time")
 	err = d.iteration.ReconcileChildren()
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -49,6 +52,7 @@ func (d *ReconcileMethods) InitialSync() (err error) {
 }
 
 func (d *ReconcileMethods) Valid() (err error) {
+	d.iteration.Events.Normal("Valid", "Data is in sync")
 	err = d.iteration.ReconcileChildren()
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -57,6 +61,7 @@ func (d *ReconcileMethods) Valid() (err error) {
 }
 
 func (d *ReconcileMethods) StartRefreshing(version string) (err error) {
+	d.iteration.Events.Normal("StartRefreshing", "Starting the refresh process by creating a new IndexPipeline")
 	err = d.iteration.CreateIndexPipeline(d.iteration.GetInstance().Name, version)
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -65,6 +70,7 @@ func (d *ReconcileMethods) StartRefreshing(version string) (err error) {
 }
 
 func (d *ReconcileMethods) Refreshing() (err error) {
+	d.iteration.Events.Normal("Refreshing", "Refresh is in progress, waiting for the refreshing pipeline's data to be in sync")
 	err = d.iteration.ReconcileChildren()
 	if err != nil {
 		return errors.Wrap(err, 0)
@@ -73,6 +79,8 @@ func (d *ReconcileMethods) Refreshing() (err error) {
 }
 
 func (d *ReconcileMethods) RefreshComplete() (err error) {
+	d.iteration.Events.Normal("RefreshComplete", "Refreshing pipeline is now in sync. Switching the refreshing pipeline to be active.")
+
 	//update the status of the refreshing IndexPipeline to be active so the gateway starts using it
 	refreshingPipeline := &v1alpha1.XJoinIndexPipeline{}
 	indexPipelineLookup := types.NamespacedName{
@@ -142,7 +150,7 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 		schemaRegistryConnectionParams, d.iteration.GetInstance().Namespace)
 
 	custodian := components.NewCustodian(
-		d.gvk.Kind, d.iteration.GetInstance().Name, validVersions)
+		d.gvk.Kind, d.iteration.GetInstance().Name, validVersions, d.iteration.Events)
 	custodian.AddComponent(&components.ElasticsearchPipeline{
 		GenericElasticsearch: *genericElasticsearch,
 	})

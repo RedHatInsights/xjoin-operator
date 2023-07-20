@@ -5,6 +5,7 @@ import (
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -13,6 +14,7 @@ import (
 type XJoinDataSourceIteration struct {
 	common.Iteration
 	Parameters parameters.DataSourceParameters
+	Events     events.Events
 }
 
 func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version string) (err error) {
@@ -84,10 +86,10 @@ func (i *XJoinDataSourceIteration) Finalize() (err error) {
 	return nil
 }
 
-func (i XJoinDataSourceIteration) GetInstance() *v1alpha1.XJoinDataSource {
+func (i *XJoinDataSourceIteration) GetInstance() *v1alpha1.XJoinDataSource {
 	return i.Instance.(*v1alpha1.XJoinDataSource)
 }
 
-func (i XJoinDataSourceIteration) GetFinalizerName() string {
+func (i *XJoinDataSourceIteration) GetFinalizerName() string {
 	return "finalizer.xjoin.datasource.cloud.redhat.com"
 }

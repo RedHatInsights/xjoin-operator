@@ -2,6 +2,7 @@ package common
 
 import (
 	"github.com/go-errors/errors"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	"strconv"
@@ -23,13 +24,15 @@ type Reconciler struct {
 	methods  ReconcilerMethods
 	instance XJoinObject
 	log      logger.Log
+	events   events.Events
 }
 
-func NewReconciler(methods ReconcilerMethods, instance XJoinObject, log logger.Log) *Reconciler {
+func NewReconciler(methods ReconcilerMethods, instance XJoinObject, log logger.Log, e events.Events) *Reconciler {
 	return &Reconciler{
 		methods:  methods,
 		instance: instance,
 		log:      log,
+		events:   e,
 	}
 }
 
@@ -38,8 +41,6 @@ func (r *Reconciler) Version() string {
 }
 
 func (r *Reconciler) DoRefresh() (err error) {
-	r.log.Info("STATE: START REFRESH")
-
 	refreshingVersion := r.Version()
 	r.instance.SetRefreshingVersion(refreshingVersion)
 
@@ -113,8 +114,6 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 
 	switch state {
 	case REMOVED:
-		r.log.Info("STATE: REMOVED")
-
 		err = r.methods.Removed()
 		if err != nil {
 			return errors.Wrap(err, 0)
@@ -123,8 +122,6 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 		// active is invalid, not refreshing yet
 		// or spec hash mismatch
 		// or force_refresh is true
-		r.log.Info("STATE: START REFRESH")
-
 		refreshingVersion := r.Version()
 		r.instance.SetRefreshingVersion(refreshingVersion)
 
@@ -133,8 +130,6 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 			return errors.Wrap(err, 0)
 		}
 	case NEW:
-		r.log.Info("STATE: NEW")
-
 		refreshingVersion := r.Version()
 		r.instance.SetRefreshingVersion(refreshingVersion)
 		r.instance.SetRefreshingVersionIsValid(false)
@@ -144,28 +139,22 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 			return errors.Wrap(err, 0)
 		}
 	case INITIAL_SYNC:
-		r.log.Info("STATE: INITIAL_SYNC")
 		err = r.methods.InitialSync()
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 	case VALID:
-		r.log.Info("STATE: VALID")
-
 		err = r.methods.Valid()
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 	case REFRESHING:
 		// active is invalid, refreshing is invalid
-		r.log.Info("STATE: REFRESHING")
-
 		err = r.methods.Refreshing()
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 	case REFRESH_COMPLETE:
-		r.log.Info("STATE: REFRESH COMPLETE")
 		err = r.methods.RefreshComplete()
 		if err != nil {
 			return errors.Wrap(err, 0)

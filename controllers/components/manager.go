@@ -1,6 +1,9 @@
 package components
 
-import "github.com/go-errors/errors"
+import (
+	"github.com/go-errors/errors"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
+)
 
 type Component interface {
 	Name() string
@@ -15,6 +18,8 @@ type Component interface {
 	//Reconcile is called after creation.
 	//e.g. it is used to enable/disable graphql schemas after validation
 	Reconcile() error
+
+	SetEvents(events.Events)
 }
 
 type ComponentManager struct {
@@ -22,19 +27,22 @@ type ComponentManager struct {
 	name       string
 	version    string
 	kind       string
+	events     events.Events
 }
 
-func NewComponentManager(kind string, name string, version string) ComponentManager {
+func NewComponentManager(kind string, name string, version string, events events.Events) ComponentManager {
 	return ComponentManager{
 		name:    name,
 		version: version,
 		kind:    kind,
+		events:  events,
 	}
 }
 
 func (c *ComponentManager) AddComponent(component Component) {
 	component.SetName(c.kind, c.name)
 	component.SetVersion(c.version)
+	component.SetEvents(c.events)
 	c.components = append(c.components, component)
 }
 
