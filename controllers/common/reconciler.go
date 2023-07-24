@@ -18,6 +18,7 @@ type ReconcilerMethods interface {
 	Refreshing() error
 	RefreshComplete() error
 	Scrub() []error
+	SetLogger(logger.Log)
 }
 
 type Reconciler struct {
@@ -28,6 +29,8 @@ type Reconciler struct {
 }
 
 func NewReconciler(methods ReconcilerMethods, instance XJoinObject, log logger.Log, e events.Events) *Reconciler {
+	methods.SetLogger(log)
+
 	return &Reconciler{
 		methods:  methods,
 		instance: instance,

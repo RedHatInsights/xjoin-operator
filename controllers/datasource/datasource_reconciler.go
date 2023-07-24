@@ -4,6 +4,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -11,6 +12,7 @@ import (
 type ReconcileMethods struct {
 	iteration XJoinDataSourceIteration
 	gvk       schema.GroupVersionKind
+	log       logger.Log
 }
 
 func NewReconcileMethods(iteration XJoinDataSourceIteration, gvk schema.GroupVersionKind) *ReconcileMethods {
@@ -18,6 +20,10 @@ func NewReconcileMethods(iteration XJoinDataSourceIteration, gvk schema.GroupVer
 		iteration: iteration,
 		gvk:       gvk,
 	}
+}
+
+func (d *ReconcileMethods) SetLogger(log logger.Log) {
+	d.log = log
 }
 
 func (d *ReconcileMethods) Removed() (err error) {
@@ -140,5 +146,8 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 		KafkaClient: kafkaClient,
 		Namespace:   d.iteration.GetInstance().Namespace,
 	})
+
+	d.log.Debug("Scrubbing DataSource", "ValidVersion", validVersions)
+
 	return custodian.Scrub()
 }

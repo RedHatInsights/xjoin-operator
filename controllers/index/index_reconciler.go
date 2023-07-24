@@ -7,6 +7,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -15,6 +16,7 @@ import (
 type ReconcileMethods struct {
 	iteration XJoinIndexIteration
 	gvk       schema.GroupVersionKind
+	log       logger.Log
 }
 
 func NewReconcileMethods(iteration XJoinIndexIteration, gvk schema.GroupVersionKind) *ReconcileMethods {
@@ -22,6 +24,10 @@ func NewReconcileMethods(iteration XJoinIndexIteration, gvk schema.GroupVersionK
 		iteration: iteration,
 		gvk:       gvk,
 	}
+}
+
+func (d *ReconcileMethods) SetLogger(log logger.Log) {
+	d.log = log
 }
 
 func (d *ReconcileMethods) Removed() (err error) {
@@ -197,5 +203,8 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 		Registry:  registryConfluentClient,
 		Namespace: d.iteration.GetInstance().Namespace,
 	})
+
+	d.log.Debug("Scrubbing index", "ValidVersion", validVersions)
+
 	return custodian.Scrub()
 }
