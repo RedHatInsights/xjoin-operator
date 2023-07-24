@@ -142,6 +142,7 @@ func (dc *DebeziumConnector) Exists() (exists bool, err error) {
 			"Unable to check if DebeziumConnector %s exists", dc.Name())
 		return false, errors.Wrap(err, 0)
 	}
+	dc.log.Debug("Debezium connector exists response", "name", dc.Name(), "namespace", dc.Namespace, "exists", exists)
 	return exists, nil
 }
 
