@@ -5,6 +5,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"strings"
 )
@@ -18,6 +19,7 @@ type GraphQLSchema struct {
 	suffix     string
 	active     bool
 	events     events.Events
+	log        logger.Log
 }
 
 type GraphQLSchemaParameters struct {
@@ -34,6 +36,10 @@ func NewGraphQLSchema(parameters GraphQLSchemaParameters) *GraphQLSchema {
 		suffix:     parameters.Suffix,
 		active:     parameters.Active,
 	}
+}
+
+func (as *GraphQLSchema) SetLogger(log logger.Log) {
+	as.log = log
 }
 
 func (as *GraphQLSchema) NameSuffix() string {

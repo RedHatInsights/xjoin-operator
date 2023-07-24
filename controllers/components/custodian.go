@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
@@ -14,20 +15,23 @@ type Custodian struct {
 	components    []Component
 	kind          string
 	events        events.Events
+	log           logger.Log
 }
 
-func NewCustodian(kind string, name string, validVersions []string, e events.Events) *Custodian {
+func NewCustodian(kind string, name string, validVersions []string, e events.Events, log logger.Log) *Custodian {
 	return &Custodian{
 		validVersions: validVersions,
 		name:          name,
 		kind:          kind,
 		events:        e,
+		log:           log,
 	}
 }
 
 func (c *Custodian) AddComponent(component Component) {
 	component.SetName(c.kind, c.name)
 	component.SetEvents(c.events)
+	component.SetLogger(c.log)
 	c.components = append(c.components, component)
 }
 

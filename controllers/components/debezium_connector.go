@@ -5,6 +5,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"strings"
 
 	"github.com/go-errors/errors"
@@ -19,6 +20,11 @@ type DebeziumConnector struct {
 	KafkaClient        kafka.GenericKafka
 	TemplateParameters map[string]interface{}
 	events             events.Events
+	log                logger.Log
+}
+
+func (dc *DebeziumConnector) SetLogger(log logger.Log) {
+	dc.log = log
 }
 
 func (dc *DebeziumConnector) SetName(kind string, name string) {

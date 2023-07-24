@@ -8,6 +8,7 @@ import (
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -38,6 +39,11 @@ type XJoinAPISubGraph struct {
 	GraphQLSchemaName     string
 	LogLevel              string
 	events                events.Events
+	log                   logger.Log
+}
+
+func (x *XJoinAPISubGraph) SetLogger(log logger.Log) {
+	x.log = log
 }
 
 func (x *XJoinAPISubGraph) SetName(kind string, name string) {

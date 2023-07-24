@@ -156,7 +156,7 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 		schemaRegistryConnectionParams, d.iteration.GetInstance().Namespace)
 
 	custodian := components.NewCustodian(
-		d.gvk.Kind, d.iteration.GetInstance().Name, validVersions, d.iteration.Events)
+		d.gvk.Kind, d.iteration.GetInstance().Name, validVersions, d.iteration.Events, d.log)
 	custodian.AddComponent(&components.ElasticsearchPipeline{
 		GenericElasticsearch: *genericElasticsearch,
 	})

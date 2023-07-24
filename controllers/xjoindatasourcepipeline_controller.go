@@ -160,7 +160,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 
 	e := events.NewEvents(r.Recorder, instance, reqLogger)
 	componentManager := components.NewComponentManager(
-		common.DataSourcePipelineGVK.Kind, instance.Spec.Name, p.Version.String(), e)
+		common.DataSourcePipelineGVK.Kind, instance.Spec.Name, p.Version.String(), e, reqLogger)
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
 		Schema:   p.AvroSchema.String(),
 		Registry: registry,

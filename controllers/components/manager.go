@@ -3,6 +3,7 @@ package components
 import (
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 )
 
 type Component interface {
@@ -20,6 +21,7 @@ type Component interface {
 	Reconcile() error
 
 	SetEvents(events.Events)
+	SetLogger(logger.Log)
 }
 
 type ComponentManager struct {
@@ -28,14 +30,16 @@ type ComponentManager struct {
 	version    string
 	kind       string
 	events     events.Events
+	log        logger.Log
 }
 
-func NewComponentManager(kind string, name string, version string, events events.Events) ComponentManager {
+func NewComponentManager(kind string, name string, version string, events events.Events, log logger.Log) ComponentManager {
 	return ComponentManager{
 		name:    name,
 		version: version,
 		kind:    kind,
 		events:  events,
+		log:     log,
 	}
 }
 
@@ -43,6 +47,7 @@ func (c *ComponentManager) AddComponent(component Component) {
 	component.SetName(c.kind, c.name)
 	component.SetVersion(c.version)
 	component.SetEvents(c.events)
+	component.SetLogger(c.log)
 	c.components = append(c.components, component)
 }
 
