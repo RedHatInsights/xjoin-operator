@@ -135,6 +135,7 @@ func (dc *DebeziumConnector) CheckDeviation() (problem, err error) {
 }
 
 func (dc *DebeziumConnector) Exists() (exists bool, err error) {
+	dc.log.Debug("Checking if DebeziumConnector exists", "name", dc.Name(), "namespace", dc.Namespace)
 	exists, err = dc.KafkaClient.CheckIfConnectorExists(dc.Name(), dc.Namespace)
 	if err != nil {
 		dc.events.Warning("DebeziumConnectorExistsFailed",
