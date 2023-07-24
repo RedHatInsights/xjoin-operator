@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"strings"
 
 	"github.com/go-errors/errors"
@@ -21,6 +22,7 @@ type AvroSchema struct {
 	version    string
 	references []srclient.Reference
 	events     events.Events
+	log        logger.Log
 }
 
 type AvroSchemaParameters struct {
@@ -36,6 +38,10 @@ func NewAvroSchema(parameters AvroSchemaParameters) *AvroSchema {
 		references: parameters.References,
 		id:         1, //valid avro ids start at 1
 	}
+}
+
+func (as *AvroSchema) SetLogger(log logger.Log) {
+	as.log = log
 }
 
 func (as *AvroSchema) SetName(kind string, name string) {

@@ -8,6 +8,7 @@ import (
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -31,6 +32,11 @@ type XJoinCore struct {
 	Namespace         string
 	Schema            string
 	events            events.Events
+	log               logger.Log
+}
+
+func (xc *XJoinCore) SetLogger(log logger.Log) {
+	xc.log = log
 }
 
 func (xc *XJoinCore) SetName(kind string, name string) {

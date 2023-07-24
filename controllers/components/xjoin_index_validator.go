@@ -6,6 +6,7 @@ import (
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"reflect"
@@ -25,6 +26,11 @@ type XJoinIndexValidator struct {
 	ElasticsearchIndexName string
 	Ephemeral              bool
 	events                 events.Events
+	log                    logger.Log
+}
+
+func (xv *XJoinIndexValidator) SetLogger(log logger.Log) {
+	xv.log = log
 }
 
 func (xv *XJoinIndexValidator) SetName(kind string, name string) {

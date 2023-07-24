@@ -5,6 +5,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"strings"
 
 	"github.com/go-errors/errors"
@@ -18,6 +19,11 @@ type KafkaTopic struct {
 	KafkaTopics     kafka.StrimziTopics
 	TopicParameters kafka.TopicParameters
 	events          events.Events
+	log             logger.Log
+}
+
+func (kt *KafkaTopic) SetLogger(log logger.Log) {
+	kt.log = log
 }
 
 func (kt *KafkaTopic) SetName(kind string, name string) {

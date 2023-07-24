@@ -5,6 +5,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"strings"
 
 	"github.com/go-errors/errors"
@@ -20,6 +21,11 @@ type ElasticsearchConnector struct {
 	TemplateParameters map[string]interface{}
 	Topic              string
 	events             events.Events
+	log                logger.Log
+}
+
+func (es *ElasticsearchConnector) SetLogger(log logger.Log) {
+	es.log = log
 }
 
 func (es *ElasticsearchConnector) SetName(kind string, name string) {

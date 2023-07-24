@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"strings"
 )
 
@@ -18,6 +19,11 @@ type ElasticsearchIndex struct {
 	GenericElasticsearch elasticsearch.GenericElasticsearch
 	WithPipeline         bool
 	events               events.Events
+	log                  logger.Log
+}
+
+func (es *ElasticsearchIndex) SetLogger(log logger.Log) {
+	es.log = log
 }
 
 func (es *ElasticsearchIndex) SetName(kind string, name string) {

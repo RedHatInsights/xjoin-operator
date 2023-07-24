@@ -6,6 +6,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"strings"
 )
 
@@ -15,6 +16,11 @@ type ElasticsearchPipeline struct {
 	JsonFields           []string
 	GenericElasticsearch elasticsearch.GenericElasticsearch
 	events               events.Events
+	log                  logger.Log
+}
+
+func (es *ElasticsearchPipeline) SetLogger(log logger.Log) {
+	es.log = log
 }
 
 func (es *ElasticsearchPipeline) SetName(kind string, name string) {
