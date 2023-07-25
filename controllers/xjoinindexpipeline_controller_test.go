@@ -12,7 +12,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
-	"github.com/redhatinsights/xjoin-operator/controllers/index"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -960,7 +959,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				return err == nil
 			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
-			Expect(createdIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Valid))
+			Expect(createdIndexPipeline.Status.ValidationResponse.Result).To(Equal(common.Valid))
 
 			//set the DatasourcePipeline to invalid
 			datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
@@ -976,7 +975,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				GraphQLSchemaExistingState: "ENABLED",
 				GraphQLSchemaNewState:      "DISABLED",
 			})
-			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(common.Invalid))
 		})
 
 		It("Sets ValidationResult to valid when all DataSourcePipelines are valid", func() {
@@ -1015,7 +1014,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				return err == nil
 			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
-			Expect(createdIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Valid))
+			Expect(createdIndexPipeline.Status.ValidationResponse.Result).To(Equal(common.Valid))
 		})
 
 		It("Initially disables the GraphQL schema", func() {
@@ -1071,7 +1070,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				GraphQLSchemaNewState:      "ENABLED",
 			})
 			updatedIndex := resources.IndexReconciler.ReconcileUpdated()
-			Expect(updatedIndex.Status.ActiveVersionIsValid).To(Equal(false))
+			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(common.Invalid))
 			Expect(updatedIndex.Status.RefreshingVersion).ToNot(Equal(""))
 
 			//set the refreshing version to valid
@@ -1083,7 +1082,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			err := k8sClient.Get(context.Background(), indexPipelineLookup, refreshingIndexPipeline)
 			checkError(err)
 
-			refreshingIndexPipeline.Status.ValidationResponse.Result = index.Valid
+			refreshingIndexPipeline.Status.ValidationResponse.Result = common.Valid
 
 			err = k8sClient.Status().Update(context.Background(), refreshingIndexPipeline)
 			checkError(err)
@@ -1187,7 +1186,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				GraphQLSchemaNewState:      "ENABLED",
 			})
 			updatedIndex := resources.IndexReconciler.ReconcileUpdated()
-			Expect(updatedIndex.Status.ActiveVersionIsValid).To(Equal(false))
+			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(common.Invalid))
 			Expect(updatedIndex.Status.RefreshingVersion).ToNot(Equal(""))
 
 			//set the refreshing version to valid
@@ -1199,7 +1198,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			err := k8sClient.Get(context.Background(), indexPipelineLookup, refreshingIndexPipeline)
 			checkError(err)
 
-			refreshingIndexPipeline.Status.ValidationResponse.Result = index.Valid
+			refreshingIndexPipeline.Status.ValidationResponse.Result = common.Valid
 
 			err = k8sClient.Status().Update(context.Background(), refreshingIndexPipeline)
 			checkError(err)
@@ -1290,7 +1289,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				GraphQLSchemaNewState:      "ENABLED",
 			})
 			updatedIndex := resources.IndexReconciler.ReconcileUpdated()
-			Expect(updatedIndex.Status.ActiveVersionIsValid).To(Equal(false))
+			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(common.Invalid))
 			Expect(updatedIndex.Status.RefreshingVersion).ToNot(Equal(""))
 
 			//set the refreshing version to valid
@@ -1302,7 +1301,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			err := k8sClient.Get(context.Background(), indexPipelineLookup, refreshingIndexPipeline)
 			checkError(err)
 
-			refreshingIndexPipeline.Status.ValidationResponse.Result = index.Valid
+			refreshingIndexPipeline.Status.ValidationResponse.Result = common.Valid
 
 			err = k8sClient.Status().Update(context.Background(), refreshingIndexPipeline)
 			checkError(err)
@@ -1378,7 +1377,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				GraphQLSchemaExistingState: "ENABLED",
 				GraphQLSchemaNewState:      "ENABLED",
 			})
-			Expect(indexPipeline.Status.ValidationResponse.Result).To(Equal(index.Valid))
+			Expect(indexPipeline.Status.ValidationResponse.Result).To(Equal(common.Valid))
 		})
 
 		It("Sets the status to invalid when the Kafka Topic has deviated", func() {
@@ -1420,7 +1419,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				GraphQLSchemaExistingState: "ENABLED",
 				GraphQLSchemaNewState:      "ENABLED",
 			})
-			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(common.Invalid))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring("topic spec has changed"))
 		})
@@ -1464,7 +1463,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				GraphQLSchemaExistingState: "ENABLED",
 				GraphQLSchemaNewState:      "ENABLED",
 			})
-			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(common.Invalid))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring("elasticsearch connector spec has changed"))
 		})
@@ -1510,7 +1509,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				GraphQLSchemaNewState:      "ENABLED",
 				ElasticsearchIndexFilename: "get-index-response-modified",
 			})
-			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(common.Invalid))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring("the Elasticsearch index mappings changed"))
 		})
@@ -1556,7 +1555,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				GraphQLSchemaNewState:      "ENABLED",
 				GraphQLSchemaLabels:        []string{},
 			})
-			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(common.Invalid))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring(
 				"graphql schema, xjoinindexpipeline.test-index-pipeline.1234, labels changed"))
@@ -1601,7 +1600,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				GraphQLSchemaExistingState: "ENABLED",
 				GraphQLSchemaNewState:      "ENABLED",
 			})
-			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(common.Invalid))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring("xjoin-core deployment spec has changed"))
 		})
@@ -1645,7 +1644,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				GraphQLSchemaExistingState: "ENABLED",
 				GraphQLSchemaNewState:      "ENABLED",
 			})
-			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(common.Invalid))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
 			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring(
 				"xjoin-api-subgraph deployment spec has changed"))

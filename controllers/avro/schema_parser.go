@@ -222,7 +222,8 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 		//determine which datasource version to use
 		activeVersion := statusMap["activeVersion"].(string)
 		refreshingVersion := statusMap["refreshingVersion"].(string)
-		activeVersionIsValid := statusMap["activeVersionIsValid"].(bool)
+		activeVersionState := statusMap["activeVersionState"].(map[string]interface{})
+		activeVersionIsValid := activeVersionState["result"] == common.Valid
 		var chosenVersion string
 
 		if activeVersion != "" && (activeVersionIsValid || d.Active) {

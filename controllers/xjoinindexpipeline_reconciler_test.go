@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
-	"github.com/redhatinsights/xjoin-operator/controllers/index"
 	"os"
 	"strings"
 	"text/template"
@@ -88,7 +87,7 @@ func (x *XJoinIndexPipelineTestReconciler) ReconcileValid() v1alpha1.XJoinIndexP
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	indexPipeline.Status.ValidationResponse = validation.ValidationResponse{
-		Result: index.Valid,
+		Result: common.Valid,
 	}
 	indexPipeline.Status.Active = true
 	err := x.K8sClient.Status().Update(context.Background(), indexPipeline)
@@ -106,7 +105,7 @@ func (x *XJoinIndexPipelineTestReconciler) ReconcileValid() v1alpha1.XJoinIndexP
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	Expect(indexPipeline.Status.ValidationResponse.Message).To(Equal(""))
-	Expect(indexPipeline.Status.ValidationResponse.Result).To(Equal(index.Valid))
+	Expect(indexPipeline.Status.ValidationResponse.Result).To(Equal(common.Valid))
 
 	x.createdIndexPipeline = *indexPipeline
 	return x.createdIndexPipeline

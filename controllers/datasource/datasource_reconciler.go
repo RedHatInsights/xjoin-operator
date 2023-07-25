@@ -90,6 +90,15 @@ func (d *ReconcileMethods) RefreshComplete() (err error) {
 	return
 }
 
+func (d *ReconcileMethods) RefreshFailed() (err error) {
+	d.iteration.Events.Normal("RefreshFailed", "Refreshing pipeline failed, will try again.")
+	err = d.iteration.DeleteDataSourcePipeline(d.iteration.GetInstance().Name, d.iteration.GetInstance().Status.RefreshingVersion)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
+}
+
 func (d *ReconcileMethods) Scrub() (errs []error) {
 	var validVersions []string
 	if d.iteration.GetInstance().Status.ActiveVersion != "" {

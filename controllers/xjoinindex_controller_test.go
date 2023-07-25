@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -91,7 +92,7 @@ var _ = Describe("XJoinIndex", func() {
 
 	Context("Pipeline management", func() {
 		It("Should replace the active pipeline with the refreshing IndexPipeline when the refreshing pipeline becomes valid", func() {
-			//setup initial state with an invalid refreshing pipeline
+			//setup initial state with an new refreshing pipeline
 			indexReconciler := IndexTestReconciler{
 				Namespace:          namespace,
 				Name:               "test-index",
@@ -101,9 +102,9 @@ var _ = Describe("XJoinIndex", func() {
 			createdIndex := indexReconciler.ReconcileNew()
 
 			Expect(createdIndex.Status.RefreshingVersion).ToNot(Equal(""))
-			Expect(createdIndex.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(createdIndex.Status.RefreshingVersionState.Result).To(Equal(common.New))
 			Expect(createdIndex.Status.ActiveVersion).To(Equal(""))
-			Expect(createdIndex.Status.ActiveVersionIsValid).To(Equal(false))
+			Expect(createdIndex.Status.ActiveVersionState.Result).To(Equal(""))
 
 			//create a valid datasource
 			dataSourceName := "testdatasource"
@@ -137,13 +138,13 @@ var _ = Describe("XJoinIndex", func() {
 			//validate the index's status is updated
 			updatedIndex := indexReconciler.ReconcileUpdated()
 			Expect(updatedIndex.Status.RefreshingVersion).To(Equal(""))
-			Expect(updatedIndex.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(updatedIndex.Status.RefreshingVersionState.Result).To(Equal(""))
 			Expect(updatedIndex.Status.ActiveVersion).To(Equal(createdIndex.Status.RefreshingVersion))
-			Expect(updatedIndex.Status.ActiveVersionIsValid).To(Equal(true))
+			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(common.Valid))
 		})
 
 		It("Should create a refreshing pipeline when the active IndexPipeline becomes invalid", func() {
-			//setup initial state with an invalid refreshing pipeline
+			//setup initial state with a new refreshing pipeline
 			indexReconciler := IndexTestReconciler{
 				Namespace:          namespace,
 				Name:               "test-index",
@@ -153,9 +154,9 @@ var _ = Describe("XJoinIndex", func() {
 			createdIndex := indexReconciler.ReconcileNew()
 
 			Expect(createdIndex.Status.RefreshingVersion).ToNot(Equal(""))
-			Expect(createdIndex.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(createdIndex.Status.RefreshingVersionState.Result).To(Equal(common.New))
 			Expect(createdIndex.Status.ActiveVersion).To(Equal(""))
-			Expect(createdIndex.Status.ActiveVersionIsValid).To(Equal(false))
+			Expect(createdIndex.Status.ActiveVersionState.Result).To(Equal(""))
 
 			//create a valid datasource
 			dataSourceName := "testdatasource"
@@ -189,9 +190,9 @@ var _ = Describe("XJoinIndex", func() {
 			//reconcile the index to the valid state
 			updatedIndex := indexReconciler.ReconcileUpdated()
 			Expect(updatedIndex.Status.RefreshingVersion).To(Equal(""))
-			Expect(updatedIndex.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(updatedIndex.Status.RefreshingVersionState.Result).To(Equal(""))
 			Expect(updatedIndex.Status.ActiveVersion).To(Equal(createdIndex.Status.RefreshingVersion))
-			Expect(updatedIndex.Status.ActiveVersionIsValid).To(Equal(true))
+			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(common.Valid))
 
 			//invalidate the active datasource pipeline
 			datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
@@ -212,9 +213,9 @@ var _ = Describe("XJoinIndex", func() {
 			updatedIndex = indexReconciler.ReconcileUpdated()
 
 			Expect(updatedIndex.Status.RefreshingVersion).ToNot(Equal(""))
-			Expect(updatedIndex.Status.RefreshingVersionIsValid).To(Equal(false))
+			Expect(updatedIndex.Status.RefreshingVersionState.Result).To(Equal(common.New))
 			Expect(updatedIndex.Status.ActiveVersion).To(Equal(createdIndex.Status.RefreshingVersion))
-			Expect(updatedIndex.Status.ActiveVersionIsValid).To(Equal(false))
+			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(common.Invalid))
 
 			refreshingIndexPipeline := &v1alpha1.XJoinIndexPipeline{}
 			indexLookupKey := types.NamespacedName{
@@ -229,5 +230,73 @@ var _ = Describe("XJoinIndex", func() {
 			Expect(refreshingIndexPipeline.Name).To(Equal(
 				updatedIndex.GetName() + "." + updatedIndex.Status.RefreshingVersion))
 		})
+	})
+
+	It("Should create create a new refreshing pipeline when refreshing fails", func() {
+		//setup initial state with a new refreshing pipeline
+		indexReconciler := IndexTestReconciler{
+			Namespace:          namespace,
+			Name:               "test-index",
+			AvroSchemaFileName: "xjoinindex-with-referenced-field",
+			K8sClient:          k8sClient,
+		}
+		createdIndex := indexReconciler.ReconcileNew()
+
+		Expect(createdIndex.Status.RefreshingVersion).ToNot(Equal(""))
+		Expect(createdIndex.Status.RefreshingVersionState.Result).To(Equal(common.New))
+		Expect(createdIndex.Status.ActiveVersion).To(Equal(""))
+		Expect(createdIndex.Status.ActiveVersionState.Result).To(Equal(""))
+
+		//create a new datasource
+		dataSourceName := "testdatasource"
+		datasourceReconciler := DatasourceTestReconciler{
+			Namespace: namespace,
+			Name:      dataSourceName,
+			K8sClient: k8sClient,
+		}
+		createdDataSource := datasourceReconciler.ReconcileNew()
+
+		//invalidate the refreshing datasource pipeline
+		datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
+			Namespace: namespace,
+			Name:      createdDataSource.GetName(),
+			Version:   createdDataSource.Status.RefreshingVersion,
+			K8sClient: k8sClient,
+		}
+		datasourcePipelineReconciler.ReconcileInvalid()
+
+		//reconcile the refreshing index pipeline
+		indexPipelineReconciler := XJoinIndexPipelineTestReconciler{
+			Namespace:                namespace,
+			Name:                     createdIndex.Name,
+			Version:                  createdIndex.Status.RefreshingVersion,
+			AvroSchemaFileName:       "xjoinindex-with-referenced-field",
+			K8sClient:                k8sClient,
+			ApiCurioResponseFilename: "index",
+			DataSources: []DataSource{{
+				Name:                     dataSourceName,
+				Version:                  createdDataSource.Status.RefreshingVersion,
+				ApiCurioResponseFilename: "datasource-latest-version",
+			}},
+		}
+		indexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+			GraphQLSchemaExistingState: "DISABLED",
+			GraphQLSchemaNewState:      "DISABLED",
+		})
+
+		//reconcile the index to first trigger the refresh failed state
+		updatedIndex := indexReconciler.ReconcileUpdated()
+		Expect(updatedIndex.Status.RefreshingVersion).To(BeEmpty())
+		Expect(updatedIndex.Status.RefreshingVersionState.Result).To(BeEmpty())
+
+		//reconcile the indexpipeline to trigger deletion
+		indexPipelineReconciler.ReconcileDelete()
+
+		//reconcile the index again to trigger the new refreshing state
+		updatedIndex = indexReconciler.ReconcileUpdated()
+		Expect(updatedIndex.Status.RefreshingVersion).ToNot(BeEmpty())
+		Expect(createdIndex.Status.RefreshingVersion).ToNot(BeEmpty())
+		Expect(updatedIndex.Status.RefreshingVersion).ToNot(Equal(createdIndex.Status.RefreshingVersion))
+		Expect(updatedIndex.Status.RefreshingVersionState.Result).To(Equal(common.New))
 	})
 })

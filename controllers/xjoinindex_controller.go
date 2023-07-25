@@ -153,7 +153,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
 
-		instance.Status.ActiveVersionIsValid = activeIndexPipeline.Status.ValidationResponse.Result == Valid
+		instance.Status.ActiveVersionState = activeIndexPipeline.Status.ValidationResponse
 	}
 
 	if instance.Status.RefreshingVersion != "" {
@@ -167,7 +167,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
 
-		instance.Status.RefreshingVersionIsValid = refreshingIndexPipeline.Status.ValidationResponse.Result == Valid
+		instance.Status.RefreshingVersionState = refreshingIndexPipeline.Status.ValidationResponse
 	}
 
 	indexReconcileMethods := NewReconcileMethods(i, common.IndexGVK)

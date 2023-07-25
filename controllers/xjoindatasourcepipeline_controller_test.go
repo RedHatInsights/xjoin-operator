@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/redhatinsights/xjoin-operator/controllers/index"
+	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"os"
 
 	"github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
@@ -236,7 +236,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			reconciler.ReconcileNew()
 			reconciler.ReconcileValid()
 			updatedDatasourcePipeline := reconciler.ReconcileUpdated()
-			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Result).To(Equal(index.Valid))
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Result).To(Equal(common.Valid))
 		})
 
 		It("Sets the status to invalid when the KafkaTopic has deviated", func() {
@@ -268,7 +268,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			checkError(err)
 
 			updatedDatasourcePipeline := reconciler.ReconcileUpdated()
-			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Result).To(Equal(common.Invalid))
 			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
 			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Message).To(ContainSubstring("topic spec has changed"))
 		})
@@ -303,7 +303,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 
 			//reconcile the IndexPipeline and validate the status is updated correctly
 			updatedDatasourcePipeline := reconciler.ReconcileUpdated()
-			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Result).To(Equal(index.Invalid))
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Result).To(Equal(common.Invalid))
 			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
 			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Message).To(ContainSubstring("debezium connector spec has changed"))
 		})

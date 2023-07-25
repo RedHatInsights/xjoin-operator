@@ -9,7 +9,6 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	. "github.com/redhatinsights/xjoin-operator/controllers/datasource"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
-	"github.com/redhatinsights/xjoin-operator/controllers/index"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -145,7 +144,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
 
-		instance.Status.ActiveVersionIsValid = activeDataSourcePipeline.Status.ValidationResponse.Result == index.Valid
+		instance.Status.ActiveVersionState = activeDataSourcePipeline.Status.ValidationResponse
 	}
 
 	if instance.Status.RefreshingVersion != "" {
@@ -159,7 +158,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
 
-		instance.Status.RefreshingVersionIsValid = refreshingDataSourcePipeline.Status.ValidationResponse.Result == index.Valid
+		instance.Status.RefreshingVersionState = refreshingDataSourcePipeline.Status.ValidationResponse
 	}
 
 	dataSourceReconciler := NewReconcileMethods(i, common.DataSourceGVK)

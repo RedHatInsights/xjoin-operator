@@ -213,19 +213,97 @@ spec:
             properties:
               activeVersion:
                 type: string
-              activeVersionIsValid:
-                type: boolean
+              activeVersionState:
+                properties:
+                  details:
+                    properties:
+                      idsMissingFromElasticsearch:
+                        items:
+                          type: string
+                        type: array
+                      idsMissingFromElasticsearchCount:
+                        type: integer
+                      idsOnlyInElasticsearch:
+                        items:
+                          type: string
+                        type: array
+                      idsOnlyInElasticsearchCount:
+                        type: integer
+                      idsWithMismatchContent:
+                        items:
+                          type: string
+                        type: array
+                      mismatchContentDetails:
+                        items:
+                          properties:
+                            databaseContent:
+                              type: string
+                            elasticsearchContent:
+                              type: string
+                            id:
+                              type: string
+                          type: object
+                        type: array
+                      totalMismatch:
+                        type: integer
+                    type: object
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                  result:
+                    type: string
+                type: object
               refreshingVersion:
                 type: string
-              refreshingVersionIsValid:
-                type: boolean
+              refreshingVersionState:
+                properties:
+                  details:
+                    properties:
+                      idsMissingFromElasticsearch:
+                        items:
+                          type: string
+                        type: array
+                      idsMissingFromElasticsearchCount:
+                        type: integer
+                      idsOnlyInElasticsearch:
+                        items:
+                          type: string
+                        type: array
+                      idsOnlyInElasticsearchCount:
+                        type: integer
+                      idsWithMismatchContent:
+                        items:
+                          type: string
+                        type: array
+                      mismatchContentDetails:
+                        items:
+                          properties:
+                            databaseContent:
+                              type: string
+                            elasticsearchContent:
+                              type: string
+                            id:
+                              type: string
+                          type: object
+                        type: array
+                      totalMismatch:
+                        type: integer
+                    type: object
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                  result:
+                    type: string
+                type: object
               specHash:
                 type: string
             required:
             - activeVersion
-            - activeVersionIsValid
+            - activeVersionState
             - refreshingVersion
-            - refreshingVersionIsValid
+            - refreshingVersionState
             - specHash
             type: object
         type: object

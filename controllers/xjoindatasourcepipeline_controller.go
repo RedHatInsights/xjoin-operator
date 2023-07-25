@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
-	"github.com/redhatinsights/xjoin-operator/controllers/index"
 	"strings"
 	"time"
 
@@ -241,7 +240,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 	}
 
 	if len(problems) > 0 {
-		i.GetInstance().Status.ValidationResponse.Result = index.Invalid
+		i.GetInstance().Status.ValidationResponse.Result = common.Invalid
 		i.GetInstance().Status.ValidationResponse.Reason = "Deviation found"
 		var messages []string
 		for _, problem := range problems {
