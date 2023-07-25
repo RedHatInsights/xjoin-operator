@@ -339,7 +339,7 @@ var _ = Describe("XJoinIndexValidator", func() {
 			//validate datasourcepipeline is valid
 			err = k8sClient.Get(context.Background(), datasourcePipelineLookup, datasourcePipeline)
 			checkError(err)
-			Expect(datasourcePipeline.Status.ValidationResponse.Result).To(Equal(index.Valid))
+			Expect(datasourcePipeline.Status.ValidationResponse.Result).To(Equal(common.Valid))
 		})
 	})
 

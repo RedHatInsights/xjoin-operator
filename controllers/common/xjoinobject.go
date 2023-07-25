@@ -10,12 +10,12 @@ type XJoinObject interface {
 	runtime.Object
 	GetActiveVersion() string
 	SetActiveVersion(version string)
-	GetActiveVersionIsValid() bool
-	SetActiveVersionIsValid(valid bool)
+	GetActiveVersionState() string
+	SetActiveVersionState(state string)
 	GetRefreshingVersion() string
 	SetRefreshingVersion(version string)
-	GetRefreshingVersionIsValid() bool
-	SetRefreshingVersionIsValid(valid bool)
+	GetRefreshingVersionState() string
+	SetRefreshingVersionState(state string)
 	GetSpecHash() string
 	GetSpec() interface{}
 }

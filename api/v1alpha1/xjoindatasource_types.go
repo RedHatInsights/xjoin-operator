@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,11 +26,11 @@ type XJoinDataSourceSpec struct {
 }
 
 type XJoinDataSourceStatus struct {
-	ActiveVersion            string `json:"activeVersion"`
-	ActiveVersionIsValid     bool   `json:"activeVersionIsValid"`
-	RefreshingVersion        string `json:"refreshingVersion"`
-	RefreshingVersionIsValid bool   `json:"refreshingVersionIsValid"`
-	SpecHash                 string `json:"specHash"`
+	ActiveVersion          string                        `json:"activeVersion"`
+	ActiveVersionState     validation.ValidationResponse `json:"activeVersionState"`
+	RefreshingVersion      string                        `json:"refreshingVersion"`
+	RefreshingVersionState validation.ValidationResponse `json:"refreshingVersionState"`
+	SpecHash               string                        `json:"specHash"`
 }
 
 // +kubebuilder:object:root=true
@@ -60,12 +61,12 @@ func (in *XJoinDataSource) SetActiveVersion(version string) {
 	in.Status.ActiveVersion = version
 }
 
-func (in *XJoinDataSource) GetActiveVersionIsValid() bool {
-	return in.Status.ActiveVersionIsValid
+func (in *XJoinDataSource) GetActiveVersionState() string {
+	return in.Status.ActiveVersionState.Result
 }
 
-func (in *XJoinDataSource) SetActiveVersionIsValid(valid bool) {
-	in.Status.ActiveVersionIsValid = valid
+func (in *XJoinDataSource) SetActiveVersionState(state string) {
+	in.Status.ActiveVersionState.Result = state
 }
 
 func (in *XJoinDataSource) GetRefreshingVersion() string {
@@ -76,12 +77,12 @@ func (in *XJoinDataSource) SetRefreshingVersion(version string) {
 	in.Status.RefreshingVersion = version
 }
 
-func (in *XJoinDataSource) GetRefreshingVersionIsValid() bool {
-	return in.Status.RefreshingVersionIsValid
+func (in *XJoinDataSource) GetRefreshingVersionState() string {
+	return in.Status.RefreshingVersionState.Result
 }
 
-func (in *XJoinDataSource) SetRefreshingVersionIsValid(valid bool) {
-	in.Status.RefreshingVersionIsValid = valid
+func (in *XJoinDataSource) SetRefreshingVersionState(state string) {
+	in.Status.RefreshingVersionState.Result = state
 }
 
 // +kubebuilder:object:root=true

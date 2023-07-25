@@ -3,6 +3,7 @@ package controllers_test
 import (
 	"context"
 	"github.com/redhatinsights/xjoin-operator/controllers"
+	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"os"
 	"time"
 
@@ -26,6 +27,12 @@ type DatasourceTestReconciler struct {
 	createdDatasource  v1alpha1.XJoinDataSource
 }
 
+func (d *DatasourceTestReconciler) ReconcileUpdated() v1alpha1.XJoinDataSource {
+	d.registerUpdatedMocks()
+	d.reconcile()
+	return d.GetDataSource()
+}
+
 func (d *DatasourceTestReconciler) ReconcileNew() v1alpha1.XJoinDataSource {
 	d.registerNewMocks()
 	d.createValidDataSource()
@@ -41,9 +48,9 @@ func (d *DatasourceTestReconciler) ReconcileNew() v1alpha1.XJoinDataSource {
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
 
 	Expect(createdDatasource.Status.ActiveVersion).To(Equal(""))
-	Expect(createdDatasource.Status.ActiveVersionIsValid).To(Equal(false))
+	Expect(createdDatasource.Status.ActiveVersionState.Result).To(Equal(""))
 	Expect(createdDatasource.Status.RefreshingVersion).ToNot(Equal(""))
-	Expect(createdDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
+	Expect(createdDatasource.Status.RefreshingVersionState.Result).To(Equal(common.New))
 	Expect(createdDatasource.Status.SpecHash).ToNot(Equal(""))
 	Expect(createdDatasource.Finalizers).To(HaveLen(1))
 	Expect(createdDatasource.Finalizers).To(ContainElement("finalizer.xjoin.datasource.cloud.redhat.com"))
@@ -79,9 +86,9 @@ func (d *DatasourceTestReconciler) ReconcileValid() v1alpha1.XJoinDataSource {
 		return err == nil
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
 	Expect(updatedDatasource.Status.ActiveVersion).ToNot(Equal(""))
-	Expect(updatedDatasource.Status.ActiveVersionIsValid).To(Equal(true))
+	Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(common.Valid))
 	Expect(updatedDatasource.Status.RefreshingVersion).To(Equal(""))
-	Expect(updatedDatasource.Status.RefreshingVersionIsValid).To(Equal(false))
+	Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(""))
 	Expect(updatedDatasource.Status.SpecHash).ToNot(Equal(""))
 	Expect(updatedDatasource.Finalizers).To(HaveLen(1))
 	Expect(updatedDatasource.Finalizers).To(ContainElement("finalizer.xjoin.datasource.cloud.redhat.com"))
@@ -175,6 +182,10 @@ func (d *DatasourceTestReconciler) reconcile() reconcile.Result {
 	result, err := xjoinDataSourceReconciler.Reconcile(context.Background(), ctrl.Request{NamespacedName: datasourceLookupKey})
 	checkError(err)
 	return result
+}
+
+func (d *DatasourceTestReconciler) registerUpdatedMocks() {
+	d.registerNewMocks()
 }
 
 func (d *DatasourceTestReconciler) registerNewMocks() {

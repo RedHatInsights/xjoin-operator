@@ -31,9 +31,6 @@ const ValidatorPodRunning = "running"
 const ValidatorPodSuccess = "success"
 const ValidatorPodFailed = "failed"
 
-const Valid = "valid"
-const Invalid = "invalid"
-
 type XJoinIndexValidatorIteration struct {
 	common.Iteration
 	Parameters             parameters.IndexParameters

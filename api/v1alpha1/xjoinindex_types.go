@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -23,11 +24,11 @@ type XJoinIndexSpec struct {
 }
 
 type XJoinIndexStatus struct {
-	ActiveVersion            string `json:"activeVersion"`
-	ActiveVersionIsValid     bool   `json:"activeVersionIsValid"`
-	RefreshingVersion        string `json:"refreshingVersion"`
-	RefreshingVersionIsValid bool   `json:"refreshingVersionIsValid"`
-	SpecHash                 string `json:"specHash"`
+	ActiveVersion          string                        `json:"activeVersion"`
+	ActiveVersionState     validation.ValidationResponse `json:"activeVersionState"`
+	RefreshingVersion      string                        `json:"refreshingVersion"`
+	RefreshingVersionState validation.ValidationResponse `json:"refreshingVersionState"`
+	SpecHash               string                        `json:"specHash"`
 }
 
 // +kubebuilder:object:root=true
@@ -66,12 +67,12 @@ func (in *XJoinIndex) SetActiveVersion(version string) {
 	in.Status.ActiveVersion = version
 }
 
-func (in *XJoinIndex) GetActiveVersionIsValid() bool {
-	return in.Status.ActiveVersionIsValid
+func (in *XJoinIndex) GetActiveVersionState() string {
+	return in.Status.ActiveVersionState.Result
 }
 
-func (in *XJoinIndex) SetActiveVersionIsValid(valid bool) {
-	in.Status.ActiveVersionIsValid = valid
+func (in *XJoinIndex) SetActiveVersionState(state string) {
+	in.Status.ActiveVersionState.Result = state
 }
 
 func (in *XJoinIndex) GetRefreshingVersion() string {
@@ -82,12 +83,12 @@ func (in *XJoinIndex) SetRefreshingVersion(version string) {
 	in.Status.RefreshingVersion = version
 }
 
-func (in *XJoinIndex) GetRefreshingVersionIsValid() bool {
-	return in.Status.RefreshingVersionIsValid
+func (in *XJoinIndex) GetRefreshingVersionState() string {
+	return in.Status.RefreshingVersionState.Result
 }
 
-func (in *XJoinIndex) SetRefreshingVersionIsValid(valid bool) {
-	in.Status.RefreshingVersionIsValid = valid
+func (in *XJoinIndex) SetRefreshingVersionState(state string) {
+	in.Status.RefreshingVersionState.Result = state
 }
 
 // +kubebuilder:object:root=true

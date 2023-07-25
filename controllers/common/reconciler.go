@@ -17,9 +17,14 @@ type ReconcilerMethods interface {
 	StartRefreshing(string) error
 	Refreshing() error
 	RefreshComplete() error
+	RefreshFailed() error
 	Scrub() []error
 	SetLogger(logger.Log)
 }
+
+const Valid = "valid"
+const Invalid = "invalid"
+const New = "new"
 
 type Reconciler struct {
 	methods  ReconcilerMethods
@@ -62,32 +67,36 @@ const (
 	INITIAL_SYNC     string = "INITIAL_SYNC"
 	VALID            string = "VALID"
 	REFRESH_COMPLETE string = "REFRESH_COMPLETE"
+	REFRESH_FAILED   string = "REFRESH_FAILED"
 )
 
 func (r *Reconciler) getState(specHash string) string {
 	if r.instance.GetDeletionTimestamp() != nil {
 		return REMOVED
 	} else if (r.instance.GetActiveVersion() != "" &&
-		!r.instance.GetActiveVersionIsValid() &&
+		r.instance.GetActiveVersionState() != Valid &&
 		r.instance.GetRefreshingVersion() == "") ||
 		(r.instance.GetSpecHash() != "" && r.instance.GetSpecHash() != specHash) {
 		return START_REFRESH
 	} else if r.instance.GetActiveVersion() == "" && r.instance.GetRefreshingVersion() == "" {
 		return NEW
 	} else if r.instance.GetActiveVersion() == "" &&
-		!r.instance.GetRefreshingVersionIsValid() &&
+		r.instance.GetRefreshingVersionState() == New &&
 		r.instance.GetRefreshingVersion() != "" {
 		return INITIAL_SYNC
 	} else if r.instance.GetRefreshingVersion() != "" &&
-		r.instance.GetRefreshingVersionIsValid() {
+		r.instance.GetRefreshingVersionState() == Valid {
 		return REFRESH_COMPLETE
 	} else if r.instance.GetActiveVersion() != "" &&
-		!r.instance.GetActiveVersionIsValid() &&
+		r.instance.GetActiveVersionState() != Valid &&
 		r.instance.GetRefreshingVersion() != "" &&
-		!r.instance.GetRefreshingVersionIsValid() {
+		r.instance.GetRefreshingVersionState() != Valid {
 		return REFRESHING
+	} else if r.instance.GetRefreshingVersion() != "" &&
+		r.instance.GetRefreshingVersionState() == Invalid {
+		return REFRESH_FAILED
 	} else if r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionIsValid() {
+		r.instance.GetActiveVersionState() == Valid {
 		return VALID
 	} else {
 		return ""
@@ -127,6 +136,7 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 		// or force_refresh is true
 		refreshingVersion := r.Version()
 		r.instance.SetRefreshingVersion(refreshingVersion)
+		r.instance.SetRefreshingVersionState(New)
 
 		err = r.methods.StartRefreshing(refreshingVersion)
 		if err != nil {
@@ -135,7 +145,7 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 	case NEW:
 		refreshingVersion := r.Version()
 		r.instance.SetRefreshingVersion(refreshingVersion)
-		r.instance.SetRefreshingVersionIsValid(false)
+		r.instance.SetRefreshingVersionState(New)
 
 		err = r.methods.New(refreshingVersion)
 		if err != nil {
@@ -164,9 +174,17 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 		}
 
 		r.instance.SetActiveVersion(r.instance.GetRefreshingVersion())
-		r.instance.SetActiveVersionIsValid(true)
+		r.instance.SetActiveVersionState(Valid)
 		r.instance.SetRefreshingVersion("")
-		r.instance.SetRefreshingVersionIsValid(false)
+		r.instance.SetRefreshingVersionState("")
+	case REFRESH_FAILED:
+		err = r.methods.RefreshFailed()
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+
+		r.instance.SetRefreshingVersion("")
+		r.instance.SetRefreshingVersionState("")
 	}
 
 	return nil

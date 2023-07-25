@@ -66,6 +66,15 @@ func (d *ReconcileMethods) Valid() (err error) {
 	return
 }
 
+func (d *ReconcileMethods) RefreshFailed() (err error) {
+	d.iteration.Events.Normal("RefreshFailed", "Refreshing pipeline failed, will try again.")
+	err = d.iteration.DeleteIndexPipeline(d.iteration.GetInstance().Name, d.iteration.GetInstance().Status.RefreshingVersion)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+	return
+}
+
 func (d *ReconcileMethods) StartRefreshing(version string) (err error) {
 	d.iteration.Events.Normal("StartRefreshing", "Starting the refresh process by creating a new IndexPipeline")
 	err = d.iteration.CreateIndexPipeline(d.iteration.GetInstance().Name, version)

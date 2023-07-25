@@ -420,15 +420,15 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
 
-		if dataSourcePipeline.Status.ValidationResponse.Result == Invalid {
+		if dataSourcePipeline.Status.ValidationResponse.Result == common.Invalid {
 			allDataSourcesValid = false
 		}
 	}
 
 	if allDataSourcesValid {
-		instance.Status.ValidationResponse.Result = Valid
+		instance.Status.ValidationResponse.Result = common.Valid
 	} else {
-		instance.Status.ValidationResponse.Result = Invalid
+		instance.Status.ValidationResponse.Result = common.Invalid
 	}
 
 	if !reflect.DeepEqual(instance.Status.DataSources, dataSources) {
@@ -442,7 +442,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	}
 
 	if len(problems) > 0 {
-		i.GetInstance().Status.ValidationResponse.Result = Invalid
+		i.GetInstance().Status.ValidationResponse.Result = common.Invalid
 		i.GetInstance().Status.ValidationResponse.Reason = "Deviation found"
 		var messages []string
 		for _, problem := range problems {
