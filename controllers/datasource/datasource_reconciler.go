@@ -113,9 +113,16 @@ func (d *ReconcileMethods) ScrubPipelines(validVersions []string) (err error) {
 		return errors.Wrap(err, 0)
 	}
 
+	var existingPipelineVersions []string
 	for _, pipeline := range existingDatasourcePipelines.Items {
-		if !utils.ContainsString(validVersions, pipeline.Spec.Version) {
-			err = d.iteration.DeleteDataSourcePipeline(pipeline.Spec.Name, pipeline.Spec.Version)
+		existingPipelineVersions = append(existingPipelineVersions, pipeline.Spec.Version)
+	}
+
+	d.log.Debug("Installed pipeline versions during scrub", "versions", existingPipelineVersions)
+
+	for _, pipelineVersion := range existingPipelineVersions {
+		if !utils.ContainsString(validVersions, pipelineVersion) {
+			err = d.iteration.DeleteDataSourcePipeline(d.iteration.GetInstance().GetName(), pipelineVersion)
 			if err != nil {
 				return errors.Wrap(err, 0)
 			}

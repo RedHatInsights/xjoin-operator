@@ -18,6 +18,7 @@ type XJoinIndexIteration struct {
 }
 
 func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (err error) {
+	i.Events.Normal("Creating IndexPipeline", "name", name, "version", version)
 	indexPipeline := unstructured.Unstructured{}
 
 	spec := map[string]interface{}{
@@ -52,6 +53,7 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 }
 
 func (i *XJoinIndexIteration) DeleteIndexPipeline(name string, version string) (err error) {
+	i.Events.Normal("Deleting IndexPipeline", "name", name, "version", version)
 	err = i.DeleteResource(name+"."+version, common.IndexPipelineGVK)
 	if err != nil {
 		return errors.Wrap(err, 0)

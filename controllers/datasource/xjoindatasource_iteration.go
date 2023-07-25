@@ -18,6 +18,7 @@ type XJoinDataSourceIteration struct {
 }
 
 func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version string) (err error) {
+	i.Events.Normal("Creating DatasourcePipeline", "name", name, "version", version)
 	dataSourcePipeline := unstructured.Unstructured{}
 	dataSourcePipeline.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
@@ -50,6 +51,7 @@ func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version
 }
 
 func (i *XJoinDataSourceIteration) DeleteDataSourcePipeline(name string, version string) (err error) {
+	i.Events.Normal("Deleting DatasourcePipeline", "name", name, "version", version)
 	err = i.DeleteResource(name+"."+version, common.DataSourcePipelineGVK)
 	if err != nil {
 		return errors.Wrap(err, 0)
