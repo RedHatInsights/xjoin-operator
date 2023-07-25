@@ -128,6 +128,11 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 		if err != nil {
 			i.Events.Warning("ReconcileValidationPodFailed",
 				"Unable to parse response for validation pod %s", i.ValidationPodName())
+			deleteErr := i.Client.Delete(i.Context, pod) //
+			if deleteErr != nil {
+				i.Log.Error(deleteErr, "Unable to delete pod with invalid response",
+					"name", pod.Name, "namespace", pod.Namespace)
+			}
 			return "", errors.Wrap(err, 0)
 		}
 
