@@ -367,6 +367,12 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 				}, {
 					Name:  "FULL_AVRO_SCHEMA",
 					Value: fullAvroSchema,
+				}, {
+					Name:  "INTERVAL", //TODO: temporarily use static value for stage
+					Value: "60",
+				}, {
+					Name:  "NUM_ATTEMPTS", //TODO: temporarily use static value for stage
+					Value: "30",
 				}}...),
 				ImagePullPolicy: "Always",
 				Resources: v1.ResourceRequirements{
