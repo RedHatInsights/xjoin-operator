@@ -2,11 +2,15 @@ package datasource
 
 import (
 	"github.com/go-errors/errors"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
+	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type ReconcileMethods struct {
@@ -99,6 +103,28 @@ func (d *ReconcileMethods) RefreshFailed() (err error) {
 	return
 }
 
+func (d *ReconcileMethods) ScrubPipelines(validVersions []string) (err error) {
+	existingDatasourcePipelines := &v1alpha1.XJoinDataSourcePipelineList{}
+	labels := client.MatchingLabels{}
+	labels[common.COMPONENT_NAME_LABEL] = d.iteration.GetInstance().GetName()
+	err = d.iteration.Client.List(
+		d.iteration.Context, existingDatasourcePipelines, client.InNamespace(d.iteration.GetInstance().Namespace))
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	for _, pipeline := range existingDatasourcePipelines.Items {
+		if !utils.ContainsString(validVersions, pipeline.Spec.Version) {
+			err = d.iteration.DeleteDataSourcePipeline(pipeline.Spec.Name, pipeline.Spec.Version)
+			if err != nil {
+				return errors.Wrap(err, 0)
+			}
+		}
+	}
+
+	return
+}
+
 func (d *ReconcileMethods) Scrub() (errs []error) {
 	var validVersions []string
 	if d.iteration.GetInstance().Status.ActiveVersion != "" {
@@ -106,6 +132,11 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 	}
 	if d.iteration.GetInstance().Status.RefreshingVersion != "" {
 		validVersions = append(validVersions, d.iteration.GetInstance().Status.RefreshingVersion)
+	}
+
+	err := d.ScrubPipelines(validVersions)
+	if err != nil {
+		return append(errs, errors.Wrap(err, 0))
 	}
 
 	kafkaClient := kafka.GenericKafka{

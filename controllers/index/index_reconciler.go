@@ -2,7 +2,9 @@ package index
 
 import (
 	"github.com/go-errors/errors"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
+	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
@@ -11,6 +13,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type ReconcileMethods struct {
@@ -125,6 +128,28 @@ func (d *ReconcileMethods) RefreshComplete() (err error) {
 	return
 }
 
+func (d *ReconcileMethods) ScrubPipelines(validVersions []string) (err error) {
+	existingIndexPipelines := &v1alpha1.XJoinIndexPipelineList{}
+	labels := client.MatchingLabels{}
+	labels[common.COMPONENT_NAME_LABEL] = d.iteration.GetInstance().GetName()
+	err = d.iteration.Client.List(
+		d.iteration.Context, existingIndexPipelines, client.InNamespace(d.iteration.GetInstance().Namespace))
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	for _, pipeline := range existingIndexPipelines.Items {
+		if !utils.ContainsString(validVersions, pipeline.Spec.Version) {
+			err = d.iteration.DeleteIndexPipeline(pipeline.Spec.Name, pipeline.Spec.Version)
+			if err != nil {
+				return errors.Wrap(err, 0)
+			}
+		}
+	}
+
+	return
+}
+
 func (d *ReconcileMethods) Scrub() (errs []error) {
 	var validVersions []string
 	if d.iteration.GetInstance().Status.ActiveVersion != "" {
@@ -132,6 +157,11 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 	}
 	if d.iteration.GetInstance().Status.RefreshingVersion != "" {
 		validVersions = append(validVersions, d.iteration.GetInstance().Status.RefreshingVersion)
+	}
+
+	err := d.ScrubPipelines(validVersions)
+	if err != nil {
+		return append(errs, errors.Wrap(err, 0))
 	}
 
 	kafkaClient := kafka.GenericKafka{
