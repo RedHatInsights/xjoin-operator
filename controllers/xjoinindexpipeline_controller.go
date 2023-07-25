@@ -399,7 +399,8 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 
 	//check each datasource is valid
 	dataSources := make(map[string]string)
-	allDataSourcesValid := true
+	invalidDatasourceFound := false
+	newDatasourceFound := false
 	for _, ref := range indexAvroSchema.References {
 		//get each datasource name and resource version
 		datasourceName := strings.Split(ref.Name, ".Value")[0]
@@ -421,14 +422,18 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		}
 
 		if dataSourcePipeline.Status.ValidationResponse.Result == common.Invalid {
-			allDataSourcesValid = false
+			invalidDatasourceFound = true
+		} else if dataSourcePipeline.Status.ValidationResponse.Result == common.New || dataSourcePipeline.Status.ValidationResponse.Result == "" {
+			newDatasourceFound = true
 		}
 	}
 
-	if allDataSourcesValid {
-		instance.Status.ValidationResponse.Result = common.Valid
-	} else {
+	if invalidDatasourceFound {
 		instance.Status.ValidationResponse.Result = common.Invalid
+	} else if newDatasourceFound {
+		instance.Status.ValidationResponse.Result = common.New
+	} else {
+		instance.Status.ValidationResponse.Result = common.Valid
 	}
 
 	if !reflect.DeepEqual(instance.Status.DataSources, dataSources) {
