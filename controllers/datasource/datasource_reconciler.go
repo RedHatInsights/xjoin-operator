@@ -153,6 +153,7 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 		KafkaCluster:     d.iteration.Parameters.KafkaCluster.String(),
 		ConnectNamespace: d.iteration.Parameters.ConnectClusterNamespace.String(),
 		ConnectCluster:   d.iteration.Parameters.ConnectCluster.String(),
+		Log:              d.log,
 	}
 
 	registry := schemaregistry.NewSchemaRegistryConfluentClient(

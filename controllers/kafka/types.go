@@ -32,6 +32,7 @@ type GenericKafka struct {
 	ConnectNamespace string
 	ConnectCluster   string
 	Test             bool
+	Log              logger.Log
 }
 
 type Topics interface {

@@ -65,6 +65,7 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 			ConnectCluster:   r.parameters.ConnectCluster.String(),
 			KafkaNamespace:   r.parameters.KafkaClusterNamespace.String(),
 			KafkaCluster:     r.parameters.KafkaCluster.String(),
+			Log:              r.log,
 		},
 	}
 

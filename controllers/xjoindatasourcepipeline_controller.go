@@ -146,6 +146,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		KafkaCluster:     p.KafkaCluster.String(),
 		Client:           i.Client,
 		Test:             r.Test,
+		Log:              reqLogger,
 	}
 
 	registry := schemaregistry.NewSchemaRegistryConfluentClient(

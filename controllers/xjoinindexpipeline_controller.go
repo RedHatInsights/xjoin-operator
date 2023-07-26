@@ -202,6 +202,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		KafkaCluster:     p.KafkaCluster.String(),
 		Client:           i.Client,
 		Test:             r.Test,
+		Log:              reqLogger,
 	}
 
 	kafkaTopics := kafka.StrimziTopics{

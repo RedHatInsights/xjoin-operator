@@ -242,8 +242,7 @@ func (kafka *GenericKafka) ListConnectors() (*unstructured.UnstructuredList, err
 	connectors := &unstructured.UnstructuredList{}
 	connectors.SetGroupVersionKind(connectorsGVK)
 
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-	err := kafka.Client.List(ctx, connectors, client.InNamespace(kafka.ConnectNamespace))
+	kafka.Log.Debug("Listing connectors", "namespace", kafka.ConnectNamespace)
+	err := kafka.Client.List(kafka.Context, connectors, client.InNamespace(kafka.ConnectNamespace))
 	return connectors, err
 }

@@ -203,6 +203,7 @@ func Before() (*Iteration, error) {
 			ConnectCluster:   i.Parameters.ConnectCluster.String(),
 			KafkaNamespace:   i.Parameters.KafkaClusterNamespace.String(),
 			KafkaCluster:     i.Parameters.KafkaCluster.String(),
+			Log:              log,
 		},
 	}
 
