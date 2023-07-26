@@ -6,6 +6,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
+	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
@@ -17,6 +18,7 @@ type ReconcileMethods struct {
 	iteration XJoinDataSourceIteration
 	gvk       schema.GroupVersionKind
 	log       logger.Log
+	isTest    bool
 }
 
 func NewReconcileMethods(iteration XJoinDataSourceIteration, gvk schema.GroupVersionKind) *ReconcileMethods {
@@ -24,6 +26,10 @@ func NewReconcileMethods(iteration XJoinDataSourceIteration, gvk schema.GroupVer
 		iteration: iteration,
 		gvk:       gvk,
 	}
+}
+
+func (d *ReconcileMethods) SetIsTest(isTest bool) {
+	d.isTest = isTest
 }
 
 func (d *ReconcileMethods) SetLogger(log logger.Log) {
@@ -193,6 +199,27 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 	custodian.AddComponent(&components.DebeziumConnector{
 		KafkaClient: kafkaClient,
 		Namespace:   d.iteration.GetInstance().Namespace,
+	})
+
+	db := database.NewDatabase(database.DBParams{
+		User:        d.iteration.Parameters.DatabaseUsername.String(),
+		Password:    d.iteration.Parameters.DatabasePassword.String(),
+		Host:        d.iteration.Parameters.DatabaseHostname.String(),
+		Name:        d.iteration.Parameters.DatabaseName.String(),
+		Port:        d.iteration.Parameters.DatabasePort.String(),
+		SSLMode:     d.iteration.Parameters.DatabaseSSLMode.String(),
+		SSLRootCert: d.iteration.Parameters.DatabaseSSLRootCert.String(),
+		IsTest:      d.isTest,
+	})
+	err = db.Connect()
+	if err != nil {
+		return append(errs, errors.Wrap(err, 0))
+	}
+	defer db.Close()
+
+	custodian.AddComponent(&components.ReplicationSlot{
+		Namespace: d.iteration.GetInstance().Namespace,
+		Database:  db,
 	})
 
 	d.log.Debug("Scrubbing DataSource", "ValidVersion", validVersions)

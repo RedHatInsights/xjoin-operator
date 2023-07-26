@@ -162,7 +162,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 	}
 
 	dataSourceReconciler := NewReconcileMethods(i, common.DataSourceGVK)
-	reconciler := common.NewReconciler(dataSourceReconciler, instance, reqLogger, eventHandler)
+	reconciler := common.NewReconciler(dataSourceReconciler, instance, reqLogger, eventHandler, r.Test)
 	err = reconciler.Reconcile(false)
 	if err != nil {
 		return result, errors.Wrap(err, 0)

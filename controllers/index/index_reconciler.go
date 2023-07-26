@@ -20,6 +20,7 @@ type ReconcileMethods struct {
 	iteration XJoinIndexIteration
 	gvk       schema.GroupVersionKind
 	log       logger.Log
+	isTest    bool
 }
 
 func NewReconcileMethods(iteration XJoinIndexIteration, gvk schema.GroupVersionKind) *ReconcileMethods {
@@ -27,6 +28,10 @@ func NewReconcileMethods(iteration XJoinIndexIteration, gvk schema.GroupVersionK
 		iteration: iteration,
 		gvk:       gvk,
 	}
+}
+
+func (d *ReconcileMethods) SetIsTest(isTest bool) {
+	d.isTest = isTest
 }
 
 func (d *ReconcileMethods) SetLogger(log logger.Log) {

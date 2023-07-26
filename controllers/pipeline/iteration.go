@@ -303,7 +303,7 @@ func (i *ReconcileIteration) DeleteStaleDependencies() (errors []error) {
 	}
 
 	//delete stale replication slots
-	slots, err := i.InventoryDb.ListReplicationSlots(resourceNamePrefix)
+	slots, err := i.InventoryDb.ListReplicationSlotsForPrefix(resourceNamePrefix)
 	if err != nil {
 		errors = append(errors, err)
 	} else {

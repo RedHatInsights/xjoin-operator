@@ -20,6 +20,7 @@ type ReconcilerMethods interface {
 	RefreshFailed() error
 	Scrub() []error
 	SetLogger(logger.Log)
+	SetIsTest(bool)
 }
 
 const Valid = "valid"
@@ -31,16 +32,19 @@ type Reconciler struct {
 	instance XJoinObject
 	log      logger.Log
 	events   events.Events
+	isTest   bool
 }
 
-func NewReconciler(methods ReconcilerMethods, instance XJoinObject, log logger.Log, e events.Events) *Reconciler {
+func NewReconciler(methods ReconcilerMethods, instance XJoinObject, log logger.Log, e events.Events, isTest bool) *Reconciler {
 	methods.SetLogger(log)
+	methods.SetIsTest(isTest)
 
 	return &Reconciler{
 		methods:  methods,
 		instance: instance,
 		log:      log,
 		events:   e,
+		isTest:   isTest,
 	}
 }
 

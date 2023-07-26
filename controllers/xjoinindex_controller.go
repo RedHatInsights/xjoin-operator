@@ -171,7 +171,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 	}
 
 	indexReconcileMethods := NewReconcileMethods(i, common.IndexGVK)
-	reconciler := common.NewReconciler(indexReconcileMethods, instance, reqLogger, eventHandler)
+	reconciler := common.NewReconciler(indexReconcileMethods, instance, reqLogger, eventHandler, r.Test)
 	err = reconciler.Reconcile(false)
 	if err != nil {
 		return result, errors.Wrap(err, 0)

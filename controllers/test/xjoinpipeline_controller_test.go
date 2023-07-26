@@ -353,7 +353,7 @@ var _ = Describe("Pipeline operations", func() {
 			err = i.DbClient.CreateReplicationSlot(slot2)
 			Expect(err).ToNot(HaveOccurred())
 
-			slots, err := i.DbClient.ListReplicationSlots(prefix)
+			slots, err := i.DbClient.ListReplicationSlotsForPrefix(prefix)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(slots).To(ContainElements(slot1, slot2))
 
@@ -362,7 +362,7 @@ var _ = Describe("Pipeline operations", func() {
 			_, err = i.ReconcileXJoin()
 			Expect(err).ToNot(HaveOccurred())
 
-			slots, err = i.DbClient.ListReplicationSlots(prefix)
+			slots, err = i.DbClient.ListReplicationSlotsForPrefix(prefix)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(slots).ToNot(ContainElements(slot1, slot2))
@@ -853,7 +853,7 @@ var _ = Describe("Pipeline operations", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exists).To(Equal(false))
 
-			slots, err := i.DbClient.ListReplicationSlots(ResourceNamePrefix)
+			slots, err := i.DbClient.ListReplicationSlotsForPrefix(ResourceNamePrefix)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(slots)).To(Equal(0))
 

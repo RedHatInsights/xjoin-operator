@@ -595,7 +595,7 @@ func (i *Iteration) ExpectPipelineVersionToBeRemoved(pipelineVersion string) err
 		return errors.New(fmt.Sprintf("expected index %s to not exist", i.EsClient.ESIndexName(pipelineVersion)))
 	}
 
-	slots, err := i.DbClient.ListReplicationSlots(ResourceNamePrefix)
+	slots, err := i.DbClient.ListReplicationSlotsForPrefix(ResourceNamePrefix)
 	if err != nil {
 		return err
 	}

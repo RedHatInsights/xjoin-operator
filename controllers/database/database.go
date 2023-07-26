@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/DATA-DOG/go-sqlmock"
 	"net/url"
 	"sort"
 	"strings"
@@ -35,6 +36,7 @@ type DBParams struct {
 	Port        string
 	SSLMode     string
 	SSLRootCert string
+	IsTest      bool
 }
 
 func NewDatabase(config DBParams) *Database {
@@ -45,6 +47,17 @@ func NewDatabase(config DBParams) *Database {
 
 func (db *Database) Connect() (err error) {
 	if db.connection != nil {
+		return nil
+	}
+
+	if db.Config.IsTest {
+		//mock the db for replication_slot scrubbing during tests
+		mockDb, sqlMock, err := sqlmock.New()
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+		db.connection = sqlx.NewDb(mockDb, "postgres")
+		sqlMock.ExpectQuery("SELECT slot_name from pg_catalog.pg_replication_slots").WillReturnRows(sqlmock.NewRows(nil))
 		return nil
 	}
 
@@ -143,7 +156,27 @@ func (db *Database) CreateReplicationSlot(slot string) error {
 	return nil
 }
 
-func (db *Database) ListReplicationSlots(resourceNamePrefix string) ([]string, error) {
+func (db *Database) ListReplicationSlots() ([]string, error) {
+	rows, err := db.RunQuery("SELECT slot_name from pg_catalog.pg_replication_slots")
+	defer closeRows(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	var slots []string
+
+	for rows.Next() {
+		var slot string
+		err = rows.Scan(&slot)
+		if err != nil {
+			return slots, err
+		}
+		slots = append(slots, slot)
+	}
+	return slots, err
+}
+
+func (db *Database) ListReplicationSlotsForPrefix(resourceNamePrefix string) ([]string, error) {
 	rows, err := db.RunQuery("SELECT slot_name from pg_catalog.pg_replication_slots")
 	defer closeRows(rows)
 	if err != nil {
