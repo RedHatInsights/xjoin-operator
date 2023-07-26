@@ -38,6 +38,8 @@ type IndexParameters struct {
 	CustomSubgraphImages             Parameter
 	ValidationInterval               Parameter //period between validation checks (seconds)
 	ValidationPodStatusInterval      Parameter //period between checking the status of the validation pod (seconds)
+	ValidationAttemptInterval        Parameter //period between failed validation attempts within the validation pod (seconds)
+	ValidationAttempts               Parameter //number of validation attempts in the validation pod before validation fails
 	SubgraphLogLevel                 Parameter //log level for the api-subgraph pods
 }
 
@@ -256,6 +258,18 @@ func BuildIndexParameters() *IndexParameters {
 		ValidationPodStatusInterval: Parameter{
 			Type:          reflect.Int,
 			ConfigMapKey:  "validation.pod.status.interval",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  5,
+		},
+		ValidationAttemptInterval: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "validation.attempt.interval",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  60,
+		},
+		ValidationAttempts: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "validation.attempts",
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  5,
 		},

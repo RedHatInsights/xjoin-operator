@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"strconv"
 	"strings"
 )
 
@@ -373,11 +374,11 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 					Name:  "FULL_AVRO_SCHEMA",
 					Value: fullAvroSchema,
 				}, {
-					Name:  "INTERVAL", //TODO: temporarily use static value for stage
-					Value: "60",
+					Name:  "INTERVAL",
+					Value: strconv.Itoa(i.Parameters.ValidationAttemptInterval.Int()),
 				}, {
-					Name:  "NUM_ATTEMPTS", //TODO: temporarily use static value for stage
-					Value: "30",
+					Name:  "NUM_ATTEMPTS",
+					Value: strconv.Itoa(i.Parameters.ValidationAttempts.Int()),
 				}}...),
 				ImagePullPolicy: "Always",
 				Resources: v1.ResourceRequirements{
