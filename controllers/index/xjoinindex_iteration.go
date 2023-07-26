@@ -45,7 +45,7 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 	}
 	indexPipeline.SetGroupVersionKind(common.IndexPipelineGVK)
 
-	err = i.CreateChildResource(indexPipeline, common.IndexGVK)
+	err = i.CreateChildResource(&indexPipeline, common.IndexGVK)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

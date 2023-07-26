@@ -67,7 +67,7 @@ func (i *Iteration) UpdateStatusAndRequeue(requeueAfter time.Duration) (reconcil
 	return reconcile.Result{RequeueAfter: requeueAfter}, nil
 }
 
-func (i *Iteration) CreateChildResource(resourceDefinition unstructured.Unstructured, ownerGVK schema.GroupVersionKind) (err error) {
+func (i *Iteration) CreateChildResource(resourceDefinition client.Object, ownerGVK schema.GroupVersionKind) (err error) {
 	instanceVal := reflect.ValueOf(i.Instance).Elem()
 	apiVersion := instanceVal.FieldByName("APIVersion")
 	if !apiVersion.IsValid() {
@@ -95,7 +95,7 @@ func (i *Iteration) CreateChildResource(resourceDefinition unstructured.Unstruct
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err = i.Client.Create(ctx, &resourceDefinition)
+	err = i.Client.Create(ctx, resourceDefinition)
 	return
 }
 

@@ -44,6 +44,29 @@ type XJoinIndexValidatorIteration struct {
 func (i *XJoinIndexValidatorIteration) Finalize() (err error) {
 	i.Events.Normal("DeletingXJoinIndexValidator", "Starting finalizer")
 	i.Log.Info("Starting finalizer")
+
+	labels := client.MatchingLabels{}
+	labels["xjoin.index"] = i.Instance.GetName()
+	labels[common.COMPONENT_NAME_LABEL] = "XJoinIndexValidator"
+
+	pods := &v1.PodList{}
+	err = i.Client.List(i.Context, pods, client.InNamespace(i.Instance.GetNamespace()), labels)
+	if err != nil {
+		i.Events.Warning("XJoinIndexValidatorFinalizeFailed",
+			"Unable to list validation pods")
+		return errors.Wrap(err, 0)
+	}
+
+	for _, pod := range pods.Items {
+		err = i.Client.Delete(i.Context, &pod)
+		if err != nil {
+			i.Events.Warning("XJoinIndexValidatorFinalizeFailed",
+				"Unable to delete validation pod %s",
+				pod.Name)
+			return errors.Wrap(err, 0)
+		}
+	}
+
 	controllerutil.RemoveFinalizer(i.Instance, XJoinIndexValidatorFinalizer)
 
 	ctx, cancel := utils.DefaultContext()
@@ -351,8 +374,7 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 		return errors.Wrap(err, 0)
 	}
 
-	//run separate xjoin-validation pod
-	err = i.Client.Create(i.Context, &v1.Pod{
+	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      i.ValidationPodName(),
 			Namespace: i.Instance.GetNamespace(),
@@ -393,7 +415,11 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 				},
 			}},
 		},
-	})
+	}
+
+	err = i.CreateChildResource(pod, common.IndexValidatorGVK)
+
+	//run separate xjoin-validation pod
 	if err != nil {
 		i.Events.Warning("CreatedValidationPodFailed",
 			"Unable to create validation pod %s", i.ValidationPodName())
