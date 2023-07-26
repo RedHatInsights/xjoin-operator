@@ -301,7 +301,7 @@ func (x *XJoinAPISubGraph) Delete() (err error) {
 	if exists {
 		err = x.Registry.DeleteSchema(x.schemaName + "." + x.version)
 		if err != nil {
-			x.events.Warning("DeleteAPISubgraphServiceFailed",
+			x.events.Warning("DeleteAPISubgraphGraphQLSchemaFailed",
 				"Unable to delete GraphQLSchema for XJoinAPISubgraph %s",
 				x.schemaName+"."+x.version, x.Name())
 			return errors.Wrap(err, 0)

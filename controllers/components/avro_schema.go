@@ -94,7 +94,7 @@ func (as *AvroSchema) DeleteByVersion(version string) (err error) {
 	err = as.registry.DeleteSchema(fullName)
 	if err != nil {
 		as.events.Warning("DeleteAvroSchemaFailure",
-			"Unable to delete avro schema %s", fullName)
+			"Unable to delete avro schema %s by version %s", as.name, version)
 		return errors.Wrap(err, 0)
 	}
 	as.events.Normal("DeleteAvroSchema", "Avro schema %s was successfully deleted", fullName)
