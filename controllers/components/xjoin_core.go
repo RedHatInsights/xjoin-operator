@@ -95,6 +95,42 @@ func (xc *XJoinCore) buildDeploymentStructure() (*v1.Deployment, error) {
 			Name:  "SINK_SCHEMA",
 			Value: xc.Schema,
 		}},
+		ReadinessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/q/health/ready",
+					Port: intstr.IntOrString{
+						IntVal: 8080,
+					},
+					Scheme:      "HTTP",
+					HTTPHeaders: nil,
+				},
+			},
+			InitialDelaySeconds:           10,
+			TimeoutSeconds:                60,
+			PeriodSeconds:                 10,
+			SuccessThreshold:              1,
+			FailureThreshold:              5,
+			TerminationGracePeriodSeconds: nil,
+		},
+		LivenessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/q/health/live",
+					Port: intstr.IntOrString{
+						IntVal: 8080,
+					},
+					Scheme:      "HTTP",
+					HTTPHeaders: nil,
+				},
+			},
+			InitialDelaySeconds:           10,
+			TimeoutSeconds:                60,
+			PeriodSeconds:                 10,
+			SuccessThreshold:              1,
+			FailureThreshold:              5,
+			TerminationGracePeriodSeconds: nil,
+		},
 		Resources: corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{
 				corev1.ResourceCPU:    cpuLimit,
