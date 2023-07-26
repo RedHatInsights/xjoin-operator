@@ -291,7 +291,7 @@ func (xc *XJoinCore) ListInstalledVersions() (versions []string, err error) {
 	}
 
 	for _, deployment := range deployments.Items {
-		versions = append(versions, deployment.GetName())
+		versions = append(versions, strings.Split(deployment.GetName(), xc.name+"-")[1])
 	}
 
 	return

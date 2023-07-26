@@ -92,7 +92,7 @@ var _ = Describe("XJoinIndex", func() {
 
 	Context("Pipeline management", func() {
 		It("Should replace the active pipeline with the refreshing IndexPipeline when the refreshing pipeline becomes valid", func() {
-			//setup initial state with an new refreshing pipeline
+			//setup initial state with a new refreshing pipeline
 			indexReconciler := IndexTestReconciler{
 				Namespace:          namespace,
 				Name:               "test-index",
