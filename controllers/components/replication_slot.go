@@ -72,7 +72,11 @@ func (dc *ReplicationSlot) ListInstalledVersions() (versions []string, err error
 	}
 
 	for _, slot := range slots {
-		versions = append(versions, strings.Split(slot, "_")[len(slots)])
+		if strings.Index(slot, dc.name) == 0 {
+			version := strings.Split(slot, dc.name)[1]
+			versionPieces := strings.Split(version, "_")
+			versions = append(versions, versionPieces[len(versionPieces)])
+		}
 	}
 	return
 }
