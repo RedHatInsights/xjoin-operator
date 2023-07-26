@@ -223,6 +223,9 @@ func (kafka *GenericKafka) GetConnector(name string, namespace string) (*unstruc
 }
 
 func (kafka *GenericKafka) ListConnectorNamesForPrefix(prefix string) ([]string, error) {
+	kafka.Log.Debug("Listing connectors for prefix",
+		"namespace", kafka.ConnectNamespace, "prefix", prefix)
+
 	connectors, err := kafka.ListConnectors()
 	if err != nil {
 		return nil, err
@@ -230,6 +233,8 @@ func (kafka *GenericKafka) ListConnectorNamesForPrefix(prefix string) ([]string,
 
 	var names []string
 	for _, connector := range connectors.Items {
+		kafka.Log.Debug("ListConnectorNamesForPrefix connector", "name", connector.GetName())
+
 		if strings.Index(connector.GetName(), prefix) == 0 {
 			names = append(names, connector.GetName())
 		}
@@ -242,7 +247,6 @@ func (kafka *GenericKafka) ListConnectors() (*unstructured.UnstructuredList, err
 	connectors := &unstructured.UnstructuredList{}
 	connectors.SetGroupVersionKind(connectorsGVK)
 
-	kafka.Log.Debug("Listing connectors", "namespace", kafka.ConnectNamespace)
 	err := kafka.Client.List(kafka.Context, connectors, client.InNamespace(kafka.ConnectNamespace))
 	return connectors, err
 }
