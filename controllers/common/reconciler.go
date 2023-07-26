@@ -110,8 +110,6 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 		for _, e := range errs {
 			r.log.Error(e, e.Error())
 		}
-
-		return errors.Wrap(errs[0], 0)
 	}
 
 	specHash, err := k8sUtils.SpecHash(r.instance.GetSpec())
