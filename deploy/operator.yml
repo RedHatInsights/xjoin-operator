@@ -579,6 +579,10 @@ parameters:
     value: "10000"
   - name: SUBGRAPH_LOG_LEVEL
     value: "WARN"
+  - name: VALIDATION_ATTEMPT_INTERVAL
+    value: '60'
+  - name: VALIDATION_ATTEMPTS
+    value: '30'
 
 objects:
   - apiVersion: operators.coreos.com/v1
@@ -636,6 +640,8 @@ objects:
       schemaregistry.host: ${SCHEMA_REGISTRY_HOST}
       schemaregistry.port: ${SCHEMA_REGISTRY_PORT}
       subgraph.log.level: ${SUBGRAPH_LOG_LEVEL}
+      validation.attempt.interval: ${VALIDATION_ATTEMPT_INTERVAL}
+      validation.attempts: ${VALIDATION_ATTEMPTS}
   - apiVersion: v1
     kind: ConfigMap
     metadata:
