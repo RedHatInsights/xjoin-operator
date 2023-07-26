@@ -163,7 +163,7 @@ func (as *AvroSchema) ListInstalledVersions() (installedVersions []string, err e
 
 	for _, subject := range subjects {
 		if strings.Index(subject, as.name+".") == 0 {
-			version := strings.Split(subject, ".")[1]
+			version := strings.Split(subject, ".")[2]
 			version = strings.Split(version, "-")[0]
 			installedVersions = append(installedVersions, version)
 		}
