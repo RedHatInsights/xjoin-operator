@@ -88,9 +88,9 @@ func (r *Reconciler) getState(specHash string) string {
 		r.instance.GetRefreshingVersionState() == Valid {
 		return REFRESH_COMPLETE
 	} else if r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionState() != Valid &&
+		r.instance.GetActiveVersionState() == Invalid &&
 		r.instance.GetRefreshingVersion() != "" &&
-		r.instance.GetRefreshingVersionState() != Valid {
+		r.instance.GetRefreshingVersionState() == New {
 		return REFRESHING
 	} else if r.instance.GetRefreshingVersion() != "" &&
 		r.instance.GetRefreshingVersionState() == Invalid {
