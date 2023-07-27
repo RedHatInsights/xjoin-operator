@@ -113,6 +113,8 @@ kubectl delete deployments --selector='xjoin.index=xjoinindexpipeline-cats' -n "
 kubectl delete deployments --selector='xjoin.index=xjoinindexpipeline-cats' -n "$PROJECT_NAME"
 kubectl delete deployments --selector='xjoin.index=xjoinindexpipeline-hosts-hbi-tags' -n "$PROJECT_NAME"
 
+kubectl delete deployments --selector='xjoin.component.name=XJoinAPISubgraph' -n "$PROJECT_NAME"
+
 kubectl delete services --selector='xjoin.index=xjoinindexpipeline-hosts' -n "$PROJECT_NAME"
 kubectl delete services --selector='xjoin.index=xjoinindexpipeline-cats' -n "$PROJECT_NAME"
 kubectl delete services --selector='xjoin.index=xjoinindexpipeline-cats' -n "$PROJECT_NAME"

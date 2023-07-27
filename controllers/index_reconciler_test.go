@@ -173,13 +173,18 @@ func (i *IndexTestReconciler) registerNewMocks() {
 
 	httpmock.RegisterResponder(
 		"GET",
-		"http://localhost:9200/_ingest/pipeline/xjoinindex."+i.Name+"%2A",
-		httpmock.NewStringResponder(404, "{}"))
+		"http://localhost:9200/_cat/indices/xjoinindexpipeline."+i.Name+".%2A",
+		httpmock.NewStringResponder(200, "[]"))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline."+i.Name+"%2A",
+		httpmock.NewStringResponder(200, "{}"))
 
 	httpmock.RegisterResponder(
 		"GET",
 		"http://localhost:9200/_cat/indices/xjoinindex."+i.Name+".%2A?format=JSON&h=index",
-		httpmock.NewStringResponder(200, "[]"))
+		httpmock.NewStringResponder(200, "[]").Times(2))
 }
 
 func (i *IndexTestReconciler) registerDeleteMocks() {
