@@ -219,6 +219,21 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 		i.Events.Normal("ValidationPodSucceeded", responseString)
 		return ValidatorPodSuccess, nil
 	} else if pod.Status.Phase == v1.PodFailed {
+		logString, err := i.PodLogReader.GetLogs(i.ValidationPodName(), i.Instance.GetNamespace())
+		if err != nil {
+			return "", errors.Wrap(err, 0)
+		}
+		strArray := strings.Split(logString, "\n")
+
+		//log at most 10 lines
+		var log string
+		if len(strArray) > 10 {
+			log = strings.Join(strArray[len(strArray)-10:len(strArray)-1], "\n")
+		} else {
+			log = logString
+		}
+		i.Log.Error(errors.New("validation pod failed"), log)
+
 		err = i.Client.Delete(i.Context, pod)
 		if err != nil {
 			i.Events.Warning("ReconcileValidationPodFailed",
