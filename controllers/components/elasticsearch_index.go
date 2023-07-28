@@ -155,12 +155,18 @@ func (es *ElasticsearchIndex) Exists() (exists bool, err error) {
 }
 
 func (es *ElasticsearchIndex) ListInstalledVersions() (versions []string, err error) {
-	versions, err = es.GenericElasticsearch.ListIndicesForPrefix(es.name)
+	indexNames, err := es.GenericElasticsearch.ListIndicesForPrefix(es.name)
 	if err != nil {
 		es.events.Warning("ElasticsearchIndexListInstalledVersionsFailed",
 			"Unable to ListIndicesForPrefix for ElasticsearchIndex %s", es.Name())
 		return nil, errors.Wrap(err, 0)
 	}
+
+	for _, name := range indexNames {
+		pieces := strings.Split(name, ".")
+		versions = append(versions, pieces[len(pieces)-1])
+	}
+
 	return
 }
 
