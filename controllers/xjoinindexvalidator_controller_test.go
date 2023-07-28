@@ -365,7 +365,7 @@ var _ = Describe("XJoinIndexValidator", func() {
 			}
 			reconciler.ReconcileCreate()
 			_, result := reconciler.ReconcileFailure()
-			Expect(result.RequeueAfter).To(Equal(time.Duration(0)))
+			Expect(result.RequeueAfter).To(Equal(time.Duration(5) * time.Second))
 		})
 	})
 })

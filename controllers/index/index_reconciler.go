@@ -248,6 +248,11 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 		Registry:  registryConfluentClient,
 		Namespace: d.iteration.GetInstance().Namespace,
 	})
+	custodian.AddComponent(&components.ValidationPod{
+		Client:    d.iteration.Client,
+		Context:   d.iteration.Context,
+		Namespace: d.iteration.GetInstance().Namespace,
+	})
 
 	d.log.Debug("Scrubbing index", "ValidVersion", validVersions)
 

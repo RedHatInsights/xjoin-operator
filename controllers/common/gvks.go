@@ -38,6 +38,12 @@ var DeploymentGVK = schema.GroupVersionKind{
 	Version: "v1",
 }
 
+var PodGVK = schema.GroupVersionKind{
+	Group:   "",
+	Kind:    "Pod",
+	Version: "v1",
+}
+
 var ServiceGVK = schema.GroupVersionKind{
 	Group:   "",
 	Kind:    "Service",
