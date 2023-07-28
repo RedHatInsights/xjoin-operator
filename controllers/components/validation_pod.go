@@ -94,7 +94,6 @@ func (v *ValidationPod) ListInstalledVersions() (versions []string, err error) {
 	labels["xjoin.component.name"] = "XJoinIndexValidator"
 	fields := client.MatchingFields{
 		"metadata.namespace": v.Namespace,
-		"metadata.name":      v.Name(),
 	}
 	err = v.Client.List(v.Context, pods, labels, fields)
 	if err != nil {
@@ -104,8 +103,11 @@ func (v *ValidationPod) ListInstalledVersions() (versions []string, err error) {
 	}
 
 	for _, pod := range pods.Items {
-		pieces := strings.Split(pod.GetName(), v.name+"-")
-		versions = append(versions, pieces[len(pieces)-1])
+		podNamePrefix := strings.ReplaceAll(v.name, ".", "-")
+		if strings.Index(pod.GetName(), podNamePrefix) == 0 {
+			pieces := strings.Split(pod.GetName(), podNamePrefix+"-")
+			versions = append(versions, pieces[len(pieces)-1])
+		}
 	}
 
 	return
