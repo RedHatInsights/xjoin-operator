@@ -46,7 +46,7 @@ func (v *ValidationPod) SetEvents(e events.Events) {
 
 func (v *ValidationPod) Delete() (err error) {
 	pod := &unstructured.Unstructured{}
-	pod.SetGroupVersionKind(common.DeploymentGVK)
+	pod.SetGroupVersionKind(common.PodGVK)
 	err = v.Client.Get(v.Context, client.ObjectKey{Name: v.Name(), Namespace: v.Namespace}, pod)
 	if err != nil {
 		v.events.Warning("DeleteValidationPodFailed",
