@@ -29,7 +29,7 @@ func (v *ValidationPod) SetLogger(log logger.Log) {
 }
 
 func (v *ValidationPod) SetName(kind string, name string) {
-	v.name = strings.ToLower(strings.ReplaceAll(kind+"-"+name, "-", "."))
+	v.name = strings.ToLower(strings.ReplaceAll(kind+"-"+name, ".", "-"))
 }
 
 func (v *ValidationPod) SetVersion(version string) {
