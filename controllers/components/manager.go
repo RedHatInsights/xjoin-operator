@@ -69,20 +69,20 @@ func (c *ComponentManager) CreateAll() error {
 }
 
 // DeleteAll deletes all components. No-op if the components are already deleted.
-func (c *ComponentManager) DeleteAll() error {
+func (c *ComponentManager) DeleteAll() (errs []error) {
 	for _, component := range c.components {
 		componentExists, err := component.Exists()
 		if err != nil {
-			return err
+			errs = append(errs, errors.Wrap(err, 0))
 		}
 		if componentExists {
 			err = component.Delete()
 			if err != nil {
-				return err
+				errs = append(errs, errors.Wrap(err, 0))
 			}
 		}
 	}
-	return nil
+	return
 }
 
 // CheckForDeviations checks each component's stored value against the expected value, returns true if deviation is found

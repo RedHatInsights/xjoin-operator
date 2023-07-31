@@ -207,10 +207,12 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 
 	if instance.GetDeletionTimestamp() != nil {
 		reqLogger.Info("Starting finalizer")
-		err = componentManager.DeleteAll()
-		if err != nil {
-			reqLogger.Error(err, "error deleting components during finalizer")
-			return
+		errs := componentManager.DeleteAll()
+		if len(errs) > 0 {
+			for _, componentErr := range errs {
+				reqLogger.Error(componentErr, "error deleting component during finalizer")
+			}
+			return reconcile.Result{}, errors.New("error deleting components during finalizer")
 		}
 
 		controllerutil.RemoveFinalizer(instance, xjoindatasourcepipelineFinalizer)
