@@ -56,6 +56,10 @@ func (as *AvroSchema) Name() string {
 	return as.name + "." + as.version + "-value"
 }
 
+func (as *AvroSchema) KeyName() string {
+	return as.name + "." + as.version + "-key"
+}
+
 func (as *AvroSchema) Create() (err error) {
 	schema, err := as.SetSchemaNameNamespace()
 	if err != nil {
@@ -82,6 +86,13 @@ func (as *AvroSchema) Delete() (err error) {
 	if err != nil {
 		as.events.Warning("DeleteAvroSchemaFailure",
 			"Unable to delete avro schema %s", as.Name())
+		return errors.Wrap(err, 0)
+	}
+
+	err = as.registry.DeleteSchema(as.KeyName())
+	if err != nil {
+		as.events.Warning("DeleteAvroSchemaFailure",
+			"Unable to delete avro schema %s", as.KeyName())
 		return errors.Wrap(err, 0)
 	}
 

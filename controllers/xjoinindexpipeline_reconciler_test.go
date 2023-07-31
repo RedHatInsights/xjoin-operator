@@ -151,6 +151,10 @@ func (x *XJoinIndexPipelineTestReconciler) registerDeleteMocks() {
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"/versions/latest",
 		httpmock.NewStringResponder(200, `{}`))
 	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+"."+x.Version+"-key/versions/latest",
+		httpmock.NewStringResponder(404, `{"message": "", "error_code": 40401}`))
+	httpmock.RegisterResponder(
 		"DELETE",
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(200, `{}`))

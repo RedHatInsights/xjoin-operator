@@ -220,6 +220,16 @@ func (d *DatasourcePipelineTestReconciler) registerDeleteMocks() {
 
 	httpmock.RegisterResponder(
 		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.fullName()+"-key/versions/latest",
+		httpmock.NewStringResponder(200, `{}`))
+
+	httpmock.RegisterResponder(
+		"DELETE",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline."+d.fullName()+"-key",
+		httpmock.NewStringResponder(200, `{}`))
+
+	httpmock.RegisterResponder(
+		"GET",
 		"http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoindatasourcepipeline."+d.fullName()+"/versions",
 		httpmock.NewStringResponder(404, `{}`))
 

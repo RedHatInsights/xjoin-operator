@@ -270,4 +270,9 @@ func (x *XJoinIndexValidatorTestReconciler) registerFailureMocks() {
 		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.GetName()+"-value/versions/1",
 		httpmock.NewStringResponder(
 			200, fmt.Sprintf(`{"id": 1, "subject": "xjoindatasourcepipeline.hosts.1674571335703357092-value", "version": 1, "schema": "%s", "references": "[]"}`, schema)))
+	httpmock.RegisterResponder(
+		"GET",
+		"http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+x.Name+"."+x.Version+"-key/versions/1",
+		httpmock.NewStringResponder(
+			404, `{"error_code": 40401}`))
 }
