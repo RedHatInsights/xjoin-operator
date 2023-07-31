@@ -194,6 +194,7 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 	}
 	custodian.AddComponent(&components.KafkaTopic{
 		KafkaTopics: kafkaTopics,
+		KafkaClient: kafkaClient,
 	})
 
 	custodian.AddComponent(&components.DebeziumConnector{

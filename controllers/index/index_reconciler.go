@@ -227,7 +227,10 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 		Context:               d.iteration.Context,
 		//ResourceNamePrefix:  this is not needed for generic topics
 	}
-	custodian.AddComponent(&components.KafkaTopic{KafkaTopics: kafkaTopics})
+	custodian.AddComponent(&components.KafkaTopic{
+		KafkaTopics: kafkaTopics,
+		KafkaClient: kafkaClient,
+	})
 	custodian.AddComponent(&components.ElasticsearchConnector{
 		KafkaClient: kafkaClient,
 		Namespace:   d.iteration.GetInstance().Namespace,

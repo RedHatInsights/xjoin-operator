@@ -169,7 +169,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://connect-connect-api."+namespace+".svc:8083/connectors/xjoindatasourcepipeline."+name+".1234"]
-			Expect(count).To(Equal(6))
+			Expect(count).To(Equal(7))
 
 			connectors = &v1beta2.KafkaConnectorList{}
 			err = k8sClient.List(context.Background(), connectors, client.InNamespace(namespace))

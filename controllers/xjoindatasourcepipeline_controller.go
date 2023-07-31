@@ -196,6 +196,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
 		},
 		KafkaTopics: kafkaTopics,
+		KafkaClient: kafkaClient,
 	})
 
 	componentManager.AddComponent(&components.DebeziumConnector{

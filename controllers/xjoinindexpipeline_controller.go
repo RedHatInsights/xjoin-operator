@@ -235,6 +235,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
 		},
 		KafkaTopics: kafkaTopics,
+		KafkaClient: kafkaClient,
 	}
 
 	elasticSearchConnection := elasticsearch.GenericElasticSearchParameters{

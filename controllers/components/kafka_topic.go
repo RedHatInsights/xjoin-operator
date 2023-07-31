@@ -17,6 +17,7 @@ type KafkaTopic struct {
 	name            string
 	version         string
 	KafkaTopics     kafka.StrimziTopics
+	KafkaClient     kafka.GenericKafka
 	TopicParameters kafka.TopicParameters
 	events          events.Events
 	log             logger.Log
@@ -52,6 +53,21 @@ func (kt *KafkaTopic) Create() (err error) {
 }
 
 func (kt *KafkaTopic) Delete() (err error) {
+	//first check if a connector that uses this topic exists
+	//this check is done directly to the Kafka Connect REST API
+	//Kafka Connect can enter a weird state if the topic is deleted before the connector
+	exists, err := kt.KafkaClient.CheckConnectorExistsViaREST(kt.Name())
+	if err != nil {
+		kt.events.Warning("DeleteKafkaTopicFailed",
+			"Unable to check if Connector exists %s", kt.Name())
+		return errors.Wrap(err, 0)
+	}
+	if exists {
+		kt.events.Warning("DeleteKafkaTopicFailed",
+			"Kafka Connector exists, waiting for it to be deleted before deleting Kafka Topic %s", kt.Name())
+		return errors.Wrap(errors.New("waiting for Kafka Topic to be deleted before deleting Kafka Connector"), 0)
+	}
+
 	err = kt.KafkaTopics.DeleteTopic(kt.Name())
 	if err != nil {
 		kt.events.Warning("DeleteKafkaTopicFailed",
