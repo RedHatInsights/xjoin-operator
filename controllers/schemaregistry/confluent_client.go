@@ -3,6 +3,8 @@ package schemaregistry
 import (
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/go-errors/errors"
 	"github.com/riferrei/srclient"
@@ -63,7 +65,9 @@ func (sr *ConfluentClient) DeleteSchema(name string) (err error) {
 		errorCode = err.(srclient.Error).Code
 	}
 
-	if err != nil && errorCode == 40403 {
+	errorCodeStr := strconv.Itoa(errorCode)
+
+	if err != nil && strings.Index(errorCodeStr, "404") == 0 {
 		return nil //schema doesn't exist, don't try to delete it
 	} else if err != nil {
 		return errors.Wrap(err, 0)
