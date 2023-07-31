@@ -236,7 +236,9 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 		Namespace:   d.iteration.GetInstance().Namespace,
 	})
 	custodian.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
-		Registry: registryConfluentClient}))
+		Registry:    registryConfluentClient,
+		KafkaClient: kafkaClient,
+	}))
 	custodian.AddComponent(components.NewGraphQLSchema(components.GraphQLSchemaParameters{
 		Registry: registryRestClient,
 	}))

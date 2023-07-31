@@ -172,7 +172,10 @@ func (d *ReconcileMethods) Scrub() (errs []error) {
 
 	custodian := components.NewCustodian(
 		common.DataSourcePipelineGVK.Kind, d.iteration.GetInstance().Name, validVersions, d.iteration.Events, d.log)
-	custodian.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{Registry: registry}))
+	custodian.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
+		Registry:    registry,
+		KafkaClient: kafkaClient,
+	}))
 
 	kafkaTopics := kafka.StrimziTopics{
 		TopicParameters: kafka.TopicParameters{

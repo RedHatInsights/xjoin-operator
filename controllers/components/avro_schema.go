@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"strings"
 
@@ -15,28 +16,31 @@ import (
 )
 
 type AvroSchema struct {
-	schema     string
-	id         int
-	registry   *schemaregistry.ConfluentClient
-	name       string
-	version    string
-	references []srclient.Reference
-	events     events.Events
-	log        logger.Log
+	schema      string
+	id          int
+	registry    *schemaregistry.ConfluentClient
+	name        string
+	version     string
+	references  []srclient.Reference
+	events      events.Events
+	log         logger.Log
+	kafkaClient kafka.GenericKafka
 }
 
 type AvroSchemaParameters struct {
-	Schema     string
-	Registry   *schemaregistry.ConfluentClient
-	References []srclient.Reference
+	Schema      string
+	Registry    *schemaregistry.ConfluentClient
+	References  []srclient.Reference
+	KafkaClient kafka.GenericKafka
 }
 
 func NewAvroSchema(parameters AvroSchemaParameters) *AvroSchema {
 	return &AvroSchema{
-		schema:     parameters.Schema,
-		registry:   parameters.Registry,
-		references: parameters.References,
-		id:         1, //valid avro ids start at 1
+		schema:      parameters.Schema,
+		registry:    parameters.Registry,
+		references:  parameters.References,
+		id:          1, //valid avro ids start at 1
+		kafkaClient: parameters.KafkaClient,
 	}
 }
 
@@ -58,6 +62,10 @@ func (as *AvroSchema) Name() string {
 
 func (as *AvroSchema) KeyName() string {
 	return as.name + "." + as.version + "-key"
+}
+
+func (as *AvroSchema) ConnectorName() string {
+	return as.name + "." + as.version
 }
 
 func (as *AvroSchema) Create() (err error) {
@@ -82,6 +90,21 @@ func (as *AvroSchema) Create() (err error) {
 }
 
 func (as *AvroSchema) Delete() (err error) {
+	//first check if a connector that uses this topic exists
+	//this check is done directly to the Kafka Connect REST API
+	//Kafka Connect can enter a weird state if the topic is deleted before the connector
+	exists, err := as.kafkaClient.CheckConnectorExistsViaREST(as.ConnectorName())
+	if err != nil {
+		as.events.Warning("DeleteAvroSchemaFailed",
+			"Unable to check if Connector exists %s", as.ConnectorName())
+		return errors.Wrap(err, 0)
+	}
+	if exists {
+		as.events.Warning("DeleteAvroSchemaFailed",
+			"Kafka Connector exists, waiting for it to be deleted before deleting Avro Schema %s", as.ConnectorName())
+		return errors.Wrap(errors.New("waiting for Kafka Topic to be deleted before deleting Avro Schema"), 0)
+	}
+
 	err = as.registry.DeleteSchema(as.Name())
 	if err != nil {
 		as.events.Warning("DeleteAvroSchemaFailure",

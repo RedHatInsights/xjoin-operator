@@ -162,8 +162,9 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 	componentManager := components.NewComponentManager(
 		common.DataSourcePipelineGVK.Kind, instance.Spec.Name, p.Version.String(), e, reqLogger)
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
-		Schema:   p.AvroSchema.String(),
-		Registry: registry,
+		Schema:      p.AvroSchema.String(),
+		Registry:    registry,
+		KafkaClient: kafkaClient,
 	}))
 
 	kafkaTopics := kafka.StrimziTopics{

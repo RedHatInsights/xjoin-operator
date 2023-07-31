@@ -302,8 +302,9 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Namespace:          instance.Namespace,
 	})
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
-		Schema:   indexAvroSchema.AvroSchemaString,
-		Registry: confluentClient,
+		Schema:      indexAvroSchema.AvroSchemaString,
+		Registry:    confluentClient,
+		KafkaClient: kafkaClient,
 	}))
 	graphqlSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{
 		Registry: registryRestClient,
