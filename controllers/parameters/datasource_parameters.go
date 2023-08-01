@@ -90,7 +90,7 @@ func BuildDataSourceParameters() *DataSourceParameters {
 				"plugin.name": "pgoutput",
 				"transforms": "unwrap, reroute",
 				"transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
-				"transforms.unwrap.delete.handling.mode": "rewrite",
+				"transforms.unwrap.delete.handling.mode": "none",
 				"errors.log.enable": {{.DebeziumErrorsLogEnable}},
 				"errors.log.include.messages": true,
 				"slot.name": "{{.ReplicationSlotName}}",

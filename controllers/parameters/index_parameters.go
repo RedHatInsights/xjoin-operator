@@ -73,9 +73,6 @@ func BuildIndexParameters() *IndexParameters {
 			  {{if .ElasticSearchUsername}}"connection.username": "{{.ElasticSearchUsername}}",{{end}}
 			  {{if .ElasticSearchPassword}}"connection.password": "{{.ElasticSearchPassword}}",{{end}}
 			  "type.name": "_doc",
-			  "transforms.deleteIf.type": "com.redhat.insights.deleteifsmt.DeleteIf$Value",
-			  "transforms.deleteIf.field": "__deleted",
-			  "transforms.deleteIf.value": "true",
 			  "behavior.on.null.values":"delete",
 			  "behavior.on.malformed.documents": "warn",
 			  "auto.create.indices.at.start": false,
