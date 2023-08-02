@@ -209,9 +209,9 @@ func (x *XJoinAPISubGraph) buildDeploymentStructure() (*v1.Deployment, error) {
 
 func (x *XJoinAPISubGraph) buildLabels() map[string]string {
 	return map[string]string{
-		"app":                       x.Name(),
-		"xjoin.index":               x.name,
-		common.COMPONENT_NAME_LABEL: "XJoinAPISubgraph",
+		"app":                     x.Name(),
+		"xjoin.index":             x.name,
+		common.ComponentNameLabel: "XJoinAPISubgraph",
 	}
 }
 

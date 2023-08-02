@@ -52,8 +52,8 @@ func (xv *XJoinIndexValidator) Create() (err error) {
 			"name":      xv.Name(),
 			"namespace": xv.Namespace,
 			"labels": map[string]interface{}{
-				common.COMPONENT_NAME_LABEL: xv.name,
-				"app":                       "xjoin-validator",
+				common.ComponentNameLabel: xv.name,
+				"app":                     "xjoin-validator",
 			},
 		},
 		"spec": map[string]interface{}{
@@ -161,7 +161,7 @@ func (xv *XJoinIndexValidator) ListInstalledVersions() (versions []string, err e
 	validators := &unstructured.UnstructuredList{}
 	validators.SetGroupVersionKind(common.IndexValidatorGVK)
 	labels := client.MatchingLabels{}
-	labels[common.COMPONENT_NAME_LABEL] = xv.name
+	labels[common.ComponentNameLabel] = xv.name
 	fields := client.MatchingFields{
 		"metadata.namespace": xv.Namespace,
 	}

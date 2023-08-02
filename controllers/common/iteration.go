@@ -18,15 +18,47 @@ import (
 	"time"
 )
 
-const COMPONENT_NAME_LABEL = "xjoin.component.name"
+const ComponentNameLabel = "xjoin.component.name"
 
 type Iteration struct {
-	Instance         client.Object
+	Instance         XJoinObjectChild
 	OriginalInstance client.Object
 	Client           client.Client
 	Context          context.Context
 	Log              xjoinlogger.Log
 	Test             bool
+}
+
+func UpdateCondition(instance XJoinObjectChild) {
+	if instance.GetValidationResult() == Valid {
+		instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionTrue,
+			Reason: ValidationSucceededReason,
+		})
+	} else if instance.GetValidationResult() == Invalid {
+		instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: ValidationFailedReason,
+		})
+	} else if instance.GetValidationResult() == New {
+		instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: NewReason,
+		})
+	} else {
+		instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: UnknownReason,
+		})
+	}
+}
+
+func (i *Iteration) UpdateCondition() {
+	UpdateCondition(i.Instance)
 }
 
 func (i *Iteration) UpdateStatusAndRequeue(requeueAfter time.Duration) (reconcile.Result, error) {
@@ -154,7 +186,7 @@ func (i *Iteration) ReconcileChild(child Child) (err error) {
 	children := &unstructured.UnstructuredList{}
 	children.SetGroupVersionKind(child.GetGVK())
 	labels := client.MatchingLabels{}
-	labels[COMPONENT_NAME_LABEL] = child.GetParentInstance().GetName()
+	labels[ComponentNameLabel] = child.GetParentInstance().GetName()
 	fields := client.MatchingFields{}
 	fields["metadata.namespace"] = child.GetParentInstance().GetNamespace()
 	err = i.Client.List(i.Context, children, labels, fields)
@@ -262,7 +294,7 @@ func (i *Iteration) DeleteAllIndexPipelineResources(gvk schema.GroupVersionKind,
 func (i *Iteration) DeleteAllResourceTypeWithComponentName(gvk schema.GroupVersionKind, componentName string) (err error) {
 	resources := &unstructured.UnstructuredList{}
 	resources.SetGroupVersionKind(gvk)
-	labels := client.MatchingLabels{COMPONENT_NAME_LABEL: componentName}
+	labels := client.MatchingLabels{ComponentNameLabel: componentName}
 	fields := client.MatchingFields{"metadata.namespace": i.Instance.GetNamespace()}
 
 	err = i.Client.List(i.Context, resources, labels, fields)

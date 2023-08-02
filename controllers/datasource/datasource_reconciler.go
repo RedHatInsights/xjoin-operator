@@ -10,6 +10,8 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -37,6 +39,12 @@ func (d *ReconcileMethods) SetLogger(log logger.Log) {
 }
 
 func (d *ReconcileMethods) Removed() (err error) {
+	meta.SetStatusCondition(&d.iteration.GetInstance().Status.Conditions, metav1.Condition{
+		Type:   common.ValidConditionType,
+		Status: metav1.ConditionFalse,
+		Reason: common.RemovedReason,
+	})
+
 	d.iteration.Events.Normal("Removed", "Datasource was removed, running finalizer to cleanup child resources.")
 
 	err = d.iteration.Finalize()
@@ -112,7 +120,7 @@ func (d *ReconcileMethods) RefreshFailed() (err error) {
 func (d *ReconcileMethods) ScrubPipelines(validVersions []string) (err error) {
 	existingDatasourcePipelines := &v1alpha1.XJoinDataSourcePipelineList{}
 	labels := client.MatchingLabels{}
-	labels[common.COMPONENT_NAME_LABEL] = d.iteration.GetInstance().GetName()
+	labels[common.ComponentNameLabel] = d.iteration.GetInstance().GetName()
 	err = d.iteration.Client.List(
 		d.iteration.Context, existingDatasourcePipelines, client.InNamespace(d.iteration.GetInstance().Namespace))
 	if err != nil {

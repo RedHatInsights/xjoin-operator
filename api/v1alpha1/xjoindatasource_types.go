@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -31,11 +32,18 @@ type XJoinDataSourceStatus struct {
 	RefreshingVersion      string                        `json:"refreshingVersion"`
 	RefreshingVersionState validation.ValidationResponse `json:"refreshingVersionState"`
 	SpecHash               string                        `json:"specHash"`
+	Conditions             []metav1.Condition            `json:"conditions"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=xjoindatasource,categories=all
+// +kubebuilder:printcolumn:name="Active_Version",type="string",JSONPath=".status.activeVersion"
+// +kubebuilder:printcolumn:name="Active_State",type="string",JSONPath=".status.activeVersionState.result"
+// +kubebuilder:printcolumn:name="Refreshing_Version",type="string",JSONPath=".status.refreshingVersion"
+// +kubebuilder:printcolumn:name="Refreshing_State",type="string",JSONPath=".status.refreshingVersionState.result"
+// +kubebuilder:printcolumn:name="Valid",type="string",JSONPath=".status.conditions[0].status"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 type XJoinDataSource struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -83,6 +91,14 @@ func (in *XJoinDataSource) GetRefreshingVersionState() string {
 
 func (in *XJoinDataSource) SetRefreshingVersionState(state string) {
 	in.Status.RefreshingVersionState.Result = state
+}
+
+func (in *XJoinDataSource) SetCondition(condition metav1.Condition) {
+	meta.SetStatusCondition(&in.Status.Conditions, condition)
+}
+
+func (in *XJoinDataSource) GetValidationResult() string {
+	return in.Status.ActiveVersionState.Result
 }
 
 // +kubebuilder:object:root=true

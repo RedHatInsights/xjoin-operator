@@ -18,4 +18,5 @@ type XJoinObject interface {
 	SetRefreshingVersionState(state string)
 	GetSpecHash() string
 	GetSpec() interface{}
+	SetCondition(condition metav1.Condition)
 }

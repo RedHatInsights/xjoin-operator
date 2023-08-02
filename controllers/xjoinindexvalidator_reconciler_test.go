@@ -93,7 +93,7 @@ func (x *XJoinIndexValidatorTestReconciler) ReconcileFailure() (validator v1alph
 func (x *XJoinIndexValidatorTestReconciler) ListValidatorPods() *corev1.PodList {
 	labels := client.MatchingLabels{}
 	labels["xjoin.index"] = x.GetName()
-	labels[common.COMPONENT_NAME_LABEL] = "XJoinIndexValidator"
+	labels[common.ComponentNameLabel] = "XJoinIndexValidator"
 
 	pods := &corev1.PodList{}
 	err := k8sClient.List(context.Background(), pods, client.InNamespace(x.Namespace), labels)

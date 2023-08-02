@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -42,11 +43,14 @@ type XJoinDataSourcePipelineSpec struct {
 
 type XJoinDataSourcePipelineStatus struct {
 	ValidationResponse validation.ValidationResponse `json:"validationResponse,omitempty"`
+	Conditions         []metav1.Condition            `json:"conditions"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=xjoindatasourcepipeline,categories=all
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.validationResponse.result"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 type XJoinDataSourcePipeline struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -66,4 +70,12 @@ type XJoinDataSourcePipelineList struct {
 
 func init() {
 	SchemeBuilder.Register(&XJoinDataSourcePipeline{}, &XJoinDataSourcePipelineList{})
+}
+
+func (in *XJoinDataSourcePipeline) SetCondition(condition metav1.Condition) {
+	meta.SetStatusCondition(&in.Status.Conditions, condition)
+}
+
+func (in *XJoinDataSourcePipeline) GetValidationResult() string {
+	return in.Status.ValidationResponse.Result
 }

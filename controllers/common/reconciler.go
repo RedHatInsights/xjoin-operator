@@ -5,6 +5,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strconv"
 	"time"
 )
@@ -74,6 +75,20 @@ const (
 	REFRESH_FAILED   string = "REFRESH_FAILED"
 )
 
+const (
+	ValidConditionType         string = "Valid"
+	NewReason                  string = "New"
+	UnknownReason              string = "Unknown"
+	ValidationSucceededReason  string = "ValidationSucceeded"
+	ValidationFailedReason     string = "ValidationFailed"
+	ValidationInProgressReason string = "ValidationInProgress"
+	RefreshFailedReason        string = "RefreshFailed"
+	RefreshingReason           string = "RefreshInProgress"
+	RefreshCompleteReason      string = "RefreshComplete"
+	RemovedReason              string = "Removed"
+	DeviationReason            string = "DeviationFound"
+)
+
 func (r *Reconciler) getState(specHash string) string {
 	if r.instance.GetDeletionTimestamp() != nil {
 		return REMOVED
@@ -128,6 +143,12 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 
 	switch state {
 	case REMOVED:
+		r.instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: RemovedReason,
+		})
+
 		err = r.methods.Removed()
 		if err != nil {
 			return errors.Wrap(err, 0)
@@ -136,6 +157,12 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 		// active is invalid, not refreshing yet
 		// or spec hash mismatch
 		// or force_refresh is true
+		r.instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: RefreshingReason,
+		})
+
 		refreshingVersion := r.Version()
 		r.instance.SetRefreshingVersion(refreshingVersion)
 		r.instance.SetRefreshingVersionState(New)
@@ -145,6 +172,12 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 			return errors.Wrap(err, 0)
 		}
 	case NEW:
+		r.instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: NewReason,
+		})
+
 		refreshingVersion := r.Version()
 		r.instance.SetRefreshingVersion(refreshingVersion)
 		r.instance.SetRefreshingVersionState(New)
@@ -154,22 +187,46 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 			return errors.Wrap(err, 0)
 		}
 	case INITIAL_SYNC:
+		r.instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: ValidationInProgressReason,
+		})
+
 		err = r.methods.InitialSync()
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 	case VALID:
+		r.instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionTrue,
+			Reason: ValidationSucceededReason,
+		})
+
 		err = r.methods.Valid()
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 	case REFRESHING:
 		// active is invalid, refreshing is invalid
+		r.instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: RefreshingReason,
+		})
+
 		err = r.methods.Refreshing()
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 	case REFRESH_COMPLETE:
+		r.instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionTrue,
+			Reason: RefreshCompleteReason,
+		})
+
 		err = r.methods.RefreshComplete()
 		if err != nil {
 			return errors.Wrap(err, 0)
@@ -180,6 +237,12 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 		r.instance.SetRefreshingVersion("")
 		r.instance.SetRefreshingVersionState("")
 	case REFRESH_FAILED:
+		r.instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: RefreshFailedReason,
+		})
+
 		err = r.methods.RefreshFailed()
 		if err != nil {
 			return errors.Wrap(err, 0)

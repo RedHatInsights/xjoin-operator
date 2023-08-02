@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
 	"time"
 
@@ -245,6 +246,11 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 	}
 
 	if len(problems) > 0 {
+		i.GetInstance().SetCondition(metav1.Condition{
+			Type:   common.ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: common.DeviationReason,
+		})
 		i.GetInstance().Status.ValidationResponse.Result = common.Invalid
 		i.GetInstance().Status.ValidationResponse.Reason = "Deviation found"
 		var messages []string
@@ -255,5 +261,6 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		reqLogger.Warn("Deviation found", "problems", problems)
 	}
 
+	i.UpdateCondition()
 	return i.UpdateStatusAndRequeue(time.Second * 30)
 }

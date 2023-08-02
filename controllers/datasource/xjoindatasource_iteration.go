@@ -25,7 +25,7 @@ func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version
 			"name":      name + "." + version,
 			"namespace": i.Iteration.Instance.GetNamespace(),
 			"labels": map[string]interface{}{
-				common.COMPONENT_NAME_LABEL: name,
+				common.ComponentNameLabel: name,
 			},
 		},
 		"spec": map[string]interface{}{

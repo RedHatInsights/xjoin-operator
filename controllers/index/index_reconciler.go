@@ -136,7 +136,7 @@ func (d *ReconcileMethods) RefreshComplete() (err error) {
 func (d *ReconcileMethods) ScrubPipelines(validVersions []string) (err error) {
 	existingIndexPipelines := &v1alpha1.XJoinIndexPipelineList{}
 	labels := client.MatchingLabels{}
-	labels[common.COMPONENT_NAME_LABEL] = d.iteration.GetInstance().GetName()
+	labels[common.ComponentNameLabel] = d.iteration.GetInstance().GetName()
 	err = d.iteration.Client.List(
 		d.iteration.Context, existingIndexPipelines, client.InNamespace(d.iteration.GetInstance().Namespace))
 	if err != nil {

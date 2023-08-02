@@ -469,5 +469,6 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	}
 
 	i.Instance = instance
+	i.UpdateCondition()
 	return i.UpdateStatusAndRequeue(time.Second * 30)
 }

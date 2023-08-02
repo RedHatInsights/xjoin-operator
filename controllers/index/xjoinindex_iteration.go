@@ -38,7 +38,7 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 			"name":      name + "." + version,
 			"namespace": i.Iteration.Instance.GetNamespace(),
 			"labels": map[string]interface{}{
-				common.COMPONENT_NAME_LABEL: name,
+				common.ComponentNameLabel: name,
 			},
 		},
 		"spec": spec,

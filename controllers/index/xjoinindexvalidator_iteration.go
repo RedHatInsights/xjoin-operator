@@ -47,7 +47,7 @@ func (i *XJoinIndexValidatorIteration) Finalize() (err error) {
 
 	labels := client.MatchingLabels{}
 	labels["xjoin.index"] = i.Instance.GetName()
-	labels[common.COMPONENT_NAME_LABEL] = "XJoinIndexValidator"
+	labels[common.ComponentNameLabel] = "XJoinIndexValidator"
 
 	pods := &v1.PodList{}
 	err = i.Client.List(i.Context, pods, client.InNamespace(i.Instance.GetNamespace()), labels)
@@ -113,7 +113,7 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 	//check if pod is already running
 	labels := client.MatchingLabels{}
 	labels["xjoin.index"] = i.Instance.GetName()
-	labels[common.COMPONENT_NAME_LABEL] = "XJoinIndexValidator"
+	labels[common.ComponentNameLabel] = "XJoinIndexValidator"
 	podList := &v1.PodList{}
 	err = i.Client.List(i.Context, podList, client.InNamespace(i.Instance.GetNamespace()), labels)
 	if err != nil {
@@ -190,6 +190,7 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 			}
 
 			datasourcePipeline.Status.ValidationResponse = response
+			common.UpdateCondition(datasourcePipeline)
 
 			if err := i.Client.Status().Update(i.Context, datasourcePipeline); err != nil {
 				if k8errors.IsConflict(err) {
@@ -394,8 +395,8 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 			Name:      i.ValidationPodName(),
 			Namespace: i.Instance.GetNamespace(),
 			Labels: map[string]string{
-				"xjoin.index":               i.Instance.GetName(),
-				common.COMPONENT_NAME_LABEL: "XJoinIndexValidator",
+				"xjoin.index":             i.Instance.GetName(),
+				common.ComponentNameLabel: "XJoinIndexValidator",
 			},
 			//OwnerReferences: nil,
 		},

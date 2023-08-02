@@ -73,8 +73,8 @@ var _ = Describe("XJoinIndexValidator", func() {
 			Expect(pod.Name).To(Equal(strings.ReplaceAll(reconciler.GetName(), ".", "-")))
 			Expect(pod.Status.Phase).To(Equal(corev1.PodPending))
 			Expect(pod.ObjectMeta.Labels).To(Equal(map[string]string{
-				common.COMPONENT_NAME_LABEL: "XJoinIndexValidator",
-				"xjoin.index":               reconciler.GetName(),
+				common.ComponentNameLabel: "XJoinIndexValidator",
+				"xjoin.index":             reconciler.GetName(),
 			}))
 
 			Expect(pod.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))

@@ -1083,6 +1083,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			checkError(err)
 
 			refreshingIndexPipeline.Status.ValidationResponse.Result = common.Valid
+			refreshingIndexPipeline.SetCondition(metav1.Condition{
+				Type:   common.ValidConditionType,
+				Status: metav1.ConditionTrue,
+				Reason: common.ValidationSucceededReason,
+			})
 
 			err = k8sClient.Status().Update(context.Background(), refreshingIndexPipeline)
 			checkError(err)
@@ -1199,6 +1204,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			checkError(err)
 
 			refreshingIndexPipeline.Status.ValidationResponse.Result = common.Valid
+			refreshingIndexPipeline.SetCondition(metav1.Condition{
+				Type:   common.ValidConditionType,
+				Status: metav1.ConditionTrue,
+				Reason: common.ValidationSucceededReason,
+			})
 
 			err = k8sClient.Status().Update(context.Background(), refreshingIndexPipeline)
 			checkError(err)
@@ -1302,6 +1312,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			checkError(err)
 
 			refreshingIndexPipeline.Status.ValidationResponse.Result = common.Valid
+			refreshingIndexPipeline.SetCondition(metav1.Condition{
+				Type:   common.ValidConditionType,
+				Status: metav1.ConditionTrue,
+				Reason: common.ValidationSucceededReason,
+			})
 
 			err = k8sClient.Status().Update(context.Background(), refreshingIndexPipeline)
 			checkError(err)
