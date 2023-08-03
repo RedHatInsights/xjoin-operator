@@ -209,6 +209,31 @@ func (i *Iteration) ReconcileChild(child Child) (err error) {
 	return
 }
 
+func (i *Iteration) DeleteAllIndexResources(gvk schema.GroupVersionKind, indexName string) (err error) {
+	resources := &unstructured.UnstructuredList{}
+	resources.SetGroupVersionKind(gvk)
+	labels := client.MatchingLabels{"xjoin.index.name": indexName}
+	fields := client.MatchingFields{"metadata.namespace": i.Instance.GetNamespace()}
+
+	err = i.Client.List(i.Context, resources, labels, fields)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	for _, item := range resources.Items {
+		resource := &unstructured.Unstructured{}
+		resource.SetGroupVersionKind(gvk)
+		resource.SetNamespace(i.Instance.GetNamespace())
+		resource.SetName(item.GetName())
+		err = i.Client.Delete(i.Context, resource)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+
+	return
+}
+
 func (i *Iteration) DeleteAllResourceTypeWithComponentName(gvk schema.GroupVersionKind, componentName string) (err error) {
 	resources := &unstructured.UnstructuredList{}
 	resources.SetGroupVersionKind(gvk)
