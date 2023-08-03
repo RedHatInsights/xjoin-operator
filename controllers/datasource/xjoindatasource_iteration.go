@@ -6,9 +6,11 @@ import (
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
+	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -26,7 +28,7 @@ func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version
 			"name":      name + "." + version,
 			"namespace": i.Iteration.Instance.GetNamespace(),
 			"labels": map[string]interface{}{
-				labels.ComponentName:   name,
+				labels.ComponentName:   components.DatasourcePipeline,
 				labels.DatasourceName:  name,
 				labels.PipelineVersion: version,
 			},
@@ -64,7 +66,11 @@ func (i *XJoinDataSourceIteration) DeleteDataSourcePipeline(name string, version
 
 func (i *XJoinDataSourceIteration) ReconcilePipelines() (err error) {
 	child := NewDataSourcePipelineChild(i)
-	err = i.ReconcileChild(child)
+	labelsMatch := client.MatchingLabels{
+		labels.ComponentName:  components.DatasourcePipeline,
+		labels.DatasourceName: i.GetInstance().GetName(),
+	}
+	err = i.ReconcileChild(child, labelsMatch)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -74,7 +80,12 @@ func (i *XJoinDataSourceIteration) ReconcilePipelines() (err error) {
 func (i *XJoinDataSourceIteration) Finalize() (err error) {
 	i.Log.Info("Starting finalizer")
 
-	err = i.DeleteAllResourceTypeWithComponentName(common.DataSourcePipelineGVK, i.GetInstance().GetName())
+	labelsMatch := client.MatchingLabels{
+		labels.ComponentName:  components.DatasourcePipeline,
+		labels.DatasourceName: i.GetInstance().GetName(),
+	}
+
+	err = i.DeleteAllGVKsWithLabels(common.DataSourcePipelineGVK, labelsMatch)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

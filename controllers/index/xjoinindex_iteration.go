@@ -6,9 +6,11 @@ import (
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
+	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -39,7 +41,7 @@ func (i *XJoinIndexIteration) CreateIndexPipeline(name string, version string) (
 			"name":      name + "." + version,
 			"namespace": i.Iteration.Instance.GetNamespace(),
 			"labels": map[string]interface{}{
-				labels.ComponentName:   name,
+				labels.ComponentName:   components.IndexPipeline,
 				labels.IndexName:       name,
 				labels.PipelineVersion: version,
 			},
@@ -75,17 +77,17 @@ func (i *XJoinIndexIteration) GetFinalizerName() string {
 func (i *XJoinIndexIteration) Finalize() (err error) {
 	i.Log.Info("Starting finalizer")
 
-	err = i.DeleteAllIndexPipelineResources(common.IndexPipelineGVK, i.GetInstance().GetName())
+	labelsMatch := client.MatchingLabels{
+		labels.ComponentName: components.IndexPipeline,
+		labels.IndexName:     i.GetInstance().GetName(),
+	}
+
+	err = i.DeleteAllGVKsWithLabels(common.IndexPipelineGVK, labelsMatch)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 
-	err = i.DeleteAllIndexValidatorResources(common.IndexValidatorGVK, i.GetInstance().GetName())
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-
-	err = i.DeleteAllResourceTypeWithComponentName(common.IndexValidatorGVK, i.GetInstance().GetName())
+	err = i.DeleteAllGVKsWithLabels(common.IndexValidatorGVK, labelsMatch)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -105,7 +107,11 @@ func (i *XJoinIndexIteration) Finalize() (err error) {
 
 func (i *XJoinIndexIteration) ReconcilePipeline() (err error) {
 	child := NewIndexPipelineChild(i)
-	err = i.ReconcileChild(child)
+	labelsMatch := client.MatchingLabels{
+		labels.ComponentName:  components.DatasourcePipeline,
+		labels.DatasourceName: i.GetInstance().GetName(),
+	}
+	err = i.ReconcileChild(child, labelsMatch)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

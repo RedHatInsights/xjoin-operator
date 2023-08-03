@@ -167,7 +167,7 @@ func (i *Iteration) AddFinalizer(finalizer string) error {
 	return nil
 }
 
-func (i *Iteration) ReconcileChild(child Child) (err error) {
+func (i *Iteration) ReconcileChild(child Child, labelsMatch client.MatchingLabels) (err error) {
 	//build an array and map of expected child versions (active, refreshing)
 	//the map value will be set to true when an expected child is found
 	expectedChildrenMap := make(map[string]bool)
@@ -184,11 +184,7 @@ func (i *Iteration) ReconcileChild(child Child) (err error) {
 	//retrieve a list of children for this datasource.name
 	children := &unstructured.UnstructuredList{}
 	children.SetGroupVersionKind(child.GetGVK())
-	labelsMatch := client.MatchingLabels{}
-	labelsMatch[labels.ComponentName] = child.GetParentInstance().GetName()
-	fields := client.MatchingFields{}
-	fields["metadata.namespace"] = child.GetParentInstance().GetNamespace()
-	err = i.Client.List(i.Context, children, labelsMatch, fields)
+	err = i.Client.List(i.Context, children, labelsMatch, client.InNamespace(child.GetParentInstance().GetNamespace()))
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -240,43 +236,16 @@ func (i *Iteration) ReconcileChild(child Child) (err error) {
 	return
 }
 
-func (i *Iteration) DeleteAllIndexValidatorResources(gvk schema.GroupVersionKind, indexName string) (err error) {
+func (i *Iteration) DeleteAllGVKsWithLabels(gvk schema.GroupVersionKind, matchingLabels client.MatchingLabels) (err error) {
 	resources := &unstructured.UnstructuredList{}
 	resources.SetGroupVersionKind(gvk)
-	labels := client.MatchingLabels{COMPONENT_NAME_LABEL: "xjoinindexpipeline." + indexName}
-	fields := client.MatchingFields{"metadata.namespace": i.Instance.GetNamespace()}
 
-	err = i.Client.List(i.Context, resources, labels, fields)
+	err = i.Client.List(i.Context, resources, matchingLabels, client.InNamespace(i.Instance.GetNamespace()))
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 
 	for _, item := range resources.Items {
-		resource := &unstructured.Unstructured{}
-		resource.SetGroupVersionKind(gvk)
-		resource.SetNamespace(i.Instance.GetNamespace())
-		resource.SetName(item.GetName())
-		err = i.Client.Delete(i.Context, resource)
-		if err != nil {
-			return errors.Wrap(err, 0)
-		}
-	}
-
-	return
-}
-
-func (i *Iteration) DeleteAllIndexPipelineResources(gvk schema.GroupVersionKind, indexName string) (err error) {
-	resources := &unstructured.UnstructuredList{}
-	resources.SetGroupVersionKind(gvk)
-	fields := client.MatchingFields{"metadata.namespace": i.Instance.GetNamespace()}
-
-	err = i.Client.List(i.Context, resources, fields)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
-
-	for _, item := range resources.Items {
-		i.Log.Debug("Deleting IndexPipeline during Index finalizer", "name", item.GetName())
 		resource := &unstructured.Unstructured{}
 		resource.SetGroupVersionKind(gvk)
 		resource.SetNamespace(i.Instance.GetNamespace())
