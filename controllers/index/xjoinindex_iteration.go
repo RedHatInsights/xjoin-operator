@@ -72,12 +72,12 @@ func (i *XJoinIndexIteration) GetFinalizerName() string {
 func (i *XJoinIndexIteration) Finalize() (err error) {
 	i.Log.Info("Starting finalizer")
 
-	err = i.DeleteAllIndexResources(common.IndexPipelineGVK, i.GetInstance().GetName())
+	err = i.DeleteAllIndexPipelineResources(common.IndexPipelineGVK, i.GetInstance().GetName())
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 
-	err = i.DeleteAllIndexResources(common.IndexValidatorGVK, i.GetInstance().GetName())
+	err = i.DeleteAllIndexValidatorResources(common.IndexValidatorGVK, i.GetInstance().GetName())
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
