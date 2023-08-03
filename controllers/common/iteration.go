@@ -237,15 +237,15 @@ func (i *Iteration) DeleteAllIndexValidatorResources(gvk schema.GroupVersionKind
 func (i *Iteration) DeleteAllIndexPipelineResources(gvk schema.GroupVersionKind, indexName string) (err error) {
 	resources := &unstructured.UnstructuredList{}
 	resources.SetGroupVersionKind(gvk)
-	labels := client.MatchingLabels{COMPONENT_NAME_LABEL: indexName}
 	fields := client.MatchingFields{"metadata.namespace": i.Instance.GetNamespace()}
 
-	err = i.Client.List(i.Context, resources, labels, fields)
+	err = i.Client.List(i.Context, resources, fields)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
 
 	for _, item := range resources.Items {
+		i.Log.Debug("Deleting IndexPipeline during Index finalizer", "name", item.GetName())
 		resource := &unstructured.Unstructured{}
 		resource.SetGroupVersionKind(gvk)
 		resource.SetNamespace(i.Instance.GetNamespace())
