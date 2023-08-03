@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
+	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"os"
 
 	"github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
@@ -211,14 +213,10 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Name).To(Equal(deploymentName))
 			Expect(deployment.Namespace).To(Equal(namespace))
 			Expect(deployment.Spec.Replicas).To(Equal(&replicas))
-			Expect(deployment.Spec.Selector.MatchLabels).To(Equal(map[string]string{
-				"app":         "xjoin-core-xjoinindexpipeline-test-index-pipeline-1234",
-				"xjoin.index": "xjoin-core-xjoinindexpipeline-test-index-pipeline",
-			}))
-			Expect(deployment.GetLabels()).To(Equal(map[string]string{
-				"app":         "xjoin-core-xjoinindexpipeline-test-index-pipeline-1234",
-				"xjoin.index": "xjoin-core-xjoinindexpipeline-test-index-pipeline",
-			}))
+			Expect(deployment.Spec.Selector.MatchLabels).To(HaveKeyWithValue(labels.IndexName, "test-index-pipeline"))
+			Expect(deployment.Spec.Selector.MatchLabels).To(HaveKeyWithValue(labels.ComponentName, components.Core))
+			Expect(deployment.GetLabels()).To(HaveKeyWithValue(labels.IndexName, "test-index-pipeline"))
+			Expect(deployment.GetLabels()).To(HaveKeyWithValue(labels.ComponentName, components.Core))
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal("xjoin-core-xjoinindexpipeline-test-index-pipeline-1234"))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/cloudservices/xjoin-core:latest"))
@@ -293,14 +291,16 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Namespace).To(Equal(namespace))
 			Expect(deployment.Spec.Replicas).To(Equal(&replicas))
 			Expect(deployment.GetLabels()).To(Equal(map[string]string{
-				"app":                  "test-index-pipeline-1234",
-				"xjoin.index":          "test-index-pipeline",
-				"xjoin.component.name": "XJoinAPISubgraph",
+				labels.IndexName:       "test-index-pipeline",
+				labels.ComponentName:   components.APISubgraph,
+				labels.PipelineVersion: "1234",
+				labels.SubgraphName:    "test-index-pipeline",
 			}))
 			Expect(deployment.Spec.Selector.MatchLabels).To(Equal(map[string]string{
-				"app":                  "test-index-pipeline-1234",
-				"xjoin.index":          "test-index-pipeline",
-				"xjoin.component.name": "XJoinAPISubgraph",
+				labels.IndexName:       "test-index-pipeline",
+				labels.ComponentName:   components.APISubgraph,
+				labels.PipelineVersion: "1234",
+				labels.SubgraphName:    "test-index-pipeline",
 			}))
 
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
@@ -439,14 +439,16 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Namespace).To(Equal(namespace))
 			Expect(deployment.Spec.Replicas).To(Equal(&replicas))
 			Expect(deployment.GetLabels()).To(Equal(map[string]string{
-				"app":                  "test-index-pipeline-test-custom-image-1234",
-				"xjoin.index":          "test-index-pipeline-test-custom-image",
-				"xjoin.component.name": "XJoinAPISubgraph",
+				labels.IndexName:       "test-index-pipeline",
+				labels.ComponentName:   components.APISubgraph,
+				labels.PipelineVersion: "1234",
+				labels.SubgraphName:    "test-index-pipeline-test-custom-image",
 			}))
 			Expect(deployment.Spec.Selector.MatchLabels).To(Equal(map[string]string{
-				"app":                  "test-index-pipeline-test-custom-image-1234",
-				"xjoin.index":          "test-index-pipeline-test-custom-image",
-				"xjoin.component.name": "XJoinAPISubgraph",
+				labels.IndexName:       "test-index-pipeline",
+				labels.ComponentName:   components.APISubgraph,
+				labels.PipelineVersion: "1234",
+				labels.SubgraphName:    "test-index-pipeline-test-custom-image",
 			}))
 
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
@@ -589,8 +591,9 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(validator.Name).To(Equal(validatorName))
 			Expect(validator.Namespace).To(Equal(namespace))
 			Expect(validator.GetLabels()).To(Equal(map[string]string{
-				"app":                  "xjoin-validator",
-				"xjoin.component.name": "xjoinindexpipeline.test-index-pipeline",
+				labels.ComponentName:   components.IndexValidator,
+				labels.IndexName:       "test-index-pipeline",
+				labels.PipelineVersion: "1234",
 			}))
 			Expect(validator.OwnerReferences).To(HaveLen(1))
 

@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
@@ -24,6 +25,8 @@ import (
 type XJoinAPISubGraph struct {
 	name                  string
 	schemaName            string
+	indexName             string
+	subgraphName          string
 	version               string
 	Client                client.Client
 	Context               context.Context
@@ -47,12 +50,15 @@ func (x *XJoinAPISubGraph) SetLogger(log logger.Log) {
 }
 
 func (x *XJoinAPISubGraph) SetName(kind string, name string) {
+	x.indexName = name
 	x.schemaName = strings.ToLower(kind + "." + name)
 	x.name = strings.ToLower(strings.ReplaceAll(name, ".", "-"))
 
 	if x.Suffix != "" {
 		x.name = x.name + "-" + x.Suffix
 	}
+
+	x.subgraphName = x.name
 }
 
 func (x *XJoinAPISubGraph) SetVersion(version string) {
@@ -64,13 +70,13 @@ func (x *XJoinAPISubGraph) Name() string {
 }
 
 func (x *XJoinAPISubGraph) buildServiceStructure() *corev1.Service {
-	labels := x.buildLabels()
+	serviceLabels := x.buildLabels()
 	targetPort := intstr.Parse("4000")
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      x.Name(),
 			Namespace: x.Namespace,
-			Labels:    labels,
+			Labels:    serviceLabels,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{{
@@ -78,9 +84,7 @@ func (x *XJoinAPISubGraph) buildServiceStructure() *corev1.Service {
 				Port:       4000,
 				TargetPort: targetPort,
 			}},
-			Selector: map[string]string{
-				"app": labels["app"],
-			},
+			Selector: serviceLabels,
 		},
 		Status: corev1.ServiceStatus{},
 	}
@@ -89,7 +93,7 @@ func (x *XJoinAPISubGraph) buildServiceStructure() *corev1.Service {
 }
 
 func (x *XJoinAPISubGraph) buildDeploymentStructure() (*v1.Deployment, error) {
-	labels := x.buildLabels()
+	deploymentLabels := x.buildLabels()
 	replicas := int32(1)
 
 	cpuLimit, err := resource.ParseQuantity("200m")
@@ -173,14 +177,14 @@ func (x *XJoinAPISubGraph) buildDeploymentStructure() (*v1.Deployment, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      x.Name(),
 			Namespace: x.Namespace,
-			Labels:    labels,
+			Labels:    deploymentLabels,
 		},
 		Spec: v1.DeploymentSpec{
 			Replicas:                &replicas,
 			RevisionHistoryLimit:    &revisionHistoryLimit,
 			ProgressDeadlineSeconds: &progressDeadlineSeconds,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
+				MatchLabels: deploymentLabels,
 			},
 			Strategy: v1.DeploymentStrategy{
 				Type: "RollingUpdate",
@@ -191,7 +195,7 @@ func (x *XJoinAPISubGraph) buildDeploymentStructure() (*v1.Deployment, error) {
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
+					Labels: deploymentLabels,
 				},
 				Spec: corev1.PodSpec{
 					Containers:                    []corev1.Container{container},
@@ -209,9 +213,10 @@ func (x *XJoinAPISubGraph) buildDeploymentStructure() (*v1.Deployment, error) {
 
 func (x *XJoinAPISubGraph) buildLabels() map[string]string {
 	return map[string]string{
-		"app":                     x.Name(),
-		"xjoin.index":             x.name,
-		common.ComponentNameLabel: "XJoinAPISubgraph",
+		labels.IndexName:       x.indexName,
+		labels.PipelineVersion: x.version,
+		labels.ComponentName:   APISubgraph,
+		labels.SubgraphName:    x.subgraphName,
 	}
 }
 
@@ -290,7 +295,7 @@ func (x *XJoinAPISubGraph) Delete() (err error) {
 		"XJoinAPISubgraph service was successfully deleted", x.Name())
 
 	//delete the gql schema from registry
-	exists, err := x.Registry.CheckIfSchemaVersionExists(x.schemaName+"."+x.version, 1) //TODO
+	exists, err := x.Registry.CheckIfSchemaVersionExists(x.schemaName+"."+x.version, 1) //TODO static version #
 	if err != nil {
 		x.events.Warning("DeleteAPISubgraphServiceFailed",
 			"Unable to check if GraphQLSchema %s exists for XJoinAPISubgraph %s",
@@ -380,8 +385,11 @@ func (x *XJoinAPISubGraph) Exists() (exists bool, err error) {
 	deployments.SetGroupVersionKind(common.DeploymentGVK)
 	fields := client.MatchingFields{}
 	fields["metadata.name"] = x.Name()
-	fields["metadata.namespace"] = x.Namespace
-	err = x.Client.List(x.Context, deployments, fields)
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.IndexName] = x.indexName
+	labelsMatch[labels.ComponentName] = APISubgraph
+	labelsMatch[labels.SubgraphName] = x.subgraphName
+	err = x.Client.List(x.Context, deployments, fields, labelsMatch, client.InNamespace(x.Namespace))
 	if err != nil {
 		x.events.Warning("APISubgraphExistsFailed",
 			"Unable to list deployments for XJoinAPISubgraph %s", x.Name())
@@ -401,9 +409,11 @@ func (x *XJoinAPISubGraph) ListInstalledVersions() (versions []string, err error
 	fields := client.MatchingFields{
 		"metadata.namespace": x.Namespace,
 	}
-	labels := client.MatchingLabels{}
-	labels["xjoin.index"] = x.name
-	err = x.Client.List(x.Context, deployments, labels, fields)
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.IndexName] = x.indexName
+	labelsMatch[labels.ComponentName] = APISubgraph
+	labelsMatch[labels.SubgraphName] = x.subgraphName
+	err = x.Client.List(x.Context, deployments, labelsMatch, fields)
 	if err != nil {
 		x.events.Warning("APISubgraphExistsFailed",
 			"Unable to ListInstalledVersions for XJoinAPISubgraph %s", x.Name())

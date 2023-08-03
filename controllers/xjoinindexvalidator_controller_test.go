@@ -7,6 +7,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
+	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/index"
 	"github.com/redhatinsights/xjoin-operator/controllers/k8s/mocks"
 	corev1 "k8s.io/api/core/v1"
@@ -73,8 +75,9 @@ var _ = Describe("XJoinIndexValidator", func() {
 			Expect(pod.Name).To(Equal(strings.ReplaceAll(reconciler.GetName(), ".", "-")))
 			Expect(pod.Status.Phase).To(Equal(corev1.PodPending))
 			Expect(pod.ObjectMeta.Labels).To(Equal(map[string]string{
-				common.ComponentNameLabel: "XJoinIndexValidator",
-				"xjoin.index":             reconciler.GetName(),
+				labels.PipelineVersion: "1234",
+				labels.ComponentName:   components.IndexValidator,
+				labels.IndexName:       "test-index-validator",
 			}))
 
 			Expect(pod.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))

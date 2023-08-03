@@ -8,6 +8,8 @@ import (
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
+	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -91,12 +93,12 @@ func (x *XJoinIndexValidatorTestReconciler) ReconcileFailure() (validator v1alph
 }
 
 func (x *XJoinIndexValidatorTestReconciler) ListValidatorPods() *corev1.PodList {
-	labels := client.MatchingLabels{}
-	labels["xjoin.index"] = x.GetName()
-	labels[common.ComponentNameLabel] = "XJoinIndexValidator"
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.IndexName] = x.Name
+	labelsMatch[labels.ComponentName] = components.IndexValidator
 
 	pods := &corev1.PodList{}
-	err := k8sClient.List(context.Background(), pods, client.InNamespace(x.Namespace), labels)
+	err := k8sClient.List(context.Background(), pods, client.InNamespace(x.Namespace), labelsMatch)
 	checkError(err)
 	return pods
 }

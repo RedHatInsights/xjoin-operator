@@ -6,6 +6,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
+	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,8 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"time"
 )
-
-const ComponentNameLabel = "xjoin.component.name"
 
 type Iteration struct {
 	Instance         XJoinObjectChild
@@ -185,11 +184,11 @@ func (i *Iteration) ReconcileChild(child Child) (err error) {
 	//retrieve a list of children for this datasource.name
 	children := &unstructured.UnstructuredList{}
 	children.SetGroupVersionKind(child.GetGVK())
-	labels := client.MatchingLabels{}
-	labels[ComponentNameLabel] = child.GetParentInstance().GetName()
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.ComponentName] = child.GetParentInstance().GetName()
 	fields := client.MatchingFields{}
 	fields["metadata.namespace"] = child.GetParentInstance().GetNamespace()
-	err = i.Client.List(i.Context, children, labels, fields)
+	err = i.Client.List(i.Context, children, labelsMatch, fields)
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -294,10 +293,9 @@ func (i *Iteration) DeleteAllIndexPipelineResources(gvk schema.GroupVersionKind,
 func (i *Iteration) DeleteAllResourceTypeWithComponentName(gvk schema.GroupVersionKind, componentName string) (err error) {
 	resources := &unstructured.UnstructuredList{}
 	resources.SetGroupVersionKind(gvk)
-	labels := client.MatchingLabels{ComponentNameLabel: componentName}
-	fields := client.MatchingFields{"metadata.namespace": i.Instance.GetNamespace()}
+	labelsMatch := client.MatchingLabels{labels.ComponentName: componentName}
 
-	err = i.Client.List(i.Context, resources, labels, fields)
+	err = i.Client.List(i.Context, resources, labelsMatch, client.InNamespace(i.Instance.GetNamespace()))
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

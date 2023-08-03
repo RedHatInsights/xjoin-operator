@@ -5,6 +5,7 @@ import (
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -25,7 +26,9 @@ func (i *XJoinDataSourceIteration) CreateDataSourcePipeline(name string, version
 			"name":      name + "." + version,
 			"namespace": i.Iteration.Instance.GetNamespace(),
 			"labels": map[string]interface{}{
-				common.ComponentNameLabel: name,
+				labels.ComponentName:   name,
+				labels.DatasourceName:  name,
+				labels.PipelineVersion: version,
 			},
 		},
 		"spec": map[string]interface{}{

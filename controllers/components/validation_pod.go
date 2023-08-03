@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	labels "github.com/redhatinsights/xjoin-operator/controllers/common/labels"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -16,6 +17,7 @@ import (
 
 type ValidationPod struct {
 	name      string
+	indexName string
 	version   string
 	events    events.Events
 	log       logger.Log
@@ -29,6 +31,7 @@ func (v *ValidationPod) SetLogger(log logger.Log) {
 }
 
 func (v *ValidationPod) SetName(kind string, name string) {
+	v.indexName = name
 	v.name = strings.ToLower(strings.ReplaceAll(kind+"-"+name, ".", "-"))
 }
 
@@ -69,12 +72,11 @@ func (v *ValidationPod) Delete() (err error) {
 func (v *ValidationPod) Exists() (exists bool, err error) {
 	pods := &unstructured.UnstructuredList{}
 	pods.SetGroupVersionKind(common.PodGVK)
-	labels := client.MatchingLabels{}
-	labels["xjoin.component.name"] = "XJoinIndexValidator"
-	fields := client.MatchingFields{
-		"metadata.namespace": v.Namespace,
-	}
-	err = v.Client.List(v.Context, pods, labels, fields)
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.ComponentName] = IndexValidator
+	fields := client.MatchingFields{}
+	fields["metadata.name"] = v.Name()
+	err = v.Client.List(v.Context, pods, labelsMatch, fields, client.InNamespace(v.Namespace))
 	if err != nil {
 		v.events.Warning("ValidationPodExistsFailed",
 			"Unable to check if Validation pod %s exists", v.Name())
@@ -90,12 +92,10 @@ func (v *ValidationPod) Exists() (exists bool, err error) {
 func (v *ValidationPod) ListInstalledVersions() (versions []string, err error) {
 	pods := &unstructured.UnstructuredList{}
 	pods.SetGroupVersionKind(common.PodGVK)
-	labels := client.MatchingLabels{}
-	labels["xjoin.component.name"] = "XJoinIndexValidator"
-	fields := client.MatchingFields{
-		"metadata.namespace": v.Namespace,
-	}
-	err = v.Client.List(v.Context, pods, labels, fields)
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.ComponentName] = IndexValidator
+	labelsMatch[labels.IndexName] = v.indexName
+	err = v.Client.List(v.Context, pods, labelsMatch, client.InNamespace(v.Namespace))
 	if err != nil {
 		v.events.Warning("ValidationPodListInstalledVersionsFailed",
 			"Unable to list Validation pods %s", v.Name())

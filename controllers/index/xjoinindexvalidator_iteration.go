@@ -8,6 +8,8 @@ import (
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
+	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	"github.com/redhatinsights/xjoin-operator/controllers/k8s"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
@@ -45,12 +47,13 @@ func (i *XJoinIndexValidatorIteration) Finalize() (err error) {
 	i.Events.Normal("DeletingXJoinIndexValidator", "Starting finalizer")
 	i.Log.Info("Starting finalizer")
 
-	labels := client.MatchingLabels{}
-	labels["xjoin.index"] = i.Instance.GetName()
-	labels[common.ComponentNameLabel] = "XJoinIndexValidator"
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.IndexName] = i.GetInstance().Spec.Name
+	labelsMatch[labels.ComponentName] = components.IndexValidator
+	labelsMatch[labels.PipelineVersion] = i.GetInstance().Spec.Version
 
 	pods := &v1.PodList{}
-	err = i.Client.List(i.Context, pods, client.InNamespace(i.Instance.GetNamespace()), labels)
+	err = i.Client.List(i.Context, pods, client.InNamespace(i.Instance.GetNamespace()), labelsMatch)
 	if err != nil {
 		i.Events.Warning("XJoinIndexValidatorFinalizeFailed",
 			"Unable to list validation pods")
@@ -111,11 +114,12 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 	}
 
 	//check if pod is already running
-	labels := client.MatchingLabels{}
-	labels["xjoin.index"] = i.Instance.GetName()
-	labels[common.ComponentNameLabel] = "XJoinIndexValidator"
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.IndexName] = i.GetInstance().Spec.Name
+	labelsMatch[labels.ComponentName] = components.IndexValidator
+	labelsMatch[labels.PipelineVersion] = i.GetInstance().Spec.Version
 	podList := &v1.PodList{}
-	err = i.Client.List(i.Context, podList, client.InNamespace(i.Instance.GetNamespace()), labels)
+	err = i.Client.List(i.Context, podList, client.InNamespace(i.Instance.GetNamespace()), labelsMatch)
 	if err != nil {
 		i.Events.Warning("ReconcileValidationPodFailed", "Unable to list pods")
 		return "", errors.Wrap(err, 0)
@@ -395,8 +399,9 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 			Name:      i.ValidationPodName(),
 			Namespace: i.Instance.GetNamespace(),
 			Labels: map[string]string{
-				"xjoin.index":             i.Instance.GetName(),
-				common.ComponentNameLabel: "XJoinIndexValidator",
+				labels.IndexName:       i.GetInstance().Spec.Name,
+				labels.ComponentName:   components.IndexValidator,
+				labels.PipelineVersion: i.GetInstance().Spec.Version,
 			},
 			//OwnerReferences: nil,
 		},

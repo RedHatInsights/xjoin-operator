@@ -5,6 +5,7 @@ import (
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
@@ -119,8 +120,8 @@ func (d *ReconcileMethods) RefreshFailed() (err error) {
 
 func (d *ReconcileMethods) ScrubPipelines(validVersions []string) (err error) {
 	existingDatasourcePipelines := &v1alpha1.XJoinDataSourcePipelineList{}
-	labels := client.MatchingLabels{}
-	labels[common.ComponentNameLabel] = d.iteration.GetInstance().GetName()
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.ComponentName] = d.iteration.GetInstance().GetName()
 	err = d.iteration.Client.List(
 		d.iteration.Context, existingDatasourcePipelines, client.InNamespace(d.iteration.GetInstance().Namespace))
 	if err != nil {

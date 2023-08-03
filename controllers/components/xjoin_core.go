@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	v1 "k8s.io/api/apps/v1"
@@ -23,6 +24,7 @@ import (
 type XJoinCore struct {
 	name              string
 	version           string
+	indexName         string
 	Client            client.Client
 	Context           context.Context
 	SourceTopics      string
@@ -40,6 +42,7 @@ func (xc *XJoinCore) SetLogger(log logger.Log) {
 }
 
 func (xc *XJoinCore) SetName(kind string, name string) {
+	xc.indexName = name
 	xc.name = "xjoin-core-" + strings.ToLower(strings.ReplaceAll(kind+"-"+name, ".", "-"))
 }
 
@@ -52,9 +55,9 @@ func (xc *XJoinCore) Name() string {
 }
 
 func (xc *XJoinCore) buildDeploymentStructure() (*v1.Deployment, error) {
-	labels := map[string]string{
-		"app":         xc.Name(),
-		"xjoin.index": xc.name,
+	deploymentLabels := map[string]string{
+		labels.IndexName:     xc.indexName,
+		labels.ComponentName: Core,
 	}
 
 	replicas := int32(1)
@@ -157,14 +160,14 @@ func (xc *XJoinCore) buildDeploymentStructure() (*v1.Deployment, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      xc.Name(),
 			Namespace: xc.Namespace,
-			Labels:    labels,
+			Labels:    deploymentLabels,
 		},
 		Spec: v1.DeploymentSpec{
 			Replicas:                &replicas,
 			RevisionHistoryLimit:    &revisionHistoryLimit,
 			ProgressDeadlineSeconds: &progressDeadlineSeconds,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
+				MatchLabels: deploymentLabels,
 			},
 			Strategy: v1.DeploymentStrategy{
 				Type: "RollingUpdate",
@@ -175,7 +178,7 @@ func (xc *XJoinCore) buildDeploymentStructure() (*v1.Deployment, error) {
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
+					Labels: deploymentLabels,
 				},
 				Spec: corev1.PodSpec{
 					Containers:                    []corev1.Container{container},
@@ -297,8 +300,10 @@ func (xc *XJoinCore) Exists() (exists bool, err error) {
 	deployments.SetGroupVersionKind(common.DeploymentGVK)
 	fields := client.MatchingFields{}
 	fields["metadata.name"] = xc.Name()
-	fields["metadata.namespace"] = xc.Namespace
-	err = xc.Client.List(xc.Context, deployments, fields)
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.ComponentName] = Core
+	labelsMatch[labels.IndexName] = xc.indexName
+	err = xc.Client.List(xc.Context, deployments, fields, labelsMatch, client.InNamespace(xc.Namespace))
 	if err != nil {
 		xc.events.Warning("XJoinCoreExistsFailed",
 			"Unable to list XJoinCore deployments %s", xc.Name())
@@ -314,12 +319,10 @@ func (xc *XJoinCore) Exists() (exists bool, err error) {
 func (xc *XJoinCore) ListInstalledVersions() (versions []string, err error) {
 	deployments := &unstructured.UnstructuredList{}
 	deployments.SetGroupVersionKind(common.DeploymentGVK)
-	labels := client.MatchingLabels{}
-	labels["xjoin.index"] = xc.name
-	fields := client.MatchingFields{
-		"metadata.namespace": xc.Namespace,
-	}
-	err = xc.Client.List(xc.Context, deployments, labels, fields)
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.ComponentName] = Core
+	labelsMatch[labels.IndexName] = xc.indexName
+	err = xc.Client.List(xc.Context, deployments, labelsMatch, client.InNamespace(xc.Namespace))
 	if err != nil {
 		xc.events.Warning("XJoinCoreListInstalledVersionsFailed",
 			"Unable to list XJoinCore deployments %s", xc.Name())

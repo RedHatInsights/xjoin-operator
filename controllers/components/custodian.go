@@ -42,22 +42,23 @@ func (c *Custodian) AddComponent(component Component) {
 func (c *Custodian) Scrub() (allErrors []error) {
 	for _, component := range c.components {
 		installedVersions, err := component.ListInstalledVersions()
-		c.log.Debug(fmt.Sprintf("Installed versions for component %T during scrub", component), "installedVersion", installedVersions)
 		if err != nil {
 			err = fmt.Errorf("%w; Unable to list versions for component while scrubbing: %T, %s", err, component, component.Name())
 			allErrors = append(allErrors, errors.Wrap(err, 0))
 			continue
 		}
+		c.log.Debug(fmt.Sprintf("Installed versions for component %T during scrub", component), "installedVersion", installedVersions)
 
 		for _, installedVersion := range installedVersions {
 			if !utils.ContainsString(c.validVersions, installedVersion) {
 				component.SetVersion(installedVersion)
 				err = component.Delete()
-				c.log.Debug(fmt.Sprintf("Deleted component %T during scrub", component), "version", installedVersion)
 				if err != nil {
-					err = fmt.Errorf("%w; Unable to delete component while scrubbing: %s", err, component.Name())
+					err = fmt.Errorf("%w; Unable to delete component while scrubbing: %s, type: %T", err, component.Name(), component)
 					allErrors = append(allErrors, errors.Wrap(err, 0))
+					continue
 				}
+				c.log.Debug(fmt.Sprintf("Deleted component %T during scrub", component), "version", installedVersion)
 			}
 		}
 	}
