@@ -102,6 +102,7 @@ func (es *ElasticsearchPipeline) Reconcile() (err error) {
 func (es *ElasticsearchPipeline) jsonFieldsToESPipeline() (pipeline string, err error) {
 	var pipelineObj elasticsearch.Pipeline
 	pipelineObj.Description = "test"
+	pipelineObj.Processors = make([]elasticsearch.PipelineProcessor, 0)
 	for _, jsonField := range es.JsonFields {
 		var processor elasticsearch.PipelineProcessor
 		processor.Json.Field = jsonField

@@ -220,7 +220,12 @@ func (es GenericElasticsearch) CreateIndex(
 
 	params := es.Parameters
 	params["ElasticSearchIndex"] = indexName
-	params["ElasticSearchProperties"] = properties
+
+	if properties == "" {
+		params["ElasticSearchProperties"] = "[]"
+	} else {
+		params["ElasticSearchProperties"] = properties
+	}
 
 	if withPipeline {
 		params["ElasticSearchPipeline"] = indexName

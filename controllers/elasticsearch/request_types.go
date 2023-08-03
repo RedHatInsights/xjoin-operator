@@ -63,5 +63,5 @@ type PipelineProcessor struct {
 
 type Pipeline struct {
 	Description string              `json:"description,omitempty"`
-	Processors  []PipelineProcessor `json:"processors,omitempty"`
+	Processors  []PipelineProcessor `json:"processors"`
 }

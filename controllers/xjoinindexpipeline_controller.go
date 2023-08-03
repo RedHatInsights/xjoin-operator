@@ -223,21 +223,6 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Context:               ctx,
 	}
 
-	kafkaTopic := &components.KafkaTopic{
-		TopicParameters: kafka.TopicParameters{
-			Replicas:           p.KafkaTopicReplicas.Int(),
-			Partitions:         p.KafkaTopicPartitions.Int(),
-			CleanupPolicy:      p.KafkaTopicCleanupPolicy.String(),
-			MinCompactionLagMS: p.KafkaTopicMinCompactionLagMS.String(),
-			RetentionBytes:     p.KafkaTopicRetentionBytes.String(),
-			RetentionMS:        p.KafkaTopicRetentionMS.String(),
-			MessageBytes:       p.KafkaTopicMessageBytes.String(),
-			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
-		},
-		KafkaTopics: kafkaTopics,
-		KafkaClient: kafkaClient,
-	}
-
 	elasticSearchConnection := elasticsearch.GenericElasticSearchParameters{
 		Url:        p.ElasticSearchURL.String(),
 		Username:   p.ElasticSearchUsername.String(),
@@ -259,32 +244,51 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	confluentClient.Init()
 	registryRestClient := schemaregistry.NewSchemaRegistryRestClient(schemaRegistryConnectionParams, r.Namespace)
 
-	indexAvroSchemaParser := avro.IndexAvroSchemaParser{
-		AvroSchema:      p.AvroSchema.String(),
-		Client:          i.Client,
-		Context:         i.Context,
-		Namespace:       i.Instance.GetNamespace(),
-		Log:             i.Log,
-		SchemaRegistry:  confluentClient,
-		SchemaNamespace: i.Instance.GetName(),
-		Active:          i.GetInstance().Status.Active,
-	}
-	indexAvroSchema, err := indexAvroSchemaParser.Parse()
-	if err != nil {
-		reqLogger.Error(errors.Wrap(err, 0), "error parsing index avro schema")
-		return result, errors.Wrap(err, 0)
-	}
-
 	e := events.NewEvents(r.Recorder, instance, reqLogger)
 	componentManager := components.NewComponentManager(
 		common.IndexPipelineGVK.Kind, instance.Spec.Name, p.Version.String(), e, reqLogger)
 
-	if indexAvroSchema.JSONFields != nil {
-		componentManager.AddComponent(&components.ElasticsearchPipeline{
-			GenericElasticsearch: *genericElasticsearch,
-			JsonFields:           indexAvroSchema.JSONFields,
-		})
+	kafkaTopic := &components.KafkaTopic{
+		TopicParameters: kafka.TopicParameters{
+			Replicas:           p.KafkaTopicReplicas.Int(),
+			Partitions:         p.KafkaTopicPartitions.Int(),
+			CleanupPolicy:      p.KafkaTopicCleanupPolicy.String(),
+			MinCompactionLagMS: p.KafkaTopicMinCompactionLagMS.String(),
+			RetentionBytes:     p.KafkaTopicRetentionBytes.String(),
+			RetentionMS:        p.KafkaTopicRetentionMS.String(),
+			MessageBytes:       p.KafkaTopicMessageBytes.String(),
+			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
+		},
+		KafkaTopics: kafkaTopics,
+		KafkaClient: kafkaClient,
 	}
+	componentManager.AddComponent(kafkaTopic)
+
+	var indexAvroSchema avro.IndexAvroSchema
+	var sinkTopic string
+	if instance.GetDeletionTimestamp() == nil {
+		indexAvroSchemaParser := avro.IndexAvroSchemaParser{
+			AvroSchema:      p.AvroSchema.String(),
+			Client:          i.Client,
+			Context:         i.Context,
+			Namespace:       i.Instance.GetNamespace(),
+			Log:             i.Log,
+			SchemaRegistry:  confluentClient,
+			SchemaNamespace: i.Instance.GetName(),
+			Active:          i.GetInstance().Status.Active,
+		}
+		indexAvroSchema, err = indexAvroSchemaParser.Parse()
+		if err != nil {
+			reqLogger.Error(errors.Wrap(err, 0), "error parsing index avro schema")
+			return result, errors.Wrap(err, 0)
+		}
+		sinkTopic = indexAvroSchemaParser.AvroSubjectToKafkaTopic(kafkaTopic.Name())
+	}
+
+	componentManager.AddComponent(&components.ElasticsearchPipeline{
+		GenericElasticsearch: *genericElasticsearch,
+		JsonFields:           indexAvroSchema.JSONFields,
+	})
 
 	elasticSearchIndexComponent := &components.ElasticsearchIndex{
 		GenericElasticsearch: *genericElasticsearch,
@@ -293,7 +297,6 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		WithPipeline:         indexAvroSchema.JSONFields != nil,
 	}
 	componentManager.AddComponent(elasticSearchIndexComponent)
-	componentManager.AddComponent(kafkaTopic)
 	componentManager.AddComponent(&components.ElasticsearchConnector{
 		Template:           p.ElasticSearchConnectorTemplate.String(),
 		KafkaClient:        kafkaClient,
@@ -315,7 +318,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Client:            i.Client,
 		Context:           i.Context,
 		SourceTopics:      indexAvroSchema.SourceTopics,
-		SinkTopic:         indexAvroSchemaParser.AvroSubjectToKafkaTopic(kafkaTopic.Name()),
+		SinkTopic:         sinkTopic,
 		KafkaBootstrap:    p.KafkaBootstrapURL.String(),
 		SchemaRegistryURL: p.SchemaRegistryProtocol.String() + "://" + p.SchemaRegistryHost.String() + ":" + p.SchemaRegistryPort.String(),
 		Namespace:         i.Instance.GetNamespace(),
