@@ -179,6 +179,16 @@ func (x *XJoinIndexPipelineTestReconciler) registerDeleteMocks() {
 		"http://localhost:9200/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(200, `{}`))
 
+	//elasticsearch pipeline mocks
+	httpmock.RegisterResponder(
+		"GET",
+		"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline."+x.GetName(),
+		httpmock.NewStringResponder(200, `{}`))
+	httpmock.RegisterResponder(
+		"DELETE",
+		"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline."+x.GetName(),
+		httpmock.NewStringResponder(200, `{}`))
+
 	//avro schema mocks
 	httpmock.RegisterResponder(
 		"GET",
@@ -253,6 +263,16 @@ func (x *XJoinIndexPipelineTestReconciler) registerNewMocks() {
 		"GET",
 		"http://localhost:9200/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(200, esIndexResponse))
+
+	//elasticsearch pipeline mocks
+	httpmock.RegisterResponder(
+		"GET",
+		"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline."+x.GetName(),
+		httpmock.NewStringResponder(404, `{}`))
+	httpmock.RegisterResponder(
+		"PUT",
+		"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline."+x.GetName(),
+		httpmock.NewStringResponder(200, `{}`))
 
 	//avro schema mocks
 	httpmock.RegisterResponder(
@@ -440,6 +460,11 @@ func (x *XJoinIndexPipelineTestReconciler) registerUpdatedMocks(params UpdatedMo
 	httpmock.RegisterResponder(
 		"GET",
 		"http://localhost:9200/_ingest/pipeline/"+x.Name+"%2A",
+		httpmock.NewStringResponder(200, "{}"))
+
+	httpmock.RegisterResponder(
+		"GET",
+		"http://localhost:9200/_ingest/pipeline/xjoinindexpipeline."+x.GetName(),
 		httpmock.NewStringResponder(200, "{}"))
 
 	//graphql schema state update mocks
