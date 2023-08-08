@@ -108,8 +108,8 @@ func (i *XJoinIndexIteration) Finalize() (err error) {
 func (i *XJoinIndexIteration) ReconcilePipeline() (err error) {
 	child := NewIndexPipelineChild(i)
 	labelsMatch := client.MatchingLabels{
-		labels.ComponentName:  components.DatasourcePipeline,
-		labels.DatasourceName: i.GetInstance().GetName(),
+		labels.ComponentName: components.IndexPipeline,
+		labels.IndexName:     i.GetInstance().GetName(),
 	}
 	err = i.ReconcileChild(child, labelsMatch)
 	if err != nil {
