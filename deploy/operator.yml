@@ -561,29 +561,26 @@ parameters:
           }
         }
       }
-
-  # version 2 parameters
   - name: KAFKA_BOOTSTRAP_URL
-    value: "platform-mq-kafka-bootstrap.platform-mq-stage:9092"
+    value: platform-mq-kafka-bootstrap.platform-mq-stage:9092
   - name: KAFKA_CLUSTER_NAMESPACE
-    value: "platform-mq-stage"
+    value: platform-mq-stage
   - name: KAFKA_CLUSTER
-    value: "platform-mq"
+    value: platform-mq
   - name: CONNECT_CLUSTER_NAMESPACE
-    value: "xjoin-stage"
+    value: xjoin-stage
   - name: SCHEMA_REGISTRY_PROTOCOL
-    value: "http"
+    value: http
   - name: SCHEMA_REGISTRY_HOST
-    value: "xjoin-apicurio-service.xjoin-stage.svc"
+    value: xjoin-apicurio-service.xjoin-stage.svc
   - name: SCHEMA_REGISTRY_PORT
-    value: "10000"
+    value: '10000'
   - name: SUBGRAPH_LOG_LEVEL
-    value: "WARN"
+    value: WARN
   - name: VALIDATION_ATTEMPT_INTERVAL
     value: '60'
   - name: VALIDATION_ATTEMPTS
     value: '30'
-
 objects:
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
