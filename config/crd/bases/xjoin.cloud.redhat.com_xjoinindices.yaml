@@ -86,6 +86,22 @@ spec:
                 properties:
                   details:
                     properties:
+                      counts:
+                        properties:
+                          contentsValidated:
+                            type: integer
+                          idsValidated:
+                            type: integer
+                          recordsInDatabase:
+                            type: integer
+                          recordsInElasticsearch:
+                            type: integer
+                        required:
+                        - contentsValidated
+                        - idsValidated
+                        - recordsInDatabase
+                        - recordsInElasticsearch
+                        type: object
                       idsMissingFromElasticsearch:
                         items:
                           type: string
@@ -103,16 +119,22 @@ spec:
                           type: string
                         type: array
                       mismatchContentDetails:
-                        items:
+                        additionalProperties:
                           properties:
-                            databaseContent:
+                            dbRecord:
                               type: string
-                            elasticsearchContent:
+                            diffs:
+                              items:
+                                type: string
+                              type: array
+                            esDocument:
                               type: string
-                            id:
-                              type: string
+                          required:
+                          - dbRecord
+                          - diffs
+                          - esDocument
                           type: object
-                        type: array
+                        type: object
                       totalMismatch:
                         type: integer
                     type: object
@@ -121,6 +143,7 @@ spec:
                   reason:
                     type: string
                   result:
+                    description: ValidationResult from the validation run.
                     type: string
                 type: object
               conditions:
@@ -197,6 +220,22 @@ spec:
                 properties:
                   details:
                     properties:
+                      counts:
+                        properties:
+                          contentsValidated:
+                            type: integer
+                          idsValidated:
+                            type: integer
+                          recordsInDatabase:
+                            type: integer
+                          recordsInElasticsearch:
+                            type: integer
+                        required:
+                        - contentsValidated
+                        - idsValidated
+                        - recordsInDatabase
+                        - recordsInElasticsearch
+                        type: object
                       idsMissingFromElasticsearch:
                         items:
                           type: string
@@ -214,16 +253,22 @@ spec:
                           type: string
                         type: array
                       mismatchContentDetails:
-                        items:
+                        additionalProperties:
                           properties:
-                            databaseContent:
+                            dbRecord:
                               type: string
-                            elasticsearchContent:
+                            diffs:
+                              items:
+                                type: string
+                              type: array
+                            esDocument:
                               type: string
-                            id:
-                              type: string
+                          required:
+                          - dbRecord
+                          - diffs
+                          - esDocument
                           type: object
-                        type: array
+                        type: object
                       totalMismatch:
                         type: integer
                     type: object
@@ -232,6 +277,7 @@ spec:
                   reason:
                     type: string
                   result:
+                    description: ValidationResult from the validation run.
                     type: string
                 type: object
               specHash:
