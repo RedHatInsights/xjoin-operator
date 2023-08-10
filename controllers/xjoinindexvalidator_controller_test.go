@@ -5,8 +5,8 @@ import (
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/index"
@@ -312,7 +312,7 @@ var _ = Describe("XJoinIndexValidator", func() {
 				err := k8sClient.Get(context.Background(), datasourcePipelineLookup, datasourcePipeline)
 				return err == nil
 			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
-			Expect(datasourcePipeline.Status.ValidationResponse.Result).To(Equal(""))
+			Expect(datasourcePipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationUndefined))
 
 			//reconcile indexpipelinevalidator to successful validation
 			logBytes, err := os.ReadFile("./test/data/validator/success.log.txt")
@@ -342,7 +342,7 @@ var _ = Describe("XJoinIndexValidator", func() {
 			//validate datasourcepipeline is valid
 			err = k8sClient.Get(context.Background(), datasourcePipelineLookup, datasourcePipeline)
 			checkError(err)
-			Expect(datasourcePipeline.Status.ValidationResponse.Result).To(Equal(common.Valid))
+			Expect(datasourcePipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationValid))
 		})
 	})
 

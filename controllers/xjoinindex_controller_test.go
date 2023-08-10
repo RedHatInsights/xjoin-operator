@@ -5,8 +5,8 @@ import (
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -102,9 +102,9 @@ var _ = Describe("XJoinIndex", func() {
 			createdIndex := indexReconciler.ReconcileNew()
 
 			Expect(createdIndex.Status.RefreshingVersion).ToNot(Equal(""))
-			Expect(createdIndex.Status.RefreshingVersionState.Result).To(Equal(common.New))
+			Expect(createdIndex.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationNew))
 			Expect(createdIndex.Status.ActiveVersion).To(Equal(""))
-			Expect(createdIndex.Status.ActiveVersionState.Result).To(Equal(""))
+			Expect(createdIndex.Status.ActiveVersionState.Result).To(Equal(validation.ValidationUndefined))
 
 			//create a valid datasource
 			dataSourceName := "testdatasource"
@@ -138,9 +138,9 @@ var _ = Describe("XJoinIndex", func() {
 			//validate the index's status is updated
 			updatedIndex := indexReconciler.ReconcileUpdated()
 			Expect(updatedIndex.Status.RefreshingVersion).To(Equal(""))
-			Expect(updatedIndex.Status.RefreshingVersionState.Result).To(Equal(""))
+			Expect(updatedIndex.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationUndefined))
 			Expect(updatedIndex.Status.ActiveVersion).To(Equal(createdIndex.Status.RefreshingVersion))
-			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(common.Valid))
+			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(validation.ValidationValid))
 		})
 
 		It("Should create a refreshing pipeline when the active IndexPipeline becomes invalid", func() {
@@ -154,9 +154,9 @@ var _ = Describe("XJoinIndex", func() {
 			createdIndex := indexReconciler.ReconcileNew()
 
 			Expect(createdIndex.Status.RefreshingVersion).ToNot(Equal(""))
-			Expect(createdIndex.Status.RefreshingVersionState.Result).To(Equal(common.New))
+			Expect(createdIndex.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationNew))
 			Expect(createdIndex.Status.ActiveVersion).To(Equal(""))
-			Expect(createdIndex.Status.ActiveVersionState.Result).To(Equal(""))
+			Expect(createdIndex.Status.ActiveVersionState.Result).To(Equal(validation.ValidationUndefined))
 
 			//create a valid datasource
 			dataSourceName := "testdatasource"
@@ -190,9 +190,9 @@ var _ = Describe("XJoinIndex", func() {
 			//reconcile the index to the valid state
 			updatedIndex := indexReconciler.ReconcileUpdated()
 			Expect(updatedIndex.Status.RefreshingVersion).To(Equal(""))
-			Expect(updatedIndex.Status.RefreshingVersionState.Result).To(Equal(""))
+			Expect(updatedIndex.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationUndefined))
 			Expect(updatedIndex.Status.ActiveVersion).To(Equal(createdIndex.Status.RefreshingVersion))
-			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(common.Valid))
+			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(validation.ValidationValid))
 
 			//invalidate the active datasource pipeline
 			datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
@@ -213,9 +213,9 @@ var _ = Describe("XJoinIndex", func() {
 			updatedIndex = indexReconciler.ReconcileUpdated()
 
 			Expect(updatedIndex.Status.RefreshingVersion).ToNot(Equal(""))
-			Expect(updatedIndex.Status.RefreshingVersionState.Result).To(Equal(common.New))
+			Expect(updatedIndex.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationNew))
 			Expect(updatedIndex.Status.ActiveVersion).To(Equal(createdIndex.Status.RefreshingVersion))
-			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(common.Invalid))
+			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(validation.ValidationInvalid))
 
 			refreshingIndexPipeline := &v1alpha1.XJoinIndexPipeline{}
 			indexLookupKey := types.NamespacedName{
@@ -243,9 +243,9 @@ var _ = Describe("XJoinIndex", func() {
 		createdIndex := indexReconciler.ReconcileNew()
 
 		Expect(createdIndex.Status.RefreshingVersion).ToNot(Equal(""))
-		Expect(createdIndex.Status.RefreshingVersionState.Result).To(Equal(common.New))
+		Expect(createdIndex.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationNew))
 		Expect(createdIndex.Status.ActiveVersion).To(Equal(""))
-		Expect(createdIndex.Status.ActiveVersionState.Result).To(Equal(""))
+		Expect(createdIndex.Status.ActiveVersionState.Result).To(Equal(validation.ValidationUndefined))
 
 		//create a new datasource
 		dataSourceName := "testdatasource"
@@ -297,6 +297,6 @@ var _ = Describe("XJoinIndex", func() {
 		Expect(updatedIndex.Status.RefreshingVersion).ToNot(BeEmpty())
 		Expect(createdIndex.Status.RefreshingVersion).ToNot(BeEmpty())
 		Expect(updatedIndex.Status.RefreshingVersion).ToNot(Equal(createdIndex.Status.RefreshingVersion))
-		Expect(updatedIndex.Status.RefreshingVersionState.Result).To(Equal(common.New))
+		Expect(updatedIndex.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationNew))
 	})
 })

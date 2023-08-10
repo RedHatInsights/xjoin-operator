@@ -5,6 +5,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
@@ -432,19 +433,21 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
 
-		if dataSourcePipeline.Status.ValidationResponse.Result == common.Invalid {
+		if dataSourcePipeline.Status.ValidationResponse.Result == validation.ValidationInvalid {
 			invalidDatasourceFound = true
-		} else if dataSourcePipeline.Status.ValidationResponse.Result == common.New || dataSourcePipeline.Status.ValidationResponse.Result == "" {
+		} else if dataSourcePipeline.Status.ValidationResponse.Result == validation.ValidationNew ||
+			dataSourcePipeline.Status.ValidationResponse.Result == validation.ValidationUndefined {
+
 			newDatasourceFound = true
 		}
 	}
 
 	if invalidDatasourceFound {
-		instance.Status.ValidationResponse.Result = common.Invalid
+		instance.Status.ValidationResponse.Result = validation.ValidationInvalid
 	} else if newDatasourceFound {
-		instance.Status.ValidationResponse.Result = common.New
+		instance.Status.ValidationResponse.Result = validation.ValidationNew
 	} else {
-		instance.Status.ValidationResponse.Result = common.Valid
+		instance.Status.ValidationResponse.Result = validation.ValidationValid
 	}
 
 	if !reflect.DeepEqual(instance.Status.DataSources, dataSources) {
@@ -458,7 +461,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	}
 
 	if len(problems) > 0 {
-		i.GetInstance().Status.ValidationResponse.Result = common.Invalid
+		i.GetInstance().Status.ValidationResponse.Result = validation.ValidationInvalid
 		i.GetInstance().Status.ValidationResponse.Reason = "Deviation found"
 		var messages []string
 		for _, problem := range problems {

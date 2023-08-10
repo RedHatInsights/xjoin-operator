@@ -2,6 +2,7 @@ package common
 
 import (
 	"github.com/go-errors/errors"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -23,10 +24,6 @@ type ReconcilerMethods interface {
 	SetLogger(logger.Log)
 	SetIsTest(bool)
 }
-
-const Valid = "valid"
-const Invalid = "invalid"
-const New = "new"
 
 type Reconciler struct {
 	methods  ReconcilerMethods
@@ -93,29 +90,29 @@ func (r *Reconciler) getState(specHash string) string {
 	if r.instance.GetDeletionTimestamp() != nil {
 		return REMOVED
 	} else if (r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionState() != Valid &&
+		r.instance.GetActiveVersionState() != validation.ValidationValid &&
 		r.instance.GetRefreshingVersion() == "") ||
 		(r.instance.GetSpecHash() != "" && r.instance.GetSpecHash() != specHash) {
 		return START_REFRESH
 	} else if r.instance.GetActiveVersion() == "" && r.instance.GetRefreshingVersion() == "" {
 		return NEW
 	} else if r.instance.GetActiveVersion() == "" &&
-		r.instance.GetRefreshingVersionState() == New &&
+		r.instance.GetRefreshingVersionState() == validation.ValidationNew &&
 		r.instance.GetRefreshingVersion() != "" {
 		return INITIAL_SYNC
 	} else if r.instance.GetRefreshingVersion() != "" &&
-		r.instance.GetRefreshingVersionState() == Valid {
+		r.instance.GetRefreshingVersionState() == validation.ValidationValid {
 		return REFRESH_COMPLETE
 	} else if r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionState() == Invalid &&
+		r.instance.GetActiveVersionState() == validation.ValidationInvalid &&
 		r.instance.GetRefreshingVersion() != "" &&
-		r.instance.GetRefreshingVersionState() == New {
+		r.instance.GetRefreshingVersionState() == validation.ValidationNew {
 		return REFRESHING
 	} else if r.instance.GetRefreshingVersion() != "" &&
-		r.instance.GetRefreshingVersionState() == Invalid {
+		r.instance.GetRefreshingVersionState() == validation.ValidationInvalid {
 		return REFRESH_FAILED
 	} else if r.instance.GetActiveVersion() != "" &&
-		r.instance.GetActiveVersionState() == Valid {
+		r.instance.GetActiveVersionState() == validation.ValidationValid {
 		return VALID
 	} else {
 		return ""
@@ -165,7 +162,7 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 
 		refreshingVersion := r.Version()
 		r.instance.SetRefreshingVersion(refreshingVersion)
-		r.instance.SetRefreshingVersionState(New)
+		r.instance.SetRefreshingVersionState(validation.ValidationNew)
 
 		err = r.methods.StartRefreshing(refreshingVersion)
 		if err != nil {
@@ -180,7 +177,7 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 
 		refreshingVersion := r.Version()
 		r.instance.SetRefreshingVersion(refreshingVersion)
-		r.instance.SetRefreshingVersionState(New)
+		r.instance.SetRefreshingVersionState(validation.ValidationNew)
 
 		err = r.methods.New(refreshingVersion)
 		if err != nil {
@@ -233,7 +230,7 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 		}
 
 		r.instance.SetActiveVersion(r.instance.GetRefreshingVersion())
-		r.instance.SetActiveVersionState(Valid)
+		r.instance.SetActiveVersionState(validation.ValidationValid)
 		r.instance.SetRefreshingVersion("")
 		r.instance.SetRefreshingVersionState("")
 	case REFRESH_FAILED:

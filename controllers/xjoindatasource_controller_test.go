@@ -5,8 +5,8 @@ import (
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
-	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -105,9 +105,9 @@ var _ = Describe("XJoinDataSource", func() {
 			createdDatasource := datasourceReconciler.ReconcileNew()
 
 			Expect(createdDatasource.Status.RefreshingVersion).ToNot(Equal(""))
-			Expect(createdDatasource.Status.RefreshingVersionState.Result).To(Equal(common.New))
+			Expect(createdDatasource.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationNew))
 			Expect(createdDatasource.Status.ActiveVersion).To(Equal(""))
-			Expect(createdDatasource.Status.ActiveVersionState.Result).To(Equal(""))
+			Expect(createdDatasource.Status.ActiveVersionState.Result).To(Equal(validation.ValidationUndefined))
 
 			//set the refreshing pipeline to valid
 			pipelineReconciler := DatasourcePipelineTestReconciler{
@@ -122,9 +122,9 @@ var _ = Describe("XJoinDataSource", func() {
 			datasourceReconciler.reconcile()
 			updatedDatasource := datasourceReconciler.GetDataSource()
 			Expect(updatedDatasource.Status.RefreshingVersion).To(Equal(""))
-			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationUndefined))
 			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
-			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(common.Valid))
+			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(validation.ValidationValid))
 		})
 
 		It("Should update the active pipeline status when the active DataSourcePipeline status changes", func() {
@@ -149,9 +149,9 @@ var _ = Describe("XJoinDataSource", func() {
 			datasourceReconciler.reconcile()
 			updatedDatasource := datasourceReconciler.GetDataSource()
 			Expect(updatedDatasource.Status.RefreshingVersion).To(Equal(""))
-			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationUndefined))
 			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
-			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(common.Valid))
+			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(validation.ValidationValid))
 
 			//set the active pipeline to invalid
 			activePipelineReconciler := DatasourcePipelineTestReconciler{
@@ -166,9 +166,9 @@ var _ = Describe("XJoinDataSource", func() {
 			datasourceReconciler.reconcile()
 			updatedDatasource = datasourceReconciler.GetDataSource()
 			Expect(updatedDatasource.Status.RefreshingVersion).ToNot(Equal(""))
-			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(common.New))
+			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationNew))
 			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
-			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(common.Invalid))
+			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(validation.ValidationInvalid))
 		})
 
 		It("Should replace the active pipeline with the refreshing DataSourcePipeline when it becomes valid", func() {
@@ -193,9 +193,9 @@ var _ = Describe("XJoinDataSource", func() {
 			datasourceReconciler.reconcile()
 			updatedDatasource := datasourceReconciler.GetDataSource()
 			Expect(updatedDatasource.Status.RefreshingVersion).To(Equal(""))
-			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationUndefined))
 			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
-			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(common.Valid))
+			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(validation.ValidationValid))
 
 			//set the active pipeline to invalid
 			activePipelineReconciler := DatasourcePipelineTestReconciler{
@@ -210,9 +210,9 @@ var _ = Describe("XJoinDataSource", func() {
 			datasourceReconciler.reconcile()
 			updatedDatasource = datasourceReconciler.GetDataSource()
 			Expect(updatedDatasource.Status.RefreshingVersion).ToNot(Equal(""))
-			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(common.New))
+			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationNew))
 			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
-			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(common.Invalid))
+			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(validation.ValidationInvalid))
 
 			//set the refreshing pipeline to valid
 			refreshingPipelineReconciler := DatasourcePipelineTestReconciler{
@@ -228,9 +228,9 @@ var _ = Describe("XJoinDataSource", func() {
 			datasourceReconciler.reconcile()
 			updatedDatasource = datasourceReconciler.GetDataSource()
 			Expect(updatedDatasource.Status.RefreshingVersion).To(Equal(""))
-			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationUndefined))
 			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(refreshingVersion))
-			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(common.Valid))
+			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(validation.ValidationValid))
 		})
 
 		It("Should create a refreshing pipeline when the active DataSourcePipeline becomes invalid", func() {
@@ -255,9 +255,9 @@ var _ = Describe("XJoinDataSource", func() {
 			datasourceReconciler.reconcile()
 			updatedDatasource := datasourceReconciler.GetDataSource()
 			Expect(updatedDatasource.Status.RefreshingVersion).To(Equal(""))
-			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(""))
+			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationUndefined))
 			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
-			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(common.Valid))
+			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(validation.ValidationValid))
 
 			//set the active pipeline to invalid
 			activePipelineReconciler := DatasourcePipelineTestReconciler{
@@ -273,9 +273,9 @@ var _ = Describe("XJoinDataSource", func() {
 			updatedDatasource = datasourceReconciler.GetDataSource()
 
 			Expect(updatedDatasource.Status.RefreshingVersion).ToNot(Equal(""))
-			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(common.New))
+			Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationNew))
 			Expect(updatedDatasource.Status.ActiveVersion).To(Equal(createdDatasource.Status.RefreshingVersion))
-			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(common.Invalid))
+			Expect(updatedDatasource.Status.ActiveVersionState.Result).To(Equal(validation.ValidationInvalid))
 
 			//validate the refreshing pipeline was created
 			refreshingPipeline := &v1alpha1.XJoinDataSourcePipeline{}
@@ -323,6 +323,6 @@ var _ = Describe("XJoinDataSource", func() {
 		Expect(updatedDatasource.Status.RefreshingVersion).ToNot(BeEmpty())
 		Expect(createdDatasource.Status.RefreshingVersion).ToNot(BeEmpty())
 		Expect(updatedDatasource.Status.RefreshingVersion).ToNot(Equal(createdDatasource.Status.RefreshingVersion))
-		Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(common.New))
+		Expect(updatedDatasource.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationNew))
 	})
 })

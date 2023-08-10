@@ -69,11 +69,11 @@ func (in *XJoinDataSource) SetActiveVersion(version string) {
 	in.Status.ActiveVersion = version
 }
 
-func (in *XJoinDataSource) GetActiveVersionState() string {
+func (in *XJoinDataSource) GetActiveVersionState() validation.ValidationResult {
 	return in.Status.ActiveVersionState.Result
 }
 
-func (in *XJoinDataSource) SetActiveVersionState(state string) {
+func (in *XJoinDataSource) SetActiveVersionState(state validation.ValidationResult) {
 	in.Status.ActiveVersionState.Result = state
 }
 
@@ -85,11 +85,11 @@ func (in *XJoinDataSource) SetRefreshingVersion(version string) {
 	in.Status.RefreshingVersion = version
 }
 
-func (in *XJoinDataSource) GetRefreshingVersionState() string {
+func (in *XJoinDataSource) GetRefreshingVersionState() validation.ValidationResult {
 	return in.Status.RefreshingVersionState.Result
 }
 
-func (in *XJoinDataSource) SetRefreshingVersionState(state string) {
+func (in *XJoinDataSource) SetRefreshingVersionState(state validation.ValidationResult) {
 	in.Status.RefreshingVersionState.Result = state
 }
 
@@ -97,7 +97,7 @@ func (in *XJoinDataSource) SetCondition(condition metav1.Condition) {
 	meta.SetStatusCondition(&in.Status.Conditions, condition)
 }
 
-func (in *XJoinDataSource) GetValidationResult() string {
+func (in *XJoinDataSource) GetValidationResult() validation.ValidationResult {
 	return in.Status.ActiveVersionState.Result
 }
 

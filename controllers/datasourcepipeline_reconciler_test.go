@@ -3,8 +3,6 @@ package controllers_test
 import (
 	"context"
 	"fmt"
-	"github.com/redhatinsights/xjoin-operator/controllers/common"
-
 	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"github.com/redhatinsights/xjoin-operator/controllers"
 	"os"
@@ -149,7 +147,7 @@ func (d *DatasourcePipelineTestReconciler) ReconcileValid() v1alpha1.XJoinDataSo
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	createdDataSourcePipeline.Status.ValidationResponse = validation.ValidationResponse{
-		Result: common.Valid,
+		Result: validation.ValidationValid,
 	}
 	err := d.K8sClient.Status().Update(context.Background(), createdDataSourcePipeline)
 	Expect(err).ToNot(HaveOccurred())
@@ -169,7 +167,7 @@ func (d *DatasourcePipelineTestReconciler) ReconcileInvalid() v1alpha1.XJoinData
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	createdDataSourcePipeline.Status.ValidationResponse = validation.ValidationResponse{
-		Result: common.Invalid,
+		Result: validation.ValidationInvalid,
 	}
 	err := d.K8sClient.Status().Update(context.Background(), createdDataSourcePipeline)
 	Expect(err).ToNot(HaveOccurred())

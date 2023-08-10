@@ -6,6 +6,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
@@ -29,19 +30,19 @@ type Iteration struct {
 }
 
 func UpdateCondition(instance XJoinObjectChild) {
-	if instance.GetValidationResult() == Valid {
+	if instance.GetValidationResult() == validation.ValidationValid {
 		instance.SetCondition(metav1.Condition{
 			Type:   ValidConditionType,
 			Status: metav1.ConditionTrue,
 			Reason: ValidationSucceededReason,
 		})
-	} else if instance.GetValidationResult() == Invalid {
+	} else if instance.GetValidationResult() == validation.ValidationInvalid {
 		instance.SetCondition(metav1.Condition{
 			Type:   ValidConditionType,
 			Status: metav1.ConditionFalse,
 			Reason: ValidationFailedReason,
 		})
-	} else if instance.GetValidationResult() == New {
+	} else if instance.GetValidationResult() == validation.ValidationNew {
 		instance.SetCondition(metav1.Condition{
 			Type:   ValidConditionType,
 			Status: metav1.ConditionFalse,

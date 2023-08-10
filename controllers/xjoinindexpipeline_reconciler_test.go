@@ -87,7 +87,7 @@ func (x *XJoinIndexPipelineTestReconciler) ReconcileValid() v1alpha1.XJoinIndexP
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	indexPipeline.Status.ValidationResponse = validation.ValidationResponse{
-		Result: common.Valid,
+		Result: validation.ValidationValid,
 	}
 	indexPipeline.Status.Active = true
 	err := x.K8sClient.Status().Update(context.Background(), indexPipeline)
@@ -105,7 +105,7 @@ func (x *XJoinIndexPipelineTestReconciler) ReconcileValid() v1alpha1.XJoinIndexP
 	}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
 
 	Expect(indexPipeline.Status.ValidationResponse.Message).To(Equal(""))
-	Expect(indexPipeline.Status.ValidationResponse.Result).To(Equal(common.Valid))
+	Expect(indexPipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationValid))
 
 	x.createdIndexPipeline = *indexPipeline
 	return x.createdIndexPipeline

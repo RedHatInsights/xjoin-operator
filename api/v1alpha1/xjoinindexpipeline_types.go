@@ -87,6 +87,6 @@ func (in *XJoinIndexPipeline) SetCondition(condition metav1.Condition) {
 	meta.SetStatusCondition(&in.Status.Conditions, condition)
 }
 
-func (in *XJoinIndexPipeline) GetValidationResult() string {
+func (in *XJoinIndexPipeline) GetValidationResult() validation.ValidationResult {
 	return in.Status.ValidationResponse.Result
 }

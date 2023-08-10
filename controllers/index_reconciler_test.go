@@ -4,9 +4,9 @@ import (
 	"context"
 	"github.com/jarcoal/httpmock"
 	. "github.com/onsi/gomega"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers"
-	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -40,9 +40,9 @@ func (i *IndexTestReconciler) ReconcileNew() v1alpha1.XJoinIndex {
 		return err == nil
 	}, 10*time.Second, 100*time.Millisecond).Should(BeTrue())
 	Expect(createdIndex.Status.ActiveVersion).To(Equal(""))
-	Expect(createdIndex.Status.ActiveVersionState.Result).To(Equal(""))
+	Expect(createdIndex.Status.ActiveVersionState.Result).To(Equal(validation.ValidationUndefined))
 	Expect(createdIndex.Status.RefreshingVersion).ToNot(Equal(""))
-	Expect(createdIndex.Status.RefreshingVersionState.Result).To(Equal(common.New))
+	Expect(createdIndex.Status.RefreshingVersionState.Result).To(Equal(validation.ValidationNew))
 	Expect(createdIndex.Status.SpecHash).ToNot(Equal(""))
 	Expect(createdIndex.Finalizers).To(HaveLen(1))
 	Expect(createdIndex.Finalizers).To(ContainElement("finalizer.xjoin.index.cloud.redhat.com"))

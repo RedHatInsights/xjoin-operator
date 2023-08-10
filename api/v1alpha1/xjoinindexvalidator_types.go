@@ -62,6 +62,6 @@ func (in *XJoinIndexValidator) SetCondition(condition metav1.Condition) {
 	meta.SetStatusCondition(&in.Status.Conditions, condition)
 }
 
-func (in *XJoinIndexValidator) GetValidationResult() string {
+func (in *XJoinIndexValidator) GetValidationResult() validation.ValidationResult {
 	return in.Status.ValidationResponse.Result
 }

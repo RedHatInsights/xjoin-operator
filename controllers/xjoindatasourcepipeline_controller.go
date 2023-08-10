@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
@@ -251,7 +252,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 			Status: metav1.ConditionFalse,
 			Reason: common.DeviationReason,
 		})
-		i.GetInstance().Status.ValidationResponse.Result = common.Invalid
+		i.GetInstance().Status.ValidationResponse.Result = validation.ValidationInvalid
 		i.GetInstance().Status.ValidationResponse.Reason = "Deviation found"
 		var messages []string
 		for _, problem := range problems {

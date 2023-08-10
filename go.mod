@@ -3,6 +3,7 @@ module github.com/redhatinsights/xjoin-operator
 go 1.18
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/RedHatInsights/strimzi-client-go v0.28.0
 	github.com/elastic/go-elasticsearch/v7 v7.1.0
 	github.com/go-errors/errors v1.4.2
@@ -16,7 +17,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.7.0
 	github.com/onsi/gomega v1.26.0
 	github.com/prometheus/client_golang v1.14.0
-	github.com/redhatinsights/xjoin-go-lib v0.0.5
+	github.com/redhatinsights/xjoin-go-lib v0.0.9
 	github.com/riferrei/srclient v0.5.4
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.8.1
@@ -31,7 +32,6 @@ require (
 )
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

@@ -76,6 +76,6 @@ func (in *XJoinDataSourcePipeline) SetCondition(condition metav1.Condition) {
 	meta.SetStatusCondition(&in.Status.Conditions, condition)
 }
 
-func (in *XJoinDataSourcePipeline) GetValidationResult() string {
+func (in *XJoinDataSourcePipeline) GetValidationResult() validation.ValidationResult {
 	return in.Status.ValidationResponse.Result
 }

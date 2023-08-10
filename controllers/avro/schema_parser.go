@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"reflect"
 	"strings"
 
@@ -223,7 +224,7 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 		activeVersion := statusMap["activeVersion"].(string)
 		refreshingVersion := statusMap["refreshingVersion"].(string)
 		activeVersionState := statusMap["activeVersionState"].(map[string]interface{})
-		activeVersionIsValid := activeVersionState["result"] == common.Valid
+		activeVersionIsValid := activeVersionState["result"] == string(validation.ValidationValid)
 		var chosenVersion string
 
 		if activeVersion != "" && (activeVersionIsValid || d.Active) {
