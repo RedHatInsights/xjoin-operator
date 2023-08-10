@@ -110,7 +110,7 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 
 	if err != nil {
 		i.Events.Warning("ReconcileValidationPodFailed", "Unable to parse IndexAvroSchema")
-		return "", errors.Wrap(err, 0)
+		return phase, errors.Wrap(err, 0)
 	}
 
 	//check if pod is already running
@@ -122,7 +122,7 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 	err = i.Client.List(i.Context, podList, client.InNamespace(i.Instance.GetNamespace()), labelsMatch)
 	if err != nil {
 		i.Events.Warning("ReconcileValidationPodFailed", "Unable to list pods")
-		return "", errors.Wrap(err, 0)
+		return phase, errors.Wrap(err, 0)
 	}
 
 	//create the pod if not already running
@@ -130,12 +130,12 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 		dbConnectionEnvVars, err := i.buildDBConnectionEnvVars(indexAvroSchema.References)
 		if err != nil {
 			i.Events.Warning("ReconcileValidationPodFailed", "Unable to parse DB Connection Env vars")
-			return "", errors.Wrap(err, 0)
+			return phase, errors.Wrap(err, 0)
 		}
 		err = i.createValidationPod(dbConnectionEnvVars, indexAvroSchema.AvroSchemaString)
 		if err != nil {
 			i.Events.Warning("ReconcileValidationPodFailed", "Unable to create validation pod")
-			return "", errors.Wrap(err, 0)
+			return phase, errors.Wrap(err, 0)
 		}
 
 		return ValidatorPodRunning, nil
@@ -221,6 +221,7 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 			return "", errors.Wrap(err, 0)
 		}
 
+		i.GetInstance().Status.ValidationResponse = response
 		i.Events.Normal("ValidationPodSucceeded", responseString)
 		return ValidatorPodSuccess, nil
 	} else if pod.Status.Phase == v1.PodFailed {
@@ -371,6 +372,15 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 				},
 			},
 		}}...)
+	}
+
+	//no validation result was found so this is the first validation run
+	//set the VALIDATE_EVERYTHING flag on the validation pod to validate the complete dataset
+	if i.GetInstance().Status.ValidationResponse.Result == validation.ValidationUndefined {
+		dbConnectionEnvVars = append(dbConnectionEnvVars, v1.EnvVar{
+			Name:  "VALIDATE_EVERYTHING",
+			Value: "true",
+		})
 	}
 
 	cpuLimit, err := resource.ParseQuantity("200m")
