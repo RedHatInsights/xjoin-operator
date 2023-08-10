@@ -41,6 +41,10 @@ type IndexParameters struct {
 	ValidationAttemptInterval        Parameter //period between failed validation attempts within the validation pod (seconds)
 	ValidationAttempts               Parameter //number of validation attempts in the validation pod before validation fails
 	SubgraphLogLevel                 Parameter //log level for the api-subgraph pods
+	ValidationPodCPURequest          Parameter
+	ValidationPodCPULimit            Parameter
+	ValidationPodMemoryRequest       Parameter
+	ValidationPodMemoryLimit         Parameter
 }
 
 func BuildIndexParameters() *IndexParameters {
@@ -275,6 +279,30 @@ func BuildIndexParameters() *IndexParameters {
 			ConfigMapKey:  "subgraph.log.level",
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  "WARN",
+		},
+		ValidationPodCPURequest: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "validation.pod.cpu.request",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "100m",
+		},
+		ValidationPodCPULimit: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "validation.pod.cpu.limit",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "200m",
+		},
+		ValidationPodMemoryRequest: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "validation.pod.memory.request",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "128Mi",
+		},
+		ValidationPodMemoryLimit: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "validation.pod.memory.limit",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "256Mi",
 		},
 	}
 

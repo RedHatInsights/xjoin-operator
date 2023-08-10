@@ -383,22 +383,22 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 		})
 	}
 
-	cpuLimit, err := resource.ParseQuantity("200m")
+	cpuLimit, err := resource.ParseQuantity(i.Parameters.ValidationPodCPULimit.String())
 	if err != nil {
 		i.Events.Warning("CreatedValidationPodFailed", "Unable to parse cpu limit")
 		return errors.Wrap(err, 0)
 	}
-	cpuRequests, err := resource.ParseQuantity("100m")
+	cpuRequests, err := resource.ParseQuantity(i.Parameters.ValidationPodCPURequest.String())
 	if err != nil {
 		i.Events.Warning("CreatedValidationPodFailed", "Unable to parse cpu requests")
 		return errors.Wrap(err, 0)
 	}
-	memoryLimit, err := resource.ParseQuantity("256Mi")
+	memoryLimit, err := resource.ParseQuantity(i.Parameters.ValidationPodMemoryLimit.String())
 	if err != nil {
 		i.Events.Warning("CreatedValidationPodFailed", "Unable to parse memory limit")
 		return errors.Wrap(err, 0)
 	}
-	memoryRequests, err := resource.ParseQuantity("128Mi")
+	memoryRequests, err := resource.ParseQuantity(i.Parameters.ValidationPodMemoryRequest.String())
 	if err != nil {
 		i.Events.Warning("CreatedValidationPodFailed", "Unable to parse memory requests")
 		return errors.Wrap(err, 0)

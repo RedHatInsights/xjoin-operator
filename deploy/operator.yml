@@ -581,6 +581,14 @@ parameters:
     value: '60'
   - name: VALIDATION_ATTEMPTS
     value: '30'
+  - name: VALIDATION_POD_CPU_LIMIT
+    value: '1'
+  - name: VALIDATION_POD_CPU_REQUEST
+    value: '500m'
+  - name: VALIDATION_POD_MEMORY_LIMIT
+    value: '2Gi'
+  - name: VALIDATION_POD_MEMORY_REQUEST
+    value: '1Gi'
 objects:
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
@@ -639,6 +647,10 @@ objects:
       subgraph.log.level: ${SUBGRAPH_LOG_LEVEL}
       validation.attempt.interval: ${VALIDATION_ATTEMPT_INTERVAL}
       validation.attempts: ${VALIDATION_ATTEMPTS}
+      validation.pod.cpu.limit: ${VALIDATION_POD_CPU_LIMIT}
+      validation.pod.memory.limit: ${VALIDATION_POD_MEMORY_LIMIT}
+      validation.pod.cpu.request: ${VALIDATION_POD_CPU_REQUEST}
+      validation.pod.memory.request: ${VALIDATION_POD_MEMORY_REQUEST}
   - apiVersion: v1
     kind: ConfigMap
     metadata:
