@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/go-toolset:1.19.9 as builder
+FROM registry.access.redhat.com/ubi8/go-toolset:1.19.10 as builder
 
 USER 0
 WORKDIR /workspace
@@ -21,7 +21,8 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager 
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
-RUN microdnf install --setopt=tsflags=nodocs -y go-toolset-1.19.9 && \
+RUN microdnf module enable go-toolset && \
+    microdnf install --setopt=tsflags=nodocs -y go-toolset && \
     microdnf install -y rsync tar procps-ng && \
     microdnf upgrade -y && \
     microdnf clean all
