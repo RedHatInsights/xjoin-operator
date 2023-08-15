@@ -642,10 +642,21 @@ func (c *StrimziConnectors) RestartConnect() error {
 		replicaset := &unstructured.UnstructuredList{}
 		replicaset.SetGroupVersionKind(replicasetGVK)
 		err = c.Kafka.Client.List(ctx, pods, labels)
+		if err != nil {
+			return false, errors.Wrap(err, 0)
+		}
 
 		labels := client.MatchingLabels{}
 		labels["app.kubernetes.io/part-of"] = "strimzi-" + c.Kafka.Parameters.ConnectCluster.String()
 		err = c.Kafka.Client.List(ctx, replicaset, labels)
+		if err != nil {
+			return false, errors.Wrap(err, 0)
+		}
+
+		if len(replicaset.Items) < 1 {
+			return false, errors.Wrap(errors.New("missing connect replicaset"), 0)
+		}
+
 		status := replicaset.Items[0].Object["status"].(map[string]interface{})
 		replicas := status["replicas"]
 		readyReplicas := status["readyReplicas"]
