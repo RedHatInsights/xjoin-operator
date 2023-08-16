@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: xjoin-operator
+  labels:
+    prometheus: env-test
+spec:
+  endpoints:
+  - interval: 15s
+    path: /metrics
+    port: https
+  namespaceSelector:
+    matchNames:
+    - xjoin-operator-system
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+

@@ -1,0 +1,16 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: xjoin-operator
+  labels:
+    control-plane: controller-manager
+spec:
+  ipFamilies:
+    - IPv4
+  ports:
+    - name: https
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+  selector:
+    control-plane: controller-manager
