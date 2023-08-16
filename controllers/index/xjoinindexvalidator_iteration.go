@@ -12,6 +12,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	"github.com/redhatinsights/xjoin-operator/controllers/k8s"
+	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
@@ -178,6 +179,22 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 				i.Instance.GetOwnerReferences()[0].Name, i.Instance.GetNamespace())
 			return "", errors.Wrap(err, 0)
 		}
+		xjoinIndexPipeline.Status.ValidationResponse = response
+		common.UpdateCondition(xjoinIndexPipeline)
+		if err := i.Client.Status().Update(i.Context, xjoinIndexPipeline); err != nil {
+			if k8errors.IsConflict(err) {
+				i.Events.Warning("ReconcileValidationPodFailed",
+					"Status conflict when updating XJoinIndexPipeline %s",
+					xjoinIndexPipeline.Name)
+				i.Log.Error(err, "Status conflict")
+				return "", errors.Wrap(err, 0)
+			}
+
+			i.Events.Warning("ReconcileValidationPodFailed",
+				"Unable to update XJoinIndexPipeline %s",
+				xjoinIndexPipeline.Name)
+			return "", errors.Wrap(err, 0)
+		}
 
 		//update datasource resource based on xjoin-validation pod's output
 		for dataSourceName, dataSourcePipelineVersion := range xjoinIndexPipeline.Status.DataSources {
@@ -223,8 +240,10 @@ func (i *XJoinIndexValidatorIteration) ReconcileValidationPod() (phase string, e
 
 		i.GetInstance().Status.ValidationResponse = response
 		i.Events.Normal("ValidationPodSucceeded", responseString)
+		metrics.ValidationFinishedV2(i.GetInstance().GetName(), response)
 		return ValidatorPodSuccess, nil
 	} else if pod.Status.Phase == v1.PodFailed {
+		metrics.ValidationPodFailed(i.Instance.GetName())
 		logString, err := i.PodLogReader.GetLogs(i.ValidationPodName(), i.Instance.GetNamespace())
 		if err != nil {
 			return "", errors.Wrap(err, 0)

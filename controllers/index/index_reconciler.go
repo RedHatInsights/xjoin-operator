@@ -11,6 +11,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -85,6 +86,7 @@ func (d *ReconcileMethods) RefreshFailed() (err error) {
 }
 
 func (d *ReconcileMethods) StartRefreshing(version string) (err error) {
+	metrics.IndexRefreshing(d.iteration.GetInstance().GetName())
 	d.iteration.Events.Normal("StartRefreshing", "Starting the refresh process by creating a new IndexPipeline")
 	err = d.iteration.CreateIndexPipeline(d.iteration.GetInstance().Name, version)
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	. "github.com/redhatinsights/xjoin-operator/controllers/index"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
@@ -85,6 +86,8 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		// Error reading the object - requeue the request.
 		return
 	}
+
+	metrics.InitIndexLabels(instance.GetName())
 
 	p := parameters.BuildIndexParameters()
 

@@ -86,57 +86,81 @@ spec:
                 properties:
                   details:
                     properties:
+                      content:
+                        properties:
+                          InconsistencyAbsolute:
+                            type: integer
+                          amountValidated:
+                            type: integer
+                          idsWithMismatchContent:
+                            items:
+                              type: string
+                            type: array
+                          inconsistencyRatio:
+                            type: string
+                          mismatchContentDetails:
+                            additionalProperties:
+                              properties:
+                                dbRecord:
+                                  type: string
+                                diffs:
+                                  items:
+                                    type: string
+                                  type: array
+                                esDocument:
+                                  type: string
+                              required:
+                              - dbRecord
+                              - diffs
+                              - esDocument
+                              type: object
+                            type: object
+                        required:
+                        - InconsistencyAbsolute
+                        - amountValidated
+                        - inconsistencyRatio
+                        type: object
                       counts:
                         properties:
-                          contentsValidated:
+                          InconsistencyAbsolute:
                             type: integer
-                          idsValidated:
+                          inconsistencyRatio:
+                            type: string
+                          recordCountInDatabase:
                             type: integer
-                          recordsInDatabase:
-                            type: integer
-                          recordsInElasticsearch:
+                          recordCountInElasticsearch:
                             type: integer
                         required:
-                        - contentsValidated
-                        - idsValidated
-                        - recordsInDatabase
-                        - recordsInElasticsearch
+                        - InconsistencyAbsolute
+                        - inconsistencyRatio
+                        - recordCountInDatabase
+                        - recordCountInElasticsearch
                         type: object
-                      idsMissingFromElasticsearch:
-                        items:
-                          type: string
-                        type: array
-                      idsMissingFromElasticsearchCount:
-                        type: integer
-                      idsOnlyInElasticsearch:
-                        items:
-                          type: string
-                        type: array
-                      idsOnlyInElasticsearchCount:
-                        type: integer
-                      idsWithMismatchContent:
-                        items:
-                          type: string
-                        type: array
-                      mismatchContentDetails:
-                        additionalProperties:
-                          properties:
-                            dbRecord:
+                      ids:
+                        properties:
+                          InconsistencyAbsolute:
+                            type: integer
+                          amountValidated:
+                            type: integer
+                          idsMissingFromElasticsearch:
+                            items:
                               type: string
-                            diffs:
-                              items:
-                                type: string
-                              type: array
-                            esDocument:
+                            type: array
+                          idsMissingFromElasticsearchCount:
+                            type: integer
+                          idsOnlyInElasticsearch:
+                            items:
                               type: string
-                          required:
-                          - dbRecord
-                          - diffs
-                          - esDocument
-                          type: object
+                            type: array
+                          idsOnlyInElasticsearchCount:
+                            type: integer
+                          inconsistencyRatio:
+                            type: string
+                        required:
+                        - InconsistencyAbsolute
+                        - amountValidated
+                        - inconsistencyRatio
                         type: object
-                      totalMismatch:
-                        type: integer
                     type: object
                   message:
                     type: string
@@ -220,57 +244,81 @@ spec:
                 properties:
                   details:
                     properties:
+                      content:
+                        properties:
+                          InconsistencyAbsolute:
+                            type: integer
+                          amountValidated:
+                            type: integer
+                          idsWithMismatchContent:
+                            items:
+                              type: string
+                            type: array
+                          inconsistencyRatio:
+                            type: string
+                          mismatchContentDetails:
+                            additionalProperties:
+                              properties:
+                                dbRecord:
+                                  type: string
+                                diffs:
+                                  items:
+                                    type: string
+                                  type: array
+                                esDocument:
+                                  type: string
+                              required:
+                              - dbRecord
+                              - diffs
+                              - esDocument
+                              type: object
+                            type: object
+                        required:
+                        - InconsistencyAbsolute
+                        - amountValidated
+                        - inconsistencyRatio
+                        type: object
                       counts:
                         properties:
-                          contentsValidated:
+                          InconsistencyAbsolute:
                             type: integer
-                          idsValidated:
+                          inconsistencyRatio:
+                            type: string
+                          recordCountInDatabase:
                             type: integer
-                          recordsInDatabase:
-                            type: integer
-                          recordsInElasticsearch:
+                          recordCountInElasticsearch:
                             type: integer
                         required:
-                        - contentsValidated
-                        - idsValidated
-                        - recordsInDatabase
-                        - recordsInElasticsearch
+                        - InconsistencyAbsolute
+                        - inconsistencyRatio
+                        - recordCountInDatabase
+                        - recordCountInElasticsearch
                         type: object
-                      idsMissingFromElasticsearch:
-                        items:
-                          type: string
-                        type: array
-                      idsMissingFromElasticsearchCount:
-                        type: integer
-                      idsOnlyInElasticsearch:
-                        items:
-                          type: string
-                        type: array
-                      idsOnlyInElasticsearchCount:
-                        type: integer
-                      idsWithMismatchContent:
-                        items:
-                          type: string
-                        type: array
-                      mismatchContentDetails:
-                        additionalProperties:
-                          properties:
-                            dbRecord:
+                      ids:
+                        properties:
+                          InconsistencyAbsolute:
+                            type: integer
+                          amountValidated:
+                            type: integer
+                          idsMissingFromElasticsearch:
+                            items:
                               type: string
-                            diffs:
-                              items:
-                                type: string
-                              type: array
-                            esDocument:
+                            type: array
+                          idsMissingFromElasticsearchCount:
+                            type: integer
+                          idsOnlyInElasticsearch:
+                            items:
                               type: string
-                          required:
-                          - dbRecord
-                          - diffs
-                          - esDocument
-                          type: object
+                            type: array
+                          idsOnlyInElasticsearchCount:
+                            type: integer
+                          inconsistencyRatio:
+                            type: string
+                        required:
+                        - InconsistencyAbsolute
+                        - amountValidated
+                        - inconsistencyRatio
                         type: object
-                      totalMismatch:
-                        type: integer
                     type: object
                   message:
                     type: string

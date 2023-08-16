@@ -11,6 +11,7 @@ import (
 	. "github.com/redhatinsights/xjoin-operator/controllers/index"
 	"github.com/redhatinsights/xjoin-operator/controllers/k8s"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
@@ -102,6 +103,8 @@ func (r *XJoinIndexValidatorReconciler) Reconcile(ctx context.Context, request c
 		// Error reading the object - requeue the request.
 		return
 	}
+
+	metrics.InitIndexValidatorLabels(instance.GetName())
 
 	p := parameters.BuildIndexParameters()
 

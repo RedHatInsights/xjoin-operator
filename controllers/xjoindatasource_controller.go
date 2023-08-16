@@ -10,6 +10,7 @@ import (
 	. "github.com/redhatinsights/xjoin-operator/controllers/datasource"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
@@ -85,6 +86,8 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		// Error reading the object - requeue the request.
 		return result, errors.Wrap(err, 0)
 	}
+
+	metrics.InitDatasourceLabels(instance.GetName())
 
 	p := parameters.BuildDataSourceParameters()
 

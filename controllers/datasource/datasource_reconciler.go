@@ -10,6 +10,7 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/schemaregistry"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -83,6 +84,7 @@ func (d *ReconcileMethods) Valid() (err error) {
 }
 
 func (d *ReconcileMethods) StartRefreshing(version string) (err error) {
+	metrics.DatasourceRefreshing(d.iteration.GetInstance().GetName())
 	d.iteration.Events.Normal("StartRefreshing", "Starting the refresh process by creating a new DatasourcePipeline")
 	err = d.iteration.CreateDataSourcePipeline(d.iteration.GetInstance().Name, version)
 	if err != nil {
