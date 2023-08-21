@@ -39,6 +39,7 @@ type XJoinCore struct {
 	CPULimit          string
 	MemoryRequests    string
 	MemoryLimit       string
+	NumberOfPods      int
 }
 
 func (xc *XJoinCore) SetLogger(log logger.Log) {
@@ -64,7 +65,7 @@ func (xc *XJoinCore) buildDeploymentStructure() (*v1.Deployment, error) {
 		labels.ComponentName: Core,
 	}
 
-	replicas := int32(1)
+	replicas := int32(xc.NumberOfPods)
 
 	cpuLimit, err := resource.ParseQuantity(xc.CPULimit)
 	if err != nil {

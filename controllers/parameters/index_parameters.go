@@ -49,6 +49,7 @@ type IndexParameters struct {
 	CorePodCPULimit                  Parameter
 	CorePodMemoryRequest             Parameter
 	CorePodMemoryLimit               Parameter
+	CoreNumPods                      Parameter
 	KafkaTopicPartitions             Parameter
 	KafkaTopicReplicas               Parameter
 	KafkaTopicCleanupPolicy          Parameter
@@ -340,6 +341,12 @@ func BuildIndexParameters() *IndexParameters {
 			ConfigMapKey:  "core.pod.memory.limit",
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  "256Mi",
+		},
+		CoreNumPods: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "core.number.of.pods",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  1,
 		},
 
 		//kafka topic

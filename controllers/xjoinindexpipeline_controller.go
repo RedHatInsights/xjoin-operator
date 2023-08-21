@@ -328,6 +328,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		CPULimit:          p.CorePodCPULimit.String(),
 		MemoryRequests:    p.CorePodMemoryRequest.String(),
 		MemoryLimit:       p.CorePodMemoryLimit.String(),
+		NumberOfPods:      p.CoreNumPods.Int(),
 	})
 	componentManager.AddComponent(&components.XJoinAPISubGraph{
 		Client:                i.Client,
