@@ -154,56 +154,6 @@ func BuildCommonParameters() CommonParameters {
 			},
 		},
 
-		//kafka topic
-		KafkaTopicPartitions: Parameter{
-			Type:          reflect.Int,
-			ConfigMapKey:  "kafka.topic.partitions",
-			ConfigMapName: "xjoin-generic",
-			DefaultValue:  1,
-		},
-		KafkaTopicReplicas: Parameter{
-			Type:          reflect.Int,
-			ConfigMapKey:  "kafka.topic.replicas",
-			ConfigMapName: "xjoin-generic",
-			DefaultValue:  1,
-		},
-		KafkaTopicCleanupPolicy: Parameter{
-			Type:          reflect.String,
-			ConfigMapKey:  "kafka.topic.cleanup.policy",
-			ConfigMapName: "xjoin-generic",
-			DefaultValue:  "compact,delete",
-		},
-		KafkaTopicMinCompactionLagMS: Parameter{
-			Type:          reflect.String,
-			ConfigMapKey:  "kafka.topic.min.compaction.lag.ms",
-			ConfigMapName: "xjoin-generic",
-			DefaultValue:  "3600000",
-		},
-		KafkaTopicRetentionBytes: Parameter{
-			Type:          reflect.String,
-			ConfigMapKey:  "kafka.topic.retention.bytes",
-			ConfigMapName: "xjoin-generic",
-			DefaultValue:  "5368709120",
-		},
-		KafkaTopicRetentionMS: Parameter{
-			Type:          reflect.String,
-			ConfigMapKey:  "kafka.topic.retention.ms",
-			ConfigMapName: "xjoin-generic",
-			DefaultValue:  "2678400001",
-		},
-		KafkaTopicMessageBytes: Parameter{
-			Type:          reflect.String,
-			ConfigMapKey:  "kafka.topic.max.message.bytes",
-			ConfigMapName: "xjoin-generic",
-			DefaultValue:  "2097176",
-		},
-		KafkaTopicCreationTimeout: Parameter{
-			Type:          reflect.Int,
-			ConfigMapKey:  "kafka.topic.creation.timeout",
-			ConfigMapName: "xjoin-generic",
-			DefaultValue:  300,
-		},
-
 		//avro schema
 		SchemaRegistryProtocol: Parameter{
 			Type:          reflect.String,

@@ -8,20 +8,28 @@ import (
 
 type DataSourceParameters struct {
 	CommonParameters
-	DatabaseHostname          Parameter
-	DatabasePort              Parameter
-	DatabaseName              Parameter
-	DatabaseTable             Parameter
-	DatabaseUsername          Parameter
-	DatabasePassword          Parameter
-	DatabaseSSLMode           Parameter
-	DatabaseSSLRootCert       Parameter
-	DebeziumConnectorTemplate Parameter
-	DebeziumTasksMax          Parameter
-	DebeziumMaxBatchSize      Parameter
-	DebeziumQueueSize         Parameter
-	DebeziumPollIntervalMS    Parameter
-	DebeziumErrorsLogEnable   Parameter
+	DatabaseHostname             Parameter
+	DatabasePort                 Parameter
+	DatabaseName                 Parameter
+	DatabaseTable                Parameter
+	DatabaseUsername             Parameter
+	DatabasePassword             Parameter
+	DatabaseSSLMode              Parameter
+	DatabaseSSLRootCert          Parameter
+	DebeziumConnectorTemplate    Parameter
+	DebeziumTasksMax             Parameter
+	DebeziumMaxBatchSize         Parameter
+	DebeziumQueueSize            Parameter
+	DebeziumPollIntervalMS       Parameter
+	DebeziumErrorsLogEnable      Parameter
+	KafkaTopicPartitions         Parameter
+	KafkaTopicReplicas           Parameter
+	KafkaTopicCleanupPolicy      Parameter
+	KafkaTopicMinCompactionLagMS Parameter
+	KafkaTopicRetentionBytes     Parameter
+	KafkaTopicRetentionMS        Parameter
+	KafkaTopicMessageBytes       Parameter
+	KafkaTopicCreationTimeout    Parameter
 }
 
 func BuildDataSourceParameters() *DataSourceParameters {
@@ -139,6 +147,56 @@ func BuildDataSourceParameters() *DataSourceParameters {
 			ConfigMapKey:  "debezium.connector.errors.log.enable",
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  true,
+		},
+
+		//kafka topic
+		KafkaTopicPartitions: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "datasource.kafka.topic.partitions",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  1,
+		},
+		KafkaTopicReplicas: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "datasource.kafka.topic.replicas",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  1,
+		},
+		KafkaTopicCleanupPolicy: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "datasource.kafka.topic.cleanup.policy",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "compact,delete",
+		},
+		KafkaTopicMinCompactionLagMS: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "datasource.kafka.topic.min.compaction.lag.ms",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "3600000",
+		},
+		KafkaTopicRetentionBytes: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "datasource.kafka.topic.retention.bytes",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "5368709120",
+		},
+		KafkaTopicRetentionMS: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "datasource.kafka.topic.retention.ms",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "2678400001",
+		},
+		KafkaTopicMessageBytes: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "datasource.kafka.topic.max.message.bytes",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "2097176",
+		},
+		KafkaTopicCreationTimeout: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "datasource.kafka.topic.creation.timeout",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  300,
 		},
 	}
 
