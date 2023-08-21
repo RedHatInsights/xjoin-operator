@@ -589,6 +589,14 @@ parameters:
     value: '2Gi'
   - name: VALIDATION_POD_MEMORY_REQUEST
     value: '1Gi'
+  - name: CORE_POD_CPU_LIMIT
+    value: '1'
+  - name: CORE_POD_CPU_REQUEST
+    value: '500m'
+  - name: CORE_POD_MEMORY_LIMIT
+    value: '2Gi'
+  - name: CORE_POD_MEMORY_REQUEST
+    value: '1Gi'
   - name: DATASOURCE_KAFKA_TOPIC_PARTITIONS
     value: '100'
   - name: DATASOURCE_KAFKA_TOPIC_REPLICAS
@@ -659,6 +667,10 @@ objects:
       validation.pod.memory.limit: ${VALIDATION_POD_MEMORY_LIMIT}
       validation.pod.cpu.request: ${VALIDATION_POD_CPU_REQUEST}
       validation.pod.memory.request: ${VALIDATION_POD_MEMORY_REQUEST}
+      core.pod.cpu.limit: ${CORE_POD_CPU_LIMIT}
+      core.pod.memory.limit: ${CORE_POD_MEMORY_LIMIT}
+      core.pod.cpu.request: ${CORE_POD_CPU_REQUEST}
+      core.pod.memory.request: ${CORE_POD_MEMORY_REQUEST}
       elasticsearch.connector.tasks.max: ${ES_CONNECTOR_TASKS_MAX}
       elasticsearch.connector.max.in.flight.requests: ${ES_CONNECTOR_MAX_IN_FLIGHT_REQUESTS}
       elasticsearch.connector.max.retries: ${ES_CONNECTOR_MAX_RETRIES}

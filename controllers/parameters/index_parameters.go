@@ -45,6 +45,10 @@ type IndexParameters struct {
 	ValidationPodCPULimit            Parameter
 	ValidationPodMemoryRequest       Parameter
 	ValidationPodMemoryLimit         Parameter
+	CorePodCPURequest                Parameter
+	CorePodCPULimit                  Parameter
+	CorePodMemoryRequest             Parameter
+	CorePodMemoryLimit               Parameter
 	KafkaTopicPartitions             Parameter
 	KafkaTopicReplicas               Parameter
 	KafkaTopicCleanupPolicy          Parameter
@@ -309,6 +313,31 @@ func BuildIndexParameters() *IndexParameters {
 		ValidationPodMemoryLimit: Parameter{
 			Type:          reflect.String,
 			ConfigMapKey:  "validation.pod.memory.limit",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "256Mi",
+		},
+
+		CorePodCPURequest: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "core.pod.cpu.request",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "100m",
+		},
+		CorePodCPULimit: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "core.pod.cpu.limit",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "200m",
+		},
+		CorePodMemoryRequest: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "core.pod.memory.request",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "128Mi",
+		},
+		CorePodMemoryLimit: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "core.pod.memory.limit",
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  "256Mi",
 		},

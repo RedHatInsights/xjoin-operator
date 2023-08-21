@@ -35,6 +35,10 @@ type XJoinCore struct {
 	Schema            string
 	events            events.Events
 	log               logger.Log
+	CPURequests       string
+	CPULimit          string
+	MemoryRequests    string
+	MemoryLimit       string
 }
 
 func (xc *XJoinCore) SetLogger(log logger.Log) {
@@ -62,19 +66,19 @@ func (xc *XJoinCore) buildDeploymentStructure() (*v1.Deployment, error) {
 
 	replicas := int32(1)
 
-	cpuLimit, err := resource.ParseQuantity("200m")
+	cpuLimit, err := resource.ParseQuantity(xc.CPULimit)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
-	cpuRequests, err := resource.ParseQuantity("100m")
+	cpuRequests, err := resource.ParseQuantity(xc.CPURequests)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
-	memoryLimit, err := resource.ParseQuantity("256Mi")
+	memoryLimit, err := resource.ParseQuantity(xc.MemoryLimit)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
-	memoryRequests, err := resource.ParseQuantity("128Mi")
+	memoryRequests, err := resource.ParseQuantity(xc.MemoryRequests)
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}

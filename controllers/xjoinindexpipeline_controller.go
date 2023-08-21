@@ -324,6 +324,10 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		SchemaRegistryURL: p.SchemaRegistryProtocol.String() + "://" + p.SchemaRegistryHost.String() + ":" + p.SchemaRegistryPort.String(),
 		Namespace:         i.Instance.GetNamespace(),
 		Schema:            indexAvroSchema.AvroSchemaString,
+		CPURequests:       p.CorePodCPURequest.String(),
+		CPULimit:          p.CorePodCPULimit.String(),
+		MemoryRequests:    p.CorePodMemoryRequest.String(),
+		MemoryLimit:       p.CorePodMemoryLimit.String(),
 	})
 	componentManager.AddComponent(&components.XJoinAPISubGraph{
 		Client:                i.Client,
