@@ -64,7 +64,7 @@ function wait_for_db_to_be_accessible {
     # shellcheck disable=SC2034
     for i in {1..120}; do
       set +e
-      if psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -c "\list"; then
+      if psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -c "\d"; then
         set -e
   	  DB_IS_ACCESSIBLE=true
         break
