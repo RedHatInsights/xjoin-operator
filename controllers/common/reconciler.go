@@ -206,6 +206,9 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
+
+		r.instance.SetRefreshingVersion("")
+		r.instance.SetRefreshingVersionState("")
 	case REFRESHING:
 		// active is invalid, refreshing is invalid
 		r.instance.SetCondition(metav1.Condition{
