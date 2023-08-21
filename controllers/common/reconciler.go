@@ -137,6 +137,7 @@ func (r *Reconciler) Reconcile(forceRefresh bool) (err error) {
 	if state != REFRESHING && forceRefresh {
 		state = START_REFRESH
 	}
+	r.log.Debug("Reconciler state", "state", state)
 
 	switch state {
 	case REMOVED:
