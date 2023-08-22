@@ -99,6 +99,8 @@ func BuildDataSourceParameters() *DataSourceParameters {
 				"transforms": "unwrap, reroute",
 				"transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
 				"transforms.unwrap.delete.handling.mode": "none",
+				"transforms.unwrap.add.fields": "ts_ms,source.ts_ms",
+				"transforms.unwrap.add.fields.prefix": "__dbz_",
 				"errors.log.enable": {{.DebeziumErrorsLogEnable}},
 				"errors.log.include.messages": true,
 				"slot.name": "{{.ReplicationSlotName}}",

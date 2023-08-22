@@ -103,10 +103,22 @@ func (es *ElasticsearchPipeline) jsonFieldsToESPipeline() (pipeline string, err 
 	var pipelineObj elasticsearch.Pipeline
 	pipelineObj.Description = "test"
 	pipelineObj.Processors = make([]elasticsearch.PipelineProcessor, 0)
+
+	var timestampProcessor elasticsearch.PipelineProcessor
+	timestampScriptProcessor := elasticsearch.ScriptProcessor{
+		Lang:   "painless",
+		Source: "ctx.__es_write_ms = System.currentTimeMillis();",
+	}
+	timestampProcessor.Script = &timestampScriptProcessor
+	pipelineObj.Processors = append(pipelineObj.Processors, timestampProcessor)
+
 	for _, jsonField := range es.JsonFields {
 		var processor elasticsearch.PipelineProcessor
-		processor.Json.Field = jsonField
-		processor.Json.If = fmt.Sprintf("ctx.%s != null", jsonField)
+		jsonProcessor := elasticsearch.JsonProcessor{
+			Field: jsonField,
+			If:    fmt.Sprintf("ctx.%s != null", jsonField),
+		}
+		processor.Json = &jsonProcessor
 		pipelineObj.Processors = append(pipelineObj.Processors, processor)
 	}
 

@@ -54,11 +54,20 @@ type QueryHostIDsRange struct {
 	} `json:"query"`
 }
 
+type JsonProcessor struct {
+	If    string `json:"if,omitempty"`
+	Field string `json:"field,omitempty"`
+}
+
+type ScriptProcessor struct {
+	Lang   string `json:"lang,omitempty"`
+	If     string `json:"if,omitempty"`
+	Source string `json:"source,omitempty"`
+}
+
 type PipelineProcessor struct {
-	Json struct {
-		If    string `json:"if,omitempty"`
-		Field string `json:"field,omitempty"`
-	} `json:"json,omitempty"`
+	Json   *JsonProcessor   `json:"json,omitempty"`
+	Script *ScriptProcessor `json:"script,omitempty"`
 }
 
 type Pipeline struct {

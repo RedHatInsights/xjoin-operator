@@ -23,6 +23,8 @@
   "transforms.reroute.topic.regex": ".*",
   "transforms.reroute.topic.replacement": "xjoindatasourcepipeline.test-data-source-pipeline.1234",
   "transforms.reroute.type": "io.debezium.transforms.ByLogicalTableRouter",
+  "transforms.unwrap.add.fields": "ts_ms,source.ts_ms",
+  "transforms.unwrap.add.fields.prefix": "__dbz_",
   "transforms.unwrap.delete.handling.mode": "none",
   "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
   "value.converter": "io.apicurio.registry.utils.converter.AvroConverter",

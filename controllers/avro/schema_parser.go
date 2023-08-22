@@ -199,7 +199,11 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 
 	for _, field := range schemaObj.Fields {
 		if len(field.Type) == 0 || len(strings.Split(field.Type[0].Type, ".")) < 2 {
-			return references, errors.Wrap(errors.New("unable to parse dataSourceName from avro schema fields"), 0)
+			if field.Type[0].XJoinType == "reference" {
+				return references, errors.Wrap(errors.New("unable to parse dataSourceName from avro schema fields"), 0)
+			} else {
+				continue
+			}
 		}
 		dataSourceName := strings.Split(field.Type[0].Type, ".")[0]
 
