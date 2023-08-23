@@ -16,6 +16,7 @@ const ElasticsearchSecret = "elasticsearch"
 
 type IndexParameters struct {
 	CommonParameters
+	PrometheusPushGatewayUrl         Parameter
 	ElasticSearchConnectorTemplate   Parameter
 	ElasticSearchURL                 Parameter
 	ElasticSearchUsername            Parameter
@@ -62,6 +63,12 @@ type IndexParameters struct {
 
 func BuildIndexParameters() *IndexParameters {
 	p := IndexParameters{
+		PrometheusPushGatewayUrl: Parameter{
+			DefaultValue:  "http://xjoin-prometheus-push-gateway:9091",
+			Type:          reflect.String,
+			ConfigMapName: "xjoin-generic",
+			ConfigMapKey:  "prometheus.push.gateway.url",
+		},
 		ElasticSearchSecretVersion: Parameter{
 			DefaultValue: "",
 			Type:         reflect.String,

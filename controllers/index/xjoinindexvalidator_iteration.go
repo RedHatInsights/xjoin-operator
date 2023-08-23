@@ -402,6 +402,11 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 		})
 	}
 
+	dbConnectionEnvVars = append(dbConnectionEnvVars, v1.EnvVar{
+		Name: "PROMETHEUS_PUSH_GATEWAY_URL",
+		Value: i.Parameters.PrometheusPushGatewayUrl.String(),
+	})
+
 	cpuLimit, err := resource.ParseQuantity(i.Parameters.ValidationPodCPULimit.String())
 	if err != nil {
 		i.Events.Warning("CreatedValidationPodFailed", "Unable to parse cpu limit")
