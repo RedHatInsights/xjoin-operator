@@ -78,18 +78,3 @@ objects:
         targetPort: 9091
     selector:
       app: xjoin-prometheus-push-gateway
-- apiVersion: monitoring.coreos.com/v1
-  kind: ServiceMonitor
-  metadata:
-    name: xjoin-prometheus-push-gateway
-    labels:
-      prometheus: env-test
-  spec:
-    endpoints:
-    - interval: 15s
-      path: /metrics
-      port: metrics
-    selector:
-      matchLabels:
-        app: xjoin-prometheus-push-gateway
-
