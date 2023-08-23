@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: xjoin-prometheus-push-gateway
+objects:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: xjoin-prometheus-push-gateway
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: xjoin-prometheus-push-gateway
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        labels:
+          app: xjoin-prometheus-push-gateway
+      spec:
+        containers:
+          - env:
+              - name: HOSTS_INDEX
+                value: xjoin.inventory.hosts
+            image: quay.io/prometheus/pushgateway:latest
+            imagePullPolicy: Always
+            name: xjoin-prometheus-push-gateway
+            ports:
+              - containerPort: 9091
+                name: metrics
+                protocol: TCP
+            livenessProbe:
+              failureThreshold: 5
+              httpGet:
+                path: /status
+                port: 9091
+                scheme: HTTP
+              initialDelaySeconds: 10
+              periodSeconds: 10
+              successThreshold: 1
+              timeoutSeconds: 60
+            readinessProbe:
+              failureThreshold: 5
+              httpGet:
+                path: /status
+                port: 9091
+                scheme: HTTP
+              initialDelaySeconds: 10
+              periodSeconds: 10
+              successThreshold: 1
+              timeoutSeconds: 60
+            resources:
+              limits:
+                cpu: 200m
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+- kind: Service
+  apiVersion: v1
+  metadata:
+    name: xjoin-prometheus-push-gateway
+    labels:
+      app: xjoin-prometheus-push-gateway
+  spec:
+    ipFamilies:
+      - IPv4
+    ports:
+      - name: metrics
+        protocol: TCP
+        port: 9091
+        targetPort: 9091
+    selector:
+      app: xjoin-prometheus-push-gateway
+- apiVersion: monitoring.coreos.com/v1
+  kind: ServiceMonitor
+  metadata:
+    name: xjoin-prometheus-push-gateway
+    labels:
+      prometheus: env-test
+  spec:
+    endpoints:
+    - interval: 15s
+      path: /metrics
+      port: metrics
+    selector:
+      matchLabels:
+        app: xjoin-prometheus-push-gateway
+
