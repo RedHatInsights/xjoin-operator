@@ -609,6 +609,12 @@ parameters:
     value: '2'
   - name: INDEX_CONNECTOR_TASKS_MAX
     value: '50'
+  - name: INDEX_CONNECTOR_MAX_IN_FLIGHT_REQUESTS
+    value: '1'
+  - name: INDEX_CONNECTOR_BATCH_SIZE
+    value: '100'
+  - name: INDEX_CONNECTOR_MAX_BUFFERED_RECORDS
+    value: '500'
 objects:
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
@@ -677,11 +683,11 @@ objects:
       core.pod.memory.request: ${CORE_POD_MEMORY_REQUEST}
       core.number.of.pods: ${CORE_NUM_PODS}
       elasticsearch.connector.tasks.max: ${INDEX_CONNECTOR_TASKS_MAX}
-      elasticsearch.connector.max.in.flight.requests: ${ES_CONNECTOR_MAX_IN_FLIGHT_REQUESTS}
+      elasticsearch.connector.max.in.flight.requests: ${INDEX_CONNECTOR_MAX_IN_FLIGHT_REQUESTS}
       elasticsearch.connector.max.retries: ${ES_CONNECTOR_MAX_RETRIES}
       elasticsearch.connector.retry.backoff.ms: ${ES_CONNECTOR_RETRY_BACKOFF_MS}
-      elasticsearch.connector.batch.size: ${ES_CONNECTOR_BATCH_SIZE}
-      elasticsearch.connector.max.buffered.records: ${ES_CONNECTOR_MAX_BUFFERED_RECORDS}
+      elasticsearch.connector.batch.size: ${INDEX_CONNECTOR_BATCH_SIZE}
+      elasticsearch.connector.max.buffered.records: ${INDEX_CONNECTOR_MAX_BUFFERED_RECORDS}
       elasticsearch.connector.linger.ms: ${ES_CONNECTOR_LINGER_MS}
       datasource.kafka.topic.partitions: ${DATASOURCE_KAFKA_TOPIC_PARTITIONS}
       datasource.kafka.topic.replicas: ${DATASOURCE_KAFKA_TOPIC_REPLICAS}
