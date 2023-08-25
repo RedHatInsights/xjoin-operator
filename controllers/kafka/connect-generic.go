@@ -71,9 +71,10 @@ func (kafka *GenericKafka) CreateGenericElasticsearchConnector(
 			},
 		},
 		"spec": map[string]interface{}{
-			"class":  "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
-			"config": connectorConfig,
-			"pause":  false,
+			"class":    "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+			"config":   connectorConfig,
+			"pause":    false,
+			"tasksMax": connectorTemplateParameters["ElasticSearchTasksMax"],
 		},
 	}
 
