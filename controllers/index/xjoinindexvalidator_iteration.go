@@ -403,7 +403,7 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 	}
 
 	dbConnectionEnvVars = append(dbConnectionEnvVars, v1.EnvVar{
-		Name: "PROMETHEUS_PUSH_GATEWAY_URL",
+		Name:  "PROMETHEUS_PUSH_GATEWAY_URL",
 		Value: i.Parameters.PrometheusPushGatewayUrl.String(),
 	})
 

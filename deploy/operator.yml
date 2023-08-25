@@ -617,6 +617,12 @@ parameters:
     value: '500'
   - name: INDEX_CONNECTOR_LINGER_MS
     value: '100'
+  - name: DATASOURCE_CONNECTOR_MAX_BATCH_SIZE
+    value: '1000'
+  - name: DATASOURCE_CONNECTOR_MAX_QUEUE_SIZE
+    value: '10000'
+  - name: DATASOURCE_CONNECTOR_SNAPSHOT_FETCH_SIZE
+    value: '10240'
 objects:
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
@@ -693,6 +699,7 @@ objects:
       elasticsearch.connector.linger.ms: ${INDEX_CONNECTOR_LINGER_MS}
       datasource.kafka.topic.partitions: ${DATASOURCE_KAFKA_TOPIC_PARTITIONS}
       datasource.kafka.topic.replicas: ${DATASOURCE_KAFKA_TOPIC_REPLICAS}
+      debezium.connector.max.batch.size: ${DATASOURCE_CONNECTOR_MAX_BATCH_SIZE}
       index.kafka.topic.partitions: ${INDEX_KAFKA_TOPIC_PARTITIONS}
       index.kafka.topic.replicas: ${INDEX_KAFKA_TOPIC_REPLICAS}
   - apiVersion: v1

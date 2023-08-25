@@ -20,6 +20,7 @@ type DataSourceParameters struct {
 	DebeziumTasksMax             Parameter
 	DebeziumMaxBatchSize         Parameter
 	DebeziumQueueSize            Parameter
+	DebeziumSnapshotFetchSize    Parameter
 	DebeziumPollIntervalMS       Parameter
 	DebeziumErrorsLogEnable      Parameter
 	KafkaTopicPartitions         Parameter
@@ -106,6 +107,7 @@ func BuildDataSourceParameters() *DataSourceParameters {
 				"slot.name": "{{.ReplicationSlotName}}",
 				"max.queue.size": {{.DebeziumQueueSize}},
 				"max.batch.size": {{.DebeziumMaxBatchSize}},
+                "snapshot.fetch.size": {{.DebeziumSnapshotFetchSize}},
 				"poll.interval.ms": {{.DebeziumPollIntervalMS}},
 				"key.converter": "io.apicurio.registry.utils.converter.AvroConverter",
 				"key.converter.apicurio.registry.url": "{{.SchemaRegistryProtocol}}://{{.SchemaRegistryHost}}:{{.SchemaRegistryPort}}/apis/registry/v2",
@@ -135,6 +137,12 @@ func BuildDataSourceParameters() *DataSourceParameters {
 		DebeziumQueueSize: Parameter{
 			Type:          reflect.Int,
 			ConfigMapKey:  "debezium.connector.max.queue.size",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  1000,
+		},
+		DebeziumSnapshotFetchSize: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "debezium.connector.snapshot.fetch.size",
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  1000,
 		},
