@@ -623,6 +623,8 @@ parameters:
     value: '10000'
   - name: DATASOURCE_CONNECTOR_SNAPSHOT_FETCH_SIZE
     value: '10240'
+  - name: DATASOURCE_CONNECTOR_INCREMENTAL_CHUNK_SIZE
+    value: '1024'
 objects:
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
@@ -702,6 +704,7 @@ objects:
       debezium.connector.max.batch.size: ${DATASOURCE_CONNECTOR_MAX_BATCH_SIZE}
       debezium.connector.max.queue.size: ${DATASOURCE_CONNECTOR_MAX_QUEUE_SIZE}
       debezium.connector.snapshot.fetch.size: ${DATASOURCE_CONNECTOR_SNAPSHOT_FETCH_SIZE}
+      debezium.connector.incremental.snapshot.chunk.size: ${DATASOURCE_CONNECTOR_INCREMENTAL_CHUNK_SIZE}
       index.kafka.topic.partitions: ${INDEX_KAFKA_TOPIC_PARTITIONS}
       index.kafka.topic.replicas: ${INDEX_KAFKA_TOPIC_REPLICAS}
   - apiVersion: v1

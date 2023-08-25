@@ -8,29 +8,30 @@ import (
 
 type DataSourceParameters struct {
 	CommonParameters
-	DatabaseHostname             Parameter
-	DatabasePort                 Parameter
-	DatabaseName                 Parameter
-	DatabaseTable                Parameter
-	DatabaseUsername             Parameter
-	DatabasePassword             Parameter
-	DatabaseSSLMode              Parameter
-	DatabaseSSLRootCert          Parameter
-	DebeziumConnectorTemplate    Parameter
-	DebeziumTasksMax             Parameter
-	DebeziumMaxBatchSize         Parameter
-	DebeziumQueueSize            Parameter
-	DebeziumSnapshotFetchSize    Parameter
-	DebeziumPollIntervalMS       Parameter
-	DebeziumErrorsLogEnable      Parameter
-	KafkaTopicPartitions         Parameter
-	KafkaTopicReplicas           Parameter
-	KafkaTopicCleanupPolicy      Parameter
-	KafkaTopicMinCompactionLagMS Parameter
-	KafkaTopicRetentionBytes     Parameter
-	KafkaTopicRetentionMS        Parameter
-	KafkaTopicMessageBytes       Parameter
-	KafkaTopicCreationTimeout    Parameter
+	DatabaseHostname                     Parameter
+	DatabasePort                         Parameter
+	DatabaseName                         Parameter
+	DatabaseTable                        Parameter
+	DatabaseUsername                     Parameter
+	DatabasePassword                     Parameter
+	DatabaseSSLMode                      Parameter
+	DatabaseSSLRootCert                  Parameter
+	DebeziumConnectorTemplate            Parameter
+	DebeziumTasksMax                     Parameter
+	DebeziumMaxBatchSize                 Parameter
+	DebeziumIncrementalSnapshotChunkSize Parameter
+	DebeziumQueueSize                    Parameter
+	DebeziumSnapshotFetchSize            Parameter
+	DebeziumPollIntervalMS               Parameter
+	DebeziumErrorsLogEnable              Parameter
+	KafkaTopicPartitions                 Parameter
+	KafkaTopicReplicas                   Parameter
+	KafkaTopicCleanupPolicy              Parameter
+	KafkaTopicMinCompactionLagMS         Parameter
+	KafkaTopicRetentionBytes             Parameter
+	KafkaTopicRetentionMS                Parameter
+	KafkaTopicMessageBytes               Parameter
+	KafkaTopicCreationTimeout            Parameter
 }
 
 func BuildDataSourceParameters() *DataSourceParameters {
@@ -107,6 +108,7 @@ func BuildDataSourceParameters() *DataSourceParameters {
 				"slot.name": "{{.ReplicationSlotName}}",
 				"max.queue.size": {{.DebeziumQueueSize}},
 				"max.batch.size": {{.DebeziumMaxBatchSize}},
+				"incremental.snapshot.chunk.size": {{.DebeziumIncrementalSnapshotChunkSize}},
                 "snapshot.fetch.size": {{.DebeziumSnapshotFetchSize}},
 				"poll.interval.ms": {{.DebeziumPollIntervalMS}},
 				"key.converter": "io.apicurio.registry.utils.converter.AvroConverter",
@@ -133,6 +135,12 @@ func BuildDataSourceParameters() *DataSourceParameters {
 			ConfigMapKey:  "debezium.connector.max.batch.size",
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  10,
+		},
+		DebeziumIncrementalSnapshotChunkSize: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "debezium.connector.incremental.snapshot.chunk.size",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  1024,
 		},
 		DebeziumQueueSize: Parameter{
 			Type:          reflect.Int,
