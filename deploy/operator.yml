@@ -627,6 +627,8 @@ parameters:
     value: '1024'
   - name: DATASOURCE_CONNECTOR_POLL_INTERVAL
     value: '100'
+  - name: INDEX_VALIDATION_ATTEMPTS
+    value: '300'
 objects:
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
@@ -684,7 +686,7 @@ objects:
       schemaregistry.port: ${SCHEMA_REGISTRY_PORT}
       subgraph.log.level: ${SUBGRAPH_LOG_LEVEL}
       validation.attempt.interval: ${VALIDATION_ATTEMPT_INTERVAL}
-      validation.attempts: ${VALIDATION_ATTEMPTS}
+      validation.attempts: ${INDEX_VALIDATION_ATTEMPTS}
       validation.pod.cpu.limit: ${VALIDATION_POD_CPU_LIMIT}
       validation.pod.memory.limit: ${VALIDATION_POD_MEMORY_LIMIT}
       validation.pod.cpu.request: ${VALIDATION_POD_CPU_REQUEST}
