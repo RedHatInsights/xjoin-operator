@@ -629,6 +629,16 @@ parameters:
     value: '100'
   - name: INDEX_VALIDATION_ATTEMPTS
     value: '300'
+  - name: DATASOURCE_CONNECTOR_LINGER_MS
+    value: '100'
+  - name: DATASOURCE_CONNECTOR_BATCH_SIZE
+    value: '200000'
+  - name: DATASOURCE_CONNECTOR_COMPRESSION_TYPE
+    value: 'lz4'
+  - name: DATASOURCE_CONNECTOR_MAX_REQUEST_SIZE
+    value: '104857600'
+  - name: DATASOURCE_CONNECTOR_ACK
+    value: '1'
 objects:
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
@@ -712,6 +722,11 @@ objects:
       debezium.connector.poll.interval.ms: ${DATASOURCE_CONNECTOR_POLL_INTERVAL}
       index.kafka.topic.partitions: ${INDEX_KAFKA_TOPIC_PARTITIONS}
       index.kafka.topic.replicas: ${INDEX_KAFKA_TOPIC_REPLICAS}
+      linger.ms: ${DATASOURCE_CONNECTOR_LINGER_MS},
+      batch.size: ${DATASOURCE_CONNECTOR_BATCH_SIZE},
+      compression.type: ${DATASOURCE_CONNECTOR_COMPRESSION_TYPE},
+      max.request.size: ${DATASOURCE_CONNECTOR_MAX_REQUEST_SIZE},
+      acks: ${DATASOURCE_CONNECTOR_ACKS}
   - apiVersion: v1
     kind: ConfigMap
     metadata:

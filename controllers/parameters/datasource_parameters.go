@@ -24,6 +24,11 @@ type DataSourceParameters struct {
 	DebeziumSnapshotFetchSize            Parameter
 	DebeziumPollIntervalMS               Parameter
 	DebeziumErrorsLogEnable              Parameter
+	DebeziumConnectorLingerMS            Parameter
+	DebeziumConnectorBatchSize           Parameter
+	DebeziumConnectorCompressionType     Parameter
+	DebeziumConnectorMaxRequestSize      Parameter
+	DebeziumConnectorAcks                Parameter
 	KafkaTopicPartitions                 Parameter
 	KafkaTopicReplicas                   Parameter
 	KafkaTopicCleanupPolicy              Parameter
@@ -80,18 +85,17 @@ func BuildDataSourceParameters() *DataSourceParameters {
 			ConfigMapKey:  "hbi.db.ssl.root.cert",
 			DefaultValue:  "/opt/kafka/external-configuration/rds-client-ca/rds-cacert",
 		},
-
 		//debezium
 		DebeziumConnectorTemplate: Parameter{
 			Type:          reflect.String,
 			ConfigMapName: "xjoin-generic",
 			ConfigMapKey:  "debezium.connector.template",
 			DefaultValue: `{
-				"linger.ms": "100",
-				"batch.size": "200000",
-				"compression.type": "lz4",
-				"max.request.size": "104857600",
-				"acks": "1",
+				"linger.ms": "{{.DebeziumConnectorLingerMS}}",
+				"batch.size": "{{.DebeziumConnectorBatchSize}}",
+				"compression.type": "{{.DebeziumConnectorCompressionType}}",
+				"max.request.size": "{{.DebeziumConnectorMaxRequestSize}}",
+				"acks": "{{.DebeziumConnectorAcks}}",
 				"tasks.max": "{{.DebeziumTasksMax}}",
 				"database.hostname": "{{.DatabaseHostname}}",
 				"database.port": "{{.DatabasePort}}",
@@ -170,6 +174,36 @@ func BuildDataSourceParameters() *DataSourceParameters {
 			ConfigMapKey:  "debezium.connector.errors.log.enable",
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  true,
+		},
+		DebeziumConnectorLingerMS: Parameter{
+			Type:          reflect.String,
+			ConfigMapName: "xjoin-generic",
+			ConfigMapKey:  "debezium.connector.linger.ms",
+			DefaultValue:  "100",
+		},
+		DebeziumConnectorBatchSize: Parameter{
+			Type:          reflect.String,
+			ConfigMapName: "xjoin-generic",
+			ConfigMapKey:  "debezium.connector.batch.size",
+			DefaultValue:  "200000",
+		},
+		DebeziumConnectorCompressionType: Parameter{
+			Type:          reflect.String,
+			ConfigMapName: "xjoin-generic",
+			ConfigMapKey:  "debezium.connector.compression.type",
+			DefaultValue:  "lz4",
+		},
+		DebeziumConnectorMaxRequestSize: Parameter{
+			Type:          reflect.String,
+			ConfigMapName: "xjoin-generic",
+			ConfigMapKey:  "debezium.connector.max.request.size",
+			DefaultValue:  "104857600",
+		},
+		DebeziumConnectorAcks: Parameter{
+			Type:          reflect.String,
+			ConfigMapName: "xjoin-generic",
+			ConfigMapKey:  "debezium.connector.acks",
+			DefaultValue:  "1",
 		},
 
 		//kafka topic
