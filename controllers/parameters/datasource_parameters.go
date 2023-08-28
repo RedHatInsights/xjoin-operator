@@ -87,6 +87,11 @@ func BuildDataSourceParameters() *DataSourceParameters {
 			ConfigMapName: "xjoin-generic",
 			ConfigMapKey:  "debezium.connector.template",
 			DefaultValue: `{
+				"linger.ms": "100",
+				"batch.size": "200000",
+				"compression.type": "lz4",
+				"max.request.size": "104857600",
+				"acks": "1",
 				"tasks.max": "{{.DebeziumTasksMax}}",
 				"database.hostname": "{{.DatabaseHostname}}",
 				"database.port": "{{.DatabasePort}}",
