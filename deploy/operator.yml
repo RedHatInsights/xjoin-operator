@@ -632,13 +632,13 @@ parameters:
   - name: DATASOURCE_CONNECTOR_LINGER_MS
     value: '100'
   - name: DATASOURCE_CONNECTOR_BATCH_SIZE
-    value: '200000'
+    value: '16384'
   - name: DATASOURCE_CONNECTOR_COMPRESSION_TYPE
     value: 'lz4'
   - name: DATASOURCE_CONNECTOR_MAX_REQUEST_SIZE
     value: '104857600'
   - name: DATASOURCE_CONNECTOR_ACK
-    value: '1'
+    value: 'all'
 objects:
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
