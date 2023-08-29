@@ -1,4 +1,7 @@
 {
+  "acks": "1",
+  "batch.size": "200000",
+  "compression.type": "lz4",
   "database.dbname": "dbName",
   "database.hostname": "dbHost",
   "database.password": "dbPassword",
@@ -13,8 +16,10 @@
   "key.converter": "io.apicurio.registry.utils.converter.AvroConverter",
   "key.converter.apicurio.registry.auto-register": "true",
   "key.converter.apicurio.registry.url": "http://apicurio:1080/apis/registry/v2",
+  "linger.ms": "100",
   "max.batch.size": 10,
   "max.queue.size": 1000,
+  "max.request.size": "104857600",
   "plugin.name": "pgoutput",
   "poll.interval.ms": 100,
   "slot.name": "xjoindatasourcepipeline_test-data-source-pipeline_1234",

@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
+	"github.com/redhatinsights/xjoin-operator/controllers/database"
 	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
@@ -207,6 +208,27 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		KafkaClient:        kafkaClient,
 		Template:           p.DebeziumConnectorTemplate.String(),
 		Namespace:          instance.Namespace,
+	})
+
+	db := database.NewDatabase(database.DBParams{
+		User:        p.DatabaseUsername.String(),
+		Password:    p.DatabasePassword.String(),
+		Host:        p.DatabaseHostname.String(),
+		Name:        p.DatabaseName.String(),
+		Port:        p.DatabasePort.String(),
+		SSLMode:     p.DatabaseSSLMode.String(),
+		SSLRootCert: p.DatabaseSSLRootCert.String(),
+		IsTest:      r.Test,
+	})
+	err = db.Connect()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+	defer db.Close()
+
+	componentManager.AddComponent(&components.ReplicationSlot{
+		Namespace: instance.Namespace,
+		Database:  db,
 	})
 
 	if instance.GetDeletionTimestamp() != nil {
