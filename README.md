@@ -47,11 +47,11 @@ The operator defines two controllers that reconcile a XJoinPipeline
 2. Set up a local minikube environment
     - [MiniKube](https://minikube.sigs.k8s.io/docs/start/)
 
-3. Configure Kubernetes to use at least 16G of memory and 6 cpus. This is known to work, although you can try with less.
+3. Configure Kubernetes to use at least 6GB of memory and 5 cpus. This is known to work, although you can try with less.
     ```
-    minikube config set cpus 6
-    minikube config set memory 16384
-   minikube config set driver kvm2
+    minikube config set cpus 5
+    minikube config set memory 6000
+    minikube config set driver kvm2
     ```
 
 4. Start minikube

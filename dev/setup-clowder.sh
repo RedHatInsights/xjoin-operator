@@ -20,12 +20,15 @@ function print_message() {
   echo -e "********************************************************************************\n"
 }
 
-function wait_for_pod_to_be_running() {
-  SELECTOR=$1
-  echo -e "waiting for resource to be created: $SELECTOR"
+function wait_for_resource_to_be_created() {
+  TYPE=$1
+  SELECTOR=$2
+  NAMESPACE=$3
+
+  echo -e "waiting for $TYPE to be created: $SELECTOR in namespace $NAMESPACE"
   # shellcheck disable=SC2034
   for i in {1..240}; do
-    POD=$(kubectl get pods --selector="$SELECTOR" -o name -n test)
+    POD=$(kubectl get "$TYPE" --selector="$SELECTOR" -o name -n "$NAMESPACE")
     if [ -z "$POD" ]; then
       sleep 1
     else
@@ -33,22 +36,20 @@ function wait_for_pod_to_be_running() {
         break
     fi
   done
-
-  echo -e "waiting for resource to be ready: $SELECTOR"
-  kubectl wait --for=condition=ContainersReady=True --selector="$SELECTOR" pods -n test --timeout=600s
 }
 
-function delete_clowdapp_dependencies() {
-  CLOWDAPP=$1
-  echo -e "deleting dependencies of clowdapp/$CLOWDAPP"
+function wait_for_pod_to_be_running() {
+  SELECTOR=$1
+  NAMESPACE=$2
 
-  # shellcheck disable=SC2034
-  for i in {1..60}; do
-    if kubectl get clowdapp/"$CLOWDAPP" -o=json -n test | jq '.spec.dependencies = null' | kubectl apply -n test -f -; then
-      break
-    fi
-    sleep 1
-  done
+  if [ -z "$NAMESPACE" ]; then
+    NAMESPACE="test"
+  fi
+
+  wait_for_resource_to_be_created pods "$SELECTOR" "$NAMESPACE"
+
+  echo -e "waiting for resource to be ready: $SELECTOR in namespace $NAMESPACE"
+  kubectl wait --for=condition=ContainersReady=True --selector="$SELECTOR" pods -n "$NAMESPACE" --timeout=600s
 }
 
 function wait_for_db_to_be_accessible {
@@ -77,6 +78,31 @@ function wait_for_db_to_be_accessible {
       exit 1
     fi
     echo -e "Database $DB_HOST is ready"
+}
+
+function update_resource_spec {
+    RESOURCE=$1
+    JQ_STATEMENT=$2
+    NAMESPACE=$3
+
+    UPDATED=false
+
+    # shellcheck disable=SC2034
+    for i in {1..15}; do
+      set +e
+      if kubectl get "$RESOURCE" -o=json -n test | jq "$JQ_STATEMENT" | kubectl apply -n "$NAMESPACE" -f -; then
+        set -e
+        UPDATED=true
+        break
+      fi
+      sleep 1
+    done
+
+    if [ "$UPDATED" = false ]; then
+      echo -e "Unable to update resource $RESOURCE"
+      exit 1
+    fi
+    echo -e "Updated resource $RESOURCE"
 }
 
 kubectl create ns test
@@ -112,6 +138,21 @@ kubectl set env deployment/strimzi-cluster-operator -n strimzi STRIMZI_IMAGE_PUL
 # clowder CRDs
 print_message "Installing Clowder CRDs"
 kubectl apply -f $(curl https://api.github.com/repos/RedHatInsights/clowder/releases/latest | jq '.assets[0].browser_download_url' -r) --validate=false
+wait_for_pod_to_be_running operator-name=clowder clowder-system
+
+kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n test
+kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n cert-manager
+kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n clowder-system
+kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n cyndi-operator-system
+kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n default
+kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n elastic-system
+kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n kube-node-lease
+kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n kube-public
+kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n kube-system
+kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n strimzi
+
+# floorist CRDs
+kubectl apply -k https://github.com/RedHatInsights/floorist-operator/config/crd?ref=main
 
 # project and secrets
 print_message "Setting up pull secrets"
@@ -125,30 +166,68 @@ kubectl apply -f dev/xjoin-generic.configmap.yaml -n test
 # bonfire environment (kafka, connect, etc.)
 print_message "Setting up bonfire environment"
 bonfire process-env -n test -u cloudservices --template-file ./dev/clowdenv.yaml | oc apply -f - -n test
-wait_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-zookeeper
-wait_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-kafka
-wait_for_pod_to_be_running strimzi.io/cluster=connect
 
 # inventory resources
 print_message "Setting up host-inventory"
-bonfire process host-inventory -n test --no-get-dependencies | oc apply -f - -n test
-delete_clowdapp_dependencies host-inventory
-wait_for_pod_to_be_running app=host-inventory,service=db
+bonfire process host-inventory -n test --no-get-dependencies --remove-dependencies all | oc apply -f - -n test
 
 # xjoin resources
-bonfire process xjoin -n test --no-get-dependencies | oc apply -f - -n test
+bonfire process xjoin -n test --no-get-dependencies -p xjoin-search/ES_MEMORY_REQUESTS=256Mi -p xjoin-search/ES_MEMORY_LIMITS=512Mi -p xjoin-search/ES_JAVA_OPTS="-Xms128m -Xmx128m" | oc apply -f - -n test
+
+# advisor
+print_message "Setting up advisor"
+bonfire process advisor -n test --no-get-dependencies --remove-dependencies all| oc apply -f - -n test
+
+print_message "Waiting for pods to start"
+
+# wait for the kafka pods to start
+wait_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-zookeeper
+wait_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/kind=Kafka,strimzi.io/name=kafka-kafka
+wait_for_pod_to_be_running strimzi.io/cluster=kafka,strimzi.io/name=kafka-entity-operator
+wait_for_pod_to_be_running strimzi.io/cluster=connect
+
+# wait for the hbi pods to start
+wait_for_pod_to_be_running app=host-inventory,service=db
+
+# wait for the xjoin pods to start
 wait_for_pod_to_be_running elasticsearch.k8s.elastic.co/cluster-name=xjoin-elasticsearch
 wait_for_pod_to_be_running pod=xjoin-search-api
 wait_for_pod_to_be_running pod=xjoin-apicurio-service
 wait_for_pod_to_be_running app=xjoin-apicurio,service=db
 wait_for_pod_to_be_running app=xjoin-api-gateway
 
-# advisor
-print_message "Setting up advisor"
-kubectl apply -k https://github.com/RedHatInsights/floorist-operator/config/crd?ref=main
-bonfire process advisor -n test --no-get-dependencies | oc apply -f - -n test
-delete_clowdapp_dependencies advisor-backend
+# wait for the advisor pods to start
 wait_for_pod_to_be_running app=advisor-backend,service=db
+
+print_message "Cleaning up extra resources"
+# scale down clowder
+kubectl scale --replicas=0 deployments/clowder-controller-manager -n clowder-system
+
+# reduce memory requests
+update_resource_spec kafka/kafka '.spec.entityOperator.topicOperator.resources.requests.memory = "32Mi"' test
+update_resource_spec kafka/kafka '.spec.entityOperator.topicOperator.resources.limits.memory = "128Mi"' test
+
+update_resource_spec kafka/kafka '.spec.entityOperator.userOperator.resources.requests.memory = "32Mi"' test
+update_resource_spec kafka/kafka '.spec.entityOperator.userOperator.resources.limits.memory = "128Mi"' test
+
+update_resource_spec kafka/kafka '.spec.entityOperator.tlsSidecar.resources.requests.memory = "32Mi"' test
+update_resource_spec kafka/kafka '.spec.entityOperator.tlsSidecar.resources.limits.memory = "128Mi"' test
+
+update_resource_spec kafka/kafka '.spec.zookeeper.resources.requests.memory = "64Mi"' test
+update_resource_spec kafka/kafka '.spec.zookeeper.resources.limits.memory = "128Mi"' test
+
+update_resource_spec elasticsearch/xjoin-elasticsearch '.spec.nodeSets[0].podTemplate.spec.containers[0].resources.requests.memory= "128Mi"' test
+update_resource_spec elasticsearch/xjoin-elasticsearch '.spec.nodeSets[0].podTemplate.spec.containers[0].resources.limits.memory= "512Mi"' test
+
+# delete extra advisor deployments, only the DB is required
+kubectl delete deployments/advisor-backend-api -n test
+kubectl delete deployments/advisor-backend-service -n test
+kubectl delete deployments/advisor-backend-tasks-service -n test
+kubectl delete deployments/host-inventory-service -n test
+
+# delete all the jobs
+kubectl delete cronjobs --all -n test
+kubectl delete jobs --all -n test
 
 # setup xjoin.v2 resources, remove v1 resource
 kubectl delete xjoinpipeline --all -n test
