@@ -139,6 +139,7 @@ kubectl set env deployment/strimzi-cluster-operator -n strimzi STRIMZI_IMAGE_PUL
 print_message "Installing Clowder CRDs"
 kubectl apply -f $(curl https://api.github.com/repos/RedHatInsights/clowder/releases/latest | jq '.assets[0].browser_download_url' -r) --validate=false
 wait_for_pod_to_be_running operator-name=clowder clowder-system
+sleep 5
 
 kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n test
 kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n cert-manager
@@ -205,13 +206,13 @@ kubectl scale --replicas=0 deployments/clowder-controller-manager -n clowder-sys
 
 # reduce memory requests
 update_resource_spec kafka/kafka '.spec.entityOperator.topicOperator.resources.requests.memory = "32Mi"' test
-update_resource_spec kafka/kafka '.spec.entityOperator.topicOperator.resources.limits.memory = "128Mi"' test
+update_resource_spec kafka/kafka '.spec.entityOperator.topicOperator.resources.limits.memory = "256Mi"' test
 
 update_resource_spec kafka/kafka '.spec.entityOperator.userOperator.resources.requests.memory = "32Mi"' test
-update_resource_spec kafka/kafka '.spec.entityOperator.userOperator.resources.limits.memory = "128Mi"' test
+update_resource_spec kafka/kafka '.spec.entityOperator.userOperator.resources.limits.memory = "256Mi"' test
 
 update_resource_spec kafka/kafka '.spec.entityOperator.tlsSidecar.resources.requests.memory = "32Mi"' test
-update_resource_spec kafka/kafka '.spec.entityOperator.tlsSidecar.resources.limits.memory = "128Mi"' test
+update_resource_spec kafka/kafka '.spec.entityOperator.tlsSidecar.resources.limits.memory = "256Mi"' test
 
 update_resource_spec kafka/kafka '.spec.zookeeper.resources.requests.memory = "64Mi"' test
 update_resource_spec kafka/kafka '.spec.zookeeper.resources.limits.memory = "128Mi"' test
