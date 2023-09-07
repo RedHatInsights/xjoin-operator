@@ -59,6 +59,10 @@ type IndexParameters struct {
 	KafkaTopicRetentionMS            Parameter
 	KafkaTopicMessageBytes           Parameter
 	KafkaTopicCreationTimeout        Parameter
+	SubgraphPodCPURequest            Parameter
+	SubgraphPodCPULimit              Parameter
+	SubgraphPodMemoryRequest         Parameter
+	SubgraphPodMemoryLimit           Parameter
 }
 
 func BuildIndexParameters() *IndexParameters {
@@ -304,7 +308,7 @@ func BuildIndexParameters() *IndexParameters {
 			Type:          reflect.String,
 			ConfigMapKey:  "validation.pod.cpu.request",
 			ConfigMapName: "xjoin-generic",
-			DefaultValue:  "100m",
+			DefaultValue:  "10m",
 		},
 		ValidationPodCPULimit: Parameter{
 			Type:          reflect.String,
@@ -316,7 +320,7 @@ func BuildIndexParameters() *IndexParameters {
 			Type:          reflect.String,
 			ConfigMapKey:  "validation.pod.memory.request",
 			ConfigMapName: "xjoin-generic",
-			DefaultValue:  "128Mi",
+			DefaultValue:  "16Mi",
 		},
 		ValidationPodMemoryLimit: Parameter{
 			Type:          reflect.String,
@@ -325,11 +329,36 @@ func BuildIndexParameters() *IndexParameters {
 			DefaultValue:  "256Mi",
 		},
 
+		SubgraphPodCPURequest: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "subgraph.pod.cpu.request",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "10m",
+		},
+		SubgraphPodCPULimit: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "subgraph.pod.cpu.limit",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "200m",
+		},
+		SubgraphPodMemoryRequest: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "subgraph.pod.memory.request",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "16Mi",
+		},
+		SubgraphPodMemoryLimit: Parameter{
+			Type:          reflect.String,
+			ConfigMapKey:  "subgraph.pod.memory.limit",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  "256Mi",
+		},
+
 		CorePodCPURequest: Parameter{
 			Type:          reflect.String,
 			ConfigMapKey:  "core.pod.cpu.request",
 			ConfigMapName: "xjoin-generic",
-			DefaultValue:  "100m",
+			DefaultValue:  "10m",
 		},
 		CorePodCPULimit: Parameter{
 			Type:          reflect.String,
@@ -341,7 +370,7 @@ func BuildIndexParameters() *IndexParameters {
 			Type:          reflect.String,
 			ConfigMapKey:  "core.pod.memory.request",
 			ConfigMapName: "xjoin-generic",
-			DefaultValue:  "128Mi",
+			DefaultValue:  "16Mi",
 		},
 		CorePodMemoryLimit: Parameter{
 			Type:          reflect.String,

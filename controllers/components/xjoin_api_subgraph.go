@@ -41,6 +41,10 @@ type XJoinAPISubGraph struct {
 	Suffix                string
 	GraphQLSchemaName     string
 	LogLevel              string
+	CPURequests           string
+	CPULimit              string
+	MemoryRequests        string
+	MemoryLimit           string
 	events                events.Events
 	log                   logger.Log
 }
@@ -108,7 +112,7 @@ func (x *XJoinAPISubGraph) buildDeploymentStructure() (*v1.Deployment, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}
-	memoryRequests, err := resource.ParseQuantity("128Mi")
+	memoryRequests, err := resource.ParseQuantity("16Mi")
 	if err != nil {
 		return nil, errors.Wrap(err, 0)
 	}

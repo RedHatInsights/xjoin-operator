@@ -343,6 +343,10 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Image:                 "quay.io/cloudservices/xjoin-api-subgraph:latest", //TODO
 		GraphQLSchemaName:     graphqlSchemaComponent.Name(),
 		LogLevel:              p.SubgraphLogLevel.String(),
+		CPURequests:           p.SubgraphPodCPURequest.String(),
+		CPULimit:              p.SubgraphPodCPULimit.String(),
+		MemoryRequests:        p.SubgraphPodMemoryRequest.String(),
+		MemoryLimit:           p.SubgraphPodMemoryLimit.String(),
 	})
 	componentManager.AddComponent(&components.XJoinIndexValidator{
 		Client:                 i.Client,
@@ -376,6 +380,10 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 			Suffix:                customSubgraphImage.Name,
 			GraphQLSchemaName:     customSubgraphGraphQLSchemaComponent.Name(),
 			LogLevel:              p.SubgraphLogLevel.String(),
+			CPURequests:           p.SubgraphPodCPURequest.String(),
+			CPULimit:              p.SubgraphPodCPULimit.String(),
+			MemoryRequests:        p.SubgraphPodMemoryRequest.String(),
+			MemoryLimit:           p.SubgraphPodMemoryLimit.String(),
 		})
 	}
 
