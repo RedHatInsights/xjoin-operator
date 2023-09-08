@@ -302,7 +302,13 @@ func (i *XJoinIndexValidatorIteration) ParsePodResponse() (validation.Validation
 		resultString = strArray[len(strArray)-1]
 	}
 
-	err = json.Unmarshal([]byte(resultString), &response)
+	var logMessage map[string]string
+	err = json.Unmarshal([]byte(resultString), &logMessage)
+	if err != nil {
+		return response, "", errors.Wrap(err, 0)
+	}
+
+	err = json.Unmarshal([]byte(logMessage["msg"]), &response)
 	if err != nil {
 		return response, "", errors.Wrap(err, 0)
 	}
