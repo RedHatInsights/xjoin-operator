@@ -214,8 +214,8 @@ update_resource_spec kafka/kafka '.spec.entityOperator.userOperator.resources.li
 update_resource_spec kafka/kafka '.spec.entityOperator.tlsSidecar.resources.requests.memory = "32Mi"' test
 update_resource_spec kafka/kafka '.spec.entityOperator.tlsSidecar.resources.limits.memory = "256Mi"' test
 
-update_resource_spec kafka/kafka '.spec.zookeeper.resources.requests.memory = "64Mi"' test
-update_resource_spec kafka/kafka '.spec.zookeeper.resources.limits.memory = "128Mi"' test
+update_resource_spec kafka/kafka '.spec.zookeeper.resources.requests.memory = "128Mi"' test
+update_resource_spec kafka/kafka '.spec.zookeeper.resources.limits.memory = "256Mi"' test
 
 update_resource_spec elasticsearch/xjoin-elasticsearch '.spec.nodeSets[0].podTemplate.spec.containers[0].resources.requests.memory= "128Mi"' test
 update_resource_spec elasticsearch/xjoin-elasticsearch '.spec.nodeSets[0].podTemplate.spec.containers[0].resources.limits.memory= "512Mi"' test
