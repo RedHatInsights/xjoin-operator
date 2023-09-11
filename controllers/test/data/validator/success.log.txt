@@ -1,2 +1,2 @@
 Starting validation...
-{"result":"valid","reason":"","message":"","details":{}}
+{"msg":"{\"result\":\"valid\",\"reason\":\"\",\"message\":\"\",\"details\":{}}"}

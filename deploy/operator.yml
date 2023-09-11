@@ -589,6 +589,10 @@ parameters:
     value: '2Gi'
   - name: VALIDATION_POD_MEMORY_REQUEST
     value: '1Gi'
+  - name: VALIDATION_CONTENT_CHUNK_SIZE
+    value: '20'
+  - name: VALIDATION_CONTENT_MAX_THREADS
+    value: '10'
   - name: CORE_POD_CPU_LIMIT
     value: '500m'
   - name: CORE_POD_CPU_REQUEST
@@ -701,6 +705,8 @@ objects:
       validation.pod.memory.limit: ${VALIDATION_POD_MEMORY_LIMIT}
       validation.pod.cpu.request: ${VALIDATION_POD_CPU_REQUEST}
       validation.pod.memory.request: ${VALIDATION_POD_MEMORY_REQUEST}
+      validation.content.chunk.size: ${VALIDATION_CONTENT_CHUNK_SIZE}
+      validation.content.max.threads: ${VALIDATION_CONTENT_MAX_THREADS}
       core.pod.cpu.limit: ${CORE_POD_CPU_LIMIT}
       core.pod.memory.limit: ${CORE_POD_MEMORY_LIMIT}
       core.pod.cpu.request: ${CORE_POD_CPU_REQUEST}

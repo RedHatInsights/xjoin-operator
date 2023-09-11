@@ -46,6 +46,8 @@ type IndexParameters struct {
 	ValidationPodCPULimit            Parameter
 	ValidationPodMemoryRequest       Parameter
 	ValidationPodMemoryLimit         Parameter
+	ValidationContentMaxThreads      Parameter
+	ValidationContentChunkSize       Parameter
 	CorePodCPURequest                Parameter
 	CorePodCPULimit                  Parameter
 	CorePodMemoryRequest             Parameter
@@ -433,6 +435,18 @@ func BuildIndexParameters() *IndexParameters {
 			ConfigMapKey:  "index.kafka.topic.creation.timeout",
 			ConfigMapName: "xjoin-generic",
 			DefaultValue:  300,
+		},
+		ValidationContentMaxThreads: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "validation.content.max.threads",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  10,
+		},
+		ValidationContentChunkSize: Parameter{
+			Type:          reflect.Int,
+			ConfigMapKey:  "validation.content.chunk.size",
+			ConfigMapName: "xjoin-generic",
+			DefaultValue:  20,
 		},
 	}
 
