@@ -464,10 +464,10 @@ func (i *XJoinIndexValidatorIteration) createValidationPod(dbConnectionEnvVars [
 					Value: strconv.Itoa(i.Parameters.ValidationAttempts.Int()),
 				}, {
 					Name:  "CONTENT_MAX_THREADS",
-					Value: strconv.Itoa(i.Parameters.ValidationAttempts.Int()),
+					Value: strconv.Itoa(i.Parameters.ValidationContentMaxThreads.Int()),
 				}, {
 					Name:  "CONTENT_CHUNK_SIZE",
-					Value: strconv.Itoa(i.Parameters.ValidationAttempts.Int()),
+					Value: strconv.Itoa(i.Parameters.ValidationContentChunkSize.Int()),
 				}, {
 					Name:  "LOG_LEVEL",
 					Value: "DEBUG",
