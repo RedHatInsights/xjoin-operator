@@ -22,4 +22,4 @@ objects:
     spec:
       avroSchema: ${AVRO_SCHEMA}
       customSubgraphImages: ${{CUSTOM_SUBGRAPH_IMAGES}}
-      refresh: ${REFRESH}
+      refresh: 1694620940

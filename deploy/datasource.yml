@@ -50,4 +50,4 @@ objects:
             name: ${DATABASE_SECRET}
       databaseTable:
         value: ${DATABASE_TABLE}
-      refresh: ${REFRESH}
+      refresh: 1694620940
