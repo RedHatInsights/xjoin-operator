@@ -577,6 +577,8 @@ parameters:
     value: '10000'
   - name: SUBGRAPH_LOG_LEVEL
     value: WARN
+  - name: VALIDATION_INTERVAL_V2
+    value: '60'
   - name: VALIDATION_ATTEMPT_INTERVAL
     value: '60'
   - name: VALIDATION_ATTEMPTS
@@ -699,6 +701,7 @@ objects:
       schemaregistry.host: ${SCHEMA_REGISTRY_HOST}
       schemaregistry.port: ${SCHEMA_REGISTRY_PORT}
       subgraph.log.level: ${SUBGRAPH_LOG_LEVEL}
+      validation.interval: ${VALIDATION_INTERVAL_V2}
       validation.attempt.interval: ${VALIDATION_ATTEMPT_INTERVAL}
       validation.attempts: ${INDEX_VALIDATION_ATTEMPTS}
       validation.pod.cpu.limit: ${VALIDATION_POD_CPU_LIMIT}

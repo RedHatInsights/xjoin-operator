@@ -316,7 +316,7 @@ func BuildIndexParameters() *IndexParameters {
 			Type:          reflect.String,
 			ConfigMapKey:  "validation.pod.cpu.limit",
 			ConfigMapName: "xjoin-generic",
-			DefaultValue:  "200m",
+			DefaultValue:  "1",
 		},
 		ValidationPodMemoryRequest: Parameter{
 			Type:          reflect.String,
@@ -440,13 +440,13 @@ func BuildIndexParameters() *IndexParameters {
 			Type:          reflect.Int,
 			ConfigMapKey:  "validation.content.max.threads",
 			ConfigMapName: "xjoin-generic",
-			DefaultValue:  10,
+			DefaultValue:  1,
 		},
 		ValidationContentChunkSize: Parameter{
 			Type:          reflect.Int,
 			ConfigMapKey:  "validation.content.chunk.size",
 			ConfigMapName: "xjoin-generic",
-			DefaultValue:  20,
+			DefaultValue:  10,
 		},
 	}
 
