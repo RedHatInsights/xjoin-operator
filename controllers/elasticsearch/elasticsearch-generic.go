@@ -8,7 +8,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/go-errors/errors"
-	"io/ioutil"
+	"io"
 	"strconv"
 	"strings"
 	"text/template"
@@ -99,7 +99,7 @@ func (es GenericElasticsearch) ListIndicesForPrefix(prefix string) ([]string, er
 	}
 	defer res.Body.Close()
 
-	byteValue, _ := ioutil.ReadAll(res.Body)
+	byteValue, _ := io.ReadAll(res.Body)
 
 	var indicesJSON []map[string]string
 	err = json.Unmarshal(byteValue, &indicesJSON)
@@ -187,17 +187,45 @@ func (es GenericElasticsearch) ListPipelinesForPrefix(prefix string) (esPipeline
 	return
 }
 
+func (es GenericElasticsearch) GetIndex(indexName string) (string, error) {
+	req := &esapi.IndicesGetRequest{
+		Index: []string{indexName},
+	}
+
+	res, err := req.Do(es.Context, es.Client)
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
+
+	_, resBody, err := parseResponse(res)
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
+
+	resString, err := json.Marshal(resBody)
+	if err != nil {
+		return "", errors.Wrap(err, 0)
+	}
+
+	return string(resString), nil
+}
+
 func (es GenericElasticsearch) CreateIndex(
-	indexName string, indexTemplate string, properties string, withPipeline bool) error {
+	indexName string, indexTemplate string, properties string, withPipeline bool, dryRun bool) (string, error) {
 
 	tmpl, err := template.New("indexTemplate").Parse(indexTemplate)
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return "", errors.Wrap(err, 0)
 	}
 
 	params := es.Parameters
 	params["ElasticSearchIndex"] = indexName
-	params["ElasticSearchProperties"] = properties
+
+	if properties == "" {
+		params["ElasticSearchProperties"] = "[]"
+	} else {
+		params["ElasticSearchProperties"] = properties
+	}
 
 	if withPipeline {
 		params["ElasticSearchPipeline"] = indexName
@@ -208,11 +236,15 @@ func (es GenericElasticsearch) CreateIndex(
 	var indexTemplateBuffer bytes.Buffer
 	err = tmpl.Execute(&indexTemplateBuffer, params)
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return "", errors.Wrap(err, 0)
 	}
 	indexTemplateParsed := indexTemplateBuffer.String()
 	indexTemplateParsed = strings.ReplaceAll(indexTemplateParsed, "\n", "")
 	indexTemplateParsed = strings.ReplaceAll(indexTemplateParsed, "\t", "")
+
+	if dryRun {
+		return indexTemplateParsed, nil
+	}
 
 	req := &esapi.IndicesCreateRequest{
 		Index: indexName,
@@ -221,12 +253,12 @@ func (es GenericElasticsearch) CreateIndex(
 
 	res, err := req.Do(es.Context, es.Client)
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return "", errors.Wrap(err, 0)
 	}
 
 	_, _, err = parseResponse(res)
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return "", errors.Wrap(err, 0)
 	}
-	return nil
+	return indexTemplateParsed, nil
 }

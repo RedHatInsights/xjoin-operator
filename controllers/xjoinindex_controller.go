@@ -4,12 +4,13 @@ import (
 	"context"
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
-	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	. "github.com/redhatinsights/xjoin-operator/controllers/index"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,9 +21,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 	"time"
 )
 
@@ -54,41 +53,18 @@ func NewXJoinIndexReconciler(
 }
 
 func (r *XJoinIndexReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	logConstructor := func(r *reconcile.Request) logr.Logger {
+		return mgr.GetLogger()
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-index-controller").
 		For(&xjoin.XJoinIndex{}).
-		WithLogger(mgr.GetLogger()).
+		WithLogConstructor(logConstructor).
 		WithOptions(controller.Options{
-			Log:         mgr.GetLogger(),
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
+			LogConstructor: logConstructor,
+			RateLimiter:    workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
-		Watches(&source.Kind{Type: &xjoin.XJoinDataSource{}}, handler.EnqueueRequestsFromMapFunc(func(datasource client.Object) []reconcile.Request {
-			//when a xjoindatasource spec is updated, reconcile each xjoinindex which consumes the xjoindatasource
-			ctx, cancel := utils.DefaultContext()
-			defer cancel()
-
-			var requests []reconcile.Request
-
-			indexes, err := k8sUtils.FetchXJoinIndexes(r.Client, ctx)
-			if err != nil {
-				r.Log.Error(err, "Failed to fetch XJoinIndexes")
-				return requests
-			}
-
-			for _, xjoinIndex := range indexes.Items {
-				if utils.ContainsString(xjoinIndex.GetDataSourceNames(), datasource.GetName()) {
-					requests = append(requests, reconcile.Request{
-						NamespacedName: types.NamespacedName{
-							Namespace: xjoinIndex.GetNamespace(),
-							Name:      xjoinIndex.GetName(),
-						},
-					})
-				}
-			}
-
-			r.Log.Info("XJoin DataSource changed. Reconciling related XJoinIndexes", "indexes", requests)
-			return requests
-		})).
 		Complete(r)
 }
 
@@ -111,20 +87,35 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		return
 	}
 
+	metrics.InitIndexLabels(instance.GetName())
+
 	p := parameters.BuildIndexParameters()
 
 	if p.Pause.Bool() {
 		return
 	}
 
+	var elasticsearchKubernetesSecretName string
+	if instance.Spec.Ephemeral {
+		elasticsearchKubernetesSecretName = "xjoin-elasticsearch-es-elastic-user"
+	} else {
+		elasticsearchKubernetesSecretName = "xjoin-elasticsearch"
+	}
+
 	configManager, err := config.NewManager(config.ManagerOptions{
 		Client:         r.Client,
 		Parameters:     p,
 		ConfigMapNames: []string{"xjoin-generic"},
-		SecretNames:    []string{"xjoin-elasticsearch"},
-		Namespace:      instance.Namespace,
-		Spec:           instance.Spec,
-		Context:        ctx,
+		SecretNames: []config.SecretNames{{
+			KubernetesName: elasticsearchKubernetesSecretName,
+			ManagerName:    parameters.ElasticsearchSecret,
+		}},
+		ResourceNamespace: instance.Namespace,
+		OperatorNamespace: r.Namespace,
+		Spec:              instance.Spec,
+		Context:           ctx,
+		Ephemeral:         instance.Spec.Ephemeral,
+		Log:               reqLogger,
 	})
 	if err != nil {
 		return result, errors.Wrap(err, 0)
@@ -134,6 +125,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		return result, errors.Wrap(err, 0)
 	}
 
+	eventHandler := events.NewEvents(r.Recorder, instance, reqLogger)
 	originalInstance := instance.DeepCopy()
 	i := XJoinIndexIteration{
 		Parameters: *p,
@@ -145,6 +137,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 			Log:              reqLogger,
 			Test:             r.Test,
 		},
+		Events: eventHandler,
 	}
 
 	if err = i.AddFinalizer(i.GetFinalizerName()); err != nil {
@@ -163,7 +156,7 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
 
-		instance.Status.ActiveVersionIsValid = activeIndexPipeline.Status.ValidationResponse.Result == "valid"
+		instance.Status.ActiveVersionState = activeIndexPipeline.Status.ValidationResponse
 	}
 
 	if instance.Status.RefreshingVersion != "" {
@@ -177,28 +170,12 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 			return reconcile.Result{}, errors.Wrap(err, 0)
 		}
 
-		instance.Status.RefreshingVersionIsValid = refreshingIndexPipeline.Status.ValidationResponse.Result == "valid"
-	}
-
-	//force refresh if datasource is updated
-	forceRefresh := false
-	for dataSourceName, dataSourceVersion := range instance.Status.DataSources {
-		dataSourceNamespacedName := types.NamespacedName{
-			Name:      dataSourceName,
-			Namespace: instance.GetNamespace(),
-		}
-		dataSource, err := k8sUtils.FetchXJoinDataSource(i.Client, dataSourceNamespacedName, i.Context)
-		if err != nil {
-			return reconcile.Result{}, errors.Wrap(err, 0)
-		}
-		if dataSource.ResourceVersion != dataSourceVersion {
-			forceRefresh = true
-		}
+		instance.Status.RefreshingVersionState = refreshingIndexPipeline.Status.ValidationResponse
 	}
 
 	indexReconcileMethods := NewReconcileMethods(i, common.IndexGVK)
-	reconciler := common.NewReconciler(indexReconcileMethods, instance, reqLogger)
-	err = reconciler.Reconcile(forceRefresh)
+	reconciler := common.NewReconciler(indexReconcileMethods, instance, reqLogger, eventHandler, r.Test)
+	err = reconciler.Reconcile(false)
 	if err != nil {
 		return result, errors.Wrap(err, 0)
 	}
@@ -213,9 +190,5 @@ func (r *XJoinIndexReconciler) Reconcile(ctx context.Context, request ctrl.Reque
 		return result, errors.Wrap(err, 0)
 	}
 
-	if i.GetInstance().Status.DataSources == nil {
-		i.GetInstance().Status.DataSources = map[string]string{}
-	}
-
-	return i.UpdateStatusAndRequeue()
+	return i.UpdateStatusAndRequeue(time.Second * 30)
 }

@@ -3,17 +3,18 @@ package pipeline
 import (
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/go-test/deep"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/data"
 	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"math"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 )
 
 const countMismatchThreshold = 0.5
@@ -79,8 +80,9 @@ func (i *ReconcileIteration) countValidation() (isValid bool, mismatchCount int,
 
 	metrics.ESHostCount(esCount)
 
-	mismatchCount = utils.Abs(hostCount - esCount)
-	mismatchRatio = float64(mismatchCount) / math.Max(float64(hostCount), 1)
+	diff := math.Abs(float64(hostCount - esCount))
+	mismatchCount = int(diff)
+	mismatchRatio = diff / math.Max(float64(hostCount), 1)
 
 	i.Log.Info("Fetched host counts", "hbi", hostCount,
 		"es", esCount, "mismatchRatio", mismatchRatio)

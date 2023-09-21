@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "test-index",
+  "fields": [{
+    "type": {
+      "type": "testdatasource.Value",
+      "xjoin.type": "reference"
+    },
+    "name": "testdatasource"
+  }]
+}

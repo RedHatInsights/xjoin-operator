@@ -5,6 +5,9 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
+	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	logger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"reflect"
@@ -15,6 +18,7 @@ import (
 type XJoinIndexValidator struct {
 	name                   string
 	version                string
+	indexName              string
 	Client                 client.Client
 	Context                context.Context
 	Namespace              string
@@ -22,10 +26,18 @@ type XJoinIndexValidator struct {
 	Pause                  bool
 	ParentInstance         client.Object
 	ElasticsearchIndexName string
+	Ephemeral              bool
+	events                 events.Events
+	log                    logger.Log
 }
 
-func (xv *XJoinIndexValidator) SetName(name string) {
-	xv.name = strings.ToLower(name)
+func (xv *XJoinIndexValidator) SetLogger(log logger.Log) {
+	xv.log = log
+}
+
+func (xv *XJoinIndexValidator) SetName(kind string, name string) {
+	xv.indexName = name
+	xv.name = strings.ToLower(kind + "." + name)
 }
 
 func (xv *XJoinIndexValidator) SetVersion(version string) {
@@ -43,8 +55,9 @@ func (xv *XJoinIndexValidator) Create() (err error) {
 			"name":      xv.Name(),
 			"namespace": xv.Namespace,
 			"labels": map[string]interface{}{
-				common.COMPONENT_NAME_LABEL: xv.name,
-				"app":                       "xjoin-validator",
+				labels.IndexName:       xv.indexName,
+				labels.PipelineVersion: xv.version,
+				labels.ComponentName:   IndexValidator,
 			},
 		},
 		"spec": map[string]interface{}{
@@ -53,6 +66,7 @@ func (xv *XJoinIndexValidator) Create() (err error) {
 			"avroSchema": xv.Schema,
 			"pause":      xv.Pause,
 			"indexName":  xv.ElasticsearchIndexName,
+			"ephemeral":  xv.Ephemeral,
 		},
 	}
 	indexValidator.SetGroupVersionKind(common.IndexValidatorGVK)
@@ -61,12 +75,16 @@ func (xv *XJoinIndexValidator) Create() (err error) {
 	instanceVal := reflect.ValueOf(xv.ParentInstance).Elem()
 	apiVersion := instanceVal.FieldByName("APIVersion")
 	if !apiVersion.IsValid() {
+		xv.events.Warning("CreateIndexValidatorFailed",
+			"Unable to parse APIVersion from parent for IndexValidator %s", xv.Name())
 		err = errors.New("status field not found on original instance")
 		return errors.Wrap(err, 0)
 	}
 
 	kind := instanceVal.FieldByName("Kind")
 	if !kind.IsValid() {
+		xv.events.Warning("CreateIndexValidatorFailed",
+			"Unable to parse Kind from parent for IndexValidator %s", xv.Name())
 		err = errors.New("status field not found on original instance")
 		return errors.Wrap(err, 0)
 	}
@@ -74,7 +92,7 @@ func (xv *XJoinIndexValidator) Create() (err error) {
 	blockOwnerDeletion := true
 	controller := true
 	ownerReference := metav1.OwnerReference{
-		APIVersion:         common.IndexPipelineGVK.Version,
+		APIVersion:         common.IndexValidatorGVK.Group + "/" + common.IndexValidatorGVK.Version,
 		Kind:               common.IndexPipelineGVK.Kind,
 		Name:               xv.ParentInstance.GetName(),
 		UID:                xv.ParentInstance.GetUID(),
@@ -88,8 +106,13 @@ func (xv *XJoinIndexValidator) Create() (err error) {
 	err = xv.Client.Create(ctx, &indexValidator)
 
 	if err != nil {
+		xv.events.Warning("CreateIndexValidatorFailed",
+			"Unable to create IndexValidator %s", xv.Name())
 		return errors.Wrap(err, 0)
 	}
+
+	xv.events.Normal("CreatedIndexValidator",
+		"Successfully created XJoinIndexValidator %s", xv.Name())
 	return
 }
 
@@ -98,18 +121,25 @@ func (xv *XJoinIndexValidator) Delete() (err error) {
 	indexValidator.SetGroupVersionKind(common.IndexValidatorGVK)
 	err = xv.Client.Get(xv.Context, client.ObjectKey{Name: xv.Name(), Namespace: xv.Namespace}, indexValidator)
 	if err != nil {
+		xv.events.Warning("DeleteIndexValidatorFailed",
+			"Unable to get IndexValidator %s", xv.Name())
 		return errors.Wrap(err, 0)
 	}
 
 	err = xv.Client.Delete(xv.Context, indexValidator)
 	if err != nil {
+		xv.events.Warning("DeleteIndexValidatorFailed",
+			"Unable to delete IndexValidator %s", xv.Name())
 		return errors.Wrap(err, 0)
 	}
+
+	xv.events.Normal("DeletedIndexValidator",
+		"Successfully deleted XJoinIndexValidator %s", xv.Name())
 	return
 }
 
-func (xv *XJoinIndexValidator) CheckDeviation() (err error) {
-	return
+func (xv *XJoinIndexValidator) CheckDeviation() (problem, err error) {
+	return //TODO checkdeviation for xjoinindexvalidator
 }
 
 func (xv *XJoinIndexValidator) Exists() (exists bool, err error) {
@@ -117,9 +147,14 @@ func (xv *XJoinIndexValidator) Exists() (exists bool, err error) {
 	validators.SetGroupVersionKind(common.IndexValidatorGVK)
 	fields := client.MatchingFields{}
 	fields["metadata.name"] = xv.Name()
-	fields["metadata.namespace"] = xv.Namespace
-	err = xv.Client.List(xv.Context, validators, fields)
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.ComponentName] = IndexValidator
+	labelsMatch[labels.IndexName] = xv.indexName
+	labelsMatch[labels.PipelineVersion] = xv.version
+	err = xv.Client.List(xv.Context, validators, fields, labelsMatch, client.InNamespace(xv.Namespace))
 	if err != nil {
+		xv.events.Warning("IndexValidatorExistsFailed",
+			"Unable to list IndexValidator deployments %s", xv.Name())
 		return false, errors.Wrap(err, 0)
 	}
 
@@ -132,13 +167,14 @@ func (xv *XJoinIndexValidator) Exists() (exists bool, err error) {
 func (xv *XJoinIndexValidator) ListInstalledVersions() (versions []string, err error) {
 	validators := &unstructured.UnstructuredList{}
 	validators.SetGroupVersionKind(common.IndexValidatorGVK)
-	labels := client.MatchingLabels{}
-	labels[common.COMPONENT_NAME_LABEL] = xv.name
-	fields := client.MatchingFields{
-		"metadata.namespace": xv.Namespace,
-	}
-	err = xv.Client.List(xv.Context, validators, labels, fields)
+	labelsMatch := client.MatchingLabels{}
+	labelsMatch[labels.ComponentName] = IndexValidator
+	labelsMatch[labels.IndexName] = xv.indexName
+	labelsMatch[labels.PipelineVersion] = xv.version
+	err = xv.Client.List(xv.Context, validators, labelsMatch, client.InNamespace(xv.Namespace))
 	if err != nil {
+		xv.events.Warning("IndexValidatorListInstalledVersionsFailed",
+			"Unable to list IndexValidator deployments %s", xv.Name())
 		return nil, errors.Wrap(err, 0)
 	}
 
@@ -147,4 +183,12 @@ func (xv *XJoinIndexValidator) ListInstalledVersions() (versions []string, err e
 	}
 
 	return
+}
+
+func (xv *XJoinIndexValidator) Reconcile() (err error) {
+	return nil
+}
+
+func (xv *XJoinIndexValidator) SetEvents(e events.Events) {
+	xv.events = e
 }

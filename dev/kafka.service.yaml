@@ -1,0 +1,24 @@
+#this is used in the dev environment to enable the inventory service's host creation script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kafka-hbi
+  name: kafka-hbi
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - port: 29092
+      protocol: TCP
+      targetPort: 9092
+      name: external
+  selector:
+    strimzi.io/cluster: kafka
+    strimzi.io/kind: Kafka
+    strimzi.io/name: kafka-kafka
+  sessionAffinity: None
+  type: ClusterIP

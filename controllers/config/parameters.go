@@ -14,6 +14,7 @@ var secretTypes = secrets{
 	schemaRegistry: "schemaregistry",
 }
 
+// Parameters are the xjoin.v1 parameters
 type Parameters struct {
 	Ephemeral                            Parameter
 	ResourceNamePrefix                   Parameter
@@ -260,6 +261,35 @@ func NewXJoinConfiguration() Parameters {
 						  "provider_id": { "type": "keyword"}
 						}
 					  },
+					  "groups": {
+					    "type": "object",
+					    "properties": {
+						  "id": {
+						    "type": "keyword"
+						  },
+						  "name": {
+							"type": "keyword",
+							"fields": {
+							  "lowercase": {
+								"type": "keyword",
+								"normalizer": "case_insensitive"
+							  }
+                            }
+						  },
+						  "account": {
+						    "type": "keyword"
+						  },
+						  "org_id": {
+						    "type": "keyword"
+						  },
+						  "created": {
+						    "type": "date_nanos"
+						  },
+						  "updated": {
+						    "type": "date_nanos"
+						  }
+					    }
+					  },
 					  "system_profile_facts": {
 						"type": "object",
 						"properties": {
@@ -479,6 +509,11 @@ func NewXJoinConfiguration() Parameters {
 						"field" : "facts"
 					}
 				}, {
+					"json" : {
+						"if" : "ctx.groups != null",
+						"field" : "groups"
+					}
+				}, {
 					"script": {
 						"lang": "painless",
 						"if": "ctx.tags_structured != null",
@@ -685,13 +720,7 @@ func NewXJoinConfiguration() Parameters {
 			Type:          reflect.String,
 			ConfigMapName: "xjoin",
 			ConfigMapKey:  "schemaregistry.port",
-			DefaultValue:  "1080",
-		},
-		SchemaRegistryUrl: Parameter{
-			Type:         reflect.String,
-			Secret:       secretTypes.schemaRegistry,
-			SecretKey:    []string{"core-registry-url"},
-			DefaultValue: "http://apicurio.test.svc:1080/apis/registry/v2",
+			DefaultValue:  "10001",
 		},
 		SchemaRegistryClientId: Parameter{
 			Type:         reflect.String,

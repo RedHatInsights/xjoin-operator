@@ -1,5 +1,5 @@
-[allowlist]
-  description = "Allowlist"
+[whitelist]
+  description = "whitelist"
   paths = [
     '''controllers/parameters''',
     '''controllers/config''',

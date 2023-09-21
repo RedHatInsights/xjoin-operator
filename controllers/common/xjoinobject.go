@@ -1,6 +1,7 @@
 package common
 
 import (
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -10,12 +11,13 @@ type XJoinObject interface {
 	runtime.Object
 	GetActiveVersion() string
 	SetActiveVersion(version string)
-	GetActiveVersionIsValid() bool
-	SetActiveVersionIsValid(valid bool)
+	GetActiveVersionState() validation.ValidationResult
+	SetActiveVersionState(state validation.ValidationResult)
 	GetRefreshingVersion() string
 	SetRefreshingVersion(version string)
-	GetRefreshingVersionIsValid() bool
-	SetRefreshingVersionIsValid(valid bool)
+	GetRefreshingVersionState() validation.ValidationResult
+	SetRefreshingVersionState(state validation.ValidationResult)
 	GetSpecHash() string
 	GetSpec() interface{}
+	SetCondition(condition metav1.Condition)
 }

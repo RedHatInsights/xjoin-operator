@@ -40,9 +40,9 @@ parameters:
   - name: KAFKA_TOPIC_REPLICAS
     value: '2'
   - name: SCHEMA_REGISTRY_SECRET_NAME
-    value: 'service-registry-stage'
+    value: service-registry-stage
   - name: ES_CONNECTOR_CONFIG
-    value: >-
+    value: |-
       { 
         "tasks.max": "{{.ElasticSearchTasksMax}}",
         "topics": "{{.Topic}}",
@@ -243,20 +243,49 @@ parameters:
                 }
               }
             },
+            "groups": {
+              "type": "nested",
+              "properties": {
+                "id": {
+                  "type": "keyword"
+                },
+                "name": {
+                  "type": "keyword",
+                  "fields": {
+                    "lowercase": {
+                      "type": "keyword",
+                      "normalizer": "case_insensitive"
+                    }
+                  }
+                },
+                "account": {
+                  "type": "keyword"
+                },
+                "org_id": {
+                  "type": "keyword"
+                },
+                "created": {
+                  "type": "date_nanos"
+                },
+                "updated": {
+                  "type": "date_nanos"
+                }
+              }
+            },
             "per_reporter_staleness_flat": {
               "type": "nested",
               "properties": {
                 "reporter": {
-                "type": "keyword"
+                  "type": "keyword"
                 },
                 "last_check_in": {
-                "type": "keyword"
+                  "type": "keyword"
                 },
                 "stale_timestamp": {
-                "type": "keyword"
+                  "type": "keyword"
                 },
                 "check_in_succeeded": {
-                "type": "boolean"
+                  "type": "boolean"
                 }
               }
             },
@@ -308,6 +337,20 @@ parameters:
                 "cpu_flags": {
                   "type": "keyword"
                 },
+                "systemd": {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "keyword"
+                    },
+                    "jobs_queued": {
+                      "type": "integer"
+                    },
+                    "failed": {
+                      "type": "integer"
+                    }
+                  }
+                },
                 "operating_system": {
                   "type": "object",
                   "properties": {
@@ -328,7 +371,13 @@ parameters:
                 "os_kernel_version": {
                   "type": "keyword"
                 },
+                "releasever": {
+                  "type": "keyword"
+                },
                 "arch": {
+                  "type": "keyword"
+                },
+                "basearch": {
                   "type": "keyword"
                 },
                 "kernel_modules": {
@@ -378,6 +427,23 @@ parameters:
                 },
                 "enabled_services": {
                   "type": "keyword"
+                },
+                "sap": {
+                  "type": "object",
+                  "properties": {
+                    "sap_system": {
+                      "type": "boolean"
+                    },
+                    "sids": {
+                      "type": "keyword"
+                    },
+                    "instance_number": {
+                      "type": "keyword"
+                    },
+                    "version": {
+                      "type": "keyword"
+                    }
+                  }
                 },
                 "sap_system": {
                   "type": "boolean"
@@ -461,6 +527,9 @@ parameters:
                       "type": "keyword"
                     }
                   }
+                },
+                "system_update_method": {
+                  "type": "keyword"
                 }
               }
             },
@@ -492,11 +561,95 @@ parameters:
           }
         }
       }
+  - name: KAFKA_BOOTSTRAP_URL
+    value: platform-mq-kafka-bootstrap.platform-mq-stage:9092
+  - name: KAFKA_CLUSTER_NAMESPACE
+    value: platform-mq-stage
+  - name: KAFKA_CLUSTER
+    value: platform-mq
+  - name: CONNECT_CLUSTER_NAMESPACE
+    value: xjoin-stage
+  - name: SCHEMA_REGISTRY_PROTOCOL
+    value: http
+  - name: SCHEMA_REGISTRY_HOST
+    value: xjoin-apicurio-service.xjoin-stage.svc
+  - name: SCHEMA_REGISTRY_PORT
+    value: '10000'
+  - name: SUBGRAPH_LOG_LEVEL
+    value: WARN
+  - name: VALIDATION_ATTEMPT_INTERVAL
+    value: '60'
+  - name: VALIDATION_ATTEMPTS
+    value: '30'
+  - name: VALIDATION_POD_CPU_LIMIT
+    value: '1'
+  - name: VALIDATION_POD_CPU_REQUEST
+    value: '500m'
+  - name: VALIDATION_POD_MEMORY_LIMIT
+    value: '2Gi'
+  - name: VALIDATION_POD_MEMORY_REQUEST
+    value: '1Gi'
+  - name: VALIDATION_CONTENT_CHUNK_SIZE
+    value: '20'
+  - name: VALIDATION_CONTENT_MAX_THREADS
+    value: '10'
+  - name: CORE_POD_CPU_LIMIT
+    value: '500m'
+  - name: CORE_POD_CPU_REQUEST
+    value: '250m'
+  - name: CORE_POD_MEMORY_LIMIT
+    value: '1Gi'
+  - name: CORE_POD_MEMORY_REQUEST
+    value: '512Mi'
+  - name: CORE_NUM_PODS
+    value: '1'
+  - name: DATASOURCE_KAFKA_TOPIC_PARTITIONS
+    value: '100'
+  - name: DATASOURCE_KAFKA_TOPIC_REPLICAS
+    value: '2'
+  - name: INDEX_KAFKA_TOPIC_PARTITIONS
+    value: '100'
+  - name: INDEX_KAFKA_TOPIC_REPLICAS
+    value: '2'
+  - name: INDEX_CONNECTOR_TASKS_MAX
+    value: '50'
+  - name: INDEX_CONNECTOR_MAX_IN_FLIGHT_REQUESTS
+    value: '1'
+  - name: INDEX_CONNECTOR_BATCH_SIZE
+    value: '100'
+  - name: INDEX_CONNECTOR_MAX_BUFFERED_RECORDS
+    value: '500'
+  - name: INDEX_CONNECTOR_LINGER_MS
+    value: '100'
+  - name: DATASOURCE_CONNECTOR_MAX_BATCH_SIZE
+    value: '1000'
+  - name: DATASOURCE_CONNECTOR_MAX_QUEUE_SIZE
+    value: '10000'
+  - name: DATASOURCE_CONNECTOR_SNAPSHOT_FETCH_SIZE
+    value: '10240'
+  - name: DATASOURCE_CONNECTOR_INCREMENTAL_CHUNK_SIZE
+    value: '1024'
+  - name: DATASOURCE_CONNECTOR_POLL_INTERVAL
+    value: '100'
+  - name: INDEX_VALIDATION_ATTEMPTS
+    value: '300'
+  - name: DATASOURCE_CONNECTOR_LINGER_MS
+    value: '100'
+  - name: DATASOURCE_CONNECTOR_BATCH_SIZE
+    value: '16384'
+  - name: DATASOURCE_CONNECTOR_COMPRESSION_TYPE
+    value: 'lz4'
+  - name: DATASOURCE_CONNECTOR_MAX_REQUEST_SIZE
+    value: '104857600'
+  - name: DATASOURCE_CONNECTOR_ACK
+    value: 'all'
 objects:
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
     metadata:
       name: xjoin-operator-group
+    spec:
+      upgradeStrategy: TechPreviewUnsafeFailForward
   - apiVersion: operators.coreos.com/v1alpha1
     kind: CatalogSource
     metadata:
@@ -532,6 +685,54 @@ objects:
           requests:
             cpu: ${MANAGER_POD_CPU_REQUESTS}
             memory: ${MANAGER_POD_MEM_REQUESTS}
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: xjoin-generic
+    data:
+      kafka.bootstrap.url: ${KAFKA_BOOTSTRAP_URL}
+      kafka.cluster.namespace: ${KAFKA_CLUSTER_NAMESPACE}
+      kafka.cluster: ${KAFKA_CLUSTER}
+      connect.cluster: ${CONNECT_CLUSTER}
+      connect.cluster.namespace: ${CONNECT_CLUSTER_NAMESPACE}
+      schemaregistry.protocol: ${SCHEMA_REGISTRY_PROTOCOL}
+      schemaregistry.host: ${SCHEMA_REGISTRY_HOST}
+      schemaregistry.port: ${SCHEMA_REGISTRY_PORT}
+      subgraph.log.level: ${SUBGRAPH_LOG_LEVEL}
+      validation.attempt.interval: ${VALIDATION_ATTEMPT_INTERVAL}
+      validation.attempts: ${INDEX_VALIDATION_ATTEMPTS}
+      validation.pod.cpu.limit: ${VALIDATION_POD_CPU_LIMIT}
+      validation.pod.memory.limit: ${VALIDATION_POD_MEMORY_LIMIT}
+      validation.pod.cpu.request: ${VALIDATION_POD_CPU_REQUEST}
+      validation.pod.memory.request: ${VALIDATION_POD_MEMORY_REQUEST}
+      validation.content.chunk.size: ${VALIDATION_CONTENT_CHUNK_SIZE}
+      validation.content.max.threads: ${VALIDATION_CONTENT_MAX_THREADS}
+      core.pod.cpu.limit: ${CORE_POD_CPU_LIMIT}
+      core.pod.memory.limit: ${CORE_POD_MEMORY_LIMIT}
+      core.pod.cpu.request: ${CORE_POD_CPU_REQUEST}
+      core.pod.memory.request: ${CORE_POD_MEMORY_REQUEST}
+      core.number.of.pods: ${CORE_NUM_PODS}
+      elasticsearch.connector.tasks.max: ${INDEX_CONNECTOR_TASKS_MAX}
+      elasticsearch.connector.max.in.flight.requests: ${INDEX_CONNECTOR_MAX_IN_FLIGHT_REQUESTS}
+      elasticsearch.connector.max.retries: ${ES_CONNECTOR_MAX_RETRIES}
+      elasticsearch.connector.retry.backoff.ms: ${ES_CONNECTOR_RETRY_BACKOFF_MS}
+      elasticsearch.connector.batch.size: ${INDEX_CONNECTOR_BATCH_SIZE}
+      elasticsearch.connector.max.buffered.records: ${INDEX_CONNECTOR_MAX_BUFFERED_RECORDS}
+      elasticsearch.connector.linger.ms: ${INDEX_CONNECTOR_LINGER_MS}
+      datasource.kafka.topic.partitions: ${DATASOURCE_KAFKA_TOPIC_PARTITIONS}
+      datasource.kafka.topic.replicas: ${DATASOURCE_KAFKA_TOPIC_REPLICAS}
+      debezium.connector.max.batch.size: ${DATASOURCE_CONNECTOR_MAX_BATCH_SIZE}
+      debezium.connector.max.queue.size: ${DATASOURCE_CONNECTOR_MAX_QUEUE_SIZE}
+      debezium.connector.snapshot.fetch.size: ${DATASOURCE_CONNECTOR_SNAPSHOT_FETCH_SIZE}
+      debezium.connector.incremental.snapshot.chunk.size: ${DATASOURCE_CONNECTOR_INCREMENTAL_CHUNK_SIZE}
+      debezium.connector.poll.interval.ms: ${DATASOURCE_CONNECTOR_POLL_INTERVAL}
+      index.kafka.topic.partitions: ${INDEX_KAFKA_TOPIC_PARTITIONS}
+      index.kafka.topic.replicas: ${INDEX_KAFKA_TOPIC_REPLICAS}
+      linger.ms: ${DATASOURCE_CONNECTOR_LINGER_MS},
+      batch.size: ${DATASOURCE_CONNECTOR_BATCH_SIZE},
+      compression.type: ${DATASOURCE_CONNECTOR_COMPRESSION_TYPE},
+      max.request.size: ${DATASOURCE_CONNECTOR_MAX_REQUEST_SIZE},
+      acks: ${DATASOURCE_CONNECTOR_ACKS}
   - apiVersion: v1
     kind: ConfigMap
     metadata:

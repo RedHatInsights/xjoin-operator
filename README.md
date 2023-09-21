@@ -1,7 +1,7 @@
 XJoin (Cross Join) Operator
 ==============
 
-Openshift operator that manages the [XJoin pipeline](https://clouddot.pages.redhat.com/docs/dev/services/xjoin.html).
+Openshift operator that manages the [XJoin pipeline](https://consoledot.pages.redhat.com/docs/dev/services/xjoin.html).
 It currently manages version 1 of XJoin,
 i.e. it maintains the replication pipeline between HBI and ElasticSearch.
 Modifications will be necessary to support [version 2](#version-2) (joining data between applications).
@@ -39,40 +39,27 @@ The operator defines two controllers that reconcile a XJoinPipeline
 
 ### Setting up the development environment using Clowder
 
-1. Install the latest version of [bonfire](https://github.com/RedHatInsights/bonfire)
-2. Set up a local Kubernetes environment. Known to work with the following:
-    - [CodeReady Containers](https://developers.redhat.com/products/codeready-containers/overview)
+1. Install dependencies
+    - [bonfire](https://github.com/RedHatInsights/bonfire)
+    - [psql](https://www.postgresql.org/docs/current/app-psql.html)
+    - [jq](https://stedolan.github.io/jq/)
+    - [Go 1.18](https://go.dev)
+2. Set up a local minikube environment
     - [MiniKube](https://minikube.sigs.k8s.io/docs/start/)
 
-3. Configure Kubernetes to use at least 16G of memory and 6 cpus. This is known to work, although you can try with less.
+3. Configure Kubernetes to use at least 8GB of memory and 5 cpus. This is known to work, although you can try with less.
     ```
-    ./crc config set memory 16384
-    ./crc config set cpus 6
-    ```
-    ```
-    minikube config set cpus 6
-    minikube config set memory 16384
+    minikube config set cpus 5
+    minikube config set memory 8000
+    minikube config set driver kvm2
     ```
 
-4. If using minikube, use the kvm2 driver. The docker driver is known to cause problems.
-   ```
-   minikube config set driver kvm2
-   ```
-
-5. Start Kubernetes
-    ```
-    ./crc start
-    ```
+4. Start minikube
     ```
     minikube start
     ```
 
-6. If using CRC
-    - When prompted for a pull secret paste it (you obtained pull secret on step 1 when downloading CRC)
-    - Log in to the cluster as kubeadmin (oc login -u kubeadmin -p ...)
-      You'll find the exact command to use in the CRC startup log
-
-7. Login to https://quay.io and https://registry.redhat.io
+5. Login to https://quay.io and https://registry.redhat.io
     - `docker login -u=<quay-username> -p="password" quay.io`
     - `docker login https://registry.redhat.io`
     - For MacOS, do the following to place the creds in .docker/config.json, which are stored
@@ -86,17 +73,17 @@ The operator defines two controllers that reconcile a XJoinPipeline
         - NOTE: Manually creating the `.docker/config.json` and adding `"auth": base64-encoded username:password` does
           not work.
 
-8. Do one of the following
+6. Do one of the following
     - Append the following line into `/etc/hosts`
         ```
-        127.0.0.1 inventory-db host-inventory-db.test.svc xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc xjoin-elasticsearch-es-http kafka-kafka-0.kafka-kafka-brokers.test.svc apicurio
+        127.0.0.1 inventory-db host-inventory-db.test.svc xjoin-elasticsearch-es-default.test.svc connect-connect-api.test.svc kafka-kafka-0.kafka-kafka-brokers.test.svc apicurio apicurio.test.svc .test.svc
         ```
     - Install and run [kubefwd](https://github.com/txn2/kubefwd)
       ```
       sudo -E kubefwd svc -n test --kubeconfig ~/.kube/config -m 8080:8090 -m 8081:8091
       ```
 
-9. `./dev/setup-clowder.sh`
+7. `./dev/setup-clowder.sh`
 
 ### Linting
 This project uses [golint-ci](https://golangci-lint.run/)
@@ -109,15 +96,27 @@ To access the services within the Kubernetes cluster there is a script to forwar
 ./dev/forward-ports-clowder.sh
 ```
 
-### Reset the development environment
+or the ports can be forwarded via the [kubefwd](https://github.com/txn2/kubefwd) utility:
 
-The Openshift environment can be deleted with this script:
-
-```bash
-./dev/teardown.sh
+```
+sudo -E kubefwd svc -n test --kubeconfig ~/.kube/config -m 8080:8090 -m 8081:8091
 ```
 
-Afterwards, the environment can be setup again without restarting Kubernetes via `dev/setup.sh`.
+### Dev environment credentials
+
+`./dev/get_credentials.sh` is a helper script to populate a shell's environment with credentials to the databases and Elasticsearch. Use the following command to populate the environment.
+
+```bash
+source ./dev/get_credentials.sh test
+```
+
+### Reset the development environment
+
+It is easiest to completely delete the minikube instance then rerun the `setup-clowder.sh` script when necessary.
+
+```bash
+minikube delete && minikube start && ./dev/setup-clowder.sh
+```
 
 ### Running the operator locally
 
@@ -188,26 +187,9 @@ docker login -u=$QUAY_USERNAME -p $QUAY_PASSWORD
 
 ### Local development
 
-The xjoin-api-gateway does not yet have an official build, so a custom entry needs to be added to
-`~/.config/bonfire/config.yaml`.
+See the [version 1 development](#development) section for details on setting up minikube.
 
-```
-- name: xjoin-api-gateway
-  components:
-  - name: xjoin-api-gateway
-    host: local
-    repo: /home/chris/dev/projects/active/xjoin-api-gateway
-    path: clowdapp.yaml
-```
-
-The simplest way to create a complete local development environment is via the `./dev/setup_clowder.sh true` script.
-This
-script will install resources in the `test` namespace. The true flag will install the additional dependencies required
-for
-xjoin.v2. See the [version 1 development](#development) section for details on setting up minikube and running the
-script.
-
-After setting up a kubernetes environment, the xjoin-operator code can be run like this:
+After setting up a kubernetes environment, the xjoin-operator can be run like this:
 
 ```
 make run ENABLE_WEBHOOKS=false
@@ -280,3 +262,34 @@ Both the DataSourcePipeline and the IndexPipeline manage multiple resources to c
 The code for the top level resources (XJoinDataSource and XJoinIndex) can be found in the [controllers/datasource](controllers/datasource) and the [controllers/index](controllers/index) directory.
 
 There are many different parameters and sources of parameters across the operator. These are handled by the [ConfigManager](controllers/config/manager.go). The parameters for the xjoin.v2 resources are defined in [controllers/parameters](controllers/parameters).
+
+### Validation
+
+Each IndexPipeline is continuously validated via an IndexValidator. For a given Index there can be at most 2 IndexPipelines. One pipeline is considered `active` while the other is `refreshing`. The `active` pipeline is served to users via the GraphQL Gateway. When the `refreshing` pipeline becomes valid it replaces the `active` pipeline. The status fields on each Kubernetes CRD is used to manage the `active` and `refreshing` state.
+
+This is the high level flow of what happens when an active IndexPipeline becomes out of sync:
+
+- The IndexValidator updates the status to invalid for each DataSourcePipeline that is referenced by the IndexPipeline
+- The DataSource (parent of the DataSourcePipeline) watches the DataSourcePipeline. So, when the active DataSourcePipeline's status is set to invalid, the DataSource is reconciled and starts to refresh by creating a new DataSourcePipeline
+- The IndexPipeline also watches the DataSourcePipeline and is reconciled to be invalid
+- The Index is watching the IndexPipeline, so it is reconciled and starts to refresh by creating a new IndexPipeline
+
+This is a summary of the different states an Index can be in:
+
+- Newly created
+   - ActiveVersion: ""
+   - ActiveVersionIsValid: false
+   - RefreshingVersion: "1234"
+- Data is in sync
+   - ActiveVersion: "1234"
+   - ActiveVersionIsValid: true
+   - RefreshingVersion: ""
+- Data is out of sync, refreshing
+   - ActiveVersion: "1234"
+   - ActiveVersionIsValid: false
+   - RefreshingVersion: "5678"
+- Data is back in sync, refreshing version replaced active version
+   - ActiveVersion: "5678"
+   - ActiveVersionIsValid: true
+   - RefreshingVersion: ""
+

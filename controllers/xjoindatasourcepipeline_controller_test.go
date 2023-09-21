@@ -1,15 +1,17 @@
-package controllers
+package controllers_test
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
+	"os"
+
 	"github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
 	"github.com/jarcoal/httpmock"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	//+kubebuilder:scaffold:imports
 )
@@ -36,6 +38,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      "test-data-source-pipeline",
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			createdDataSourcePipeline := reconciler.ReconcileNew()
 			Expect(createdDataSourcePipeline.Finalizers).To(HaveLen(1))
@@ -47,6 +50,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      "test-data-source-pipeline",
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			reconciler.ReconcileNew()
 
@@ -84,6 +88,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      "test-data-source-pipeline",
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			reconciler.ReconcileNew()
 
@@ -96,7 +101,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			count = info["GET http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/1"]
 			Expect(count).To(Equal(1))
 
-			count = info["GET http://apicurio:1080/apis/ccompat/v6/subjects/xjoindatasourcepipeline.test-data-source-pipeline.1234-value/versions/latest"]
+			count = info["GET http://apicurio:1080/apis/ccompat/v6/schemas/ids/1"]
 			Expect(count).To(Equal(1))
 		})
 
@@ -105,6 +110,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      "test-data-source-pipeline",
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			reconciler.ReconcileNew()
 
@@ -148,6 +154,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      name,
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			createdDataSourcePipeline := reconciler.ReconcileNew()
 
@@ -162,7 +169,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://connect-connect-api."+namespace+".svc:8083/connectors/xjoindatasourcepipeline."+name+".1234"]
-			Expect(count).To(Equal(6))
+			Expect(count).To(Equal(8))
 
 			connectors = &v1beta2.KafkaConnectorList{}
 			err = k8sClient.List(context.Background(), connectors, client.InNamespace(namespace))
@@ -176,6 +183,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      name,
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			createdDataSourcePipeline := reconciler.ReconcileNew()
 
@@ -194,6 +202,7 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 				Namespace: namespace,
 				Name:      name,
 				K8sClient: k8sClient,
+				Version:   "1234",
 			}
 			createdDataSourcePipeline := reconciler.ReconcileNew()
 
@@ -210,6 +219,93 @@ var _ = Describe("XJoinDataSourcePipeline", func() {
 			err = k8sClient.List(context.Background(), topics, client.InNamespace(namespace))
 			checkError(err)
 			Expect(topics.Items).To(HaveLen(0))
+		})
+	})
+
+	Context("Deviation", func() {
+		It("Leaves the status alone when there is no deviation", func() {
+			//create a valid DatasourcePipeline
+			name := "test-data-source-pipeline"
+			version := "1234"
+			reconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      name,
+				K8sClient: k8sClient,
+				Version:   version,
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+			updatedDatasourcePipeline := reconciler.ReconcileUpdated()
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationValid))
+		})
+
+		It("Sets the status to invalid when the KafkaTopic has deviated", func() {
+			//create a valid DatasourcePipeline
+			name := "test-data-source-pipeline"
+			version := "1234"
+			reconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      name,
+				K8sClient: k8sClient,
+				Version:   version,
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+
+			//update the KafkaTopic to make it different from what the DatasourcePipeline defines
+			topicLookup := types.NamespacedName{
+				Namespace: namespace,
+				Name:      "xjoindatasourcepipeline." + name + "." + version,
+			}
+			existingTopic := &v1beta2.KafkaTopic{}
+			err := k8sClient.Get(context.Background(), topicLookup, existingTopic)
+			checkError(err)
+
+			replicas := int32(11)
+			existingTopic.Spec.Replicas = &replicas
+
+			err = k8sClient.Update(context.Background(), existingTopic)
+			checkError(err)
+
+			updatedDatasourcePipeline := reconciler.ReconcileUpdated()
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationInvalid))
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Message).To(ContainSubstring("topic spec has changed"))
+		})
+
+		It("Sets the status to invalid when the Debezium Connector has deviated", func() {
+			//create a valid DatasourcePipeline
+			name := "test-data-source-pipeline"
+			version := "1234"
+			reconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      name,
+				K8sClient: k8sClient,
+				Version:   version,
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+
+			//update the Debezium Connector to make it different from what the DatasourcePipeline defines
+			connectorLookup := types.NamespacedName{
+				Namespace: namespace,
+				Name:      "xjoindatasourcepipeline." + name + "." + version,
+			}
+			existingConnector := &v1beta2.KafkaConnector{}
+			err := k8sClient.Get(context.Background(), connectorLookup, existingConnector)
+			checkError(err)
+
+			tasksMax := int32(11)
+			existingConnector.Spec.TasksMax = &tasksMax
+
+			err = k8sClient.Update(context.Background(), existingConnector)
+			checkError(err)
+
+			//reconcile the IndexPipeline and validate the status is updated correctly
+			updatedDatasourcePipeline := reconciler.ReconcileUpdated()
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationInvalid))
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
+			Expect(updatedDatasourcePipeline.Status.ValidationResponse.Message).To(ContainSubstring("debezium connector spec has changed"))
 		})
 	})
 })

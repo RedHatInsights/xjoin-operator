@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/elastic/go-elasticsearch/v7/esapi"
-	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
-	"github.com/redhatinsights/xjoin-operator/controllers/data"
-	"io/ioutil"
+	"io"
 	"math"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
+	"github.com/redhatinsights/xjoin-operator/controllers/data"
 )
 
 func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.Host, error) {
@@ -38,7 +39,7 @@ func (es *ElasticSearch) GetHostsByIds(index string, hostIds []string) ([]data.H
 		return nil, err
 	}
 	if searchRes.StatusCode >= 400 {
-		bodyBytes, _ := ioutil.ReadAll(searchRes.Body)
+		bodyBytes, _ := io.ReadAll(searchRes.Body)
 
 		return nil, fmt.Errorf(
 			"invalid response code when getting hosts by id. StatusCode: %v, Body: %s",
@@ -91,7 +92,7 @@ func (es *ElasticSearch) getHostIDsQuery(index string, reqJSON []byte) ([]string
 	}
 
 	if searchRes.StatusCode >= 400 {
-		bodyBytes, _ := ioutil.ReadAll(searchRes.Body)
+		bodyBytes, _ := io.ReadAll(searchRes.Body)
 
 		return nil, fmt.Errorf(
 			"invalid response code when getting hosts ids. StatusCode: %v, Body: %s",
@@ -172,8 +173,8 @@ func (es *ElasticSearch) GetHostIDsByIdList(index string, ids []string) (complet
 
 func (es *ElasticSearch) GetHostIDsByModifiedOn(index string, start time.Time, end time.Time) ([]string, error) {
 	var query QueryHostIDsRange
-	query.Query.Range.ModifiedOn.Lt = end.Format(utils.TimeFormat())
-	query.Query.Range.ModifiedOn.Gt = start.Format(utils.TimeFormat())
+	query.Query.Range.ModifiedOn.Lt = end.UTC().Format(time.RFC3339Nano)
+	query.Query.Range.ModifiedOn.Gt = start.UTC().Format(time.RFC3339Nano)
 	reqJSON, err := json.Marshal(query)
 	if err != nil {
 		return nil, err
@@ -187,7 +188,7 @@ func (es *ElasticSearch) GetHostIDsByModifiedOn(index string, start time.Time, e
 func parseSearchHostsResponse(res *esapi.Response) ([]data.Host, error) {
 	var hosts []data.Host
 	var searchHostsJSON SearchHostsResponse
-	byteValue, _ := ioutil.ReadAll(res.Body)
+	byteValue, _ := io.ReadAll(res.Body)
 	err := json.Unmarshal(byteValue, &searchHostsJSON)
 	if err != nil {
 		return nil, err
@@ -203,7 +204,7 @@ func parseSearchHostsResponse(res *esapi.Response) ([]data.Host, error) {
 func parseSearchIdsResponse(scrollRes *esapi.Response) ([]string, SearchIDsResponse, error) {
 	var ids []string
 	var searchJSON SearchIDsResponse
-	byteValue, _ := ioutil.ReadAll(scrollRes.Body)
+	byteValue, _ := io.ReadAll(scrollRes.Body)
 	err := json.Unmarshal(byteValue, &searchJSON)
 	if err != nil {
 		return nil, searchJSON, err

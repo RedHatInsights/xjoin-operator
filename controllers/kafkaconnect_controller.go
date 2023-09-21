@@ -43,7 +43,7 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 	}
 	r.instance = instance
 
-	xjoinConfig, err := config.NewConfig(instance, r.Client, ctx)
+	xjoinConfig, err := config.NewConfig(instance, r.Client, ctx, reqLogger)
 	if xjoinConfig != nil {
 		r.parameters = xjoinConfig.Parameters
 	}
@@ -65,6 +65,7 @@ func (r *KafkaConnectReconciler) Setup(reqLogger logger.Log, request ctrl.Reques
 			ConnectCluster:   r.parameters.ConnectCluster.String(),
 			KafkaNamespace:   r.parameters.KafkaClusterNamespace.String(),
 			KafkaCluster:     r.parameters.KafkaCluster.String(),
+			Log:              r.log,
 		},
 	}
 
@@ -142,14 +143,18 @@ func (r *KafkaConnectReconciler) Reconcile(ctx context.Context, request ctrl.Req
 }
 
 func (r *KafkaConnectReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	logConstructor := func(r *reconcile.Request) logr.Logger {
+		return mgr.GetLogger()
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-kafkaconnect").
 		For(&xjoin.XJoinPipeline{}).
 		WithEventFilter(eventFilterPredicate()).
-		WithLogger(mgr.GetLogger()).
+		WithLogConstructor(logConstructor).
 		WithOptions(controller.Options{
-			Log:         mgr.GetLogger(),
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
+			LogConstructor: logConstructor,
+			RateLimiter:    workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		Complete(r)
 }

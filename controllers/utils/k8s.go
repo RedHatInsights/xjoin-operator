@@ -54,6 +54,12 @@ func FetchXJoinIndexPipeline(c client.Client, namespacedName types.NamespacedNam
 	return instance, err
 }
 
+func FetchXJoinIndexPipelines(c client.Client, ctx context.Context) (*xjoin.XJoinIndexPipelineList, error) {
+	list := &xjoin.XJoinIndexPipelineList{}
+	err := c.List(ctx, list)
+	return list, err
+}
+
 func FetchXJoinIndexValidator(c client.Client, namespacedName types.NamespacedName, ctx context.Context) (*xjoin.XJoinIndexValidator, error) {
 	instance := &xjoin.XJoinIndexValidator{}
 	err := c.Get(ctx, namespacedName, instance)
@@ -130,4 +136,18 @@ func FetchSecret(c client.Client, namespace string, name string, ctx context.Con
 	}
 
 	return secret, err
+}
+
+func ReadSecretValue(secret *corev1.Secret, keys []string) (value string, err error) {
+	for _, key := range keys {
+		if secret != nil && secret.Data != nil {
+			value = string(secret.Data[key])
+			if value != "" {
+				break
+			}
+		} else {
+			return "", errors.Wrap(errors.New("Missing Data field from secret."), 0)
+		}
+	}
+	return
 }

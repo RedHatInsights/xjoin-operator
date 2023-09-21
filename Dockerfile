@@ -21,14 +21,13 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager 
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
-RUN microdnf module enable go-toolset && \
-    microdnf install --setopt=tsflags=nodocs -y go-toolset && \
+RUN microdnf install --setopt=tsflags=nodocs -y go-toolset-1.19.9 && \
     microdnf install -y rsync tar procps-ng && \
     microdnf upgrade -y && \
     microdnf clean all
 
 WORKDIR /
 COPY --from=builder /workspace/manager .
-USER nonroot:nonroot
+USER 65534:65534
 
 ENTRYPOINT ["/manager"]

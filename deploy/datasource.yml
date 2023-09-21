@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: xjoin-datasource
+
+parameters:
+  - name: NAME
+    required: true
+  - name: AVRO_SCHEMA
+    required: true
+  - name: DATABASE_SECRET
+    required: true
+  - name: DATABASE_TABLE
+    required: true
+  - name: REFRESH
+    required: false
+    value: ""
+
+objects:
+  - apiVersion: xjoin.cloud.redhat.com/v1alpha1
+    kind: XJoinDataSource
+    metadata:
+      name: ${NAME}
+    spec:
+      avroSchema: ${AVRO_SCHEMA}
+      databaseHostname:
+        valueFrom:
+          secretKeyRef:
+            key: db.host
+            name: ${DATABASE_SECRET}
+      databaseName:
+        valueFrom:
+          secretKeyRef:
+            key: db.name
+            name: ${DATABASE_SECRET}
+      databasePassword:
+        valueFrom:
+          secretKeyRef:
+            key: db.password
+            name: ${DATABASE_SECRET}
+      databasePort:
+        valueFrom:
+          secretKeyRef:
+            key: db.port
+            name: ${DATABASE_SECRET}
+      databaseUsername:
+        valueFrom:
+          secretKeyRef:
+            key: db.user
+            name: ${DATABASE_SECRET}
+      databaseTable:
+        value: ${DATABASE_TABLE}
+      refresh: ${REFRESH}

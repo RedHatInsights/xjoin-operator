@@ -84,7 +84,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 		Recorder:         r.Recorder,
 	}
 
-	xjoinConfig, err := config.NewConfig(i.Instance, i.Client, ctx)
+	xjoinConfig, err := config.NewConfig(i.Instance, i.Client, ctx, reqLogger)
 	if xjoinConfig != nil {
 		i.Parameters = xjoinConfig.Parameters
 	}
@@ -125,6 +125,7 @@ func (r *XJoinPipelineReconciler) setup(reqLogger xjoinlogger.Log, request ctrl.
 			ConnectCluster:   i.Parameters.ConnectCluster.String(),
 			KafkaNamespace:   i.Parameters.KafkaClusterNamespace.String(),
 			KafkaCluster:     i.Parameters.KafkaCluster.String(),
+			Log:              reqLogger,
 		},
 	}
 
@@ -299,7 +300,7 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 		}
 		i.ProbeStartingInitialSync()
 
-		err = i.KafkaTopics.CreateTopic(pipelineVersion, false)
+		_, err = i.KafkaTopics.CreateTopic(pipelineVersion, false)
 		if err != nil {
 			i.Error(err, "Error creating Kafka topic")
 			return reconcile.Result{}, err
@@ -370,14 +371,18 @@ func (r *XJoinPipelineReconciler) Reconcile(ctx context.Context, request ctrl.Re
 }
 
 func (r *XJoinPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	logConstructor := func(r *reconcile.Request) logr.Logger {
+		return mgr.GetLogger()
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-controller").
 		For(&xjoin.XJoinPipeline{}).
 		Owns(kafka.EmptyConnector()).
-		WithLogger(mgr.GetLogger()).
+		WithLogConstructor(logConstructor).
 		WithOptions(controller.Options{
-			Log:         mgr.GetLogger(),
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
+			LogConstructor: logConstructor,
+			RateLimiter:    workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		// trigger Reconcile if ConfigMap changes
 		Watches(&source.Kind{Type: &v1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(func(configMap client.Object) []reconcile.Request {

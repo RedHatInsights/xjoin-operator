@@ -16,17 +16,17 @@ import (
 )
 
 func (kafka *GenericKafka) CreateGenericDebeziumConnector(
-	name string, connectorTemplate string, connectorTemplateParameters map[string]interface{}) error {
+	name string, namespace string, connectorTemplate string, connectorTemplateParameters map[string]interface{}, dryRun bool) (unstructured.Unstructured, error) {
 
+	connectorObj := &unstructured.Unstructured{}
 	connectorConfig, err := kafka.parseConnectorTemplate(connectorTemplate, connectorTemplateParameters)
 	if err != nil {
-		return errors.Wrap(err, 0)
+		return *connectorObj, errors.Wrap(err, 0)
 	}
-	connectorObj := &unstructured.Unstructured{}
 	connectorObj.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      name,
-			"namespace": kafka.ConnectNamespace,
+			"namespace": namespace,
 			"labels": map[string]interface{}{
 				LabelStrimziCluster: kafka.ConnectCluster,
 			},
@@ -41,46 +41,55 @@ func (kafka *GenericKafka) CreateGenericDebeziumConnector(
 
 	connectorObj.SetGroupVersionKind(connectorGVK)
 
-	err = kafka.Client.Create(kafka.Context, connectorObj)
-	if err != nil {
-		return errors.Wrap(err, 0)
+	if dryRun {
+		return *connectorObj, nil
 	}
 
-	return nil
+	err = kafka.Client.Create(kafka.Context, connectorObj)
+	if err != nil {
+		return *connectorObj, errors.Wrap(err, 0)
+	}
+
+	return *connectorObj, nil
 }
 
 func (kafka *GenericKafka) CreateGenericElasticsearchConnector(
-	name string, connectorTemplate string, connectorTemplateParameters map[string]interface{}) error {
-
-	connectorConfig, err := kafka.parseConnectorTemplate(connectorTemplate, connectorTemplateParameters)
-	if err != nil {
-		return errors.Wrap(err, 0)
-	}
+	name string, namespace string, connectorTemplate string, connectorTemplateParameters map[string]interface{}, dryRun bool) (unstructured.Unstructured, error) {
 
 	connectorObj := &unstructured.Unstructured{}
+	connectorConfig, err := kafka.parseConnectorTemplate(connectorTemplate, connectorTemplateParameters)
+	if err != nil {
+		return *connectorObj, errors.Wrap(err, 0)
+	}
+
 	connectorObj.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name":      name,
-			"namespace": kafka.ConnectNamespace,
+			"namespace": namespace,
 			"labels": map[string]interface{}{
 				LabelStrimziCluster: kafka.ConnectCluster,
 			},
 		},
 		"spec": map[string]interface{}{
-			"class":  "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
-			"config": connectorConfig,
-			"pause":  false,
+			"class":    "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+			"config":   connectorConfig,
+			"pause":    false,
+			"tasksMax": connectorTemplateParameters["ElasticSearchTasksMax"],
 		},
 	}
 
 	connectorObj.SetGroupVersionKind(connectorGVK)
 
-	err = kafka.Client.Create(kafka.Context, connectorObj)
-	if err != nil {
-		return errors.Wrap(err, 0)
+	if dryRun {
+		return *connectorObj, nil
 	}
 
-	return nil
+	err = kafka.Client.Create(kafka.Context, connectorObj)
+	if err != nil {
+		return *connectorObj, errors.Wrap(err, 0)
+	}
+
+	return *connectorObj, nil
 }
 
 func (kafka *GenericKafka) parseConnectorTemplate(connectorTemplate string, connectorTemplateParameters map[string]interface{}) (interface{}, error) {
@@ -189,12 +198,12 @@ func (kafka *GenericKafka) ConnectUrl() string {
 	return url
 }
 
-func (kafka *GenericKafka) CheckIfConnectorExists(name string) (bool, error) {
+func (kafka *GenericKafka) CheckIfConnectorExists(name string, namespace string) (bool, error) {
 	if name == "" {
 		return false, nil
 	}
 
-	if _, err := kafka.GetConnector(name); err != nil && k8errors.IsNotFound(err) {
+	if _, err := kafka.GetConnector(name, namespace); err != nil && k8errors.IsNotFound(err) {
 		return false, nil
 	} else if err == nil {
 		return true, nil
@@ -203,18 +212,21 @@ func (kafka *GenericKafka) CheckIfConnectorExists(name string) (bool, error) {
 	}
 }
 
-func (kafka *GenericKafka) GetConnector(name string) (*unstructured.Unstructured, error) {
+func (kafka *GenericKafka) GetConnector(name string, namespace string) (*unstructured.Unstructured, error) {
 	connector := EmptyConnector()
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
 	err := kafka.Client.Get(
 		ctx,
-		client.ObjectKey{Name: name, Namespace: kafka.ConnectNamespace},
+		client.ObjectKey{Name: name, Namespace: namespace},
 		connector)
 	return connector, err
 }
 
 func (kafka *GenericKafka) ListConnectorNamesForPrefix(prefix string) ([]string, error) {
+	kafka.Log.Debug("Listing connectors for prefix",
+		"namespace", kafka.ConnectNamespace, "prefix", prefix)
+
 	connectors, err := kafka.ListConnectors()
 	if err != nil {
 		return nil, err
@@ -222,6 +234,8 @@ func (kafka *GenericKafka) ListConnectorNamesForPrefix(prefix string) ([]string,
 
 	var names []string
 	for _, connector := range connectors.Items {
+		kafka.Log.Debug("ListConnectorNamesForPrefix connector", "name", connector.GetName())
+
 		if strings.Index(connector.GetName(), prefix) == 0 {
 			names = append(names, connector.GetName())
 		}
@@ -234,8 +248,6 @@ func (kafka *GenericKafka) ListConnectors() (*unstructured.UnstructuredList, err
 	connectors := &unstructured.UnstructuredList{}
 	connectors.SetGroupVersionKind(connectorsGVK)
 
-	ctx, cancel := utils.DefaultContext()
-	defer cancel()
-	err := kafka.Client.List(ctx, connectors, client.InNamespace(kafka.ConnectNamespace))
+	err := kafka.Client.List(kafka.Context, connectors, client.InNamespace(kafka.ConnectNamespace))
 	return connectors, err
 }

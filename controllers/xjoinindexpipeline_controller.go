@@ -5,12 +5,14 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	xjoin "github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/avro"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/components"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	"github.com/redhatinsights/xjoin-operator/controllers/elasticsearch"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	. "github.com/redhatinsights/xjoin-operator/controllers/index"
 	"github.com/redhatinsights/xjoin-operator/controllers/kafka"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
@@ -22,12 +24,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/utils/strings/slices"
 	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 	"strings"
 	"time"
 )
@@ -62,14 +67,46 @@ func NewXJoinIndexPipelineReconciler(
 }
 
 func (r *XJoinIndexPipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	logConstructor := func(r *reconcile.Request) logr.Logger {
+		return mgr.GetLogger()
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-indexpipeline-controller").
 		For(&xjoin.XJoinIndexPipeline{}).
-		WithLogger(mgr.GetLogger()).
+		WithLogConstructor(logConstructor).
 		WithOptions(controller.Options{
-			Log:         mgr.GetLogger(),
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
+			LogConstructor: logConstructor,
+			RateLimiter:    workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
+
+		// trigger Reconcile if DataSource changes
+		Watches(
+			&source.Kind{Type: &xjoin.XJoinDataSourcePipeline{}},
+			handler.EnqueueRequestsFromMapFunc(func(dataSourcePipeline client.Object) (requests []reconcile.Request) {
+				ctx, cancel := utils.DefaultContext()
+				defer cancel()
+
+				indexPipelines, err := k8sUtils.FetchXJoinIndexPipelines(r.Client, ctx)
+				if err != nil {
+					r.Log.Error(err, "Failed to fetch IndexPipelines in Watch")
+					return requests
+				}
+
+				for _, indexPipeline := range indexPipelines.Items {
+					if slices.Contains(indexPipeline.GetDataSourcePipelineNames(), dataSourcePipeline.GetName()) {
+						requests = append(requests, reconcile.Request{
+							NamespacedName: types.NamespacedName{
+								Namespace: indexPipeline.GetNamespace(),
+								Name:      indexPipeline.GetName(),
+							},
+						})
+					}
+				}
+
+				return requests
+			}),
+		).
 		Complete(r)
 }
 
@@ -91,6 +128,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
+			reqLogger.Warn("XJoinIndex not found", "XJoinIndex", request.Name)
 			return result, nil
 		}
 		// Error reading the object - requeue the request.
@@ -106,14 +144,27 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 
 	p := parameters.BuildIndexParameters()
 
+	var elasticsearchKubernetesSecretName string
+	if instance.Spec.Ephemeral {
+		elasticsearchKubernetesSecretName = "xjoin-elasticsearch-es-elastic-user"
+	} else {
+		elasticsearchKubernetesSecretName = "xjoin-elasticsearch"
+	}
+
 	configManager, err := config.NewManager(config.ManagerOptions{
 		Client:         r.Client,
 		Parameters:     p,
 		ConfigMapNames: []string{"xjoin-generic"},
-		SecretNames:    []string{"xjoin-elasticsearch"},
-		Namespace:      instance.Namespace,
-		Spec:           instance.Spec,
-		Context:        ctx,
+		SecretNames: []config.SecretNames{{
+			KubernetesName: elasticsearchKubernetesSecretName,
+			ManagerName:    parameters.ElasticsearchSecret,
+		}},
+		ResourceNamespace: instance.Namespace,
+		OperatorNamespace: r.Namespace,
+		Spec:              instance.Spec,
+		Context:           ctx,
+		Ephemeral:         instance.Spec.Ephemeral,
+		Log:               reqLogger,
 	})
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
@@ -152,6 +203,7 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		KafkaCluster:     p.KafkaCluster.String(),
 		Client:           i.Client,
 		Test:             r.Test,
+		Log:              reqLogger,
 	}
 
 	kafkaTopics := kafka.StrimziTopics{
@@ -170,20 +222,6 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Client:                r.Client,
 		Test:                  r.Test,
 		Context:               ctx,
-	}
-
-	kafkaTopic := &components.KafkaTopic{
-		TopicParameters: kafka.TopicParameters{
-			Replicas:           p.KafkaTopicReplicas.Int(),
-			Partitions:         p.KafkaTopicPartitions.Int(),
-			CleanupPolicy:      p.KafkaTopicCleanupPolicy.String(),
-			MinCompactionLagMS: p.KafkaTopicMinCompactionLagMS.String(),
-			RetentionBytes:     p.KafkaTopicRetentionBytes.String(),
-			RetentionMS:        p.KafkaTopicRetentionMS.String(),
-			MessageBytes:       p.KafkaTopicMessageBytes.String(),
-			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
-		},
-		KafkaTopics: kafkaTopics,
 	}
 
 	elasticSearchConnection := elasticsearch.GenericElasticSearchParameters{
@@ -205,30 +243,53 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 	}
 	confluentClient := schemaregistry.NewSchemaRegistryConfluentClient(schemaRegistryConnectionParams)
 	confluentClient.Init()
-	registryRestClient := schemaregistry.NewSchemaRegistryRestClient(schemaRegistryConnectionParams)
+	registryRestClient := schemaregistry.NewSchemaRegistryRestClient(schemaRegistryConnectionParams, r.Namespace)
 
-	indexAvroSchemaParser := avro.IndexAvroSchemaParser{
-		AvroSchema:      p.AvroSchema.String(),
-		Client:          i.Client,
-		Context:         i.Context,
-		Namespace:       i.Instance.GetNamespace(),
-		Log:             i.Log,
-		SchemaRegistry:  confluentClient,
-		SchemaNamespace: i.Instance.GetName(),
+	e := events.NewEvents(r.Recorder, instance, reqLogger)
+	componentManager := components.NewComponentManager(
+		common.IndexPipelineGVK.Kind, instance.Spec.Name, p.Version.String(), e, reqLogger)
+
+	kafkaTopic := &components.KafkaTopic{
+		TopicParameters: kafka.TopicParameters{
+			Replicas:           p.KafkaTopicReplicas.Int(),
+			Partitions:         p.KafkaTopicPartitions.Int(),
+			CleanupPolicy:      p.KafkaTopicCleanupPolicy.String(),
+			MinCompactionLagMS: p.KafkaTopicMinCompactionLagMS.String(),
+			RetentionBytes:     p.KafkaTopicRetentionBytes.String(),
+			RetentionMS:        p.KafkaTopicRetentionMS.String(),
+			MessageBytes:       p.KafkaTopicMessageBytes.String(),
+			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
+		},
+		KafkaTopics: kafkaTopics,
+		KafkaClient: kafkaClient,
 	}
-	indexAvroSchema, err := indexAvroSchemaParser.Parse()
-	if err != nil {
-		return result, errors.Wrap(err, 0)
+	componentManager.AddComponent(kafkaTopic)
+
+	var indexAvroSchema avro.IndexAvroSchema
+	var sinkTopic string
+	if instance.GetDeletionTimestamp() == nil {
+		indexAvroSchemaParser := avro.IndexAvroSchemaParser{
+			AvroSchema:      p.AvroSchema.String(),
+			Client:          i.Client,
+			Context:         i.Context,
+			Namespace:       i.Instance.GetNamespace(),
+			Log:             i.Log,
+			SchemaRegistry:  confluentClient,
+			SchemaNamespace: i.Instance.GetName(),
+			Active:          i.GetInstance().Status.Active,
+		}
+		indexAvroSchema, err = indexAvroSchemaParser.Parse()
+		if err != nil {
+			reqLogger.Error(errors.Wrap(err, 0), "error parsing index avro schema")
+			return result, errors.Wrap(err, 0)
+		}
+		sinkTopic = indexAvroSchemaParser.AvroSubjectToKafkaTopic(kafkaTopic.Name())
 	}
 
-	componentManager := components.NewComponentManager(common.IndexPipelineGVK.Kind+"."+instance.Spec.Name, p.Version.String())
-
-	if indexAvroSchema.JSONFields != nil {
-		componentManager.AddComponent(&components.ElasticsearchPipeline{
-			GenericElasticsearch: *genericElasticsearch,
-			JsonFields:           indexAvroSchema.JSONFields,
-		})
-	}
+	componentManager.AddComponent(&components.ElasticsearchPipeline{
+		GenericElasticsearch: *genericElasticsearch,
+		JsonFields:           indexAvroSchema.JSONFields,
+	})
 
 	elasticSearchIndexComponent := &components.ElasticsearchIndex{
 		GenericElasticsearch: *genericElasticsearch,
@@ -237,30 +298,37 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		WithPipeline:         indexAvroSchema.JSONFields != nil,
 	}
 	componentManager.AddComponent(elasticSearchIndexComponent)
-	componentManager.AddComponent(kafkaTopic)
 	componentManager.AddComponent(&components.ElasticsearchConnector{
 		Template:           p.ElasticSearchConnectorTemplate.String(),
 		KafkaClient:        kafkaClient,
 		TemplateParameters: parametersMap,
 		Topic:              kafkaTopic.Name(),
+		Namespace:          instance.Namespace,
 	})
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
-		Schema:   indexAvroSchema.AvroSchemaString,
-		Registry: confluentClient,
+		Schema:      indexAvroSchema.AvroSchemaString,
+		Registry:    confluentClient,
+		KafkaClient: kafkaClient,
 	}))
 	graphqlSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{
 		Registry: registryRestClient,
+		Active:   i.GetInstance().Status.Active,
 	})
 	componentManager.AddComponent(graphqlSchemaComponent)
 	componentManager.AddComponent(&components.XJoinCore{
 		Client:            i.Client,
 		Context:           i.Context,
 		SourceTopics:      indexAvroSchema.SourceTopics,
-		SinkTopic:         indexAvroSchemaParser.AvroSubjectToKafkaTopic(kafkaTopic.Name()),
+		SinkTopic:         sinkTopic,
 		KafkaBootstrap:    p.KafkaBootstrapURL.String(),
 		SchemaRegistryURL: p.SchemaRegistryProtocol.String() + "://" + p.SchemaRegistryHost.String() + ":" + p.SchemaRegistryPort.String(),
 		Namespace:         i.Instance.GetNamespace(),
 		Schema:            indexAvroSchema.AvroSchemaString,
+		CPURequests:       p.CorePodCPURequest.String(),
+		CPULimit:          p.CorePodCPULimit.String(),
+		MemoryRequests:    p.CorePodMemoryRequest.String(),
+		MemoryLimit:       p.CorePodMemoryLimit.String(),
+		NumberOfPods:      p.CoreNumPods.Int(),
 	})
 	componentManager.AddComponent(&components.XJoinAPISubGraph{
 		Client:                i.Client,
@@ -272,8 +340,13 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		ElasticSearchUsername: p.ElasticSearchUsername.String(),
 		ElasticSearchPassword: p.ElasticSearchPassword.String(),
 		ElasticSearchIndex:    elasticSearchIndexComponent.Name(),
-		Image:                 "quay.io/ckyrouac/xjoin-api-subgraph:latest", //TODO
+		Image:                 "quay.io/cloudservices/xjoin-api-subgraph:latest", //TODO
 		GraphQLSchemaName:     graphqlSchemaComponent.Name(),
+		LogLevel:              p.SubgraphLogLevel.String(),
+		CPURequests:           p.SubgraphPodCPURequest.String(),
+		CPULimit:              p.SubgraphPodCPULimit.String(),
+		MemoryRequests:        p.SubgraphPodMemoryRequest.String(),
+		MemoryLimit:           p.SubgraphPodMemoryLimit.String(),
 	})
 	componentManager.AddComponent(&components.XJoinIndexValidator{
 		Client:                 i.Client,
@@ -283,12 +356,14 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		Pause:                  i.Parameters.Pause.Bool(),
 		ParentInstance:         i.Instance,
 		ElasticsearchIndexName: elasticSearchIndexComponent.Name(),
+		Ephemeral:              i.GetInstance().Spec.Ephemeral,
 	})
 
 	for _, customSubgraphImage := range instance.Spec.CustomSubgraphImages {
 		customSubgraphGraphQLSchemaComponent := components.NewGraphQLSchema(components.GraphQLSchemaParameters{
 			Registry: registryRestClient,
 			Suffix:   customSubgraphImage.Name,
+			Active:   i.GetInstance().Status.Active,
 		})
 		componentManager.AddComponent(customSubgraphGraphQLSchemaComponent)
 		componentManager.AddComponent(&components.XJoinAPISubGraph{
@@ -304,14 +379,24 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 			Image:                 customSubgraphImage.Image,
 			Suffix:                customSubgraphImage.Name,
 			GraphQLSchemaName:     customSubgraphGraphQLSchemaComponent.Name(),
+			LogLevel:              p.SubgraphLogLevel.String(),
+			CPURequests:           p.SubgraphPodCPURequest.String(),
+			CPULimit:              p.SubgraphPodCPULimit.String(),
+			MemoryRequests:        p.SubgraphPodMemoryRequest.String(),
+			MemoryLimit:           p.SubgraphPodMemoryLimit.String(),
 		})
 	}
 
 	if instance.GetDeletionTimestamp() != nil {
 		reqLogger.Info("Starting finalizer")
-		err = componentManager.DeleteAll()
-		if err != nil {
-			reqLogger.Error(err, "error deleting components during finalizer")
+		errs := componentManager.DeleteAll()
+		if len(errs) > 0 {
+			if len(errs) > 0 {
+				for _, componentErr := range errs {
+					reqLogger.Error(componentErr, "error deleting component during finalizer")
+				}
+				return reconcile.Result{}, errors.New("error deleting components during finalizer")
+			}
 			return
 		}
 
@@ -332,45 +417,74 @@ func (r *XJoinIndexPipelineReconciler) Reconcile(ctx context.Context, request ct
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	//build list of datasources
-	dataSources := make(map[string]string)
-	for _, ref := range indexAvroSchema.References {
-		//get each datasource name and resource version
-		name := strings.Split(ref.Name, "xjoindatasourcepipeline.")[1]
-		name = strings.Split(name, ".Value")[0]
-		datasourceNamespacedName := types.NamespacedName{
-			Name:      name,
-			Namespace: i.Instance.GetNamespace(),
-		}
-		datasource, err := k8sUtils.FetchXJoinDataSource(i.Client, datasourceNamespacedName, ctx)
-		if err != nil {
-			return reconcile.Result{}, errors.Wrap(err, 0)
-		}
-		dataSources[name] = datasource.ResourceVersion
-	}
-
-	//update parent status
-	indexNamespacedName := types.NamespacedName{
-		Name:      instance.OwnerReferences[0].Name,
-		Namespace: i.Instance.GetNamespace(),
-	}
-	xjoinIndex, err := k8sUtils.FetchXJoinIndex(i.Client, indexNamespacedName, ctx)
+	err = componentManager.Reconcile()
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	if !reflect.DeepEqual(xjoinIndex.Status.DataSources, dataSources) {
-		xjoinIndex.Status.DataSources = dataSources
+	//check each datasource is valid
+	dataSources := make(map[string]string)
+	invalidDatasourceFound := false
+	newDatasourceFound := false
+	for _, ref := range indexAvroSchema.References {
+		//get each datasource name and resource version
+		datasourceName := strings.Split(ref.Name, ".Value")[0]
 
-		if err := i.Client.Status().Update(ctx, xjoinIndex); err != nil {
-			if k8errors.IsConflict(err) {
-				i.Log.Error(err, "Status conflict")
-				return reconcile.Result{}, err
-			}
+		datasourcePipelineVersion := strings.Split(ref.Subject, "xjoindatasourcepipeline.")[1]
+		datasourcePipelineVersion = strings.Split(datasourcePipelineVersion, ".")[1]
+		datasourcePipelineVersion = strings.Split(datasourcePipelineVersion, "-value")[0]
 
-			return reconcile.Result{}, err
+		dataSources[datasourceName] = datasourcePipelineVersion
+
+		//GET each datasourcePipeline
+		dataSourcePipelineName := types.NamespacedName{
+			Namespace: instance.GetNamespace(),
+			Name:      datasourceName + "." + datasourcePipelineVersion,
+		}
+		dataSourcePipeline, err := k8sUtils.FetchXJoinDataSourcePipeline(r.Client, dataSourcePipelineName, ctx)
+		if err != nil {
+			return reconcile.Result{}, errors.Wrap(err, 0)
+		}
+
+		if dataSourcePipeline.Status.ValidationResponse.Result == validation.ValidationInvalid {
+			invalidDatasourceFound = true
+		} else if dataSourcePipeline.Status.ValidationResponse.Result == validation.ValidationNew ||
+			dataSourcePipeline.Status.ValidationResponse.Result == validation.ValidationUndefined {
+
+			newDatasourceFound = true
 		}
 	}
 
-	return reconcile.Result{RequeueAfter: time.Second * 30}, nil
+	if invalidDatasourceFound {
+		instance.Status.ValidationResponse.Result = validation.ValidationInvalid
+	} else if newDatasourceFound {
+		instance.Status.ValidationResponse.Result = validation.ValidationNew
+	} else {
+		instance.Status.ValidationResponse.Result = validation.ValidationValid
+	}
+
+	if !reflect.DeepEqual(instance.Status.DataSources, dataSources) {
+		instance.Status.DataSources = dataSources
+	}
+
+	//deviation check
+	problems, err := componentManager.CheckForDeviations()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	if len(problems) > 0 {
+		i.GetInstance().Status.ValidationResponse.Result = validation.ValidationInvalid
+		i.GetInstance().Status.ValidationResponse.Reason = "Deviation found"
+		var messages []string
+		for _, problem := range problems {
+			messages = append(messages, problem.Error())
+		}
+		i.GetInstance().Status.ValidationResponse.Message = strings.Join(messages, ", ")
+		reqLogger.Warn("Deviation found", "problems", problems)
+	}
+
+	i.Instance = instance
+	i.UpdateCondition()
+	return i.UpdateStatusAndRequeue(time.Second * 30)
 }

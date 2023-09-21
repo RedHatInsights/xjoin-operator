@@ -1,32 +1,47 @@
 package v1alpha1
 
 import (
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type XJoinIndexSpec struct {
 	// +kubebuilder:validation:Required
-	AvroSchema           string                `json:"avroSchema,omitempty"`
+	AvroSchema string `json:"avroSchema,omitempty"`
+
+	// +optional
 	CustomSubgraphImages []CustomSubgraphImage `json:"customSubgraphImages,omitempty"`
 
 	// +optional
 	Pause bool `json:"pause,omitempty"`
+
+	// +optional
+	Ephemeral bool `json:"ephemeral,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:MinLength:=0
+	Refresh string `json:"refresh,omitempty"`
 }
 
 type XJoinIndexStatus struct {
-	ActiveVersion            string `json:"activeVersion"`
-	ActiveVersionIsValid     bool   `json:"activeVersionIsValid"`
-	RefreshingVersion        string `json:"refreshingVersion"`
-	RefreshingVersionIsValid bool   `json:"refreshingVersionIsValid"`
-	SpecHash                 string `json:"specHash"`
-
-	//+optional
-	DataSources map[string]string `json:"dataSources"` //map of datasource name to datasource resource version
+	ActiveVersion          string                        `json:"activeVersion"`
+	ActiveVersionState     validation.ValidationResponse `json:"activeVersionState"`
+	RefreshingVersion      string                        `json:"refreshingVersion"`
+	RefreshingVersionState validation.ValidationResponse `json:"refreshingVersionState"`
+	SpecHash               string                        `json:"specHash"`
+	Conditions             []metav1.Condition            `json:"conditions"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=xjoinindex,categories=all
+// +kubebuilder:printcolumn:name="Active_Version",type="string",JSONPath=".status.activeVersion"
+// +kubebuilder:printcolumn:name="Active_State",type="string",JSONPath=".status.activeVersionState.result"
+// +kubebuilder:printcolumn:name="Refreshing_Version",type="string",JSONPath=".status.refreshingVersion"
+// +kubebuilder:printcolumn:name="Refreshing_State",type="string",JSONPath=".status.refreshingVersionState.result"
+// +kubebuilder:printcolumn:name="Valid",type="string",JSONPath=".status.conditions[0].status"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 type XJoinIndex struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -42,18 +57,6 @@ type CustomSubgraphImage struct {
 
 	// +kubebuilder:validation:Required
 	Image string `json:"image"`
-}
-
-func (in *XJoinIndex) GetDataSources() map[string]string {
-	return in.Status.DataSources
-}
-
-func (in *XJoinIndex) GetDataSourceNames() []string {
-	keys := make([]string, 0, len(in.Status.DataSources))
-	for key := range in.Status.DataSources {
-		keys = append(keys, key)
-	}
-	return keys
 }
 
 func (in *XJoinIndex) GetSpec() interface{} {
@@ -72,12 +75,12 @@ func (in *XJoinIndex) SetActiveVersion(version string) {
 	in.Status.ActiveVersion = version
 }
 
-func (in *XJoinIndex) GetActiveVersionIsValid() bool {
-	return in.Status.ActiveVersionIsValid
+func (in *XJoinIndex) GetActiveVersionState() validation.ValidationResult {
+	return in.Status.ActiveVersionState.Result
 }
 
-func (in *XJoinIndex) SetActiveVersionIsValid(valid bool) {
-	in.Status.ActiveVersionIsValid = valid
+func (in *XJoinIndex) SetActiveVersionState(state validation.ValidationResult) {
+	in.Status.ActiveVersionState.Result = state
 }
 
 func (in *XJoinIndex) GetRefreshingVersion() string {
@@ -88,12 +91,20 @@ func (in *XJoinIndex) SetRefreshingVersion(version string) {
 	in.Status.RefreshingVersion = version
 }
 
-func (in *XJoinIndex) GetRefreshingVersionIsValid() bool {
-	return in.Status.RefreshingVersionIsValid
+func (in *XJoinIndex) GetRefreshingVersionState() validation.ValidationResult {
+	return in.Status.RefreshingVersionState.Result
 }
 
-func (in *XJoinIndex) SetRefreshingVersionIsValid(valid bool) {
-	in.Status.RefreshingVersionIsValid = valid
+func (in *XJoinIndex) SetRefreshingVersionState(state validation.ValidationResult) {
+	in.Status.RefreshingVersionState.Result = state
+}
+
+func (in *XJoinIndex) SetCondition(condition metav1.Condition) {
+	meta.SetStatusCondition(&in.Status.Conditions, condition)
+}
+
+func (in *XJoinIndex) GetValidationResult() validation.ValidationResult {
+	return in.Status.ActiveVersionState.Result
 }
 
 // +kubebuilder:object:root=true

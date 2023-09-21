@@ -8,11 +8,14 @@ import (
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	"github.com/redhatinsights/xjoin-operator/controllers/config"
 	. "github.com/redhatinsights/xjoin-operator/controllers/datasource"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
+	"github.com/redhatinsights/xjoin-operator/controllers/metrics"
 	"github.com/redhatinsights/xjoin-operator/controllers/parameters"
 	k8sUtils "github.com/redhatinsights/xjoin-operator/controllers/utils"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -50,13 +53,17 @@ func NewXJoinDataSourceReconciler(
 }
 
 func (r *XJoinDataSourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	logConstructor := func(r *reconcile.Request) logr.Logger {
+		return mgr.GetLogger()
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-datasource-controller").
 		For(&xjoin.XJoinDataSource{}).
-		WithLogger(mgr.GetLogger()).
+		WithLogConstructor(logConstructor).
 		WithOptions(controller.Options{
-			Log:         mgr.GetLogger(),
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
+			LogConstructor: logConstructor,
+			RateLimiter:    workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		Complete(r)
 }
@@ -80,6 +87,8 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return result, errors.Wrap(err, 0)
 	}
 
+	metrics.InitDatasourceLabels(instance.GetName())
+
 	p := parameters.BuildDataSourceParameters()
 
 	if p.Pause.Bool() {
@@ -87,14 +96,16 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 	}
 
 	configManager, err := config.NewManager(config.ManagerOptions{
-		Client:         r.Client,
-		Parameters:     p,
-		ConfigMapNames: []string{"xjoin-generic"},
-		SecretNames:    nil,
-		Namespace:      instance.Namespace,
-		Spec:           instance.Spec,
-		Context:        ctx,
-		Log:            reqLogger,
+		Client:            r.Client,
+		Parameters:        p,
+		ConfigMapNames:    []string{"xjoin-generic"},
+		SecretNames:       nil,
+		ResourceNamespace: instance.Namespace,
+		OperatorNamespace: r.Namespace,
+		Spec:              instance.Spec,
+		Context:           ctx,
+		Log:               reqLogger,
+		Ephemeral:         instance.Spec.Ephemeral,
 	})
 	if err != nil {
 		return result, errors.Wrap(err, 0)
@@ -105,6 +116,7 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return result, errors.Wrap(err, 0)
 	}
 
+	eventHandler := events.NewEvents(r.Recorder, instance, reqLogger)
 	originalInstance := instance.DeepCopy()
 	i := XJoinDataSourceIteration{
 		Parameters: *p,
@@ -116,14 +128,44 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 			Log:              reqLogger,
 			Test:             r.Test,
 		},
+		Events: eventHandler,
 	}
 
 	if err = i.AddFinalizer(i.GetFinalizerName()); err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
+	//check status of active and refreshing IndexPipelines, update instance.Status accordingly
+	if instance.Status.ActiveVersion != "" {
+		datasourcePipelineNamespacedName := types.NamespacedName{
+			Name:      i.Instance.GetName() + "." + instance.Status.ActiveVersion,
+			Namespace: i.Instance.GetNamespace(),
+		}
+
+		activeDataSourcePipeline, err := k8sUtils.FetchXJoinDataSourcePipeline(i.Client, datasourcePipelineNamespacedName, i.Context)
+		if err != nil {
+			return reconcile.Result{}, errors.Wrap(err, 0)
+		}
+
+		instance.Status.ActiveVersionState = activeDataSourcePipeline.Status.ValidationResponse
+	}
+
+	if instance.Status.RefreshingVersion != "" {
+		dataSourcePipelineNamespacedName := types.NamespacedName{
+			Name:      i.Instance.GetName() + "." + instance.Status.RefreshingVersion,
+			Namespace: i.Instance.GetNamespace(),
+		}
+
+		refreshingDataSourcePipeline, err := k8sUtils.FetchXJoinDataSourcePipeline(i.Client, dataSourcePipelineNamespacedName, i.Context)
+		if err != nil {
+			return reconcile.Result{}, errors.Wrap(err, 0)
+		}
+
+		instance.Status.RefreshingVersionState = refreshingDataSourcePipeline.Status.ValidationResponse
+	}
+
 	dataSourceReconciler := NewReconcileMethods(i, common.DataSourceGVK)
-	reconciler := common.NewReconciler(dataSourceReconciler, instance, reqLogger)
+	reconciler := common.NewReconciler(dataSourceReconciler, instance, reqLogger, eventHandler, r.Test)
 	err = reconciler.Reconcile(false)
 	if err != nil {
 		return result, errors.Wrap(err, 0)
@@ -139,11 +181,5 @@ func (r *XJoinDataSourceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return result, errors.Wrap(err, 0)
 	}
 
-	//TODO actually validate
-	if originalInstance.Status.RefreshingVersion != "" {
-		instance.Status.ActiveVersionIsValid = true
-		instance.Status.ActiveVersion = instance.Status.RefreshingVersion
-	}
-
-	return i.UpdateStatusAndRequeue()
+	return i.UpdateStatusAndRequeue(time.Second * 30)
 }

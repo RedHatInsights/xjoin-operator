@@ -3,20 +3,42 @@ kind: XJoinIndex
 metadata:
   name: hosts
 spec:
+  ephemeral: true
   pause: false
   customSubgraphImages:
     - name: hbi-tags
-      image: quay.io/ckyrouac/host-inventory-subgraph:latest
+      image: quay.io/cloudservices/host-inventory-subgraph:latest
   avroSchema: >
     {
       "type": "record",
       "name": "testindex",
       "fields": [{
         "type": {
-          "type": "xjoindatasourcepipeline.hosts.Value",
+          "type": "hosts.Value",
           "xjoin.type": "reference"
         },
         "name": "host"
+      }, {
+        "name": "__core_read_ms",
+        "type": [{
+          "type": "long",
+          "xjoin.type": "string",
+          "xjoin.index": false
+        }, "null"]
+      }, {
+        "name": "__core_write_ms",
+        "type": [{
+          "type": "long",
+          "xjoin.type": "string",
+          "xjoin.index": "false"
+        }, "null"]
+      }, {
+        "name": "__es_write_ms",
+        "type": [{
+          "type": "long",
+          "xjoin.type": "string",
+          "xjoin.index": "false"
+        }, "null"]
       }],
       "xjoin.transformations": [{
           "transformation": "object_to_array_of_objects",

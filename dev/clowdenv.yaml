@@ -15,8 +15,8 @@ objects:
         cpu: 250m
         memory: 512Mi
       requests:
-        cpu: 100m
-        memory: 64Mi
+        cpu: 10m
+        memory: 16Mi
     providers:
       deployment:
         omitPullPolicy: true
@@ -58,10 +58,20 @@ objects:
         pvc: true
         cluster:
           name: kafka
-          version: "3.0.0"
+          version: "3.3.2"
           replicas: 1
           storageSize: 5Gi
           deleteClaim: true
+          jvmOptions:
+            "-Xmx": "256m"
+            "-Xms": "16m"
+          resources:
+            limits:
+              cpu: 1
+              memory: 1Gi
+            requests:
+              cpu: 10m
+              memory: 16Mi
           config:
             auto.create.topics.enable: "false"
             log.retention.hours: "72"
@@ -79,8 +89,8 @@ objects:
               cpu: 1
               memory: 1Gi
             requests:
-              cpu: 500m
-              memory: 512Mi
+              cpu: 50m
+              memory: 32Mi
       db:
         mode: local
         pvc: true

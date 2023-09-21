@@ -15,28 +15,42 @@ import (
 
 type Spec interface{}
 
+//SecretNames maps a user defined name (ManagerName) to the Kubernetes resource name (KubernetesName).
+//            The user defined name is used when defining parameters.
+type SecretNames struct {
+	//Name of the Kubernetes secret resource
+	KubernetesName string
+
+	//User defined
+	ManagerName string
+}
+
 type Manager struct {
-	Parameters     interface{}
-	client         client.Client
-	ctx            context.Context
-	configMapNames []string
-	secretNames    []string
-	namespace      string
-	configMaps     map[string]v1.ConfigMap
-	secrets        map[string]v1.Secret
-	spec           interface{}
-	log            logger.Log
+	Parameters        interface{}
+	Client            client.Client
+	ctx               context.Context
+	configMapNames    []string
+	secretNames       []SecretNames
+	ResourceNamespace string
+	operatorNamespace string
+	configMaps        map[string]v1.ConfigMap
+	secrets           map[string]v1.Secret
+	spec              interface{}
+	log               logger.Log
+	ephemeral         bool
 }
 
 type ManagerOptions struct {
-	Client         client.Client
-	Parameters     interface{}
-	ConfigMapNames []string
-	SecretNames    []string
-	Namespace      string
-	Spec           Spec
-	Context        context.Context
-	Log            logger.Log
+	Client            client.Client
+	Parameters        interface{}
+	ConfigMapNames    []string
+	SecretNames       []SecretNames
+	ResourceNamespace string
+	OperatorNamespace string
+	Spec              Spec
+	Context           context.Context
+	Log               logger.Log
+	Ephemeral         bool
 }
 
 func NewManager(opts ManagerOptions) (*Manager, error) {
@@ -48,16 +62,18 @@ func NewManager(opts ManagerOptions) (*Manager, error) {
 	}
 
 	return &Manager{
-		client:         opts.Client,
-		Parameters:     opts.Parameters,
-		configMapNames: opts.ConfigMapNames,
-		secretNames:    opts.SecretNames,
-		namespace:      opts.Namespace,
-		spec:           opts.Spec,
-		configMaps:     configMaps,
-		secrets:        managerSecrets,
-		ctx:            opts.Context,
-		log:            opts.Log,
+		Client:            opts.Client,
+		Parameters:        opts.Parameters,
+		configMapNames:    opts.ConfigMapNames,
+		secretNames:       opts.SecretNames,
+		ResourceNamespace: opts.ResourceNamespace,
+		operatorNamespace: opts.OperatorNamespace,
+		spec:              opts.Spec,
+		configMaps:        configMaps,
+		secrets:           managerSecrets,
+		ctx:               opts.Context,
+		log:               opts.Log,
+		ephemeral:         opts.Ephemeral,
 	}, nil
 }
 
@@ -78,7 +94,8 @@ func (m *Manager) Parse() error {
 			commonParams := parameters.Field(i)
 			for j := 0; j < commonParams.NumField(); j++ {
 				commonParam := commonParams.Field(j).Interface().(Parameter)
-				value, err := m.parseParameterValue(commonParam)
+				paramName := commonParams.Type().Field(j).Name
+				value, err := m.parseParameterValue(paramName, commonParam)
 				if err != nil {
 					return errors.Wrap(err, 0)
 				}
@@ -91,7 +108,8 @@ func (m *Manager) Parse() error {
 			parameters.Field(i).Set(commonParams)
 		} else {
 			param := parameters.Field(i).Interface().(Parameter)
-			value, err := m.parseParameterValue(param)
+			paramName := parameters.Type().Field(i).Name
+			value, err := m.parseParameterValue(paramName, param)
 			if err != nil {
 				return errors.Wrap(err, 0)
 			}
@@ -109,12 +127,14 @@ func (m *Manager) Parse() error {
 
 func (m *Manager) loadConfigMaps() error {
 	for _, name := range m.configMapNames {
-		cm, err := k8sUtils.FetchConfigMap(m.client, m.namespace, name, m.ctx)
+		m.log.Debug(fmt.Sprintf("Loading config map '%s' from namespace '%s'", name, m.operatorNamespace))
+		cm, err := k8sUtils.FetchConfigMap(m.Client, m.operatorNamespace, name, m.ctx)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 		if cm == nil {
-			return errors.Wrap(errors.New(fmt.Sprintf("configmap not found: %s", name)), 0)
+			return errors.Wrap(errors.New(fmt.Sprintf(
+				"configmap '%s' not found in namespace '%s'", name, m.operatorNamespace)), 0)
 		}
 		m.configMaps[name] = *cm
 	}
@@ -123,35 +143,48 @@ func (m *Manager) loadConfigMaps() error {
 
 func (m *Manager) loadSecrets() error {
 	for _, name := range m.secretNames {
-		secret, err := k8sUtils.FetchSecret(m.client, m.namespace, name, m.ctx)
+		m.log.Debug(fmt.Sprintf("Loading secret '%s' from namespace '%s'", name, m.ResourceNamespace))
+		secret, err := k8sUtils.FetchSecret(m.Client, m.ResourceNamespace, name.KubernetesName, m.ctx)
 		if err != nil {
 			return errors.Wrap(err, 0)
 		}
 		if secret == nil {
-			return errors.Wrap(errors.New(fmt.Sprintf("secret not found: %s", name)), 0)
+			return errors.Wrap(errors.New(fmt.Sprintf(
+				"secret '%s' not found in namespace '%s'", name, m.ResourceNamespace)), 0)
 		}
-		m.secrets[name] = *secret
+		m.secrets[name.ManagerName] = *secret
 	}
 	return nil
 }
 
-// priority: spec > secret > configmap > default
-func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err error) {
-	if param.SpecKey != "" {
+// priority: ephemeral > spec > secret > configmap > default
+func (m *Manager) parseParameterValue(name string, param Parameter) (value interface{}, err error) {
+	if param.Ephemeral != nil && m.ephemeral {
+		m.log.Debug(fmt.Sprintf("Loading parameter %s from ephemeral", name))
+
+		value, err = param.Ephemeral(*m)
+		if err != nil {
+			return nil, errors.Wrap(err, 0)
+		}
+	}
+
+	if param.SpecKey != "" && value == nil {
+		m.log.Debug(fmt.Sprintf("Loading parameter %s from specKey %s", name, param.SpecKey))
+
 		specReflection := reflect.ValueOf(&m.spec).Elem().Elem()
 		field := specReflection.FieldByName(param.SpecKey)
 
 		if !field.IsValid() {
-			log.Debug(fmt.Sprintf("key %s not found in spec", param.SpecKey))
+			m.log.Debug(fmt.Sprintf("key %s not found in spec", param.SpecKey))
 		} else if field.Type() == reflect.TypeOf(&v1alpha1.StringOrSecretParameter{}) {
 			fieldParam := field.Interface().(*v1alpha1.StringOrSecretParameter)
 			if fieldParam == nil {
-				log.Warn(fmt.Sprintf("string or secret key %s not found in spec", param.SpecKey))
+				m.log.Warn(fmt.Sprintf("string or secret key %s not found in spec", param.SpecKey))
 			} else if fieldParam.Value != "" {
 				value = fieldParam.Value
 			} else {
 				secret := &v1.Secret{}
-				err = m.client.Get(m.ctx, client.ObjectKey{Name: fieldParam.ValueFrom.SecretKeyRef.Name, Namespace: m.namespace}, secret)
+				err = m.Client.Get(m.ctx, client.ObjectKey{Name: fieldParam.ValueFrom.SecretKeyRef.Name, Namespace: m.ResourceNamespace}, secret)
 				if err != nil {
 					return value, errors.Wrap(err, 0)
 				}
@@ -165,7 +198,10 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 		}
 	}
 
-	if param.Secret != "" && param.value == nil {
+	if param.Secret != "" && value == nil {
+		m.log.Debug(fmt.Sprintf("Loading parameter %s from Secret: %s, SecretKey: param.SecretKey: %s",
+			name, param.Secret, param.SecretKey))
+
 		if _, hasKey := m.secrets[param.Secret]; !hasKey {
 			return nil, errors.Wrap(errors.New(fmt.Sprintf(
 				"secret %s was not found. Did you register it when initializing the config.Manager?", param.Secret)), 0)
@@ -178,7 +214,7 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 		}
 	}
 
-	if param.ConfigMapKey != "" && param.value == nil {
+	if param.ConfigMapKey != "" && value == nil {
 		if _, hasKey := m.configMaps[param.ConfigMapName]; !hasKey {
 			return nil, errors.Wrap(errors.New(fmt.Sprintf(
 				"configmap %s was not found for key %s. Did you register it when initializing the config.Manager?",
@@ -186,11 +222,19 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 		}
 
 		if _, hasKey := m.configMaps[param.ConfigMapName].Data[param.ConfigMapKey]; !hasKey {
+			m.log.Debug(fmt.Sprintf("Using default value for parameter %s", name))
+
 			value = param.DefaultValue
 		} else {
 			if param.Type == reflect.String {
+				m.log.Debug(fmt.Sprintf("Loading parameter %s from ConfigMap: %s, ConfigMapKey %s",
+					name, param.ConfigMapName, param.ConfigMapKey))
+
 				value = m.configMaps[param.ConfigMapName].Data[param.ConfigMapKey]
 			} else if param.Type == reflect.Int {
+				m.log.Debug(fmt.Sprintf("Loading parameter %s from ConfigMap: %s, ConfigMapKey %s",
+					name, param.ConfigMapName, param.ConfigMapKey))
+
 				cmValue := m.configMaps[param.ConfigMapName].Data[param.ConfigMapKey]
 
 				if parsed, err := strconv.ParseInt(cmValue, 10, 64); err != nil {
@@ -200,6 +244,9 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 					value = int(parsed)
 				}
 			} else if param.Type == reflect.Bool {
+				m.log.Debug(fmt.Sprintf("Loading parameter %s from ConfigMap: %s, ConfigMapKey %s",
+					name, param.ConfigMapName, param.ConfigMapKey))
+
 				cmValue := m.configMaps[param.ConfigMapName].Data[param.ConfigMapKey]
 
 				if parsed, err := strconv.ParseBool(cmValue); err != nil {
@@ -217,6 +264,7 @@ func (m *Manager) parseParameterValue(param Parameter) (value interface{}, err e
 	}
 
 	if value == nil {
+		m.log.Debug(fmt.Sprintf("Using default value for parameter %s", name))
 		return param.DefaultValue, nil
 	}
 

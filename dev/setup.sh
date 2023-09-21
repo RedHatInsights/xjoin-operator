@@ -126,7 +126,12 @@ fi
 PULL_SECRET=cloudservices-pull-secret
 if [ "$SETUP_PULL_SECRET" = true ] || [ "$SETUP_ALL" = true ]; then
   echo "Setting up pull secret"
-  kubectl create secret generic "$PULL_SECRET" --from-file=.dockerconfigjson="$HOME/.docker/config.json" --type=kubernetes.io/dockerconfigjson -n "$PROJECT_NAME"
+  SECRETS_CONFIG="$HOME/.docker/config.json"
+  if [ ! -f "$SECRETS_CONFIG" ]; then
+    # Grab podman's config instead
+    SECRETS_CONFIG="${XDG_RUNTIME_DIR}/containers/auth.json"
+  fi
+  kubectl create secret generic "$PULL_SECRET" --from-file=.dockerconfigjson="$SECRETS_CONFIG" --type=kubernetes.io/dockerconfigjson -n "$PROJECT_NAME"
   kubectl patch serviceaccount default -p "{\"imagePullSecrets\": [{\"name\": \"$PULL_SECRET\"}]}" -n "$PROJECT_NAME"
 fi
 
@@ -148,8 +153,8 @@ if [ "$SETUP_ELASTICSEARCH" = true ] || [ "$SETUP_ALL" = true ]; then
     echo "Unable to get ES_PASSWORD"
   fi
 
-  pkill -f "kubectl port-forward svc/xjoin-elasticsearch-es-http"
-  kubectl port-forward svc/xjoin-elasticsearch-es-http 9200:9200 -n "$PROJECT_NAME" &
+  pkill -f "kubectl port-forward svc/xjoin-elasticsearch-es-default"
+  kubectl port-forward svc/xjoin-elasticsearch-es-default 9200:9200 -n "$PROJECT_NAME" &
   sleep 3
 
   curl -X POST -u "elastic:$ES_PASSWORD" -k "http://localhost:9200/_security/user/xjoin" \

@@ -2,6 +2,13 @@ package controllers
 
 import (
 	"context"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
+	"github.com/redhatinsights/xjoin-operator/controllers/database"
+	"github.com/redhatinsights/xjoin-operator/controllers/events"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strings"
+	"time"
+
 	"github.com/go-errors/errors"
 	"github.com/go-logr/logr"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
@@ -24,7 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"time"
 )
 
 const xjoindatasourcepipelineFinalizer = "finalizer.xjoin.datasourcepipeline.cloud.redhat.com"
@@ -57,13 +63,17 @@ func NewXJoinDataSourcePipelineReconciler(
 }
 
 func (r *XJoinDataSourcePipelineReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	logConstructor := func(r *reconcile.Request) logr.Logger {
+		return mgr.GetLogger()
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("xjoin-datasourcepipeline-controller").
 		For(&xjoin.XJoinDataSourcePipeline{}).
-		WithLogger(mgr.GetLogger()).
+		WithLogConstructor(logConstructor).
 		WithOptions(controller.Options{
-			Log:         mgr.GetLogger(),
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
+			LogConstructor: logConstructor,
+			RateLimiter:    workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, 1*time.Minute),
 		}).
 		Complete(r)
 }
@@ -93,14 +103,16 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 	p := parameters.BuildDataSourceParameters()
 
 	configManager, err := config.NewManager(config.ManagerOptions{
-		Client:         r.Client,
-		Parameters:     p,
-		ConfigMapNames: []string{"xjoin-generic"},
-		SecretNames:    nil,
-		Namespace:      instance.Namespace,
-		Spec:           instance.Spec,
-		Context:        ctx,
-		Log:            reqLogger,
+		Client:            r.Client,
+		Parameters:        p,
+		ConfigMapNames:    []string{"xjoin-generic"},
+		SecretNames:       nil,
+		ResourceNamespace: instance.Namespace,
+		OperatorNamespace: r.Namespace,
+		Spec:              instance.Spec,
+		Context:           ctx,
+		Log:               reqLogger,
+		Ephemeral:         instance.Spec.Ephemeral,
 	})
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, 0)
@@ -137,6 +149,7 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		KafkaCluster:     p.KafkaCluster.String(),
 		Client:           i.Client,
 		Test:             r.Test,
+		Log:              reqLogger,
 	}
 
 	registry := schemaregistry.NewSchemaRegistryConfluentClient(
@@ -148,10 +161,13 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 
 	registry.Init()
 
-	componentManager := components.NewComponentManager(common.DataSourcePipelineGVK.Kind+"."+instance.Spec.Name, p.Version.String())
+	e := events.NewEvents(r.Recorder, instance, reqLogger)
+	componentManager := components.NewComponentManager(
+		common.DataSourcePipelineGVK.Kind, instance.Spec.Name, p.Version.String(), e, reqLogger)
 	componentManager.AddComponent(components.NewAvroSchema(components.AvroSchemaParameters{
-		Schema:   p.AvroSchema.String(),
-		Registry: registry,
+		Schema:      p.AvroSchema.String(),
+		Registry:    registry,
+		KafkaClient: kafkaClient,
 	}))
 
 	kafkaTopics := kafka.StrimziTopics{
@@ -184,20 +200,45 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 			CreationTimeout:    p.KafkaTopicCreationTimeout.Int(),
 		},
 		KafkaTopics: kafkaTopics,
+		KafkaClient: kafkaClient,
 	})
 
 	componentManager.AddComponent(&components.DebeziumConnector{
 		TemplateParameters: config.ParametersToMap(*p),
 		KafkaClient:        kafkaClient,
 		Template:           p.DebeziumConnectorTemplate.String(),
+		Namespace:          instance.Namespace,
+	})
+
+	db := database.NewDatabase(database.DBParams{
+		User:        p.DatabaseUsername.String(),
+		Password:    p.DatabasePassword.String(),
+		Host:        p.DatabaseHostname.String(),
+		Name:        p.DatabaseName.String(),
+		Port:        p.DatabasePort.String(),
+		SSLMode:     p.DatabaseSSLMode.String(),
+		SSLRootCert: p.DatabaseSSLRootCert.String(),
+		IsTest:      r.Test,
+	})
+	err = db.Connect()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+	defer db.Close()
+
+	componentManager.AddComponent(&components.ReplicationSlot{
+		Namespace: instance.Namespace,
+		Database:  db,
 	})
 
 	if instance.GetDeletionTimestamp() != nil {
 		reqLogger.Info("Starting finalizer")
-		err = componentManager.DeleteAll()
-		if err != nil {
-			reqLogger.Error(err, "error deleting components during finalizer")
-			return
+		errs := componentManager.DeleteAll()
+		if len(errs) > 0 {
+			for _, componentErr := range errs {
+				reqLogger.Error(componentErr, "error deleting component during finalizer")
+			}
+			return reconcile.Result{}, errors.New("error deleting components during finalizer")
 		}
 
 		controllerutil.RemoveFinalizer(instance, xjoindatasourcepipelineFinalizer)
@@ -217,5 +258,32 @@ func (r *XJoinDataSourcePipelineReconciler) Reconcile(ctx context.Context, reque
 		return reconcile.Result{}, errors.Wrap(err, 0)
 	}
 
-	return i.UpdateStatusAndRequeue()
+	err = componentManager.Reconcile()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	problems, err := componentManager.CheckForDeviations()
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, 0)
+	}
+
+	if len(problems) > 0 {
+		i.GetInstance().SetCondition(metav1.Condition{
+			Type:   common.ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: common.DeviationReason,
+		})
+		i.GetInstance().Status.ValidationResponse.Result = validation.ValidationInvalid
+		i.GetInstance().Status.ValidationResponse.Reason = "Deviation found"
+		var messages []string
+		for _, problem := range problems {
+			messages = append(messages, problem.Error())
+		}
+		i.GetInstance().Status.ValidationResponse.Message = strings.Join(messages, ", ")
+		reqLogger.Warn("Deviation found", "problems", problems)
+	}
+
+	i.UpdateCondition()
+	return i.UpdateStatusAndRequeue(time.Second * 30)
 }

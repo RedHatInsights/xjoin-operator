@@ -3,6 +3,7 @@ kind: XJoinDataSource
 metadata:
   name: hosts
 spec:
+  ephemeral: true
   pause: false
   databaseHostname:
     valueFrom:
@@ -367,6 +368,30 @@ spec:
           "type": {
             "type": "string",
             "xjoin.type": "string"
+          }
+        },
+        {
+          "name": "groups",
+          "type": {
+            "type": "string",
+            "xjoin.type": "string",
+            "xjoin.index": "false"
+          }
+        },
+        {
+          "name": "__dbz_ts_ms",
+          "type": {
+            "type": "long",
+            "xjoin.type": "string",
+            "xjoin.index": "false"
+          }
+        },
+        {
+          "name": "__dbz_source_ts_ms",
+          "type": {
+            "type": "long",
+            "xjoin.type": "string",
+            "xjoin.index": "false"
           }
         }
       ]

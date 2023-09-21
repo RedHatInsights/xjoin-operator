@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
 	"reflect"
 	"strings"
 
@@ -41,6 +42,7 @@ type IndexAvroSchemaParser struct {
 	SchemaNamespace string
 	Log             log.Log
 	SchemaRegistry  *schemaregistry.ConfluentClient
+	Active          bool
 }
 
 // Parse AvroSchema string into various structures represented by IndexAvroSchema to be used in component creation
@@ -197,16 +199,22 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 
 	for _, field := range schemaObj.Fields {
 		if len(field.Type) == 0 || len(strings.Split(field.Type[0].Type, ".")) < 2 {
-			return references, errors.Wrap(errors.New("unable to parse dataSourceName from avro schema fields"), 0)
+			if field.Type[0].XJoinType == "reference" {
+				return references, errors.Wrap(errors.New("unable to parse dataSourceName from avro schema fields"), 0)
+			} else {
+				continue
+			}
 		}
-		dataSourceName := strings.Split(field.Type[0].Type, ".")[1]
+		dataSourceName := strings.Split(field.Type[0].Type, ".")[0]
 
 		//get data source obj from field.Ref
+		d.Log.Debug("Getting dataSource during parseAvroSchemaReferences",
+			"dataSourceName", dataSourceName, "namespace", d.Namespace)
 		dataSource := &unstructured.Unstructured{}
 		dataSource.SetGroupVersionKind(common.DataSourceGVK)
 		err = d.Client.Get(d.Context, client.ObjectKey{Name: dataSourceName, Namespace: d.Namespace}, dataSource)
 		if err != nil {
-			return references, errors.Wrap(err, 0) //TODO: simplify this error message
+			return references, errors.Wrap(err, 0)
 		}
 
 		status := dataSource.Object["status"]
@@ -215,23 +223,26 @@ func (d *IndexAvroSchemaParser) parseAvroSchemaReferences() (references []srclie
 			return references, errors.Wrap(err, 0)
 		}
 		statusMap := status.(map[string]interface{})
-		//version := statusMap["activeVersion"] //TODO temporary
-		version := statusMap["refreshingVersion"]
-		if version == nil {
-			err = errors.New("activeVersion missing from datasource.status")
-			return references, errors.Wrap(err, 0)
-		}
-		versionString := version.(string)
 
-		if versionString == "" {
-			d.Log.Info("Data source is not ready yet. It has no active version.",
-				"datasource", dataSourceName)
-			return
+		//determine which datasource version to use
+		activeVersion := statusMap["activeVersion"].(string)
+		refreshingVersion := statusMap["refreshingVersion"].(string)
+		activeVersionState := statusMap["activeVersionState"].(map[string]interface{})
+		activeVersionIsValid := activeVersionState["result"] == string(validation.ValidationValid)
+		var chosenVersion string
+
+		if activeVersion != "" && (activeVersionIsValid || d.Active) {
+			chosenVersion = statusMap["activeVersion"].(string)
+		} else if refreshingVersion != "" {
+			chosenVersion = refreshingVersion
+		} else {
+			return nil, errors.Wrap(errors.New(
+				"Datasource ("+dataSourceName+") is not ready yet. It has no active or refreshing version."), 0)
 		}
 
 		ref := srclient.Reference{
 			Name:    field.Type[0].Type,
-			Subject: "xjoindatasourcepipeline." + dataSourceName + "." + versionString + "-value",
+			Subject: "xjoindatasourcepipeline." + dataSourceName + "." + chosenVersion + "-value",
 			Version: 1,
 		}
 
@@ -280,7 +291,12 @@ func parseAvroFields(avroFields []Field, parent list.List) (map[string]interface
 			avroFieldType = avroField.Type[0]
 		}
 
-		esProperty["type"] = avroTypeToElasticsearchType(avroFieldType)
+		propertyType := avroTypeToElasticsearchType(avroFieldType)
+
+		if propertyType != "object" {
+			esProperty["type"] = propertyType
+		}
+
 		esProperty, err := parseXJoinFlags(avroFieldType, esProperty)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, 0)
@@ -298,7 +314,7 @@ func parseAvroFields(avroFields []Field, parent list.List) (map[string]interface
 		}
 
 		//recurse through nested object types
-		if esProperty["type"] == "object" {
+		if propertyType == "object" {
 			//nested json objects are "type: string", "xjoin.type: json" with xjoin.fields
 			//top level records are "type: record" with standard avro fields
 			var nestedFields []Field
@@ -318,6 +334,8 @@ func parseAvroFields(avroFields []Field, parent list.List) (map[string]interface
 				}
 				esProperty["properties"] = nestedProperties
 				jsonFields = append(jsonFields, nestedJsonFields...)
+			} else {
+				esProperty["type"] = propertyType
 			}
 		}
 

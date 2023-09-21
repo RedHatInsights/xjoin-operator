@@ -1,17 +1,23 @@
-package controllers
+package controllers_test
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
+	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
+	"github.com/redhatinsights/xjoin-operator/controllers/components"
+	"os"
+
 	"github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
 	"github.com/jarcoal/httpmock"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/redhatinsights/xjoin-operator/api/v1alpha1"
 	"github.com/redhatinsights/xjoin-operator/controllers/common"
 	v1 "k8s.io/api/apps/v1"
-	v12 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -38,10 +44,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 	Context("Reconcile Creation", func() {
 		It("Should add a finalizer to the indexPipeline", func() {
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           "test-index-pipeline",
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               "test-index-pipeline",
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			createdIndexPipeline := reconciler.ReconcileNew()
 			Expect(createdIndexPipeline.Finalizers).To(HaveLen(1))
@@ -50,28 +57,30 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 		It("Should create an Elasticsearch Index", func() {
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           "test-index-pipeline",
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               "test-index-pipeline",
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			reconciler.ReconcileNew()
 
 			info := httpmock.GetCallCountInfo()
-			count := info["PUT http://localhost:9200/xjoinindexpipeline.test-index-pipeline.1234"]
+			count := info["PUT http://localhost:9200/xjoinindexpipeline."+reconciler.GetName()]
 			Expect(count).To(Equal(1))
 		})
 
 		It("Should create an Elasticsearch Connector", func() {
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           "test-index-pipeline",
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               "test-index-pipeline",
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			reconciler.ReconcileNew()
 
-			connectorName := "xjoinindexpipeline.test-index-pipeline.1234"
+			connectorName := "xjoinindexpipeline." + reconciler.GetName()
 			connectorLookupKey := types.NamespacedName{Name: connectorName, Namespace: namespace}
 			elasticsearchConnector := &v1beta2.KafkaConnector{}
 
@@ -99,14 +108,15 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 		It("Should create a Kafka Topic", func() {
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           "test-index-pipeline",
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               "test-index-pipeline",
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			reconciler.ReconcileNew()
 
-			topicName := "xjoinindexpipeline.test-index-pipeline.1234"
+			topicName := "xjoinindexpipeline." + reconciler.GetName()
 			topicLookupKey := types.NamespacedName{Name: topicName, Namespace: namespace}
 			topic := &v1beta2.KafkaTopic{}
 
@@ -133,10 +143,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 		It("Should create an Avro Schema", func() {
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           "test-index-pipeline",
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               "test-index-pipeline",
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			reconciler.ReconcileNew()
 
@@ -149,7 +160,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			count = info["POST http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline.test-index-pipeline.1234-value/versions"]
 			Expect(count).To(Equal(1))
 
-			count = info["GET http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline.test-index-pipeline.1234-value/versions/latest"]
+			count = info["GET http://apicurio:1080/apis/ccompat/v6/schemas/ids/1"]
 			Expect(count).To(Equal(1))
 		})
 
@@ -157,7 +168,8 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			reconciler := XJoinIndexPipelineTestReconciler{
 				Namespace:            namespace,
 				Name:                 "test-index-pipeline",
-				ConfigFileName:       "xjoinindex",
+				Version:              "1234",
+				AvroSchemaFileName:   "xjoinindex",
 				CustomSubgraphImages: nil,
 				K8sClient:            k8sClient,
 			}
@@ -167,7 +179,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//validates the correct API calls were made
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline.1234/versions"]
-			Expect(count).To(Equal(1))
+			Expect(count).To(Equal(2))
 
 			count = info["POST http://apicurio:1080/apis/registry/v2/groups/default/artifacts"]
 			Expect(count).To(Equal(1))
@@ -178,10 +190,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 		It("Should create an xjoin-core deployment", func() {
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           "test-index-pipeline",
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               "test-index-pipeline",
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			reconciler.ReconcileNew()
 
@@ -201,19 +214,15 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Name).To(Equal(deploymentName))
 			Expect(deployment.Namespace).To(Equal(namespace))
 			Expect(deployment.Spec.Replicas).To(Equal(&replicas))
-			Expect(deployment.Spec.Selector.MatchLabels).To(Equal(map[string]string{
-				"app":         "xjoin-core-xjoinindexpipeline-test-index-pipeline-1234",
-				"xjoin.index": "xjoin-core-xjoinindexpipeline-test-index-pipeline",
-			}))
-			Expect(deployment.GetLabels()).To(Equal(map[string]string{
-				"app":         "xjoin-core-xjoinindexpipeline-test-index-pipeline-1234",
-				"xjoin.index": "xjoin-core-xjoinindexpipeline-test-index-pipeline",
-			}))
+			Expect(deployment.Spec.Selector.MatchLabels).To(HaveKeyWithValue(labels.IndexName, "test-index-pipeline"))
+			Expect(deployment.Spec.Selector.MatchLabels).To(HaveKeyWithValue(labels.ComponentName, components.Core))
+			Expect(deployment.GetLabels()).To(HaveKeyWithValue(labels.IndexName, "test-index-pipeline"))
+			Expect(deployment.GetLabels()).To(HaveKeyWithValue(labels.ComponentName, components.Core))
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal("xjoin-core-xjoinindexpipeline-test-index-pipeline-1234"))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/ckyrouac/xjoin-core:latest"))
+			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/cloudservices/xjoin-core:latest"))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(5))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]v12.EnvVar{
+			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]corev1.EnvVar{
 				{
 					Name:      "SOURCE_TOPICS",
 					Value:     "", //TODO
@@ -236,7 +245,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				},
 				{
 					Name:      "SINK_SCHEMA",
-					Value:     `{"type":"record","name":"Value","namespace":"test-index-pipeline"}`,
+					Value:     `{"type":"record","name":"Value","namespace":"test-index-pipeline.1234"}`,
 					ValueFrom: nil,
 				},
 			}))
@@ -258,14 +267,15 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 		It("Should create an xjoin-api-subgraph deployment", func() {
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           "test-index-pipeline",
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               "test-index-pipeline",
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			reconciler.ReconcileNew()
 
-			deploymentName := "xjoinindexpipeline-test-index-pipeline-1234"
+			deploymentName := "test-index-pipeline-1234"
 			deploymentLookupKey := types.NamespacedName{Name: deploymentName, Namespace: namespace}
 			deployment := &v1.Deployment{}
 
@@ -282,22 +292,26 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Namespace).To(Equal(namespace))
 			Expect(deployment.Spec.Replicas).To(Equal(&replicas))
 			Expect(deployment.GetLabels()).To(Equal(map[string]string{
-				"app":         "xjoinindexpipeline-test-index-pipeline-1234",
-				"xjoin.index": "xjoinindexpipeline-test-index-pipeline",
+				labels.IndexName:       "test-index-pipeline",
+				labels.ComponentName:   components.APISubgraph,
+				labels.PipelineVersion: "1234",
+				labels.SubgraphName:    "test-index-pipeline",
 			}))
 			Expect(deployment.Spec.Selector.MatchLabels).To(Equal(map[string]string{
-				"app":         "xjoinindexpipeline-test-index-pipeline-1234",
-				"xjoin.index": "xjoinindexpipeline-test-index-pipeline",
+				labels.IndexName:       "test-index-pipeline",
+				labels.ComponentName:   components.APISubgraph,
+				labels.PipelineVersion: "1234",
+				labels.SubgraphName:    "test-index-pipeline",
 			}))
 
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal("xjoinindexpipeline-test-index-pipeline-1234"))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/ckyrouac/xjoin-api-subgraph:latest"))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(9))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]v12.EnvVar{
+			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal("test-index-pipeline-1234"))
+			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/cloudservices/xjoin-api-subgraph:latest"))
+			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(10))
+			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]corev1.EnvVar{
 				{
 					Name:      "AVRO_SCHEMA",
-					Value:     `{"type":"record","name":"Value","namespace":"test-index-pipeline"}`,
+					Value:     `{"type":"record","name":"Value","namespace":"test-index-pipeline.1234"}`,
 					ValueFrom: nil,
 				},
 				{
@@ -307,7 +321,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				},
 				{
 					Name:      "SCHEMA_REGISTRY_HOSTNAME",
-					Value:     "apicurio.test.svc",
+					Value:     "apicurio",
 					ValueFrom: nil,
 				},
 				{
@@ -340,10 +354,15 @@ var _ = Describe("XJoinIndexPipeline", func() {
 					Value:     "xjoinindexpipeline.test-index-pipeline.1234",
 					ValueFrom: nil,
 				},
+				{
+					Name:      "LOG_LEVEL",
+					Value:     "WARN",
+					ValueFrom: nil,
+				},
 			}))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Command).To(BeNil())
 			Expect(deployment.Spec.Template.Spec.Containers[0].Args).To(BeNil())
-			Expect(deployment.Spec.Template.Spec.Containers[0].Ports).To(Equal([]v12.ContainerPort{{
+			Expect(deployment.Spec.Template.Spec.Containers[0].Ports).To(Equal([]corev1.ContainerPort{{
 				Name:          "web",
 				HostPort:      int32(0),
 				ContainerPort: int32(8000),
@@ -365,13 +384,14 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 		It("Should create custom subgraph graphql schema", func() {
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           "test-index-pipeline",
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               "test-index-pipeline",
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{{
 					Name:  "test-custom-image",
-					Image: "quay.io/ckyrouac/host-inventory-subgraph:latest",
+					Image: "quay.io/cloudservices/host-inventory-subgraph:latest",
 				}},
 			}
 			reconciler.ReconcileNew()
@@ -380,7 +400,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			//validates the correct API calls were made
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-test-custom-image.1234/versions"]
-			Expect(count).To(Equal(1))
+			Expect(count).To(Equal(2))
 
 			count = info["POST http://apicurio:1080/apis/registry/v2/groups/default/artifacts"]
 			Expect(count).To(Equal(2)) //called once for generic gql schema, then a second time for custom subgraph schema
@@ -391,18 +411,19 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 		It("Should create custom subgraph deployments", func() {
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           "test-index-pipeline",
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               "test-index-pipeline",
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{{
 					Name:  "test-custom-image",
-					Image: "quay.io/ckyrouac/host-inventory-subgraph:latest",
+					Image: "quay.io/cloudservices/host-inventory-subgraph:latest",
 				}},
 			}
 			reconciler.ReconcileNew()
 
-			deploymentName := "xjoinindexpipeline-test-index-pipeline-test-custom-image-1234"
+			deploymentName := "test-index-pipeline-test-custom-image-1234"
 			deploymentLookupKey := types.NamespacedName{Name: deploymentName, Namespace: namespace}
 			deployment := &v1.Deployment{}
 
@@ -419,22 +440,26 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			Expect(deployment.Namespace).To(Equal(namespace))
 			Expect(deployment.Spec.Replicas).To(Equal(&replicas))
 			Expect(deployment.GetLabels()).To(Equal(map[string]string{
-				"app":         "xjoinindexpipeline-test-index-pipeline-test-custom-image-1234",
-				"xjoin.index": "xjoinindexpipeline-test-index-pipeline-test-custom-image",
+				labels.IndexName:       "test-index-pipeline",
+				labels.ComponentName:   components.APISubgraph,
+				labels.PipelineVersion: "1234",
+				labels.SubgraphName:    "test-index-pipeline-test-custom-image",
 			}))
 			Expect(deployment.Spec.Selector.MatchLabels).To(Equal(map[string]string{
-				"app":         "xjoinindexpipeline-test-index-pipeline-test-custom-image-1234",
-				"xjoin.index": "xjoinindexpipeline-test-index-pipeline-test-custom-image",
+				labels.IndexName:       "test-index-pipeline",
+				labels.ComponentName:   components.APISubgraph,
+				labels.PipelineVersion: "1234",
+				labels.SubgraphName:    "test-index-pipeline-test-custom-image",
 			}))
 
 			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Name).To(Equal(deploymentName))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/ckyrouac/host-inventory-subgraph:latest"))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(9))
-			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]v12.EnvVar{
+			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("quay.io/cloudservices/host-inventory-subgraph:latest"))
+			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(HaveLen(10))
+			Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(ContainElements([]corev1.EnvVar{
 				{
 					Name:      "AVRO_SCHEMA",
-					Value:     `{"type":"record","name":"Value","namespace":"test-index-pipeline"}`,
+					Value:     `{"type":"record","name":"Value","namespace":"test-index-pipeline.1234"}`,
 					ValueFrom: nil,
 				},
 				{
@@ -444,7 +469,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 				},
 				{
 					Name:      "SCHEMA_REGISTRY_HOSTNAME",
-					Value:     "apicurio.test.svc",
+					Value:     "apicurio",
 					ValueFrom: nil,
 				},
 				{
@@ -477,10 +502,15 @@ var _ = Describe("XJoinIndexPipeline", func() {
 					Value:     "xjoinindexpipeline.test-index-pipeline-test-custom-image.1234",
 					ValueFrom: nil,
 				},
+				{
+					Name:      "LOG_LEVEL",
+					Value:     "WARN",
+					ValueFrom: nil,
+				},
 			}))
 			Expect(deployment.Spec.Template.Spec.Containers[0].Command).To(BeNil())
 			Expect(deployment.Spec.Template.Spec.Containers[0].Args).To(BeNil())
-			Expect(deployment.Spec.Template.Spec.Containers[0].Ports).To(Equal([]v12.ContainerPort{{
+			Expect(deployment.Spec.Template.Spec.Containers[0].Ports).To(Equal([]corev1.ContainerPort{{
 				Name:          "web",
 				HostPort:      int32(0),
 				ContainerPort: int32(8000),
@@ -511,10 +541,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			createdDataSource := datasourceReconciler.ReconcileValid()
 
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           "test-index-pipeline",
-				ConfigFileName: "xjoinindex-with-json-field",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               "test-index-pipeline",
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex-with-json-field",
+				K8sClient:          k8sClient,
 				DataSources: []DataSource{{
 					Name:                     dataSourceName,
 					Version:                  createdDataSource.Status.ActiveVersion,
@@ -533,16 +564,68 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			count = info["PUT http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234"]
 			Expect(count).To(Equal(1))
 		})
+
+		It("Should create an XJoinIndexValidation resource", func() {
+			configFileName := "xjoinindex"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:          namespace,
+				Name:               "test-index-pipeline",
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
+				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{{
+					Name:  "test-custom-image",
+					Image: "quay.io/cloudservices/host-inventory-subgraph:latest",
+				}},
+			}
+			reconciler.ReconcileNew()
+
+			validatorName := "xjoinindexpipeline.test-index-pipeline.1234"
+			validatorLookupKey := types.NamespacedName{Name: validatorName, Namespace: namespace}
+			validator := &v1alpha1.XJoinIndexValidator{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), validatorLookupKey, validator)
+				return err == nil
+			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+			Expect(validator.Name).To(Equal(validatorName))
+			Expect(validator.Namespace).To(Equal(namespace))
+			Expect(validator.GetLabels()).To(Equal(map[string]string{
+				labels.ComponentName:   components.IndexValidator,
+				labels.IndexName:       "test-index-pipeline",
+				labels.PipelineVersion: "1234",
+			}))
+			Expect(validator.OwnerReferences).To(HaveLen(1))
+
+			truePtr := true
+			expectedOwnerRef := metav1.OwnerReference{
+				APIVersion:         "xjoin.cloud.redhat.com/v1alpha1",
+				Kind:               "XJoinIndexPipeline",
+				Name:               "test-index-pipeline.1234",
+				UID:                validator.OwnerReferences[0].UID,
+				Controller:         &truePtr,
+				BlockOwnerDeletion: &truePtr,
+			}
+			Expect(validator.OwnerReferences[0]).To(Equal(expectedOwnerRef))
+			Expect(validator.Spec.Version).To(Equal("1234"))
+			Expect(validator.Spec.IndexName).To(Equal("xjoinindexpipeline.test-index-pipeline.1234"))
+
+			indexAvroSchema, err := os.ReadFile("./test/data/avro/" + configFileName + ".json")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(validator.Spec.AvroSchema).To(Equal(string(indexAvroSchema)))
+		})
 	})
 
 	Context("Reconcile Deletion", func() {
 		It("Should delete the Elasticsearch index", func() {
 			name := "test-index-pipeline"
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           name,
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			createdIndexPipeline := reconciler.ReconcileNew()
 
@@ -561,10 +644,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 		It("Should delete the Elasticsearch connector", func() {
 			name := "test-index-pipeline"
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           name,
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			createdIndexPipeline := reconciler.ReconcileNew()
 
@@ -579,7 +663,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			info := httpmock.GetCallCountInfo()
 			count := info["GET http://connect-connect-api."+namespace+".svc:8083/connectors/xjoinindexpipeline."+name+".1234"]
-			Expect(count).To(Equal(6))
+			Expect(count).To(Equal(8))
 
 			connectors = &v1beta2.KafkaConnectorList{}
 			err = k8sClient.List(context.Background(), connectors, client.InNamespace(namespace))
@@ -590,10 +674,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 		It("Should delete the Kafka topic", func() {
 			name := "test-index-pipeline"
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           name,
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			createdIndexPipeline := reconciler.ReconcileNew()
 
@@ -615,10 +700,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 		It("Should delete the Avro schema", func() {
 			name := "test-index-pipeline"
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           name,
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			createdIndexPipeline := reconciler.ReconcileNew()
 
@@ -634,10 +720,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 		It("Should delete the GraphQL schema", func() {
 			name := "test-index-pipeline"
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           name,
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			createdIndexPipeline := reconciler.ReconcileNew()
 
@@ -646,17 +733,18 @@ var _ = Describe("XJoinIndexPipeline", func() {
 			reconciler.ReconcileDelete()
 
 			info := httpmock.GetCallCountInfo()
-			count := info["DELETE http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline-"+name+"-1234"]
+			count := info["DELETE http://apicurio:1080/apis/ccompat/v6/subjects/xjoinindexpipeline."+name+".1234"]
 			Expect(count).To(Equal(1))
 		})
 
 		It("Should delete the xjoin-core deployment", func() {
 			name := "test-index-pipeline"
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           name,
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			createdIndexPipeline := reconciler.ReconcileNew()
 
@@ -682,16 +770,17 @@ var _ = Describe("XJoinIndexPipeline", func() {
 		It("Should delete the xjoin-api-subgraph deployment", func() {
 			name := "test-index-pipeline"
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           name,
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 			}
 			createdIndexPipeline := reconciler.ReconcileNew()
 
 			deployment := &unstructured.Unstructured{}
 			deployment.SetGroupVersionKind(common.DeploymentGVK)
-			deploymentName := "xjoinindexpipeline-" + name + "-1234"
+			deploymentName := name + "-1234"
 			deploymentLookup := types.NamespacedName{Name: deploymentName, Namespace: namespace}
 			err := k8sClient.Get(context.Background(), deploymentLookup, deployment)
 			checkError(err)
@@ -711,10 +800,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 		It("Should delete the custom image's xjoin-api-subgraph deployment", func() {
 			name := "test-index-pipeline"
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           name,
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{
 					{
 						Name:  "test-custom-image",
@@ -726,7 +816,7 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			deployment := &unstructured.Unstructured{}
 			deployment.SetGroupVersionKind(common.DeploymentGVK)
-			deploymentName := "xjoinindexpipeline-test-index-pipeline-test-custom-image-1234"
+			deploymentName := "test-index-pipeline-test-custom-image-1234"
 			deploymentLookup := types.NamespacedName{Name: deploymentName, Namespace: namespace}
 			err := k8sClient.Get(context.Background(), deploymentLookup, deployment)
 			checkError(err)
@@ -746,10 +836,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 		It("Should delete the custom image's graphql schema", func() {
 			name := "test-index-pipeline"
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           name,
-				ConfigFileName: "xjoinindex",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
 				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{
 					{
 						Name:  "test-custom-image",
@@ -783,10 +874,11 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			name := "test-index-pipeline"
 			reconciler := XJoinIndexPipelineTestReconciler{
-				Namespace:      namespace,
-				Name:           name,
-				ConfigFileName: "xjoinindex-with-json-field",
-				K8sClient:      k8sClient,
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex-with-json-field",
+				K8sClient:          k8sClient,
 				DataSources: []DataSource{{
 					Name:                     dataSourceName,
 					Version:                  createdDataSource.Status.ActiveVersion,
@@ -805,6 +897,776 @@ var _ = Describe("XJoinIndexPipeline", func() {
 
 			count = info["DELETE http://localhost:9200/_ingest/pipeline/xjoinindexpipeline.test-index-pipeline.1234"]
 			Expect(count).To(Equal(1))
+		})
+
+		It("Should delete the XJoinIndexValidation resource", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
+			}
+			createdIndexPipeline := reconciler.ReconcileNew()
+
+			validators := &v1alpha1.XJoinIndexValidatorList{}
+			err := k8sClient.List(context.Background(), validators, client.InNamespace(namespace))
+			checkError(err)
+			Expect(validators.Items).To(HaveLen(1))
+
+			err = k8sClient.Delete(context.Background(), &createdIndexPipeline)
+			checkError(err)
+			reconciler.ReconcileDelete()
+
+			validators = &v1alpha1.XJoinIndexValidatorList{}
+			err = k8sClient.List(context.Background(), validators, client.InNamespace(namespace))
+			checkError(err)
+			Expect(validators.Items).To(HaveLen(0))
+		})
+	})
+
+	Context("Validation", func() {
+		It("Sets ValidationResult to invalid when at least one DataSourcePipeline is invalid", func() {
+			//create a valid datasource
+			dataSourceName := "testdatasource"
+			datasourceReconciler := DatasourceTestReconciler{
+				Namespace: namespace,
+				Name:      dataSourceName,
+				K8sClient: k8sClient,
+			}
+			datasourceReconciler.ReconcileNew()
+			createdDataSource := datasourceReconciler.ReconcileValid()
+
+			//create the indexpipeline that references the valid datasource
+			indexPipelineReconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:                namespace,
+				Name:                     "test-index-pipeline",
+				Version:                  "1234",
+				AvroSchemaFileName:       "xjoinindex-with-referenced-field",
+				ApiCurioResponseFilename: "index",
+				K8sClient:                k8sClient,
+				DataSources: []DataSource{{
+					Name:                     dataSourceName,
+					Version:                  createdDataSource.Status.ActiveVersion,
+					ApiCurioResponseFilename: "datasource-latest-version",
+				}},
+			}
+			indexPipelineReconciler.ReconcileNew()
+
+			//assert the indexpipeline's ValidationResponse status is valid
+			indexPipelineLookup := types.NamespacedName{Name: indexPipelineReconciler.GetName(), Namespace: namespace}
+			createdIndexPipeline := &v1alpha1.XJoinIndexPipeline{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), indexPipelineLookup, createdIndexPipeline)
+				return err == nil
+			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+			Expect(createdIndexPipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationValid))
+
+			//set the DatasourcePipeline to invalid
+			datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      dataSourceName,
+				Version:   createdDataSource.Status.ActiveVersion,
+				K8sClient: k8sClient,
+			}
+			datasourcePipelineReconciler.ReconcileInvalid()
+
+			//assert the indexpipeline becomes invalid
+			updatedIndexPipeline := indexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "DISABLED",
+			})
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationInvalid))
+		})
+
+		It("Sets ValidationResult to valid when all DataSourcePipelines are valid", func() {
+			//create a valid datasource
+			dataSourceName := "testdatasource"
+			datasourceReconciler := DatasourceTestReconciler{
+				Namespace: namespace,
+				Name:      dataSourceName,
+				K8sClient: k8sClient,
+			}
+			datasourceReconciler.ReconcileNew()
+			createdDataSource := datasourceReconciler.ReconcileValid()
+
+			//create the indexpipeline that references the valid datasource
+			indexPipelineReconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:                namespace,
+				Name:                     "test-index-pipeline",
+				Version:                  "1234",
+				AvroSchemaFileName:       "xjoinindex-with-referenced-field",
+				K8sClient:                k8sClient,
+				ApiCurioResponseFilename: "index",
+				DataSources: []DataSource{{
+					Name:                     dataSourceName,
+					Version:                  createdDataSource.Status.ActiveVersion,
+					ApiCurioResponseFilename: "datasource-latest-version",
+				}},
+			}
+			indexPipelineReconciler.ReconcileNew()
+
+			//assert the indexpipeline's ValidationResponse status is valid
+			indexPipelineLookup := types.NamespacedName{Name: indexPipelineReconciler.GetName(), Namespace: namespace}
+			createdIndexPipeline := &v1alpha1.XJoinIndexPipeline{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), indexPipelineLookup, createdIndexPipeline)
+				return err == nil
+			}, K8sGetTimeout, K8sGetInterval).Should(BeTrue())
+
+			Expect(createdIndexPipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationValid))
+		})
+
+		It("Initially disables the GraphQL schema", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
+			}
+			reconciler.ReconcileNew()
+
+			//assert the REST API call to disable the schema was made
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline.1234/meta"]
+			Expect(count).To(Equal(3))
+			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline.1234/state <DisabledState>"]
+			Expect(count).To(Equal(2))
+		})
+
+		It("Enables the GraphQL schema when the pipeline becomes valid", func() {
+			resources := CreateValidIndexPipeline(namespace, nil)
+
+			//assert the indexpipeline is now active
+			Expect(resources.IndexPipeline.Status.Active).To(Equal(true))
+
+			//assert the REST API call to enable the schema was made
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+resources.IndexPipeline.Name+"/meta"]
+			Expect(count).To(Equal(2))
+			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+resources.IndexPipeline.Name+"/state <EnabledState>"]
+			Expect(count).To(Equal(1))
+		})
+
+		It("Disables the GraphQL schema after refreshing", func() {
+			resources := CreateValidIndexPipeline(namespace, nil)
+			Expect(resources.IndexPipeline.Status.Active).To(Equal(true))
+
+			//set the datasource to invalid
+			datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      resources.DataSource.Name,
+				Version:   resources.DataSource.Status.ActiveVersion,
+				K8sClient: k8sClient,
+			}
+			datasourcePipelineReconciler.ReconcileInvalid()
+			resources.DatasourceReconciler.reconcile()
+
+			//reconcile the index to trigger a refresh
+			resources.IndexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+			updatedIndex := resources.IndexReconciler.ReconcileUpdated()
+			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(validation.ValidationInvalid))
+			Expect(updatedIndex.Status.RefreshingVersion).ToNot(Equal(""))
+
+			//set the refreshing version to valid
+			refreshingIndexPipeline := &v1alpha1.XJoinIndexPipeline{}
+			indexPipelineLookup := types.NamespacedName{
+				Namespace: namespace,
+				Name:      updatedIndex.Name + "." + updatedIndex.Status.RefreshingVersion,
+			}
+			err := k8sClient.Get(context.Background(), indexPipelineLookup, refreshingIndexPipeline)
+			checkError(err)
+
+			refreshingIndexPipeline.Status.ValidationResponse.Result = validation.ValidationValid
+			refreshingIndexPipeline.SetCondition(metav1.Condition{
+				Type:   common.ValidConditionType,
+				Status: metav1.ConditionTrue,
+				Reason: common.ValidationSucceededReason,
+			})
+
+			err = k8sClient.Status().Update(context.Background(), refreshingIndexPipeline)
+			checkError(err)
+
+			//reconcile the index to set the refreshing version to active
+			updatedIndex = resources.IndexReconciler.ReconcileUpdated()
+
+			//reconcile the indexPipeline to enable the graphql schemas
+			newIndexPipelineReconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:          namespace,
+				Name:               updatedIndex.Name,
+				Version:            updatedIndex.Status.ActiveVersion,
+				AvroSchemaFileName: "xjoinindex-with-referenced-field",
+				K8sClient:          k8sClient,
+				DataSources: []DataSource{{
+					Name:                     resources.DataSource.Name,
+					Version:                  resources.DataSource.Status.ActiveVersion,
+					ApiCurioResponseFilename: "datasource-latest-version",
+				}},
+			}
+			newIndexPipeline := newIndexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "DISABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+			Expect(newIndexPipeline.Status.Active).To(Equal(true))
+
+			//assert the REST API call to enable the schema was made
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+newIndexPipeline.Name+"/meta"]
+			Expect(count).To(Equal(2))
+			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+newIndexPipeline.Name+"/state <EnabledState>"]
+			Expect(count).To(Equal(1))
+		})
+
+		It("Initially disables the Custom GraphQL schemas", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
+				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{{
+					Name:  "test-custom-image",
+					Image: "quay.io/cloudservices/host-inventory-subgraph:latest",
+				}},
+			}
+			reconciler.ReconcileNew()
+
+			//assert the REST API call to disable the schema was made
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-test-custom-image.1234/meta"]
+			Expect(count).To(Equal(3))
+			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-test-custom-image.1234/state <DisabledState>"]
+			Expect(count).To(Equal(2))
+		})
+
+		It("Enables the custom GraphQL schemas when the pipeline becomes valid", func() {
+			customImageName := "test-custom-image"
+			customSubgraphImages := []v1alpha1.CustomSubgraphImage{{
+				Name:  customImageName,
+				Image: "quay.io/cloudservices/host-inventory-subgraph:latest",
+			}}
+			resources := CreateValidIndexPipeline(namespace, customSubgraphImages)
+
+			//assert the indexpipeline is now active
+			Expect(resources.IndexPipeline.Status.Active).To(Equal(true))
+
+			//assert the REST API call to enable the schema was made
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+
+				resources.Index.Name+"-"+customImageName+"."+resources.Index.Status.RefreshingVersion+"/meta"]
+			Expect(count).To(Equal(2))
+			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+
+				resources.Index.Name+"-"+customImageName+"."+resources.Index.Status.RefreshingVersion+"/state <EnabledState>"]
+			Expect(count).To(Equal(1))
+		})
+
+		It("Disables the Custom GraphQL schema after becoming invalid", func() {
+			customImageName := "test-custom-image"
+			customSubgraphImages := []v1alpha1.CustomSubgraphImage{{
+				Name:  customImageName,
+				Image: "quay.io/cloudservices/host-inventory-subgraph:latest",
+			}}
+			resources := CreateValidIndexPipeline(namespace, customSubgraphImages)
+			Expect(resources.IndexPipeline.Status.Active).To(Equal(true))
+
+			//set the datasource to invalid
+			datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      resources.DataSource.Name,
+				Version:   resources.DataSource.Status.ActiveVersion,
+				K8sClient: k8sClient,
+			}
+			datasourcePipelineReconciler.ReconcileInvalid()
+			resources.DatasourceReconciler.reconcile()
+
+			//reconcile the index to trigger a refresh
+			resources.IndexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+			updatedIndex := resources.IndexReconciler.ReconcileUpdated()
+			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(validation.ValidationInvalid))
+			Expect(updatedIndex.Status.RefreshingVersion).ToNot(Equal(""))
+
+			//set the refreshing version to valid
+			refreshingIndexPipeline := &v1alpha1.XJoinIndexPipeline{}
+			indexPipelineLookup := types.NamespacedName{
+				Namespace: namespace,
+				Name:      updatedIndex.Name + "." + updatedIndex.Status.RefreshingVersion,
+			}
+			err := k8sClient.Get(context.Background(), indexPipelineLookup, refreshingIndexPipeline)
+			checkError(err)
+
+			refreshingIndexPipeline.Status.ValidationResponse.Result = validation.ValidationValid
+			refreshingIndexPipeline.SetCondition(metav1.Condition{
+				Type:   common.ValidConditionType,
+				Status: metav1.ConditionTrue,
+				Reason: common.ValidationSucceededReason,
+			})
+
+			err = k8sClient.Status().Update(context.Background(), refreshingIndexPipeline)
+			checkError(err)
+
+			//reconcile the index to set the refreshing version to active
+			updatedIndex = resources.IndexReconciler.ReconcileUpdated()
+
+			//reconcile the indexPipeline to enable the graphql schemas
+			newIndexPipelineReconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:            namespace,
+				Name:                 updatedIndex.Name,
+				Version:              updatedIndex.Status.ActiveVersion,
+				AvroSchemaFileName:   "xjoinindex-with-referenced-field",
+				K8sClient:            k8sClient,
+				CustomSubgraphImages: customSubgraphImages,
+				DataSources: []DataSource{{
+					Name:                     resources.DataSource.Name,
+					Version:                  resources.DataSource.Status.ActiveVersion,
+					ApiCurioResponseFilename: "datasource-latest-version",
+				}},
+			}
+			newIndexPipeline := newIndexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "DISABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+			Expect(newIndexPipeline.Status.Active).To(Equal(true))
+
+			//assert the REST API call to enable the schema was made
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+
+				updatedIndex.Name+"-"+customImageName+"."+updatedIndex.Status.ActiveVersion+"/meta"]
+			Expect(count).To(Equal(2))
+			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+
+				updatedIndex.Name+"-"+customImageName+"."+updatedIndex.Status.ActiveVersion+"/state <EnabledState>"]
+			Expect(count).To(Equal(1))
+		})
+
+		It("Initially disables the GraphQL schema", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
+			}
+			reconciler.ReconcileNew()
+
+			//assert the REST API call to disable the schema was made
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline.1234/meta"]
+			Expect(count).To(Equal(3))
+			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline.1234/state <DisabledState>"]
+			Expect(count).To(Equal(2))
+		})
+
+		It("Enables the GraphQL schema when the pipeline becomes valid", func() {
+			resources := CreateValidIndexPipeline(namespace, nil)
+
+			//assert the indexpipeline is now active
+			Expect(resources.IndexPipeline.Status.Active).To(Equal(true))
+
+			//assert the REST API call to enable the schema was made
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+resources.IndexPipeline.Name+"/meta"]
+			Expect(count).To(Equal(2))
+			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+resources.IndexPipeline.Name+"/state <EnabledState>"]
+			Expect(count).To(Equal(1))
+		})
+
+		It("Disables the GraphQL schema after refreshing", func() {
+			resources := CreateValidIndexPipeline(namespace, nil)
+			Expect(resources.IndexPipeline.Status.Active).To(Equal(true))
+
+			//set the datasource to invalid
+			datasourcePipelineReconciler := DatasourcePipelineTestReconciler{
+				Namespace: namespace,
+				Name:      resources.DataSource.Name,
+				Version:   resources.DataSource.Status.ActiveVersion,
+				K8sClient: k8sClient,
+			}
+			datasourcePipelineReconciler.ReconcileInvalid()
+			resources.DatasourceReconciler.reconcile()
+
+			//reconcile the index to trigger a refresh
+			resources.IndexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+			updatedIndex := resources.IndexReconciler.ReconcileUpdated()
+			Expect(updatedIndex.Status.ActiveVersionState.Result).To(Equal(validation.ValidationInvalid))
+			Expect(updatedIndex.Status.RefreshingVersion).ToNot(Equal(""))
+
+			//set the refreshing version to valid
+			refreshingIndexPipeline := &v1alpha1.XJoinIndexPipeline{}
+			indexPipelineLookup := types.NamespacedName{
+				Namespace: namespace,
+				Name:      updatedIndex.Name + "." + updatedIndex.Status.RefreshingVersion,
+			}
+			err := k8sClient.Get(context.Background(), indexPipelineLookup, refreshingIndexPipeline)
+			checkError(err)
+
+			refreshingIndexPipeline.Status.ValidationResponse.Result = validation.ValidationValid
+			refreshingIndexPipeline.SetCondition(metav1.Condition{
+				Type:   common.ValidConditionType,
+				Status: metav1.ConditionTrue,
+				Reason: common.ValidationSucceededReason,
+			})
+
+			err = k8sClient.Status().Update(context.Background(), refreshingIndexPipeline)
+			checkError(err)
+
+			//reconcile the index to set the refreshing version to active
+			updatedIndex = resources.IndexReconciler.ReconcileUpdated()
+
+			//reconcile the indexPipeline to enable the graphql schemas
+			newIndexPipelineReconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:          namespace,
+				Name:               updatedIndex.Name,
+				Version:            updatedIndex.Status.ActiveVersion,
+				AvroSchemaFileName: "xjoinindex-with-referenced-field",
+				K8sClient:          k8sClient,
+				DataSources: []DataSource{{
+					Name:                     resources.DataSource.Name,
+					Version:                  resources.DataSource.Status.ActiveVersion,
+					ApiCurioResponseFilename: "datasource-latest-version",
+				}},
+			}
+			newIndexPipeline := newIndexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "DISABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+			Expect(newIndexPipeline.Status.Active).To(Equal(true))
+
+			//assert the REST API call to enable the schema was made
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+newIndexPipeline.Name+"/meta"]
+			Expect(count).To(Equal(2))
+			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline."+newIndexPipeline.Name+"/state <EnabledState>"]
+			Expect(count).To(Equal(1))
+		})
+
+		It("Initially disables the Custom GraphQL schemas", func() {
+			name := "test-index-pipeline"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:          namespace,
+				Name:               name,
+				Version:            "1234",
+				AvroSchemaFileName: "xjoinindex",
+				K8sClient:          k8sClient,
+				CustomSubgraphImages: []v1alpha1.CustomSubgraphImage{{
+					Name:  "test-custom-image",
+					Image: "quay.io/cloudservices/host-inventory-subgraph:latest",
+				}},
+			}
+			reconciler.ReconcileNew()
+
+			//assert the REST API call to disable the schema was made
+			info := httpmock.GetCallCountInfo()
+			count := info["GET http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-test-custom-image.1234/meta"]
+			Expect(count).To(Equal(3))
+			count = info["PUT http://apicurio:1080/apis/registry/v2/groups/default/artifacts/xjoinindexpipeline.test-index-pipeline-test-custom-image.1234/state <DisabledState>"]
+			Expect(count).To(Equal(2))
+		})
+	})
+
+	Context("Deviation", func() {
+		It("Leaves the status alone when there is no deviation", func() {
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:                  namespace,
+				Name:                       "test-index-pipeline",
+				Version:                    "1234",
+				AvroSchemaFileName:         "xjoinindex",
+				ElasticsearchIndexFileName: "get-index-response-empty",
+				K8sClient:                  k8sClient,
+				ApiCurioResponseFilename:   "index-empty",
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+			indexPipeline := reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+			Expect(indexPipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationValid))
+		})
+
+		It("Sets the status to invalid when the Kafka Topic has deviated", func() {
+			//create a valid IndexPipeline
+			name := "test-index-pipeline"
+			version := "1234"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:                  namespace,
+				Name:                       name,
+				Version:                    version,
+				AvroSchemaFileName:         "xjoinindex",
+				ElasticsearchIndexFileName: "get-index-response-empty",
+				K8sClient:                  k8sClient,
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+			reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+
+			//update the KafkaTopic to make it different from what the DatasourcePipeline defines
+			topicLookup := types.NamespacedName{
+				Namespace: namespace,
+				Name:      "xjoinindexpipeline." + name + "." + version,
+			}
+			existingTopic := &v1beta2.KafkaTopic{}
+			err := k8sClient.Get(context.Background(), topicLookup, existingTopic)
+			checkError(err)
+
+			replicas := int32(11)
+			existingTopic.Spec.Replicas = &replicas
+
+			err = k8sClient.Update(context.Background(), existingTopic)
+			checkError(err)
+
+			//reconcile the IndexPipeline and validate the status is updated correctly
+			updatedIndexPipeline := reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationInvalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring("topic spec has changed"))
+		})
+
+		It("Sets the status to invalid when the Elasticsearch Connector has deviated", func() {
+			//create a valid IndexPipeline
+			name := "test-index-pipeline"
+			version := "1234"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:                  namespace,
+				Name:                       name,
+				Version:                    version,
+				AvroSchemaFileName:         "xjoinindex",
+				ElasticsearchIndexFileName: "get-index-response-empty",
+				K8sClient:                  k8sClient,
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+			reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+
+			//update the Elasticsearch Connector to make it different from what the DatasourcePipeline defines
+			connectorLookup := types.NamespacedName{
+				Namespace: namespace,
+				Name:      "xjoinindexpipeline." + name + "." + version,
+			}
+			existingConnector := &v1beta2.KafkaConnector{}
+			err := k8sClient.Get(context.Background(), connectorLookup, existingConnector)
+			checkError(err)
+
+			tasksMax := int32(11)
+			existingConnector.Spec.TasksMax = &tasksMax
+
+			err = k8sClient.Update(context.Background(), existingConnector)
+			checkError(err)
+
+			//reconcile the IndexPipeline and validate the status is updated correctly
+			updatedIndexPipeline := reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationInvalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring("elasticsearch connector spec has changed"))
+		})
+
+		It("Sets the status to invalid when the Elasticsearch index has deviated", func() {
+			//create a valid datasource
+			dataSourceName := "testdatasource"
+			datasourceReconciler := DatasourceTestReconciler{
+				Namespace: namespace,
+				Name:      dataSourceName,
+				K8sClient: k8sClient,
+			}
+			datasourceReconciler.ReconcileNew()
+			createdDataSource := datasourceReconciler.ReconcileValid()
+
+			//create a valid IndexPipeline
+			name := "test-index-pipeline"
+			version := "1234"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:                  namespace,
+				Name:                       name,
+				Version:                    version,
+				AvroSchemaFileName:         "xjoinindex-with-referenced-field",
+				ElasticsearchIndexFileName: "get-index-response",
+				ApiCurioResponseFilename:   "index",
+				K8sClient:                  k8sClient,
+				DataSources: []DataSource{{
+					Name:                     dataSourceName,
+					Version:                  createdDataSource.Status.ActiveVersion,
+					ApiCurioResponseFilename: "datasource-latest-version",
+				}},
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+			reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+
+			//reconcile the IndexPipeline and validate the status is updated correctly
+			updatedIndexPipeline := reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+				ElasticsearchIndexFilename: "get-index-response-modified",
+			})
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationInvalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring("the Elasticsearch index mappings changed"))
+		})
+
+		It("Sets the status to invalid when the GraphQL Schema has deviated", func() {
+			//create a valid datasource
+			dataSourceName := "testdatasource"
+			datasourceReconciler := DatasourceTestReconciler{
+				Namespace: namespace,
+				Name:      dataSourceName,
+				K8sClient: k8sClient,
+			}
+			datasourceReconciler.ReconcileNew()
+			createdDataSource := datasourceReconciler.ReconcileValid()
+
+			//create a valid IndexPipeline
+			name := "test-index-pipeline"
+			version := "1234"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:                  namespace,
+				Name:                       name,
+				Version:                    version,
+				AvroSchemaFileName:         "xjoinindex-with-referenced-field",
+				ElasticsearchIndexFileName: "get-index-response",
+				ApiCurioResponseFilename:   "index",
+				K8sClient:                  k8sClient,
+				DataSources: []DataSource{{
+					Name:                     dataSourceName,
+					Version:                  createdDataSource.Status.ActiveVersion,
+					ApiCurioResponseFilename: "datasource-latest-version",
+				}},
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+			reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+
+			//reconcile the IndexPipeline and validate the status is updated correctly
+			updatedIndexPipeline := reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+				GraphQLSchemaLabels:        []string{},
+			})
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationInvalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring(
+				"graphql schema, xjoinindexpipeline.test-index-pipeline.1234, labels changed"))
+		})
+
+		It("Sets the status to invalid when the xjoin-core deployment has deviated", func() {
+			//create a valid IndexPipeline
+			name := "test-index-pipeline"
+			version := "1234"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:                  namespace,
+				Name:                       name,
+				Version:                    version,
+				AvroSchemaFileName:         "xjoinindex",
+				ElasticsearchIndexFileName: "get-index-response-empty",
+				K8sClient:                  k8sClient,
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+			reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+
+			//update the xjoin-core deployment to make it different from what the IndexPipeline defines
+			deploymentLookup := types.NamespacedName{
+				Namespace: namespace,
+				Name:      "xjoin-core-xjoinindexpipeline-" + name + "-" + version,
+			}
+			existingDeployment := &v1.Deployment{}
+			err := k8sClient.Get(context.Background(), deploymentLookup, existingDeployment)
+			checkError(err)
+
+			replicas := int32(11)
+			existingDeployment.Spec.Replicas = &replicas
+
+			err = k8sClient.Update(context.Background(), existingDeployment)
+			checkError(err)
+
+			//reconcile the IndexPipeline and validate the status is updated correctly
+			updatedIndexPipeline := reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationInvalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring("xjoin-core deployment spec has changed"))
+		})
+
+		It("Sets the status to invalid when the xjoin-api-subgraph deployment has deviated", func() {
+			//create a valid IndexPipeline
+			name := "test-index-pipeline"
+			version := "1234"
+			reconciler := XJoinIndexPipelineTestReconciler{
+				Namespace:                  namespace,
+				Name:                       name,
+				Version:                    version,
+				AvroSchemaFileName:         "xjoinindex",
+				ElasticsearchIndexFileName: "get-index-response-empty",
+				K8sClient:                  k8sClient,
+			}
+			reconciler.ReconcileNew()
+			reconciler.ReconcileValid()
+			reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+
+			//update the xjoin-api-subgraph deployment to make it different from what the IndexPipeline defines
+			deploymentLookup := types.NamespacedName{
+				Namespace: namespace,
+				Name:      name + "-" + version,
+			}
+			existingDeployment := &v1.Deployment{}
+			err := k8sClient.Get(context.Background(), deploymentLookup, existingDeployment)
+			checkError(err)
+
+			replicas := int32(11)
+			existingDeployment.Spec.Replicas = &replicas
+
+			err = k8sClient.Update(context.Background(), existingDeployment)
+			checkError(err)
+
+			//reconcile the IndexPipeline and validate the status is updated correctly
+			updatedIndexPipeline := reconciler.ReconcileUpdated(UpdatedMocksParams{
+				GraphQLSchemaExistingState: "ENABLED",
+				GraphQLSchemaNewState:      "ENABLED",
+			})
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Result).To(Equal(validation.ValidationInvalid))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Reason).To(Equal("Deviation found"))
+			Expect(updatedIndexPipeline.Status.ValidationResponse.Message).To(ContainSubstring(
+				"xjoin-api-subgraph deployment spec has changed"))
 		})
 	})
 })

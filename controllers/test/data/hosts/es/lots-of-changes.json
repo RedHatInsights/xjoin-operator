@@ -1,0 +1,22 @@
+{
+  "id": "{{.ID}}",
+  "account": "8",
+  "org_id": "8",
+  "display_name": "testmodified",
+  "created_on": "2020-01-01T00:00:00Z",
+  "modified_on": "{{.ModifiedOn}}",
+  "facts": "{}",
+  "tags": {
+    "test2": "test2a",
+    "test3": "test3"
+  },
+  "canonical_facts": "{\"test3\": \"test3a\", \"test4\": [\"asdf\", \"jkl;\"], \"test6\": [{\"1\": \"23\"}, {\"2\": {\"3\": \"345\"}}]}",
+  "system_profile_facts": "{\"newkey\": \"newvalue\", \"arch\": \"x86-64\", \"cpu_flags\": [\"flag1\"], \"yum_repos\": [{\"newkey\": \"newvalue\"}, {\"name\": \"repo1\", \"enabled\": true, \"base_ur    l\": \"http://rpms.redhat.com\", \"gpgcheck\": true}], \"is_marketplace\": false, \"number_of_cpus\": 1,  \"number_of_sockets\": 5, \"anobject\": {\"key3\": \"value3\", \"key1\": \"value1\", \"key2\": \"value2\", \"array1\": [\"value1\", \"value2\"]}}",
+  "ansible_host": null,
+  "stale_timestamp": "2019-01-01T00:00:00Z",
+  "reporter": "someoneelse",
+  "__deleted": "true",
+  "tags_structured": [],
+  "tags_string": [],
+  "groups": []
+}

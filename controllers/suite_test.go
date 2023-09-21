@@ -1,26 +1,27 @@
-package controllers
+package controllers_test
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/go-errors/errors"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	strimziApi "github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -35,6 +36,19 @@ var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
 
+var K8sGetTimeout = 3 * time.Second
+var K8sGetInterval = 100 * time.Millisecond
+
+var testLogger = logf.Log.WithName("test")
+
+// this is used to output stack traces when an error occurs
+func checkError(err error) {
+	if err != nil {
+		testLogger.Error(errors.Wrap(err, 0), "test failure")
+	}
+	Expect(err).ToNot(HaveOccurred())
+}
+
 func k8sGet(key client.ObjectKey, obj client.Object) {
 	ctx := context.Background()
 	Eventually(func() bool {
@@ -46,9 +60,8 @@ func k8sGet(key client.ObjectKey, obj client.Object) {
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecsWithDefaultAndCustomReporters(t,
-		"Controller Suite",
-		[]Reporter{printer.NewlineReporter{}})
+	RunSpecs(t,
+		"Controller Suite")
 }
 
 func NewNamespace() (string, error) {
@@ -107,6 +120,80 @@ func LoadExpectedKafkaResourceConfig(filename string) *bytes.Buffer {
 	return buffer
 }
 
+type IndexPipelineTestResources struct {
+	IndexReconciler         IndexTestReconciler
+	IndexPipelineReconciler XJoinIndexPipelineTestReconciler
+	DatasourceReconciler    DatasourceTestReconciler
+	IndexPipeline           xjoinApi.XJoinIndexPipeline
+	Index                   xjoinApi.XJoinIndex
+	DataSource              xjoinApi.XJoinDataSource
+}
+
+type UpdatedMocksParams struct {
+	GraphQLSchemaExistingState string
+	GraphQLSchemaNewState      string
+	GraphQLSchemaLabels        []string
+	ElasticsearchIndexFilename string
+}
+
+func CreateValidIndexPipeline(namespace string, customSubgraphImages []xjoinApi.CustomSubgraphImage) IndexPipelineTestResources {
+	indexReconciler := IndexTestReconciler{
+		Namespace:            namespace,
+		Name:                 "test-index",
+		K8sClient:            k8sClient,
+		AvroSchemaFileName:   "xjoinindex-with-referenced-field",
+		CustomSubgraphImages: customSubgraphImages,
+	}
+	createdIndex := indexReconciler.ReconcileNew()
+
+	//create a valid datasource
+	dataSourceName := "testdatasource"
+	datasourceReconciler := DatasourceTestReconciler{
+		Namespace: namespace,
+		Name:      dataSourceName,
+		K8sClient: k8sClient,
+	}
+	datasourceReconciler.ReconcileNew()
+	createdDataSource := datasourceReconciler.ReconcileValid()
+
+	//reconcile the refreshing indexpipeline to be valid
+	indexPipelineReconciler := XJoinIndexPipelineTestReconciler{
+		Namespace:                namespace,
+		Name:                     createdIndex.Name,
+		Version:                  createdIndex.Status.RefreshingVersion,
+		AvroSchemaFileName:       "xjoinindex-with-referenced-field",
+		K8sClient:                k8sClient,
+		CustomSubgraphImages:     customSubgraphImages,
+		ApiCurioResponseFilename: "index",
+		DataSources: []DataSource{{
+			Name:                     dataSourceName,
+			Version:                  createdDataSource.Status.ActiveVersion,
+			ApiCurioResponseFilename: "datasource-latest-version",
+		}},
+	}
+	indexPipeline := indexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+		GraphQLSchemaExistingState: "DISABLED",
+		GraphQLSchemaNewState:      "DISABLED",
+	})
+	Expect(indexPipeline.Status.Active).To(Equal(false))
+
+	//reconcile the index to flip the refreshing pipeline to be active
+	indexReconciler.ReconcileUpdated()
+	indexPipeline = indexPipelineReconciler.ReconcileUpdated(UpdatedMocksParams{
+		GraphQLSchemaExistingState: "DISABLED",
+		GraphQLSchemaNewState:      "ENABLED",
+	})
+
+	return IndexPipelineTestResources{
+		IndexReconciler:         indexReconciler,
+		IndexPipelineReconciler: indexPipelineReconciler,
+		DatasourceReconciler:    datasourceReconciler,
+		IndexPipeline:           indexPipeline,
+		Index:                   createdIndex,
+		DataSource:              createdDataSource,
+	}
+}
+
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
@@ -114,7 +201,7 @@ var _ = BeforeSuite(func() {
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
 			filepath.Join("..", "config", "crd", "bases"),
-			filepath.Join("..", "test", "crd"),
+			filepath.Join("test", "data", "crd"),
 		},
 		ErrorIfCRDPathMissing: true,
 	}
@@ -147,7 +234,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
-}, 60)
+})
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")

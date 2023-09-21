@@ -27,7 +27,7 @@ func (instance *XJoinPipeline) GetState() PipelineState {
 		return STATE_NEW
 	case instance.IsValid():
 		return STATE_VALID
-	case instance.Status.InitialSyncInProgress == true:
+	case instance.Status.InitialSyncInProgress:
 		return STATE_INITIAL_SYNC
 	case instance.GetValid() == metav1.ConditionFalse:
 		return STATE_INVALID

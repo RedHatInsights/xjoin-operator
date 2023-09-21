@@ -6,6 +6,8 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhatinsights/xjoin-go-lib/pkg/utils"
+	validation "github.com/redhatinsights/xjoin-go-lib/pkg/validation"
+	"github.com/redhatinsights/xjoin-operator/controllers/common/labels"
 	xjoinlogger "github.com/redhatinsights/xjoin-operator/controllers/log"
 	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,10 +20,8 @@ import (
 	"time"
 )
 
-const COMPONENT_NAME_LABEL = "xjoin.component.name"
-
 type Iteration struct {
-	Instance         client.Object
+	Instance         XJoinObjectChild
 	OriginalInstance client.Object
 	Client           client.Client
 	Context          context.Context
@@ -29,7 +29,39 @@ type Iteration struct {
 	Test             bool
 }
 
-func (i *Iteration) UpdateStatusAndRequeue() (reconcile.Result, error) {
+func UpdateCondition(instance XJoinObjectChild) {
+	if instance.GetValidationResult() == validation.ValidationValid {
+		instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionTrue,
+			Reason: ValidationSucceededReason,
+		})
+	} else if instance.GetValidationResult() == validation.ValidationInvalid {
+		instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: ValidationFailedReason,
+		})
+	} else if instance.GetValidationResult() == validation.ValidationNew {
+		instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: NewReason,
+		})
+	} else {
+		instance.SetCondition(metav1.Condition{
+			Type:   ValidConditionType,
+			Status: metav1.ConditionFalse,
+			Reason: UnknownReason,
+		})
+	}
+}
+
+func (i *Iteration) UpdateCondition() {
+	UpdateCondition(i.Instance)
+}
+
+func (i *Iteration) UpdateStatusAndRequeue(requeueAfter time.Duration) (reconcile.Result, error) {
 	instanceVal := reflect.ValueOf(i.Instance).Elem()
 	statusVal := instanceVal.FieldByName("Status")
 	if !statusVal.IsValid() {
@@ -64,10 +96,10 @@ func (i *Iteration) UpdateStatusAndRequeue() (reconcile.Result, error) {
 		time.Sleep(1 * time.Second) //TODO: this is to prevent status conflicts. Find a better way to avoid the conflicts
 	}
 
-	return reconcile.Result{RequeueAfter: time.Second * 30}, nil
+	return reconcile.Result{RequeueAfter: requeueAfter}, nil
 }
 
-func (i *Iteration) CreateChildResource(resourceDefinition unstructured.Unstructured, ownerGVK schema.GroupVersionKind) (err error) {
+func (i *Iteration) CreateChildResource(resourceDefinition client.Object, ownerGVK schema.GroupVersionKind) (err error) {
 	instanceVal := reflect.ValueOf(i.Instance).Elem()
 	apiVersion := instanceVal.FieldByName("APIVersion")
 	if !apiVersion.IsValid() {
@@ -84,7 +116,7 @@ func (i *Iteration) CreateChildResource(resourceDefinition unstructured.Unstruct
 	blockOwnerDeletion := true
 	controller := true
 	ownerReference := metav1.OwnerReference{
-		APIVersion:         ownerGVK.Version,
+		APIVersion:         ownerGVK.Group + "/" + ownerGVK.Version,
 		Kind:               ownerGVK.Kind,
 		Name:               i.Instance.GetName(),
 		UID:                i.Instance.GetUID(),
@@ -95,16 +127,35 @@ func (i *Iteration) CreateChildResource(resourceDefinition unstructured.Unstruct
 
 	ctx, cancel := utils.DefaultContext()
 	defer cancel()
-	err = i.Client.Create(ctx, &resourceDefinition)
+	err = i.Client.Create(ctx, resourceDefinition)
 	return
 }
 
 func (i *Iteration) DeleteResource(name string, gvk schema.GroupVersionKind) error {
-	resource := &unstructured.Unstructured{}
-	resource.SetGroupVersionKind(gvk)
-	resource.SetName(name)
-	resource.SetNamespace(i.Instance.GetNamespace())
-	return i.Client.Delete(i.Context, resource)
+	//check if resources exists before trying to delete it
+	listResource := &unstructured.UnstructuredList{}
+	listResource.SetGroupVersionKind(gvk)
+	err := i.Client.List(i.Context, listResource)
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	//delete resource if it exists
+	for _, item := range listResource.Items {
+		if item.GetName() == name {
+			resource := &unstructured.Unstructured{}
+			resource.SetGroupVersionKind(gvk)
+			resource.SetName(name)
+			resource.SetNamespace(i.Instance.GetNamespace())
+
+			err = i.Client.Delete(i.Context, resource)
+			if err != nil {
+				return errors.Wrap(err, 0)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (i *Iteration) AddFinalizer(finalizer string) error {
@@ -117,7 +168,7 @@ func (i *Iteration) AddFinalizer(finalizer string) error {
 	return nil
 }
 
-func (i *Iteration) ReconcileChild(child Child) (err error) {
+func (i *Iteration) ReconcileChild(child Child, labelsMatch client.MatchingLabels) (err error) {
 	//build an array and map of expected child versions (active, refreshing)
 	//the map value will be set to true when an expected child is found
 	expectedChildrenMap := make(map[string]bool)
@@ -134,11 +185,7 @@ func (i *Iteration) ReconcileChild(child Child) (err error) {
 	//retrieve a list of children for this datasource.name
 	children := &unstructured.UnstructuredList{}
 	children.SetGroupVersionKind(child.GetGVK())
-	labels := client.MatchingLabels{}
-	labels[COMPONENT_NAME_LABEL] = child.GetParentInstance().GetName()
-	fields := client.MatchingFields{}
-	fields["metadata.namespace"] = child.GetParentInstance().GetNamespace()
-	err = i.Client.List(i.Context, children, labels, fields)
+	err = i.Client.List(i.Context, children, labelsMatch, client.InNamespace(child.GetParentInstance().GetNamespace()))
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}
@@ -190,13 +237,35 @@ func (i *Iteration) ReconcileChild(child Child) (err error) {
 	return
 }
 
+func (i *Iteration) DeleteAllGVKsWithLabels(gvk schema.GroupVersionKind, matchingLabels client.MatchingLabels) (err error) {
+	resources := &unstructured.UnstructuredList{}
+	resources.SetGroupVersionKind(gvk)
+
+	err = i.Client.List(i.Context, resources, matchingLabels, client.InNamespace(i.Instance.GetNamespace()))
+	if err != nil {
+		return errors.Wrap(err, 0)
+	}
+
+	for _, item := range resources.Items {
+		resource := &unstructured.Unstructured{}
+		resource.SetGroupVersionKind(gvk)
+		resource.SetNamespace(i.Instance.GetNamespace())
+		resource.SetName(item.GetName())
+		err = i.Client.Delete(i.Context, resource)
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+	}
+
+	return
+}
+
 func (i *Iteration) DeleteAllResourceTypeWithComponentName(gvk schema.GroupVersionKind, componentName string) (err error) {
 	resources := &unstructured.UnstructuredList{}
 	resources.SetGroupVersionKind(gvk)
-	labels := client.MatchingLabels{COMPONENT_NAME_LABEL: componentName}
-	fields := client.MatchingFields{"metadata.namespace": i.Instance.GetNamespace()}
+	labelsMatch := client.MatchingLabels{labels.ComponentName: componentName}
 
-	err = i.Client.List(i.Context, resources, labels, fields)
+	err = i.Client.List(i.Context, resources, labelsMatch, client.InNamespace(i.Instance.GetNamespace()))
 	if err != nil {
 		return errors.Wrap(err, 0)
 	}

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/DATA-DOG/go-sqlmock"
 	"net/url"
 	"sort"
 	"strings"
@@ -35,6 +36,7 @@ type DBParams struct {
 	Port        string
 	SSLMode     string
 	SSLRootCert string
+	IsTest      bool
 }
 
 func NewDatabase(config DBParams) *Database {
@@ -45,6 +47,17 @@ func NewDatabase(config DBParams) *Database {
 
 func (db *Database) Connect() (err error) {
 	if db.connection != nil {
+		return nil
+	}
+
+	if db.Config.IsTest {
+		//mock the db for replication_slot scrubbing during tests
+		mockDb, sqlMock, err := sqlmock.New()
+		if err != nil {
+			return errors.Wrap(err, 0)
+		}
+		db.connection = sqlx.NewDb(mockDb, "postgres")
+		sqlMock.ExpectQuery("SELECT slot_name from pg_catalog.pg_replication_slots").WillReturnRows(sqlmock.NewRows(nil))
 		return nil
 	}
 
@@ -143,7 +156,27 @@ func (db *Database) CreateReplicationSlot(slot string) error {
 	return nil
 }
 
-func (db *Database) ListReplicationSlots(resourceNamePrefix string) ([]string, error) {
+func (db *Database) ListReplicationSlots() ([]string, error) {
+	rows, err := db.RunQuery("SELECT slot_name from pg_catalog.pg_replication_slots")
+	defer closeRows(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	var slots []string
+
+	for rows.Next() {
+		var slot string
+		err = rows.Scan(&slot)
+		if err != nil {
+			return slots, err
+		}
+		slots = append(slots, slot)
+	}
+	return slots, err
+}
+
+func (db *Database) ListReplicationSlotsForPrefix(resourceNamePrefix string) ([]string, error) {
 	rows, err := db.RunQuery("SELECT slot_name from pg_catalog.pg_replication_slots")
 	defer closeRows(rows)
 	if err != nil {
@@ -309,7 +342,7 @@ func (db *Database) GetHostIdsByIdList(ids []string) ([]string, error) {
 func (db *Database) GetHostIdsByModifiedOn(start time.Time, end time.Time) ([]string, error) {
 	query := fmt.Sprintf(
 		`SELECT id FROM hosts WHERE modified_on > '%s' AND modified_on < '%s' ORDER BY id `,
-		start.Format(utils.TimeFormat()), end.Format(utils.TimeFormat()))
+		start.Format(time.RFC3339Nano), end.Format(time.RFC3339Nano))
 
 	log.Info("GetHostIdsQuery", "query", query)
 
@@ -328,6 +361,15 @@ func closeRows(rows *sqlx.Rows) {
 
 func parseJsonField(field []uint8) (map[string]interface{}, error) {
 	fieldMap := make(map[string]interface{})
+	err := json.Unmarshal(field, &fieldMap)
+	if err != nil {
+		return nil, err
+	}
+	return fieldMap, nil
+}
+
+func parseJsonArrayField(field []uint8) (interface{}, error) {
+	var fieldMap interface{}
 	err := json.Unmarshal(field, &fieldMap)
 	if err != nil {
 		return nil, err
@@ -356,7 +398,7 @@ func formatIdsList(ids []string) (string, error) {
 
 // TODO handle this dynamically with a schema
 func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
-	cols := "id,account,org_id,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter,tags"
+	cols := "id,account,org_id,display_name,created_on,modified_on,facts,canonical_facts,system_profile_facts,ansible_host,stale_timestamp,reporter,tags,groups"
 
 	idsString, err := formatIdsList(ids)
 	if err != nil {
@@ -417,6 +459,14 @@ func (db *Database) GetHostsByIds(ids []string) ([]data.Host, error) {
 			host.TagsStructured, host.TagsString, host.TagsSearch = tagsStructured(tagsJson)
 		}
 
+		if host.Groups != nil {
+			groupsJson, err := parseJsonArrayField(host.Groups.([]uint8))
+			if err != nil {
+				return nil, err
+			}
+			host.Groups = groupsJson
+		}
+
 		response = append(response, host)
 	}
 
@@ -461,10 +511,8 @@ func tagsStructured(tagsJson map[string]interface{}) (
 	stringsTags = make([]string, 0)
 	searchTags = make([]string, 0)
 
-	tagsJson = utils.SortMap(tagsJson)
-
 	for namespaceName, namespaceVal := range tagsJson {
-		namespaceMap := utils.SortMap(namespaceVal.(map[string]interface{}))
+		namespaceMap := namespaceVal.(map[string]interface{})
 		for keyName, values := range namespaceMap {
 			valuesArray := values.([]interface{})
 

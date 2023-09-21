@@ -3,7 +3,7 @@
   "name": "testindex",
   "fields": [{
     "type": {
-      "type": "xjoindatasourcepipeline.testdatasource.Value",
+      "type": "testdatasource.Value",
       "xjoin.type": "reference"
     }
   }]
