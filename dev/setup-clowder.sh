@@ -2,6 +2,19 @@
 
 set -e
 
+INPUT=$1
+HBI_AND_XJOIN="host-inventory"
+
+if [[ "$INPUT" == "$HBI_AND_XJOIN" ]]; then
+  echo "Installing host-inventory, xjoin-search and dependencies for sychronizing the host-inventory database and elasticsearch index"
+elif [[ "$INPUT" ]]; then
+  echo "\"$INPUT\" is not a valid argument."
+  echo "Provide \"$HBI_AND_XJOIN\" as argument for \"setup-clowder.sh\" for deploying host-inventory and xjoin OR no arguments for all components."
+  exit 1
+else
+  echo "Installing all the components specified in setup-clowder.sh"
+fi
+
 # make sure the internal network is reachable
 RESPONSE_CODE=$(curl --write-out %{http_code} --silent --output /dev/null app-interface.apps.appsrep05ue1.zqxk.p1.openshiftapps.com)
 
@@ -153,7 +166,9 @@ kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n kube
 kubectl set resources deployments --all --requests 'cpu=10m,memory=16Mi' -n strimzi
 
 # floorist CRDs
-kubectl apply -k https://github.com/RedHatInsights/floorist-operator/config/crd?ref=main
+if [[ "$INPUT" != "$HBI_AND_XJOIN" ]]; then
+  kubectl apply -k https://github.com/RedHatInsights/floorist-operator/config/crd?ref=main
+fi
 
 # project and secrets
 print_message "Setting up pull secrets"
@@ -174,10 +189,13 @@ bonfire process host-inventory -n test --no-get-dependencies --remove-dependenci
 
 # xjoin resources
 bonfire process xjoin -n test --no-get-dependencies -p xjoin-search/ES_MEMORY_REQUESTS=256Mi -p xjoin-search/ES_MEMORY_LIMITS=512Mi -p xjoin-search/ES_JAVA_OPTS="-Xms128m -Xmx128m" | oc apply -f - -n test
+print_message "xjoin deployed!!!"
 
-# advisor
-print_message "Setting up advisor"
-bonfire process advisor -n test --no-get-dependencies --remove-dependencies all| oc apply -f - -n test
+if [[ "$INPUT" != "$HBI_AND_XJOIN" ]]; then
+  # advisor
+  print_message "Setting up advisor"
+  bonfire process advisor -n test --no-get-dependencies --remove-dependencies all| oc apply -f - -n test
+fi
 
 print_message "Waiting for pods to start"
 
@@ -197,8 +215,10 @@ wait_for_pod_to_be_running pod=xjoin-apicurio-service
 wait_for_pod_to_be_running app=xjoin-apicurio,service=db
 wait_for_pod_to_be_running app=xjoin-api-gateway
 
-# wait for the advisor pods to start
-wait_for_pod_to_be_running app=advisor-backend,service=db
+if [[ "$INPUT" != "$HBI_AND_XJOIN" ]]; then
+  # wait for the advisor pods to start
+  wait_for_pod_to_be_running app=advisor-backend,service=db
+fi
 
 print_message "Cleaning up extra resources"
 # scale down clowder
@@ -220,11 +240,13 @@ update_resource_spec kafka/kafka '.spec.zookeeper.resources.limits.memory = "256
 update_resource_spec elasticsearch/xjoin-elasticsearch '.spec.nodeSets[0].podTemplate.spec.containers[0].resources.requests.memory= "128Mi"' test
 update_resource_spec elasticsearch/xjoin-elasticsearch '.spec.nodeSets[0].podTemplate.spec.containers[0].resources.limits.memory= "512Mi"' test
 
-# delete extra advisor deployments, only the DB is required
-kubectl delete deployments/advisor-backend-api -n test
-kubectl delete deployments/advisor-backend-service -n test
-kubectl delete deployments/advisor-backend-tasks-service -n test
-kubectl delete deployments/host-inventory-service -n test
+if [[ "$INPUT" != "$HBI_AND_XJOIN" ]]; then
+  # delete extra advisor deployments, only the DB is required
+  kubectl delete deployments/advisor-backend-api -n test
+  kubectl delete deployments/advisor-backend-service -n test
+  kubectl delete deployments/advisor-backend-tasks-service -n test
+  kubectl delete deployments/host-inventory-service -n test
+fi
 
 # delete all the jobs
 kubectl delete cronjobs --all -n test
