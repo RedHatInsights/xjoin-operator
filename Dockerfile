@@ -15,13 +15,12 @@ COPY api/ api/
 COPY controllers/ controllers/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
+# Use ubi8 minimal for the binary
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
-RUN microdnf install --setopt=tsflags=nodocs -y go-toolset && \
+RUN microdnf install --setopt=tsflags=nodocs -y go-toolset-1.19.10 && \
     microdnf install -y rsync tar procps-ng && \
     microdnf upgrade -y && \
     microdnf clean all
