@@ -313,6 +313,9 @@ parameters:
                 "cores_per_socket": {
                   "type": "integer"
                 },
+                "threads_per_core": {
+                  "type": "integer"
+                },
                 "system_memory_bytes": {
                   "type": "long"
                 },
@@ -348,6 +351,9 @@ parameters:
                     },
                     "failed": {
                       "type": "integer"
+                    },
+                    "failed_services": {
+                      "type": "keyword"
                     }
                   }
                 },
@@ -586,23 +592,23 @@ parameters:
   - name: VALIDATION_POD_CPU_LIMIT
     value: '1'
   - name: VALIDATION_POD_CPU_REQUEST
-    value: '500m'
+    value: 500m
   - name: VALIDATION_POD_MEMORY_LIMIT
-    value: '2Gi'
+    value: 2Gi
   - name: VALIDATION_POD_MEMORY_REQUEST
-    value: '1Gi'
+    value: 1Gi
   - name: VALIDATION_CONTENT_CHUNK_SIZE
     value: '20'
   - name: VALIDATION_CONTENT_MAX_THREADS
     value: '10'
   - name: CORE_POD_CPU_LIMIT
-    value: '500m'
+    value: 500m
   - name: CORE_POD_CPU_REQUEST
-    value: '250m'
+    value: 250m
   - name: CORE_POD_MEMORY_LIMIT
-    value: '1Gi'
+    value: 1Gi
   - name: CORE_POD_MEMORY_REQUEST
-    value: '512Mi'
+    value: 512Mi
   - name: CORE_NUM_PODS
     value: '1'
   - name: DATASOURCE_KAFKA_TOPIC_PARTITIONS
@@ -640,11 +646,11 @@ parameters:
   - name: DATASOURCE_CONNECTOR_BATCH_SIZE
     value: '16384'
   - name: DATASOURCE_CONNECTOR_COMPRESSION_TYPE
-    value: 'lz4'
+    value: lz4
   - name: DATASOURCE_CONNECTOR_MAX_REQUEST_SIZE
     value: '104857600'
   - name: DATASOURCE_CONNECTOR_ACK
-    value: 'all'
+    value: all
 objects:
   - apiVersion: operators.coreos.com/v1
     kind: OperatorGroup
