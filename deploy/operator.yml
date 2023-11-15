@@ -536,6 +536,9 @@ parameters:
                 },
                 "system_update_method": {
                   "type": "keyword"
+                },
+                "virtual_host_uuid": {
+                  "type": "keyword"
                 }
               }
             },
