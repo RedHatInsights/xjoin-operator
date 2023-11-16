@@ -2,5 +2,5 @@
 set -e
 
 source build_catalog.sh
-build_a_tag security-compliance
+build_a_tag "sc-$(date +%Y%m%d)-$(git rev-parse --short=7 HEAD)"
 
