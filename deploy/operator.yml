@@ -526,6 +526,17 @@ parameters:
                     }
                   }
                 },
+                "intersystems": {
+                  "type": "object",
+                  "properties": {
+                    "is_intersystems": {
+                      "type": "boolean"
+                    },
+                    "running_instances": {
+                      "type": "nested"
+                    }
+                  }
+                },
                 "mssql": {
                   "type": "object",
                   "properties": {
