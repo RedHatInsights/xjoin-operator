@@ -526,6 +526,17 @@ parameters:
                     }
                   }
                 },
+                "intersystems": {
+                  "type": "object",
+                  "properties": {
+                    "is_intersystems": {
+                      "type": "boolean"
+                    },
+                    "running_instances": {
+                      "type": "nested"
+                    }
+                  }
+                },
                 "mssql": {
                   "type": "object",
                   "properties": {
@@ -539,6 +550,55 @@ parameters:
                 },
                 "virtual_host_uuid": {
                   "type": "keyword"
+                },
+                "bootc_status": {
+                  "type": "object",
+                  "properties": {
+                    "booted": {
+                      "type": "object",
+                      "properties": {
+                        "image": {
+                          "type": "keyword"
+                        },
+                        "image_digest": {
+                          "type": "keyword"
+                        }
+                      }
+                    },
+                    "cachedUpdate": {
+                      "type": "object",
+                      "properties": {
+                        "image": {
+                          "type": "keyword"
+                        },
+                        "image_digest": {
+                          "type": "keyword"
+                        }
+                      }
+                    },
+                    "rollback": {
+                      "type": "object",
+                      "properties": {
+                        "image": {
+                          "type": "keyword"
+                        },
+                        "image_digest": {
+                          "type": "keyword"
+                        }
+                      }
+                    },
+                    "staged": {
+                      "type": "object",
+                      "properties": {
+                        "image": {
+                          "type": "keyword"
+                        },
+                        "image_digest": {
+                          "type": "keyword"
+                        }
+                      }
+                    }
+                  }
                 }
               }
             },
