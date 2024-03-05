@@ -181,7 +181,7 @@ func (config *Config) checkIfManagedKafka(ctx context.Context) (isManaged bool, 
 
 	config.log.Info("ClowdEnvironment Kafka Mode: " + clowdenvKafkaMode)
 
-	if clowdenvKafkaMode == "managed-ephem" {
+	if clowdenvKafkaMode == "ephem-msk" {
 		isManaged = true
 	} else {
 		isManaged = false
