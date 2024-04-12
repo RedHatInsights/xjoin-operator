@@ -13,3 +13,4 @@ COPY bundle/ bundle/
 COPY config/ config/
 COPY controllers/ controllers/
 COPY scripts/ scripts/
+COPY testbin/ testbin/
