@@ -3,16 +3,4 @@ FROM registry.access.redhat.com/ubi8/go-toolset:latest
 WORKDIR /workspace
 
 # Copy the Go Modules manifests
-COPY go.mod go.mod
-COPY go.sum go.sum
-
-# Copy the go source
-COPY main.go main.go
-COPY api/ api/
-COPY bundle/ bundle/
-COPY config/ config/
-COPY controllers/ controllers/
-COPY scripts/ scripts/
-COPY testbin/ testbin/
-COPY PROJECT PROJECT
-COPY unit_test.sh unit_test.sh
+COPY . .
