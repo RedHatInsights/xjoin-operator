@@ -38,4 +38,9 @@ npm-debug.log
 .env
 .DS_Store
 
+# Potential security risks
+.docker
+.podman
+.kube
+
 tmp/**/*
