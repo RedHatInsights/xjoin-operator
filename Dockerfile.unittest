@@ -1,5 +1,6 @@
-FROM registry.access.redhat.com/ubi8/go-toolset:1.17.12
+FROM registry.access.redhat.com/ubi8/go-toolset:latest
 
 WORKDIR /workspace
 
+# Copy the Go Modules manifests
 COPY . .
