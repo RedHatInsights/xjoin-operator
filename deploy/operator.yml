@@ -44,6 +44,7 @@ parameters:
   - name: ES_CONNECTOR_CONFIG
     value: |-
       { 
+        "flush.synchronously": true,
         "tasks.max": "{{.ElasticSearchTasksMax}}",
         "topics": "{{.Topic}}",
         "key.ignore": "false",
