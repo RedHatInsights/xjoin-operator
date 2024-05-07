@@ -123,7 +123,7 @@ parameters:
       "${env:HOST_INVENTORY_DB_HOSTNAME}", "database.port": "{{.HBIDBPort}}",
       "database.user": "${env:HOST_INVENTORY_DB_USERNAME}", "database.password":
       "${env:HOST_INVENTORY_DB_PASSWORD}", "database.dbname":
-      "${env:HOST_INVENTORY_DB_NAME}", "topic.prefix:
+      "${env:HOST_INVENTORY_DB_NAME}", "topic.prefix":
       "{{.ResourceNamePrefix}}.{{.Version}}", "database.sslmode":
       "{{.HBIDBSSLMode}}", "database.sslrootcert": "{{.HBIDBSSLRootCert}}",
       "table.include.list": "public.hosts", "plugin.name": "pgoutput",
