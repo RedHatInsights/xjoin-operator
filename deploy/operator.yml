@@ -44,7 +44,6 @@ parameters:
   - name: ES_CONNECTOR_CONFIG
     value: |-
       { 
-        "flush.synchronously": true,
         "tasks.max": "{{.ElasticSearchTasksMax}}",
         "topics": "{{.Topic}}",
         "key.ignore": "false",
@@ -123,13 +122,13 @@ parameters:
       "${env:HOST_INVENTORY_DB_HOSTNAME}", "database.port": "{{.HBIDBPort}}",
       "database.user": "${env:HOST_INVENTORY_DB_USERNAME}", "database.password":
       "${env:HOST_INVENTORY_DB_PASSWORD}", "database.dbname":
-      "${env:HOST_INVENTORY_DB_NAME}", "topic.prefix:
+      "${env:HOST_INVENTORY_DB_NAME}", "database.server.name":
       "{{.ResourceNamePrefix}}.{{.Version}}", "database.sslmode":
       "{{.HBIDBSSLMode}}", "database.sslrootcert": "{{.HBIDBSSLRootCert}}",
-      "table.include.list": "public.hosts", "plugin.name": "pgoutput",
+      "table.whitelist": "public.hosts", "plugin.name": "pgoutput",
       "transforms": "unwrap", "transforms.unwrap.type":
       "io.debezium.transforms.ExtractNewRecordState",
-      "transforms.unwrap.delete.tombstones.handling.mode": "rewrite", "errors.log.enable":
+      "transforms.unwrap.delete.handling.mode": "rewrite", "errors.log.enable":
       {{.DebeziumErrorsLogEnable}}, "errors.log.include.messages": true,
       "slot.name": "{{.ReplicationSlotName}}", "max.queue.size":
       {{.DebeziumQueueSize}}, "max.batch.size": {{.DebeziumMaxBatchSize}},
