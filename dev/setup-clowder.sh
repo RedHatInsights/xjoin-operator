@@ -16,13 +16,13 @@ else
 fi
 
 # make sure the internal network is reachable
-RESPONSE_CODE=$(curl --write-out %{http_code} --silent --output /dev/null app-interface.apps.appsrep05ue1.zqxk.p1.openshiftapps.com)
-
-if [[ "$RESPONSE_CODE" -gt 399 ]]; then
-  echo -e "Response code from app-interface: ${RESPONSE_CODE}"
-  echo -e "Unable to connect to app-interface. Are you in the VPN?"
-  exit 1
-fi
+#RESPONSE_CODE=$(curl --write-out %{http_code} --silent --output /dev/null app-interface.apps.appsrep05ue1.zqxk.p1.openshiftapps.com)
+#
+#if [[ "$RESPONSE_CODE" -gt 399 ]]; then
+#  echo -e "Response code from app-interface: ${RESPONSE_CODE}"
+#  echo -e "Unable to connect to app-interface. Are you in the VPN?"
+#  exit 1
+#fi
 
 
 PLATFORM=`uname -a | cut -f1 -d' '`
