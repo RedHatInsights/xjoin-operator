@@ -211,9 +211,11 @@ wait_for_pod_to_be_running app=host-inventory,service=db
 # wait for the xjoin pods to start
 wait_for_pod_to_be_running elasticsearch.k8s.elastic.co/cluster-name=xjoin-elasticsearch
 wait_for_pod_to_be_running pod=xjoin-search-api
-wait_for_pod_to_be_running pod=xjoin-apicurio-service
-wait_for_pod_to_be_running app=xjoin-apicurio,service=db
-wait_for_pod_to_be_running app=xjoin-api-gateway
+
+# Xjoin V2
+#wait_for_pod_to_be_running pod=xjoin-apicurio-service 
+#wait_for_pod_to_be_running app=xjoin-apicurio,service=db
+#wait_for_pod_to_be_running app=xjoin-api-gateway
 
 if [[ "$INPUT" != "$HBI_AND_XJOIN" ]]; then
   # wait for the advisor pods to start
@@ -253,9 +255,9 @@ kubectl delete cronjobs --all -n test
 kubectl delete jobs --all -n test
 
 # setup xjoin.v2 resources, remove v1 resource
-kubectl delete xjoinpipeline --all -n test
-kubectl apply -f config/samples/xjoin_v1alpha1_xjoindatasource.yaml -n test
-kubectl apply -f config/samples/xjoin_v1alpha1_xjoinindex.yaml -n test
+#kubectl delete xjoinpipeline --all -n test
+#kubectl apply -f config/samples/xjoin_v1alpha1_xjoindatasource.yaml -n test
+#kubectl apply -f config/samples/xjoin_v1alpha1_xjoinindex.yaml -n test
 
 # create a custom apicurio service/port to avoid conflicts
 kubectl apply -f dev/apicurio.yaml -n test
