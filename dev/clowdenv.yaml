@@ -83,7 +83,7 @@ objects:
           name: connect
           version: "3.0.0"
           replicas: 1
-          image: "quay.io/jramos/xjoin-kafka-connect-strimzi:7acd722"
+          image: "quay.io/cloudservices/xjoin-kafka-connect-strimzi:latest"
           resources:
             limits:
               cpu: 1
