@@ -44,6 +44,7 @@ parameters:
   - name: ES_CONNECTOR_CONFIG
     value: |-
       { 
+        "flush.synchronously": "true",
         "tasks.max": "{{.ElasticSearchTasksMax}}",
         "topics": "{{.Topic}}",
         "key.ignore": "false",
@@ -118,17 +119,17 @@ parameters:
   - name: DEBEZIUM_CONNECTOR_CONFIG
     value: >-
       { "tasks.max": "{{.DebeziumTasksMax}}",
-      "producer.override.max.request.size": "2097152", "database.hostname":
-      "${env:HOST_INVENTORY_DB_HOSTNAME}", "database.port": "{{.HBIDBPort}}",
-      "database.user": "${env:HOST_INVENTORY_DB_USERNAME}", "database.password":
-      "${env:HOST_INVENTORY_DB_PASSWORD}", "database.dbname":
-      "${env:HOST_INVENTORY_DB_NAME}", "database.server.name":
-      "{{.ResourceNamePrefix}}.{{.Version}}", "database.sslmode":
-      "{{.HBIDBSSLMode}}", "database.sslrootcert": "{{.HBIDBSSLRootCert}}",
-      "table.whitelist": "public.hosts", "plugin.name": "pgoutput",
+      "producer.override.max.request.size": "2097152", "driver.hostname":
+      "${env:HOST_INVENTORY_DB_HOSTNAME}", "driver.port": "{{.HBIDBPort}}",
+      "driver.user": "${env:HOST_INVENTORY_DB_USERNAME}", "driver.password":
+      "${env:HOST_INVENTORY_DB_PASSWORD}", "driver.dbname":
+      "${env:HOST_INVENTORY_DB_NAME}", "topic.prefix":
+      "{{.ResourceNamePrefix}}.{{.Version}}", "driver.sslmode":
+      "{{.HBIDBSSLMode}}", "driver.sslrootcert": "{{.HBIDBSSLRootCert}}",
+      "table.include.list": "public.hosts", "plugin.name": "pgoutput",
       "transforms": "unwrap", "transforms.unwrap.type":
       "io.debezium.transforms.ExtractNewRecordState",
-      "transforms.unwrap.delete.handling.mode": "rewrite", "errors.log.enable":
+      "transforms.unwrap.delete.tombstones.handling.mode": "rewrite", "errors.log.enable":
       {{.DebeziumErrorsLogEnable}}, "errors.log.include.messages": true,
       "slot.name": "{{.ReplicationSlotName}}", "max.queue.size":
       {{.DebeziumQueueSize}}, "max.batch.size": {{.DebeziumMaxBatchSize}},
