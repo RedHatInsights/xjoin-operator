@@ -562,16 +562,11 @@ parameters:
                         },
                         "image_digest": {
                           "type": "keyword"
-                        }
-                      }
-                    },
-                    "cachedUpdate": {
-                      "type": "object",
-                      "properties": {
-                        "image": {
+                        },
+                        "cached_image": {
                           "type": "keyword"
                         },
-                        "image_digest": {
+                        "cached_image_digest": {
                           "type": "keyword"
                         }
                       }
@@ -584,6 +579,12 @@ parameters:
                         },
                         "image_digest": {
                           "type": "keyword"
+                        },
+                        "cached_image": {
+                          "type": "keyword"
+                        },
+                        "cached_image_digest": {
+                          "type": "keyword"
                         }
                       }
                     },
@@ -594,6 +595,39 @@ parameters:
                           "type": "keyword"
                         },
                         "image_digest": {
+                          "type": "keyword"
+                        },
+                        "cached_image": {
+                          "type": "keyword"
+                        },
+                        "cached_image_digest": {
+                          "type": "keyword"
+                        }
+                      }
+                    }
+                  }
+                },
+                "conversions": {
+                  "type": "object",
+                  "properties": {
+                    "activity": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "third_party_services": {
+                  "type": "object",
+                  "properties": {
+                    "crowdstrike": {
+                      "type": "object",
+                      "properties": {
+                        "falcon_aid": {
+                          "type": "keyword"
+                        },
+                        "falcon_backend": {
+                          "type": "keyword"
+                        },
+                        "falcon_version": {
                           "type": "keyword"
                         }
                       }
