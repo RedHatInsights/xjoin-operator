@@ -528,15 +528,14 @@ func (c *StrimziConnectors) ResumeElasticSearchConnector(pipelineVersion string)
 
 func (c *StrimziConnectors) setElasticSearchConnectorPause(pipelineVersion string, pause bool) error {
 	connector, err := c.Kafka.GetConnector(c.ESConnectorName(pipelineVersion), c.Kafka.ConnectNamespace)
-	state := "running"
 	if err != nil {
 		return err
 	}
 
 	if pause {
-		state = "paused"
+		state := "paused"
 	} else {
-		state = "running"
+		state := "running"
 	}
 	
 	connector.Object["spec"].(map[string]interface{})["state"] = state
