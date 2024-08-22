@@ -104,7 +104,6 @@ func (c *StrimziConnectors) newConnectorResource(
 		"spec": map[string]interface{}{
 			"class":  class,
 			"config": configTemplateInterface,
-			"pause":  false,
 		},
 	}
 
