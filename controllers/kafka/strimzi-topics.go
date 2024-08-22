@@ -28,7 +28,7 @@ var topicsGroupVersionKind = schema.GroupVersionKind{
 }
 
 func (t *StrimziTopics) TopicName(pipelineVersion string) string {
-	return fmt.Sprintf(t.ResourceNamePrefix + "." + pipelineVersion + ".public.hosts")
+	return fmt.Sprint(t.ResourceNamePrefix + "." + pipelineVersion + ".public.hosts")
 }
 
 func (t *StrimziTopics) createTopicByFullName(topicName string, dryRun bool) (*unstructured.Unstructured, error) {
