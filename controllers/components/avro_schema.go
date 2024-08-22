@@ -171,7 +171,7 @@ func (as *AvroSchema) CheckDeviation() (problem, err error) {
 	if len(diff) > 0 {
 		msg := fmt.Sprintf("schema in registry changed for subject %s, diff: %s", as.Name(), diff)
 		as.events.Warning("AvroSchemaDeviationFound", msg)
-		problem = fmt.Errorf(msg)
+		problem = fmt.Errorf("%s", msg)
 	}
 
 	return

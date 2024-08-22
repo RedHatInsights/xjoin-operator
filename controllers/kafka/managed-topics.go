@@ -33,7 +33,7 @@ func NewManagedTopics(options ManagedTopicsOptions) *ManagedTopics {
 }
 
 func (t *ManagedTopics) TopicName(pipelineVersion string) string {
-	return fmt.Sprintf(t.Options.ResourceNamePrefix + "." + pipelineVersion + ".public.hosts")
+	return fmt.Sprint(t.Options.ResourceNamePrefix + "." + pipelineVersion + ".public.hosts")
 }
 
 func (t *ManagedTopics) CreateTopicByName(topicName string) error {
