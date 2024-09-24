@@ -337,6 +337,9 @@ parameters:
                 "bios_version": {
                   "type": "keyword"
                 },
+                "bios_release_date": {
+                  "type": "keyword"
+                },
                 "cpu_flags": {
                   "type": "keyword"
                 },
@@ -392,6 +395,9 @@ parameters:
                 "last_boot_time": {
                   "type": "keyword"
                 },
+                "running_processes": {
+                  "type": "keyword"
+                },
                 "subscription_status": {
                   "type": "keyword"
                 },
@@ -406,6 +412,15 @@ parameters:
                 },
                 "cloud_provider": {
                   "type": "keyword"
+                },
+                "public_ipv4_addresses": {
+                  "type": "keyword"
+                },
+                "public_dns": {
+                  "type": "keyword"
+                },
+                "yum_repos": {
+                  "type": "nested"
                 },
                 "dnf_modules": {
                   "type": "nested"
@@ -423,6 +438,9 @@ parameters:
                   "type": "keyword"
                 },
                 "installed_packages": {
+                  "type": "keyword"
+                },
+                "installed_packages_delta": {
                   "type": "keyword"
                 },
                 "gpg_pubkeys": {
@@ -562,16 +580,11 @@ parameters:
                         },
                         "image_digest": {
                           "type": "keyword"
-                        }
-                      }
-                    },
-                    "cachedUpdate": {
-                      "type": "object",
-                      "properties": {
-                        "image": {
+                        },
+                        "cached_image": {
                           "type": "keyword"
                         },
-                        "image_digest": {
+                        "cached_image_digest": {
                           "type": "keyword"
                         }
                       }
@@ -584,6 +597,12 @@ parameters:
                         },
                         "image_digest": {
                           "type": "keyword"
+                        },
+                        "cached_image": {
+                          "type": "keyword"
+                        },
+                        "cached_image_digest": {
+                          "type": "keyword"
                         }
                       }
                     },
@@ -594,6 +613,53 @@ parameters:
                           "type": "keyword"
                         },
                         "image_digest": {
+                          "type": "keyword"
+                        },
+                        "cached_image": {
+                          "type": "keyword"
+                        },
+                        "cached_image_digest": {
+                          "type": "keyword"
+                        }
+                      }
+                    }
+                  }
+                },
+                "conversions": {
+                  "type": "object",
+                  "properties": {
+                    "activity": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "rhel_ai": {
+                  "type": "object",
+                  "properties": {
+                    "variant": {
+                      "type": "keyword"
+                    },
+                    "rhel_ai_version_id": {
+                      "type": "keyword"
+                    },
+                    "nvidia_gpu_models": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "third_party_services": {
+                  "type": "object",
+                  "properties": {
+                    "crowdstrike": {
+                      "type": "object",
+                      "properties": {
+                        "falcon_aid": {
+                          "type": "keyword"
+                        },
+                        "falcon_backend": {
+                          "type": "keyword"
+                        },
+                        "falcon_version": {
                           "type": "keyword"
                         }
                       }
